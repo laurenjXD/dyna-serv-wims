@@ -49,7 +49,7 @@ export async function emitLowStockAlerts(): Promise<number> {
             THEN COALESCE(lit.qty_remaining, 0) - COALESCE(lit.qty_committed, 0)
             ELSE 0 END), 0)::int AS available_qty,
           COALESCE(SUM(CASE WHEN l.status = 'available'::lot_status
-            THEN (COALESCE(lit.qty_remaining, 0) - COALESCE(lit.qty_committed, 0)) * i.volume_cbm
+            THEN ((COALESCE(lit.qty_remaining, 0) - COALESCE(lit.qty_committed, 0))::numeric / NULLIF(i.spq, 0)) * i.volume_cbm
             ELSE 0 END), 0)::numeric AS available_cbm
         FROM items i
         LEFT JOIN lots l ON l.item_id = i.id

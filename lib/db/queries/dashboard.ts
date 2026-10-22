@@ -16,6 +16,7 @@ import { pickLists } from "@/lib/db/schema/pick_lists";
 import { wrrDocuments, wrrInspectionLogs } from "@/lib/db/schema/wrr";
 import { vmiContractTerms, vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
 import { tradingPolicies } from "@/lib/db/schema/trading_pricing";
+import { getInventoryPositionSummary } from "@/lib/db/queries/inventory";
 import type {
   DashboardKpiData,
   MonthlyFlowDatum,
@@ -32,6 +33,7 @@ import type {
  */
 export async function getDashboardKpis(): Promise<DashboardKpiData> {
   try {
+    const inventoryPosition = await getInventoryPositionSummary(db);
     // A. Valuation (Lots available quantity * items unit/buying price grouped by flow type)
     const valuationRows = await db
       .select({
@@ -153,6 +155,7 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
         pendingBillingAmount: parseFloat(pendingBillingAgg?.totalAmount || "0"),
         pendingInvoicesCount: pendingBillingAgg?.openCount || 0,
       },
+      inventoryPosition,
     };
   } catch (error) {
     console.error("Error fetching dashboard KPIs:", error);
@@ -161,6 +164,7 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
       floorQueues: { pendingReceivingWrrs: 0, activePickLists: 0, pendingQcInspections: 0 },
       stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 0 },
       financialSummary: { vmiDailyCbmRate: 0, vmiClientCount: 0, tradingMarginPct: 0, tradingMarginTargetPct: 0, pendingBillingAmount: 0, pendingInvoicesCount: 0 },
+      inventoryPosition: { distinctItems: 0, totalPieces: 0, totalBoxes: 0, knownPalletEquivalent: 0, stockRows: 0, rowsMissingPalletFactor: 0 },
     };
   }
 }
@@ -246,7 +250,7 @@ export async function getDashboardLocationOccupancy(): Promise<LocationOccupancy
       .select({
         zone: locations.zone,
         totalCapacityCbm: sql<string>`coalesce(sum(${locations.maxCbmCapacity}), 0)`,
-        usedCbm: sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then (${lotLocationBalances.qtyRemaining}::numeric * coalesce(${items.volumeCbm}, 0.05)) else 0 end), 0)`,
+        usedCbm: sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ((${lotLocationBalances.qtyRemaining}::numeric / nullif(${items.spq}, 0)) * coalesce(${items.volumeCbm}, 0.05)) else 0 end), 0)`,
       })
       .from(locations)
       .leftJoin(lotLocationBalances, eq(locations.id, lotLocationBalances.locationId))
@@ -471,13 +475,14 @@ export async function getDashboardMasterInventory(params?: {
         id: items.id,
         itemCode: items.code,
         description: items.name,
-        flowType: sql<string>`coalesce(min(${lots.flowType}), 'trading')`,
+        flowType: sql<string>`coalesce(min(case when ${lots.status} = 'available' then ${lots.flowType} end), 'trading')`,
         partyName: sql<string>`coalesce(min(${parties.name}), 'Dyna-Serv General')`,
-        availableQty: sql<number>`coalesce(sum(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}), 0)::int`,
+        availableQty: sql<number>`coalesce(sum(case when ${lots.status} = 'available' then greatest(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}, 0) else 0 end), 0)::int`,
+        availableBoxes: sql<number>`coalesce(sum(case when ${lots.status} = 'available' then greatest(${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}, 0)::numeric / nullif(${items.spq}, 0) else 0 end), 0)`,
         uom: items.uom,
         reorderLevel: items.minReorderLevel,
-        lotCount: sql<number>`count(distinct ${lots.id})::int`,
-        primaryLocation: sql<string>`coalesce(min(${locations.label}), 'Unassigned')`,
+        lotCount: sql<number>`count(distinct case when ${lots.status} = 'available' and ${lotLocationBalances.qtyRemaining} > ${lotLocationBalances.qtyCommitted} then ${lots.id} end)::int`,
+        primaryLocation: sql<string>`coalesce(min(case when ${lots.status} = 'available' and ${lotLocationBalances.qtyRemaining} > ${lotLocationBalances.qtyCommitted} then ${locations.label} end), 'Unassigned')`,
         heldQty: sql<number>`coalesce(sum(case when ${lots.status} IN ('quarantined') then (${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}) else 0 end), 0)::int`,
       })
       .from(items)
@@ -506,6 +511,7 @@ export async function getDashboardMasterInventory(params?: {
         flowType: (row.flowType as "vmi" | "trading" | "supplies") || "trading",
         partyName: row.partyName,
         availableQty: avail,
+        availableBoxes: Number(row.availableBoxes || 0),
         uom: row.uom,
         reorderLevel: reorder,
         status,

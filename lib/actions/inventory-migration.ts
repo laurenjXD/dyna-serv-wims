@@ -434,8 +434,10 @@ export async function commitOpeningStockMigration(
         await db
           .update(lotLocationBalances)
           .set({
-            qtyRemaining: bal.qtyRemaining + row.boxes,
-            qtyReceived: (bal.qtyReceived || bal.qtyRemaining) + row.boxes,
+            // Balances and transactions use authoritative base units (pieces).
+            // The import file is box-based, so convert once at the boundary.
+            qtyRemaining: bal.qtyRemaining + row.totalQty,
+            qtyReceived: (bal.qtyReceived || bal.qtyRemaining) + row.totalQty,
             updatedAt: new Date(),
           })
           .where(eq(lotLocationBalances.id, bal.id));
@@ -444,9 +446,9 @@ export async function commitOpeningStockMigration(
           id: randomUUID(),
           lotId: resolvedLotId,
           locationId: row.locationId,
-          qtyRemaining: row.boxes,
+          qtyRemaining: row.totalQty,
           qtyCommitted: 0,
-          qtyReceived: row.boxes,
+          qtyReceived: row.totalQty,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -460,7 +462,7 @@ export async function commitOpeningStockMigration(
         lotId: resolvedLotId,
         sourceLocationId: null,
         destinationLocationId: row.locationId,
-        qty: row.boxes,
+        qty: row.totalQty,
         referenceId: wrrId,
         referenceNumber: wrrNumber,
         reason: "Opening Stock Migration",

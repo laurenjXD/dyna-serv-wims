@@ -131,6 +131,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
               <span className={`font-mono font-bold text-xs ${qty === 0 ? "text-rose-700 dark:text-rose-400" : "text-slate-900 dark:text-zinc-100"}`}>
                 {qty.toLocaleString()} {row.uom}
               </span>
+              {row.availableBoxes !== undefined && <span className="block text-[10px] text-text-grey">{row.availableBoxes.toLocaleString()} boxes</span>}
             </div>
           );
         },
@@ -405,6 +406,7 @@ export function MasterInventoryTable({ initialData = [], statusFilter = "all" }:
                   </p>
                   <p className="font-mono text-sm font-black text-slate-900 dark:text-zinc-100">
                     {item.availableQty.toLocaleString()} {item.uom}
+                    {item.availableBoxes !== undefined && <span className="block text-[10px] font-normal text-text-grey">{item.availableBoxes.toLocaleString()} boxes</span>}
                   </p>
                 </div>
                 <div className="text-right">

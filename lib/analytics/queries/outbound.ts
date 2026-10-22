@@ -29,7 +29,7 @@ export async function getPickListQtyAndCbmTrend(range: DateRange, flow: Analytic
   return executor.execute(sql`
     SELECT date_trunc(${period}, pl.created_at) AS period,
       COALESCE(SUM(pli.qty), 0) AS total_qty,
-      COALESCE(SUM(pli.qty * i.volume_cbm), 0) AS total_cbm
+      COALESCE(SUM((pli.qty::numeric / NULLIF(i.spq, 0)) * i.volume_cbm), 0) AS total_cbm
     FROM pick_lists pl
     JOIN pick_list_items pli ON pli.pick_list_id = pl.id
     JOIN items i ON i.id = pli.item_id

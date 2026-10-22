@@ -50,7 +50,7 @@ export default async function LocationDetailPage({
     ),
     inventoryPerm.kind === "authorized"
       ? getLocationInventory(db, locationId)
-      : Promise.resolve({ rows: [], itemCount: 0, totalUnits: 0, occupiedCbm: 0 }),
+      : Promise.resolve({ rows: [], itemCount: 0, totalUnits: 0, totalBoxes: 0, occupiedCbm: 0 }),
   ]);
 
   if (!location) notFound();
@@ -222,9 +222,9 @@ export default async function LocationDetailPage({
               <p className="mt-1 font-body text-body-sm text-text-grey">Distinct item codes</p>
             </div>
             <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1">
-              <p className="font-label text-label uppercase tracking-wide text-text-grey">Units stored</p>
+              <p className="font-label text-label uppercase tracking-wide text-text-grey">Pieces stored</p>
               <p className="mt-2 font-heading text-headline-lg font-bold text-on-surface">{inventory.totalUnits.toLocaleString()}</p>
-              <p className="mt-1 font-body text-body-sm text-text-grey">Across {inventory.rows.length} lot{inventory.rows.length === 1 ? "" : "s"}</p>
+              <p className="mt-1 font-body text-body-sm text-text-grey">{inventory.totalBoxes.toLocaleString()} boxes across {inventory.rows.length} lot{inventory.rows.length === 1 ? "" : "s"}</p>
             </div>
             <div className="rounded-xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1">
               <div className="flex items-center justify-between gap-2">
@@ -255,7 +255,7 @@ export default async function LocationDetailPage({
                     <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
                       <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Item</th>
                       <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Lot</th>
-                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">Units</th>
+                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">Pieces / Boxes</th>
                       <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">CBM</th>
                     </tr>
                   </thead>
@@ -264,7 +264,7 @@ export default async function LocationDetailPage({
                       <tr key={`${row.itemId}-${row.lotNumber}`} className="hover:bg-surface-light-grey/50">
                         <td className="px-4 py-3"><p className="font-mono text-mono-md font-bold text-on-surface">{row.itemCode}</p><p className="mt-0.5 font-body text-body-sm text-text-grey">{row.itemName}</p></td>
                         <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{row.lotNumber}</td>
-                        <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">{row.qtyRemaining.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">{row.qtyRemaining.toLocaleString()} / {row.boxesRemaining.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">{row.occupiedCbm.toFixed(2)}</td>
                       </tr>
                     ))}

@@ -342,6 +342,7 @@ export default async function Home() {
       floorQueues: { pendingReceivingWrrs: 0, activePickLists: 0, pendingQcInspections: 0 },
       stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 0 },
       financialSummary: { vmiDailyCbmRate: 0, vmiClientCount: 0, tradingMarginPct: 0, tradingMarginTargetPct: 0, pendingBillingAmount: 0, pendingInvoicesCount: 0 },
+      inventoryPosition: { distinctItems: 0, totalPieces: 0, totalBoxes: 0, knownPalletEquivalent: 0, stockRows: 0, rowsMissingPalletFactor: 0 },
     }),
     withDashboardDataFallback(getDashboardMonthlyFlow(), { all: [], vmi: [], trading: [], supplies: [] }),
     withDashboardDataFallback(getDashboardLocationOccupancy(), []),

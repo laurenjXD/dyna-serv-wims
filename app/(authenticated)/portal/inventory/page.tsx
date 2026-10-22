@@ -44,6 +44,8 @@ function toInventoryRow(row: PartyVmiInventoryRow): InventoryRow {
     lotNumber: row.lotNumber,
     location: row.locationLabel,
     qtyOnHand: row.qtyOnHand,
+    spq: row.spq,
+    boxesOnHand: Number(row.boxesOnHand),
     status: (row.lotStatus as LotStatus) ?? "staged",
   };
 }

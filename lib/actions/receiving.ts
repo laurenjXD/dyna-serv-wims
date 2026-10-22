@@ -49,6 +49,7 @@ import { getStorageClient } from "@/lib/supabase/storage";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
 import { randomUUID } from "node:crypto";
+import { boxesToPieces, positiveInteger } from "@/lib/inventory/quantities";
 
 // Every action below binds its DB work to the caller's RLS-claimed
 // transaction (specs/02-rbac-roles/design.md §6.3) rather than an
@@ -896,6 +897,13 @@ export async function commitWrrLine(
         return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
       }
 
+      const [catalogItem] = await tx
+        .select({ spq: itemCatalog.spq })
+        .from(itemCatalog)
+        .where(eq(itemCatalog.id, line.itemId!))
+        .limit(1);
+      const spq = positiveInteger(catalogItem?.spq);
+
       if (line.isPerishable && !line.expiryDate) {
         return { ok: false, errors: ["Expiry date is required before receiving a perishable item."] } satisfies CommitWrrLineResult;
       }
@@ -1043,8 +1051,10 @@ export async function commitWrrLine(
         await tx.insert(lotLocationBalances).values(committedAllocations.map((allocation) => ({
           lotId: lot.id,
           locationId: allocation.locationId,
-          qtyReceived: allocation.qty,
-          qtyRemaining: allocation.qty,
+          // WRR placement quantities are physical boxes; authoritative
+          // inventory balances are base-unit pieces.
+          qtyReceived: boxesToPieces(allocation.qty, spq),
+          qtyRemaining: boxesToPieces(allocation.qty, spq),
           qtyCommitted: 0,
         })));
 
@@ -1070,7 +1080,7 @@ export async function commitWrrLine(
           itemId: line.itemId!,
           movementType: "receiving",
           toLocationId: allocation.locationId,
-          qty: allocation.qty,
+          qty: boxesToPieces(allocation.qty, spq),
           flowType: doc.flowType as "vmi" | "trading" | "supplies",
           commercialInvoiceNo: doc.commercialInvoiceNo,
           wrrId: doc.id,

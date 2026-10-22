@@ -16,6 +16,7 @@ import { wrrDocuments } from "@/lib/db/schema/wrr";
 import { pickLists } from "@/lib/db/schema/pick_lists";
 import { userProfiles } from "@/lib/db/schema/rbac";
 import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
+import { piecesToBoxes, piecesToPalletEquivalent } from "@/lib/inventory/quantities";
 
 const defaultSupplierParties = alias(parties, "default_supplier_parties");
 const parentCategories = alias(itemCategories, "parent_categories");
@@ -56,6 +57,7 @@ export type StockViewRow = {
   qtyCommitted: number;
   qtyReceived?: number;
   volumeCbm?: string | number;
+  boxesPerPallet?: number | null;
 };
 
 export type StockAllocationPreview =
@@ -106,6 +108,7 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       qtyCommitted: lotLocationBalances.qtyCommitted,
       qtyReceived: lotLocationBalances.qtyReceived,
       volumeCbm: items.volumeCbm,
+      boxesPerPallet: items.boxesPerPallet,
     })
     .from(lotLocationBalances)
     .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
@@ -122,6 +125,54 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
     .orderBy(asc(items.code), asc(lots.expiryDate), asc(lots.createdAt))) as StockViewRow[];
 }
 
+export type InventoryPositionSummary = {
+  distinctItems: number;
+  totalPieces: number;
+  totalBoxes: number;
+  knownPalletEquivalent: number;
+  stockRows: number;
+  rowsMissingPalletFactor: number;
+};
+
+/**
+ * One authoritative summary for current pickable stock. The balance columns
+ * are base-unit quantities; packaging is derived from the item's SPQ and
+ * pallet factor. A missing pallet factor is reported instead of guessed.
+ */
+export async function getInventoryPositionSummary(
+  db: DbLike,
+): Promise<InventoryPositionSummary> {
+  const rows = await listStockView(db);
+  const itemIds = new Set(rows.map((row) => row.itemId));
+  let totalPieces = 0;
+  let totalBoxes = 0;
+  let knownPalletEquivalent = 0;
+  let rowsMissingPalletFactor = 0;
+
+  for (const row of rows) {
+    const availablePieces = Math.max(0, row.qtyRemaining - row.qtyCommitted);
+    totalPieces += availablePieces;
+    const boxes = piecesToBoxes(availablePieces, row.spq);
+    totalBoxes += boxes;
+    const palletEquivalent = piecesToPalletEquivalent(
+      availablePieces,
+      row.spq,
+      row.boxesPerPallet,
+    );
+    if (palletEquivalent === null) rowsMissingPalletFactor += 1;
+    else knownPalletEquivalent += palletEquivalent;
+  }
+
+  return {
+    distinctItems: itemIds.size,
+    totalPieces,
+    totalBoxes,
+    knownPalletEquivalent,
+    stockRows: rows.length,
+    rowsMissingPalletFactor,
+  };
+}
+
 export type PartyVmiInventoryRow = {
   id: string;
   itemCode: string;
@@ -129,6 +180,8 @@ export type PartyVmiInventoryRow = {
   lotNumber: string;
   locationLabel: string;
   qtyOnHand: number;
+  spq: number;
+  boxesOnHand: number;
   lotStatus: string;
 };
 
@@ -160,6 +213,8 @@ export async function listPartyVmiInventory(
       lotNumber: lots.lotNumber,
       locationLabel: locations.label,
       qtyOnHand: lotLocationBalances.qtyRemaining,
+      spq: items.spq,
+      boxesOnHand: sql<number>`${lotLocationBalances.qtyRemaining}::numeric / NULLIF(${items.spq}, 0)`,
       lotStatus: lots.status,
     })
     .from(lotLocationBalances)

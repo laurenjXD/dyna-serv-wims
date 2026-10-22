@@ -66,6 +66,7 @@ type RawMovementRow = {
   movement_type: string;
   qty: number;
   volume_cbm: number | string;
+  spq: number | string;
   owner_party_id: string;
   vmi_movement_category: VmiMovementCategory;
   created_at: Date;
@@ -109,7 +110,7 @@ export function resolveMovementDirection(
  *   - direction, resolved via resolveMovementDirection (transfer/
  *     inventory_reconciliation rows are dropped from the returned array
  *     entirely, not returned as any bucket)
- *   - cbm = qty * items.volume_cbm
+ *   - cbm = (qty / items.spq) * items.volume_cbm; inventory transaction qty is pieces
  *   - partyId = lots.owner_party_id
  *   - category = items.vmi_movement_category (nullable; informational only,
  *     per FR-2.2 — never affects cbm or the applicable rate)
@@ -124,6 +125,7 @@ export async function getVmiPartyMovements(
       movement_type: inventoryTransactions.movementType,
       qty: inventoryTransactions.qty,
       volume_cbm: items.volumeCbm,
+      spq: items.spq,
       owner_party_id: lots.ownerPartyId,
       vmi_movement_category: items.vmiMovementCategory,
       created_at: inventoryTransactions.createdAt,
@@ -145,7 +147,7 @@ export async function getVmiPartyMovements(
       id: raw.id,
       direction,
       category: raw.vmi_movement_category ?? null,
-      cbm: Number(raw.qty) * Number(raw.volume_cbm),
+      cbm: (Number(raw.qty) / Math.max(1, Number(raw.spq) || 1)) * Number(raw.volume_cbm),
       partyId: raw.owner_party_id,
       movementType: raw.movement_type,
       qty: Number(raw.qty),

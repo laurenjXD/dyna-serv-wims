@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronRight, FileSpreadsheet, PackagePlus, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
+import { boxesToPieces, piecesToBoxes } from "@/lib/inventory/quantities";
 
 type StockSource = {
   itemId: string;
@@ -31,7 +32,6 @@ type DraftLine = {
   itemId: string;
   balanceId: string;
   qty: string;
-  customSpq?: string;
   totalUnits?: string;
 };
 
@@ -81,7 +81,9 @@ export function MultiItemPickListDraft({
   const lineDetails = lines.map((line) => {
     const item = catalog.find((candidate) => candidate.itemId === line.itemId);
     const source = item?.sources.find((candidate) => candidate.balanceId === line.balanceId);
-    const effectiveSpq = Number(line.customSpq) > 0 ? Number(line.customSpq) : (item?.spq ?? 1);
+    // SPQ is master-data packaging, not a per-pick override. Using the
+    // catalog value here keeps the displayed boxes and server request aligned.
+    const effectiveSpq = item?.spq ?? 1;
     const numBoxes = Number(line.qty) || 0;
     const computedTotalUnits = line.totalUnits !== undefined && line.totalUnits !== ""
       ? line.totalUnits
@@ -106,23 +108,21 @@ export function MultiItemPickListDraft({
     });
   };
 
-  const handleSpqChange = (lineId: string, val: string, currentBoxes: number) => {
-    const spqVal = Number(val) || 1;
-    updateLine(lineId, {
-      customSpq: val,
-      totalUnits: currentBoxes > 0 ? String(currentBoxes * spqVal) : "",
-    });
-  };
-
   const request = useMemo(() => {
     if (!organizationId || !flowType || lineDetails.length === 0) return "";
     const prepared = lineDetails.map(({ line, item, source }) => ({
       itemId: line.itemId,
       lotId: source?.lotId,
       locationId: source?.locationId,
-      qty: Number(line.qty),
+      qty: boxesToPieces(Number(line.qty), item?.spq ?? 1),
       itemCodeIsProvisional: false,
-      valid: Boolean(item && source && Number.isInteger(Number(line.qty)) && Number(line.qty) > 0 && Number(line.qty) <= (source?.availableQty ?? 0)),
+      valid: Boolean(
+        item &&
+          source &&
+          Number.isInteger(Number(line.qty)) &&
+          Number(line.qty) > 0 &&
+          boxesToPieces(Number(line.qty), item.spq) <= source.availableQty,
+      ),
     }));
     if (prepared.some((line) => !line.valid)) return "";
     return JSON.stringify({
@@ -142,11 +142,15 @@ export function MultiItemPickListDraft({
     const alternate = alternateLines[0];
     if (!canRequestOverride || !organizationId || !flowType || !alternate?.source) return "";
     const qty = Number(alternate.line.qty);
-    if (!Number.isInteger(qty) || qty <= 0 || qty > alternate.source.availableQty) return "";
+    if (
+      !Number.isInteger(qty) ||
+      qty <= 0 ||
+      boxesToPieces(qty, alternate.item?.spq ?? 1) > alternate.source.availableQty
+    ) return "";
     return JSON.stringify({
       partyId: organizationId,
       flowType,
-      lines: [{ itemId: alternate.line.itemId, lotId: alternate.source.lotId, locationId: alternate.source.locationId, qty }],
+      lines: [{ itemId: alternate.line.itemId, lotId: alternate.source.lotId, locationId: alternate.source.locationId, qty: boxesToPieces(qty, alternate.item?.spq ?? 1) }],
       idempotencyKey: crypto.randomUUID(),
     });
   }, [alternateLines, canRequestOverride, flowType, organizationId]);
@@ -268,7 +272,7 @@ export function MultiItemPickListDraft({
 
       let remainingQty = requestedBoxes;
       for (const source of candidateSources) {
-        const availableInSource = Math.max(0, source.availableQty);
+        const availableInSource = Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq)));
         if (availableInSource <= 0) continue;
 
         const take = Math.min(remainingQty, availableInSource);
@@ -456,7 +460,7 @@ export function MultiItemPickListDraft({
                   </td>
                 </tr>
               ) : (
-                lineDetails.map(({ line, item, source, effectiveSpq, numBoxes, computedTotalUnits }) => (
+                lineDetails.map(({ line, item, source, effectiveSpq, computedTotalUnits }) => (
                   <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* Qty (Total Units input) */}
                     <td className="py-2.5 pl-4 pr-2 align-middle">
@@ -475,11 +479,10 @@ export function MultiItemPickListDraft({
                     {/* SPQ (Standard Packaging Quantity input) */}
                     <td className="py-2.5 px-2 align-middle">
                       <input
-                        value={line.customSpq ?? (item ? String(item.spq) : "")}
-                        onChange={(event) => handleSpqChange(line.id, event.target.value, numBoxes)}
+                        value={item ? String(item.spq) : ""}
                         type="number"
                         min="1"
-                        disabled={!item}
+                        disabled
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="1"
                         title="Standard Packaging Quantity (SPQ)"
@@ -493,7 +496,7 @@ export function MultiItemPickListDraft({
                         onChange={(event) => handlePackagesChange(line.id, event.target.value, effectiveSpq)}
                         type="number"
                         min="1"
-                        max={source?.availableQty}
+                        max={source ? Math.floor(piecesToBoxes(source.availableQty, effectiveSpq)) : undefined}
                         disabled={!source}
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
@@ -556,7 +559,7 @@ export function MultiItemPickListDraft({
                         <option value="">Select location…</option>
                         {item?.sources.map((candidate) => (
                           <option key={candidate.balanceId} value={candidate.balanceId}>
-                            {candidate.locationLabel} ({candidate.availableQty} pckgs{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
+                            {candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
                           </option>
                         ))}
                       </select>

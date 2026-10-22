@@ -72,7 +72,7 @@ export async function getFlowPartitionSummary(executor: AnalyticsExecutor = defa
   return executor.execute(sql`
     SELECT l.flow_type, COUNT(DISTINCT l.id) AS lot_count, COUNT(DISTINCT l.item_id) AS item_count,
       COALESCE(SUM(lit.qty_available), 0) AS qty_available,
-      COALESCE(SUM(lit.qty_remaining * i.volume_cbm), 0) AS occupied_cbm
+      COALESCE(SUM((lit.qty_remaining::numeric / NULLIF(i.spq, 0)) * i.volume_cbm), 0) AS occupied_cbm
     FROM lots l
     JOIN items i ON i.id = l.item_id
     JOIN lot_inventory_totals lit ON lit.lot_id = l.id

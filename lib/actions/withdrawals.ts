@@ -59,6 +59,7 @@ import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
+import { positiveInteger } from "@/lib/inventory/quantities";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -179,6 +180,7 @@ export async function requestFifoOverride(
           organizationPartyId: sql<string | null>`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId})`,
           defaultSupplierPartyId: items.defaultSupplierPartyId,
           isPerishable: items.isPerishable,
+          spq: items.spq,
           lotId: lots.id,
           lotNumber: lots.lotNumber,
           lotStatus: lots.status,
@@ -514,10 +516,9 @@ export async function commitWithdrawal(
           locationLabel: line.locationLabel,
           qty: line.qty,
           spq: line.spq,
-          // Pick-list quantities are entered and reserved as physical boxes.
-          // SPQ describes pieces per box for display/reporting; it must not
-          // reduce the number of QR-labelled boxes required at dispatch.
-          numberOfBoxes: line.qty,
+          // Authoritative qty is base-unit pieces. The document also freezes
+          // the physical box count required at dispatch.
+          numberOfBoxes: Math.ceil(line.qty / positiveInteger(line.spq)),
         })
         .returning();
       const pickListItemId = (insertedPickListItem as { id: string }).id;

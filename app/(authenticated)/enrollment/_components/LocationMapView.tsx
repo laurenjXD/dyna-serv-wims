@@ -99,6 +99,15 @@ export function LocationMapView({
   const visibleCells = rackFilter === "all"
     ? WAREHOUSE_MAP_CELLS
     : WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rackFilter);
+  const mapSummary = useMemo(() => filteredRows.reduce(
+    (summary, row) => ({
+      pieces: summary.pieces + row.totalUnits,
+      boxes: summary.boxes + row.totalBoxes,
+      cbm: summary.cbm + row.occupiedCbm,
+    }),
+    { pieces: 0, boxes: 0, cbm: 0 },
+  ), [filteredRows]);
+  const mapSummaryScope = rackFilter === "all" ? "All warehouse" : `Rack ${rackFilter}`;
 
   function selectLocation(row: LocationMapRow | undefined, label: string) {
     setSelectedLabel(label);
@@ -185,6 +194,27 @@ export function LocationMapView({
       <p className="font-body text-xs text-text-grey">
         Empty mapped cells are <span className="font-semibold text-emerald-800">Available</span>; cells containing stock are <span className="font-semibold text-blue-800">Occupied</span>. Records outside the reference layout remain in the unmapped list below.
       </p>
+
+      <section aria-label={`${mapSummaryScope} inventory summary`} className="overflow-hidden rounded-xl border border-slate-200 bg-surface-white shadow-elevation-1">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5">
+          <h3 className="font-label text-label font-bold uppercase tracking-[0.05em] text-on-surface">{mapSummaryScope} inventory</h3>
+          <span className="font-body text-xs text-text-grey">Live stock totals{rackFilter === "all" ? " across all racks" : " for selected rack"}</span>
+        </div>
+        <div className="grid grid-cols-3">
+          <div className="border-r border-slate-200">
+            <div className="flex min-h-12 items-center justify-center bg-brand-navy px-2 text-center font-label text-[11px] font-bold uppercase leading-tight tracking-wide text-white sm:text-xs">PCS ON HAND</div>
+            <p className="px-2 py-3 text-center font-mono text-lg font-bold text-on-surface sm:text-xl">{formatNumber(mapSummary.pieces, 0)}</p>
+          </div>
+          <div className="border-r border-slate-200">
+            <div className="flex min-h-12 items-center justify-center bg-brand-navy px-2 text-center font-label text-[11px] font-bold uppercase leading-tight tracking-wide text-white sm:text-xs">BOXES ON HAND</div>
+            <p className="px-2 py-3 text-center font-mono text-lg font-bold text-on-surface sm:text-xl">{formatNumber(mapSummary.boxes)}</p>
+          </div>
+          <div>
+            <div className="flex min-h-12 items-center justify-center bg-brand-navy px-2 text-center font-label text-[11px] font-bold uppercase leading-tight tracking-wide text-white sm:text-xs">CBM OCCUPIED</div>
+            <p className="px-2 py-3 text-center font-mono text-lg font-bold text-on-surface sm:text-xl">{formatNumber(mapSummary.cbm, 2)}</p>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0 rounded-2xl bg-surface-white p-3 shadow-elevation-1 sm:p-5" aria-label="Interactive warehouse rack map">

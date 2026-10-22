@@ -29,6 +29,7 @@ export function ItemLookupPanel({ itemId, onClose }: { itemId: string; onClose: 
   const item = detail?.item;
   const stockRows = detail?.stockRows ?? [];
   const totalAvailable = stockRows.reduce((sum, row) => sum + Math.max(0, row.qtyRemaining - row.qtyCommitted), 0);
+  const totalAvailableBoxes = item ? totalAvailable / Math.max(1, Number(item.spq) || 1) : 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-brand-navy/35" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -64,7 +65,7 @@ export function ItemLookupPanel({ itemId, onClose }: { itemId: string; onClose: 
           ) : (
             <div className="space-y-4">
               <section className="grid grid-cols-2 gap-3" aria-label="Item stock summary">
-                <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4"><p className="font-label text-label-xs font-bold uppercase text-text-grey">Available</p><p className="mt-1 font-heading text-headline-md font-semibold text-on-surface">{totalAvailable.toLocaleString()} <span className="font-body text-body-sm font-normal">{detail.item.uom}</span></p></div>
+                <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4"><p className="font-label text-label-xs font-bold uppercase text-text-grey">Available</p><p className="mt-1 font-heading text-headline-md font-semibold text-on-surface">{totalAvailable.toLocaleString()} <span className="font-body text-body-sm font-normal">{detail.item.uom}</span></p><p className="mt-1 font-body text-body-xs text-text-grey">{totalAvailableBoxes.toLocaleString()} boxes</p></div>
                 <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4"><p className="font-label text-label-xs font-bold uppercase text-text-grey">Locations</p><p className="mt-1 font-heading text-headline-md font-semibold text-on-surface">{new Set(stockRows.map((row) => row.locationId)).size}</p></div>
               </section>
 
@@ -82,7 +83,7 @@ export function ItemLookupPanel({ itemId, onClose }: { itemId: string; onClose: 
                 <h3 id="stock-by-location-heading" className="font-heading text-body-md font-semibold text-brand-navy">Stock by lot and location</h3>
                 {stockRows.length === 0 ? <p className="rounded-xl border border-outline-variant/30 p-4 font-body text-body-sm text-text-grey">No available stock is currently recorded for this item.</p> : stockRows.map((row) => {
                   const available = Math.max(0, row.qtyRemaining - row.qtyCommitted);
-                  return <div key={row.balanceId ?? `${row.lotId}-${row.locationId}`} className="rounded-xl border border-outline-variant/30 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-label text-label font-bold text-on-surface">Lot {row.lotNumber}</p><p className="mt-1 flex items-center gap-1 font-body text-body-sm text-text-grey"><MapPin size={14} aria-hidden="true" />{row.locationLabel}</p></div><p className="font-heading text-body-md font-semibold text-brand-navy">{available.toLocaleString()} {row.uom}</p></div><div className="mt-3 flex flex-wrap gap-3 font-body text-body-xs text-text-grey">{row.expiryDate && <span className="inline-flex items-center gap-1"><CalendarDays size={13} aria-hidden="true" />Expires {row.expiryDate}</span>}<span>{row.lotStatus}</span></div></div>;
+                  return <div key={row.balanceId ?? `${row.lotId}-${row.locationId}`} className="rounded-xl border border-outline-variant/30 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-label text-label font-bold text-on-surface">Lot {row.lotNumber}</p><p className="mt-1 flex items-center gap-1 font-body text-body-sm text-text-grey"><MapPin size={14} aria-hidden="true" />{row.locationLabel}</p></div><div className="text-right"><p className="font-heading text-body-md font-semibold text-brand-navy">{available.toLocaleString()} {row.uom}</p><p className="font-body text-body-xs text-text-grey">{(available / Math.max(1, Number(row.spq) || 1)).toLocaleString()} boxes</p></div></div><div className="mt-3 flex flex-wrap gap-3 font-body text-body-xs text-text-grey">{row.expiryDate && <span className="inline-flex items-center gap-1"><CalendarDays size={13} aria-hidden="true" />Expires {row.expiryDate}</span>}<span>{row.lotStatus}</span></div></div>;
                 })}
               </section>
 

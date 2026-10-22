@@ -1,4 +1,5 @@
 import type { StockViewRow } from "@/lib/db/queries/inventory";
+import { piecesToBoxes, piecesToPalletEquivalent } from "@/lib/inventory/quantities";
 
 export const STOCK_VIEW_EXPORT_COLUMNS = [
   "Item Code",
@@ -7,6 +8,10 @@ export const STOCK_VIEW_EXPORT_COLUMNS = [
   "Lot Number",
   "Location",
   "Available Quantity",
+  "SPQ",
+  "Available Boxes",
+  "Boxes per Pallet",
+  "Pallet Equivalent",
   "Committed Quantity",
   "Expiry Date",
   "Received Date",
@@ -40,6 +45,8 @@ export function toStockViewSpreadsheetXml(rows: StockViewRow[]) {
   const header = STOCK_VIEW_EXPORT_COLUMNS.map(stringCell).join("");
   const body = rows.map((row) => {
     const availableQty = row.qtyRemaining - row.qtyCommitted;
+    const availableBoxes = piecesToBoxes(availableQty, row.spq);
+    const palletEquivalent = piecesToPalletEquivalent(availableQty, row.spq, row.boxesPerPallet);
     const allocationMethod = row.isPerishable ? "FEFO" : "FIFO";
     return `<Row>${[
       stringCell(row.itemCode),
@@ -48,6 +55,10 @@ export function toStockViewSpreadsheetXml(rows: StockViewRow[]) {
       stringCell(row.lotNumber),
       stringCell(row.locationLabel),
       numberCell(availableQty),
+      numberCell(row.spq),
+      numberCell(availableBoxes),
+      row.boxesPerPallet == null ? stringCell("Not configured") : numberCell(row.boxesPerPallet),
+      palletEquivalent == null ? stringCell("Not calculable") : numberCell(palletEquivalent),
       numberCell(row.qtyCommitted),
       stringCell(row.expiryDate ?? ""),
       stringCell(row.receivedAt.toISOString().slice(0, 10)),

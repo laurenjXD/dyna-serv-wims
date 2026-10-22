@@ -16,6 +16,7 @@ import { and, eq, ilike, or, desc, gt, inArray, sql } from "drizzle-orm";
 import { locations, lotLocationBalances, lots, items, parties } from "@/lib/db/schema";
 import { WAREHOUSE_MAP_CELLS } from "@/lib/location-map/layout";
 import { getLocationMapStatus, getLocationUtilizationPct } from "@/lib/location-map/status";
+import { piecesToBoxes } from "@/lib/inventory/quantities";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DbLike = { select: (...args: any[]) => any };
@@ -57,6 +58,7 @@ export type LocationMapRow = LocationListRow & {
   itemCount: number;
   lotCount: number;
   totalUnits: number;
+  totalBoxes: number;
   itemCodes: string[];
   lotNumbers: string[];
   organizationNames: string[];
@@ -143,8 +145,9 @@ export async function listLocations(
  */
 export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]> {
   const mappedLabels = new Set(WAREHOUSE_MAP_CELLS.map((cell) => cell.label));
-  const occupiedCbmExpr = sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ${lotLocationBalances.qtyRemaining} * coalesce(${items.volumeCbm}, 0) else 0 end), 0)`;
+  const occupiedCbmExpr = sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then (${lotLocationBalances.qtyRemaining}::numeric / nullif(${items.spq}, 0)) * coalesce(${items.volumeCbm}, 0) else 0 end), 0)`;
   const totalUnitsExpr = sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ${lotLocationBalances.qtyRemaining} else 0 end), 0)`;
+  const totalBoxesExpr = sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then (${lotLocationBalances.qtyRemaining}::numeric / nullif(${items.spq}, 0)) else 0 end), 0)`;
   const itemCountExpr = sql<string>`count(distinct ${items.id})`;
   const lotCountExpr = sql<string>`count(distinct ${lots.id})`;
   const itemCodesExpr = sql<string[]>`coalesce(array_agg(distinct ${items.code}) filter (where ${items.code} is not null), '{}')`;
@@ -165,6 +168,7 @@ export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]>
       createdAt: locations.createdAt,
       occupiedCbm: occupiedCbmExpr,
       totalUnits: totalUnitsExpr,
+      totalBoxes: totalBoxesExpr,
       itemCount: itemCountExpr,
       lotCount: lotCountExpr,
       itemCodes: itemCodesExpr,
@@ -209,6 +213,7 @@ export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]>
     createdAt: Date;
     occupiedCbm: string | number | null;
     totalUnits: string | number | null;
+    totalBoxes: string | number | null;
     itemCount: string | number | null;
     lotCount: string | number | null;
     itemCodes: string[] | null;
@@ -241,6 +246,7 @@ export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]>
       itemCount: Number(row.itemCount ?? 0),
       lotCount: Number(row.lotCount ?? 0),
       totalUnits: Number(row.totalUnits ?? 0),
+      totalBoxes: Number(row.totalBoxes ?? 0),
       itemCodes: row.itemCodes ?? [],
       lotNumbers: row.lotNumbers ?? [],
       organizationNames: row.organizationNames ?? [],
@@ -299,10 +305,12 @@ export type LocationStoredItem = {
   itemName: string;
   lotNumber: string;
   qtyRemaining: number;
+  boxesRemaining: number;
 };
 
 export type LocationInventoryRow = LocationStoredItem & {
   itemId: string;
+  spq: number;
   volumeCbm: number;
   occupiedCbm: number;
 };
@@ -311,6 +319,7 @@ export type LocationInventory = {
   rows: LocationInventoryRow[];
   itemCount: number;
   totalUnits: number;
+  totalBoxes: number;
   occupiedCbm: number;
 };
 
@@ -326,6 +335,7 @@ export async function getLocationInventory(
       itemName: items.name,
       lotNumber: lots.lotNumber,
       qtyRemaining: lotLocationBalances.qtyRemaining,
+      spq: items.spq,
       volumeCbm: items.volumeCbm,
     })
     .from(lotLocationBalances)
@@ -340,9 +350,12 @@ export async function getLocationInventory(
     itemName: string;
     lotNumber: string;
     qtyRemaining: number | string;
+    spq: number | string | null;
     volumeCbm: number | string | null;
   }>).map((row) => {
     const qtyRemaining = Number(row.qtyRemaining ?? 0);
+    const spq = Number(row.spq ?? 1) > 0 ? Number(row.spq) : 1;
+    const boxesRemaining = piecesToBoxes(qtyRemaining, spq);
     const volumeCbm = Number(row.volumeCbm ?? 0);
     return {
       itemId: row.itemId,
@@ -350,8 +363,10 @@ export async function getLocationInventory(
       itemName: row.itemName,
       lotNumber: row.lotNumber,
       qtyRemaining,
+      spq,
+      boxesRemaining,
       volumeCbm,
-      occupiedCbm: qtyRemaining * volumeCbm,
+      occupiedCbm: boxesRemaining * volumeCbm,
     } satisfies LocationInventoryRow;
   });
 
@@ -359,6 +374,7 @@ export async function getLocationInventory(
     rows,
     itemCount: new Set(rows.map((row) => row.itemId)).size,
     totalUnits: rows.reduce((sum, row) => sum + row.qtyRemaining, 0),
+    totalBoxes: rows.reduce((sum, row) => sum + piecesToBoxes(row.qtyRemaining, row.spq), 0),
     occupiedCbm: rows.reduce((sum, row) => sum + row.occupiedCbm, 0),
   };
 }
@@ -381,6 +397,7 @@ export async function getPutawayLocationContents(
       itemName: items.name,
       lotNumber: lots.lotNumber,
       qtyRemaining: lotLocationBalances.qtyRemaining,
+      spq: items.spq,
     })
     .from(lotLocationBalances)
     .innerJoin(lots, eq(lots.id, lotLocationBalances.lotId))
@@ -393,12 +410,16 @@ export async function getPutawayLocationContents(
     itemName: string;
     lotNumber: string;
     qtyRemaining: number;
+    spq: number | string | null;
   }>) {
+    const qtyRemaining = Number(row.qtyRemaining ?? 0);
+    const spq = Number(row.spq ?? 1) > 0 ? Number(row.spq) : 1;
     grouped[row.locationId]?.push({
       itemCode: row.itemCode,
       itemName: row.itemName,
       lotNumber: row.lotNumber,
-      qtyRemaining: row.qtyRemaining,
+      qtyRemaining,
+      boxesRemaining: piecesToBoxes(qtyRemaining, spq),
     });
   }
 
@@ -423,7 +444,7 @@ export type SuggestPutawayLocationsOpts = {
  * (07-incoming-receiving design.md §6.2).
  *
  * `occupied_cbm` is not a stored column — it is computed per location as
- * sum(lot_location_balances.qty_remaining * lots.item's items.volume_cbm)
+ * sum((lot_location_balances.qty_remaining / items.spq) * items.volume_cbm)
  * over all balances currently held at that location (01 design.md §5 item 10).
  * `remaining_cbm = max_cbm_capacity - occupied_cbm`.
  *
@@ -449,7 +470,7 @@ export async function suggestPutawayLocations(
   const requestedCbm = opts.itemUnitCbm * opts.requestedQty;
   const limit = opts.limit ?? 5;
 
-  const occupiedCbmExpr = sql<string>`coalesce(sum(${lotLocationBalances.qtyRemaining} * ${items.volumeCbm}), 0)`;
+  const occupiedCbmExpr = sql<string>`coalesce(sum((${lotLocationBalances.qtyRemaining}::numeric / nullif(${items.spq}, 0)) * ${items.volumeCbm}), 0)`;
 
   const rows = await db
     .select({

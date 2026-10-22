@@ -37,6 +37,7 @@ import { LotQrViewer } from "./_components/LotQrViewer";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
 import { createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
+import { piecesToBoxes } from "@/lib/inventory/quantities";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -231,11 +232,13 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
     const spq = row.spq ?? itemEntry.spq ?? 1;
     itemEntry.spq = spq;
     const qtyReceived = row.qtyReceived ?? row.qtyRemaining;
-    itemEntry.totalIn += qtyReceived * spq;
-    itemEntry.totalOut += Math.max(0, qtyReceived - row.qtyRemaining) * spq;
-    itemEntry.pcsOnHand += row.qtyRemaining * spq;
-    itemEntry.boxesOnHand += row.qtyRemaining;
-    itemEntry.cbmOccupied += row.qtyRemaining * Number(row.volumeCbm ?? 0);
+    // lot_location_balances quantities are authoritative base units (pieces).
+    // Boxes and CBM are derived from the enrolled packaging metadata.
+    itemEntry.totalIn += qtyReceived;
+    itemEntry.totalOut += Math.max(0, qtyReceived - row.qtyRemaining);
+    itemEntry.pcsOnHand += row.qtyRemaining;
+    itemEntry.boxesOnHand += piecesToBoxes(row.qtyRemaining, spq);
+    itemEntry.cbmOccupied += piecesToBoxes(row.qtyRemaining, spq) * Number(row.volumeCbm ?? 0);
 
     // Aggregate location rows for the same lot (stacked location tag).
     let lotEntry = itemEntry.lotMap.get(row.lotId);
@@ -267,7 +270,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
       const lot = entry.lotMap.get(lotId)!.lot;
       return { ...lot, priority: idx + 1 };
     });
-    const totalQty = entry.spq * entry.boxesOnHand;
+    const totalQty = entry.pcsOnHand;
     return {
       itemId: entry.itemId,
       itemCode: entry.itemCode,

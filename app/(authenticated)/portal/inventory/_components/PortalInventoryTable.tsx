@@ -13,6 +13,8 @@ export interface InventoryRow {
   lotNumber: string;
   location: string;
   qtyOnHand: number;
+  spq: number;
+  boxesOnHand: number;
   status: LotStatus;
 }
 
@@ -102,7 +104,8 @@ export function PortalInventoryTable({ rows }: PortalInventoryTableProps) {
                   {row.location}
                 </td>
                 <td className="px-4 py-3 text-right font-mono text-mono-md text-on-surface">
-                  {row.qtyOnHand.toLocaleString()}
+                  <div>{row.qtyOnHand.toLocaleString()} pcs</div>
+                  <div className="mt-0.5 text-xs text-text-grey">{row.boxesOnHand.toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes</div>
                 </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex items-center rounded-full bg-brand-royal-blue/10 px-2 py-0.5 font-label text-label uppercase tracking-[0.05em] text-brand-royal-blue">

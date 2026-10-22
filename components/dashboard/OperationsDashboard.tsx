@@ -38,6 +38,7 @@ const DEFAULT_KPIS: DashboardKpiData = {
   floorQueues: { pendingReceivingWrrs: 12, activePickLists: 8, pendingQcInspections: 3 },
   stockHealth: { lowStockCount: 5, heldLotsCount: 2, qcPassRatePct: 97.4 },
   financialSummary: { vmiDailyCbmRate: 0.48, vmiClientCount: 3, tradingMarginPct: 18.4, tradingMarginTargetPct: 20.0, pendingBillingAmount: 34200, pendingInvoicesCount: 7 },
+  inventoryPosition: { distinctItems: 0, totalPieces: 0, totalBoxes: 0, knownPalletEquivalent: 0, stockRows: 0, rowsMissingPalletFactor: 0 },
 };
 
 export function OperationsDashboard({

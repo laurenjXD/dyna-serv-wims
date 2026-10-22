@@ -28,6 +28,14 @@ export interface DashboardKpiData {
     pendingBillingAmount: number;
     pendingInvoicesCount: number;
   };
+  inventoryPosition: {
+    distinctItems: number;
+    totalPieces: number;
+    totalBoxes: number;
+    knownPalletEquivalent: number;
+    stockRows: number;
+    rowsMissingPalletFactor: number;
+  };
 }
 
 export interface MonthlyFlowDatum {
@@ -106,6 +114,7 @@ export interface MasterInventoryItem {
   flowType: "vmi" | "trading" | "supplies";
   partyName: string;
   availableQty: number;
+  availableBoxes?: number;
   uom: string;
   reorderLevel: number;
   status: "available" | "low_stock" | "held";

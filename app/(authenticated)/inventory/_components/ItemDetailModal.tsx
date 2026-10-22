@@ -34,6 +34,7 @@ import { getItemAuditDetailAction } from "../_actions";
 import type { ItemDetail } from "@/lib/db/queries/items";
 import type { ItemMovementRow } from "@/lib/db/queries/inventory";
 import { LotQrViewer } from "./LotQrViewer";
+import { piecesToBoxes } from "@/lib/inventory/quantities";
 
 interface ItemDetailModalProps {
   isOpen: boolean;
@@ -144,19 +145,21 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
   });
 
   // Calculate filtered totals
-  let filteredInBoxes = 0;
-  let filteredOutBoxes = 0;
+  let filteredInPieces = 0;
+  let filteredOutPieces = 0;
   for (const txn of filteredMovements) {
     if (txn.movementType === "receive" || txn.movementType === "putaway") {
-      filteredInBoxes += txn.qty;
+      filteredInPieces += txn.qty;
     } else if (txn.movementType === "pick" || txn.movementType === "dispatch") {
-      filteredOutBoxes += txn.qty;
+      filteredOutPieces += txn.qty;
     }
   }
+  const filteredInBoxes = piecesToBoxes(filteredInPieces, effectiveSpq);
+  const filteredOutBoxes = piecesToBoxes(filteredOutPieces, effectiveSpq);
   const filteredNetBoxes = filteredInBoxes - filteredOutBoxes;
-  const filteredInUnits = filteredInBoxes * effectiveSpq;
-  const filteredOutUnits = filteredOutBoxes * effectiveSpq;
-  const filteredNetUnits = filteredNetBoxes * effectiveSpq;
+  const filteredInUnits = filteredInPieces;
+  const filteredOutUnits = filteredOutPieces;
+  const filteredNetUnits = filteredInPieces - filteredOutPieces;
 
   // Group by date for Daily History Trail
   const dailyGroups = (() => {
@@ -184,9 +187,9 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
         map.set(dateKey, group);
       }
       if (txn.movementType === "receive" || txn.movementType === "putaway") {
-        group.inBoxes += txn.qty;
+        group.inBoxes += piecesToBoxes(txn.qty, effectiveSpq);
       } else if (txn.movementType === "pick" || txn.movementType === "dispatch") {
-        group.outBoxes += txn.qty;
+        group.outBoxes += piecesToBoxes(txn.qty, effectiveSpq);
       }
       group.txns.push(txn);
     }
@@ -608,7 +611,8 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                             </tr>
                           ) : (
                             groupedItem.lots.map((lot) => {
-                              const lotUnits = lot.availableQty * effectiveSpq;
+                              const lotUnits = lot.availableQty;
+                              const lotBoxes = piecesToBoxes(lot.availableQty, effectiveSpq);
                               return (
                                 <tr key={lot.lotId} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="py-3 px-3 font-mono font-bold text-brand-navy">{lot.lotNumber}</td>
@@ -631,7 +635,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                     </span>
                                   </td>
                                   <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
-                                    {lot.availableQty.toLocaleString()}
+                                    {lotBoxes.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                   </td>
                                   <td className="py-3 px-3 text-right font-mono font-bold text-brand-navy">
                                     {lotUnits.toLocaleString()} {uom}
@@ -918,7 +922,8 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                   {group.txns.map((txn) => {
                                     const isInbound = txn.movementType === "receive" || txn.movementType === "putaway";
                                     const isOutbound = txn.movementType === "pick" || txn.movementType === "dispatch";
-                                    const calculatedTotalQty = txn.qty * effectiveSpq;
+                                    const calculatedTotalQty = txn.qty;
+                                    const calculatedBoxes = piecesToBoxes(txn.qty, effectiveSpq);
 
                                     return (
                                       <tr key={txn.id} className="hover:bg-slate-50/70 transition-colors">
@@ -996,7 +1001,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                           }`}
                                         >
                                           {isInbound ? "+" : isOutbound ? "-" : ""}
-                                          {txn.qty.toLocaleString()} bx
+                                          {calculatedBoxes.toLocaleString()} bx
                                         </td>
 
                                         {/* Total Qty */}
@@ -1075,7 +1080,8 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                             {filteredMovements.map((txn) => {
                               const isInbound = txn.movementType === "receive" || txn.movementType === "putaway";
                               const isOutbound = txn.movementType === "pick" || txn.movementType === "dispatch";
-                              const calculatedTotalQty = txn.qty * effectiveSpq;
+                              const calculatedTotalQty = txn.qty;
+                              const calculatedBoxes = piecesToBoxes(txn.qty, effectiveSpq);
 
                               return (
                                 <tr key={txn.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1144,7 +1150,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                     }`}
                                   >
                                     {isInbound ? "+" : isOutbound ? "-" : ""}
-                                    {txn.qty.toLocaleString()} bx
+                                    {calculatedBoxes.toLocaleString()} bx
                                   </td>
                                   <td
                                     className={`py-3 px-3 text-right font-mono font-bold whitespace-nowrap ${

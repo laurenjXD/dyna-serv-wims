@@ -306,7 +306,7 @@ export function PutawayLocationSelector({
                                 key={`${item.itemCode}-${item.lotNumber}`}
                                 className="font-body text-body-md text-text-grey"
                               >
-                                {item.itemCode} · {item.lotNumber} · {item.qtyRemaining} remaining
+                                {item.itemCode} · {item.lotNumber} · {item.qtyRemaining.toLocaleString()} pcs ({item.boxesRemaining.toLocaleString()} boxes) remaining
                               </li>
                             ))}
                           </ul>

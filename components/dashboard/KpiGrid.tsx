@@ -29,7 +29,7 @@ export function KpiGrid({
   onFilterStockHealth,
   activeStockFilter = "all",
 }: KpiGridProps) {
-  const { valuation, floorQueues, stockHealth, financialSummary } = data;
+  const { valuation, floorQueues, stockHealth, financialSummary, inventoryPosition } = data;
 
   return (
     <div className="mb-6 space-y-4">
@@ -197,6 +197,20 @@ export function KpiGrid({
             </div>
           </div>
         </div>
+
+        <div className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Layers size={17} className="text-teal-700" />
+            <p className="font-label text-[11px] font-black uppercase tracking-wider text-teal-950">Current warehouse stock</p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div><p className="font-mono text-xl font-black text-slate-900">{inventoryPosition.distinctItems.toLocaleString()}</p><p className="text-[11px] font-bold text-slate-600">Items</p></div>
+            <div><p className="font-mono text-xl font-black text-slate-900">{inventoryPosition.totalPieces.toLocaleString()}</p><p className="text-[11px] font-bold text-slate-600">Pieces</p></div>
+            <div><p className="font-mono text-xl font-black text-slate-900">{inventoryPosition.totalBoxes.toLocaleString()}</p><p className="text-[11px] font-bold text-slate-600">Boxes</p></div>
+            <div><p className="font-mono text-xl font-black text-slate-900">{inventoryPosition.knownPalletEquivalent.toFixed(1)}</p><p className="text-[11px] font-bold text-slate-600">Known pallet eq.</p></div>
+          </div>
+          {inventoryPosition.rowsMissingPalletFactor > 0 && <p className="mt-2 text-[11px] font-semibold text-amber-800">Pallet equivalent is incomplete: {inventoryPosition.rowsMissingPalletFactor} stock rows have no pallet factor.</p>}
+        </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -352,6 +366,23 @@ export function KpiGrid({
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="hidden lg:block rounded-2xl border border-teal-200 bg-teal-50/60 p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Layers size={18} className="text-teal-700" />
+            <p className="font-label text-[11px] font-black uppercase tracking-wider text-teal-950">Current warehouse stock</p>
+          </div>
+          <p className="text-xs font-semibold text-teal-900">Pickable stock only · base quantity is pieces</p>
+        </div>
+        <div className="mt-4 grid grid-cols-4 gap-4">
+          <div><p className="font-mono text-2xl font-black text-slate-900">{inventoryPosition.distinctItems.toLocaleString()}</p><p className="text-xs font-bold text-slate-600">Items</p></div>
+          <div><p className="font-mono text-2xl font-black text-slate-900">{inventoryPosition.totalPieces.toLocaleString()}</p><p className="text-xs font-bold text-slate-600">Pieces</p></div>
+          <div><p className="font-mono text-2xl font-black text-slate-900">{inventoryPosition.totalBoxes.toLocaleString()}</p><p className="text-xs font-bold text-slate-600">Boxes</p></div>
+          <div><p className="font-mono text-2xl font-black text-slate-900">{inventoryPosition.knownPalletEquivalent.toFixed(1)}</p><p className="text-xs font-bold text-slate-600">Known pallet equivalent</p></div>
+        </div>
+        {inventoryPosition.rowsMissingPalletFactor > 0 && <p className="mt-3 text-xs font-semibold text-amber-800">Pallet equivalent is incomplete: {inventoryPosition.rowsMissingPalletFactor} stock rows have no pallet factor.</p>}
       </div>
     </div>
   );

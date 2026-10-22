@@ -114,7 +114,7 @@ export async function getSpaceUtilizationForecast(
     current_cbm: string | null;
   }>(sql`
     SELECT
-      COALESCE(SUM(lit.qty_remaining * i.volume_cbm), 0) AS current_cbm
+      COALESCE(SUM((lit.qty_remaining::numeric / NULLIF(i.spq, 0)) * i.volume_cbm), 0) AS current_cbm
     FROM lots l
     JOIN items i ON i.id = l.item_id
     JOIN lot_inventory_totals lit ON lit.lot_id = l.id
