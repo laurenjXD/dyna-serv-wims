@@ -14,6 +14,7 @@ import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { createClient } from "@/lib/supabase/server";
 import { displayNameSchema, changePasswordSchema } from "@/lib/user-settings/schemas";
+import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 
 export interface PermissionCapability {
@@ -358,6 +359,14 @@ export async function changePassword(input: {
   const parsed = changePasswordSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid password" };
+  }
+
+  const securitySettings = await getEffectiveSecuritySettings();
+  if (parsed.data.newPassword.length < securitySettings.authRules.passwordMinLength) {
+    return { ok: false, error: `Password must be at least ${securitySettings.authRules.passwordMinLength} characters.` };
+  }
+  if (securitySettings.authRules.requireSpecialChars && !/[\W_]/.test(parsed.data.newPassword)) {
+    return { ok: false, error: "Password must include at least one special character." };
   }
 
   const supabase = await createClient();

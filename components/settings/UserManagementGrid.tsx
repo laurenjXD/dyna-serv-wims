@@ -90,11 +90,19 @@ export function UserManagementGrid({
   }
 
   async function handleReactivate(member: TeamMember) {
-    const res = await reactivateUser(member.id);
-    if (res.ok) {
-      setMembers((curr) =>
-        curr.map((m) => (m.id === member.id ? { ...m, status: "active" } : m)),
-      );
+    setFeedback(null);
+    try {
+      const res = await reactivateUser(member.id);
+      if (res.ok) {
+        setMembers((curr) =>
+          curr.map((m) => (m.id === member.id ? { ...m, status: "active" } : m)),
+        );
+        setFeedback({ type: "success", message: `${member.displayName} was reactivated.` });
+      } else {
+        setFeedback({ type: "error", message: res.error ?? "The user could not be reactivated. Refresh and try again." });
+      }
+    } catch {
+      setFeedback({ type: "error", message: "The reactivation request failed. Check the connection and try again." });
     }
   }
 

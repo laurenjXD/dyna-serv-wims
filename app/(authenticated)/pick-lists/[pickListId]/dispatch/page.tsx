@@ -397,7 +397,9 @@ export default async function DispatchConfirmationPage({
                               ? "This record changed in another session. Refresh to see the current state."
                               : errorReason === "wrong_item_or_lot_qr"
                         ? "This QR does not match an unfinished item or lot on this Pick List."
-                        : errorReason === "line_complete"
+                          : errorReason === "network_restricted"
+                          ? "Dispatch is restricted to the configured warehouse network. Connect to approved warehouse Wi-Fi and try again; no stock was moved."
+                          : errorReason === "line_complete"
                           ? "This item has already reached its required box count. Continue with the next line."
                           : `Error: ${errorReason}. Contact a supervisor if this persists.`}
               </p>

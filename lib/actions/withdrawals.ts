@@ -31,6 +31,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
+import { verifyFloorNetworkAccess } from "@/app/(authenticated)/settings/security/actions";
 import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
 import { allocate, checkProvisionalItemCodes } from "@/lib/withdrawal/allocation";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
@@ -717,6 +718,9 @@ export async function selectPickUnit(
   const perm = await requirePermission(resolver, "dispatch.execute");
   if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
 
+  const network = await verifyFloorNetworkAccess();
+  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
+
   const scannedValue = rawBarcode.trim();
   if (!scannedValue) return { ok: false, errors: ["invalid_qr"] };
 
@@ -868,6 +872,9 @@ export async function completeExactPick(
   const perm = await requirePermission(resolver, "pick_list.execute");
   if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
 
+  const network = await verifyFloorNetworkAccess();
+  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
+
   try {
     const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
       const db = tx.db as DbLike;
@@ -943,6 +950,9 @@ export async function dispatchPickList(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
+
+  const network = await verifyFloorNetworkAccess();
+  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
 
   const userId = perm.context.userId;
 

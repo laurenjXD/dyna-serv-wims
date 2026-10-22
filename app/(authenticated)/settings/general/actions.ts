@@ -11,6 +11,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "@/lib/documents/document-template";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
+import { generalSettingsSchema } from "@/lib/user-settings/settings-schemas";
 
 export interface GeneralSettingsData {
   facility: {
@@ -99,6 +100,25 @@ const DEFAULT_SETTINGS: GeneralSettingsData = {
   },
 };
 
+function mergeGeneralSettings(value: unknown): GeneralSettingsData {
+  const stored = (value && typeof value === "object" ? value : {}) as Partial<GeneralSettingsData>;
+  return {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    facility: { ...DEFAULT_SETTINGS.facility, ...(stored.facility ?? {}) },
+    scanner: {
+      ...DEFAULT_SETTINGS.scanner,
+      ...(stored.scanner ?? {}),
+      symbologies: {
+        ...DEFAULT_SETTINGS.scanner.symbologies,
+        ...(stored.scanner?.symbologies ?? {}),
+      },
+    },
+    alerts: { ...DEFAULT_SETTINGS.alerts, ...(stored.alerts ?? {}) },
+    printTemplate: { ...DEFAULT_SETTINGS.printTemplate, ...(stored.printTemplate ?? {}) },
+  };
+}
+
 export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSettingsData } | { ok: false; error: string }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
@@ -110,7 +130,20 @@ export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSet
     db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general")),
     [],
   );
-  return { ok: true, data: stored?.value ? ({ ...DEFAULT_SETTINGS, ...(stored.value as Partial<GeneralSettingsData>) } as GeneralSettingsData) : DEFAULT_SETTINGS };
+  return { ok: true, data: mergeGeneralSettings(stored?.value) };
+}
+
+/** Effective non-admin settings consumed by authenticated workflows. */
+export async function getEffectiveGeneralSettings(): Promise<GeneralSettingsData> {
+  try {
+    const [stored] = await withSettingsTimeout(
+      db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general")),
+      [],
+    );
+    return mergeGeneralSettings(stored?.value);
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
 }
 
 export async function saveGeneralSettings(settings: GeneralSettingsData): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -120,9 +153,14 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
     return { ok: false, error: "Access restricted to administrators." };
   }
 
-  await db.insert(systemSettings).values({ key: "general", value: settings, updatedBy: permission.context.userId }).onConflictDoUpdate({
+  const parsed = generalSettingsSchema.safeParse(settings);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Review the highlighted settings and try again." };
+  }
+
+  await db.insert(systemSettings).values({ key: "general", value: parsed.data, updatedBy: permission.context.userId }).onConflictDoUpdate({
     target: systemSettings.key,
-    set: { value: settings, updatedAt: new Date(), updatedBy: permission.context.userId },
+    set: { value: parsed.data, updatedAt: new Date(), updatedBy: permission.context.userId },
   });
 
   // Record audit log
@@ -134,12 +172,12 @@ export async function saveGeneralSettings(settings: GeneralSettingsData): Promis
       entityType: "system_preferences",
       entityId: permission.context.userId,
       diffData: {
-        companyName: settings.facility.companyName,
-        facilityName: settings.facility.facilityName,
-        physicalAddress: settings.facility.physicalAddress,
-        defaultZone: settings.facility.defaultZone,
-        scannerContinuous: settings.scanner.continuousStream,
-        lowStockUnits: settings.alerts.lowStockThresholdUnits,
+        companyName: parsed.data.facility.companyName,
+        facilityName: parsed.data.facility.facilityName,
+        physicalAddress: parsed.data.facility.physicalAddress,
+        defaultZone: parsed.data.facility.defaultZone,
+        scannerContinuous: parsed.data.scanner.continuousStream,
+        lowStockUnits: parsed.data.alerts.lowStockThresholdUnits,
       },
       correlationId: `GEN-${Date.now()}`,
     });

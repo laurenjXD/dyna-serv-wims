@@ -26,6 +26,7 @@
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
+import { verifyFloorNetworkAccess } from "@/app/(authenticated)/settings/security/actions";
 import { validateCreateWrr } from "@/lib/receiving/wrr-schema";
 import { matchScan } from "@/lib/receiving/scan-matcher";
 import type { WrrLine } from "@/lib/receiving/scan-matcher";
@@ -689,6 +690,8 @@ export async function recordScan(
   if (perm.kind !== "authorized") {
     return { ok: false, reason: "forbidden" };
   }
+  const network = await verifyFloorNetworkAccess();
+  if (!network.allowed) return { ok: false, reason: "network_restricted" };
   const userId = perm.context.userId;
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
@@ -798,6 +801,8 @@ export async function startReceiving(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
+  const network = await verifyFloorNetworkAccess();
+  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
@@ -944,6 +949,9 @@ export async function commitWrrLine(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
+
+  const network = await verifyFloorNetworkAccess();
+  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
 
   const userId = perm.context.userId;
 

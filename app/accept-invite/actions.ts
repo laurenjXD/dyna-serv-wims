@@ -28,6 +28,7 @@
 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { displayNameSchema, changePasswordSchema } from "@/lib/user-settings/schemas";
+import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -80,6 +81,14 @@ export async function completeInvitationAcceptance(input: {
   const passwordParsed = changePasswordSchema.safeParse(input);
   if (!passwordParsed.success) {
     return { ok: false, error: passwordParsed.error.issues[0]?.message ?? "Invalid password" };
+  }
+
+  const securitySettings = await getEffectiveSecuritySettings();
+  if (passwordParsed.data.newPassword.length < securitySettings.authRules.passwordMinLength) {
+    return { ok: false, error: `Password must be at least ${securitySettings.authRules.passwordMinLength} characters.` };
+  }
+  if (securitySettings.authRules.requireSpecialChars && !/[\W_]/.test(passwordParsed.data.newPassword)) {
+    return { ok: false, error: "Password must include at least one special character." };
   }
 
   const supabase = await createClient();

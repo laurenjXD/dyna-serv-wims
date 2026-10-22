@@ -13,6 +13,8 @@ import { AuthenticatedShellBoundary } from "@/components/global/AuthenticatedShe
 import { ShellChrome } from "@/components/global/ShellChrome";
 import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 import { createPageResolver } from "@/lib/auth/page-resolver";
+import { getEffectiveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
+import { ScannerSettingsProvider } from "@/components/barcode/ScannerSettingsProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +28,16 @@ export default async function AuthenticatedLayout({
   // handles any boundary edge cases on the client without throwing render-breaking
   // Server Component redirect exceptions.
   const resolver = await createPageResolver();
+  const generalSettings = await getEffectiveGeneralSettings();
   const initialResolution = await resolver.getContext();
 
   return (
     <UserPreferencesProvider>
-      <AuthenticatedShellBoundary initialResolution={initialResolution}>
-        <ShellChrome>{children}</ShellChrome>
-      </AuthenticatedShellBoundary>
+      <ScannerSettingsProvider settings={generalSettings.scanner}>
+        <AuthenticatedShellBoundary initialResolution={initialResolution}>
+          <ShellChrome>{children}</ShellChrome>
+        </AuthenticatedShellBoundary>
+      </ScannerSettingsProvider>
     </UserPreferencesProvider>
   );
 }

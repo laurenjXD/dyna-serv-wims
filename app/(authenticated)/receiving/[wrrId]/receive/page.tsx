@@ -57,6 +57,8 @@ function getScanErrorMessage(reason: string): string {
   switch (reason) {
     case "forbidden":
       return "You do not have permission to scan items.";
+    case "network_restricted":
+      return "Floor receiving is blocked because this device is outside the configured warehouse network. Connect to approved warehouse Wi-Fi and try again.";
     case "not_found":
       return "WRR document not found.";
     case "invalid_status":
@@ -97,6 +99,8 @@ function getCommitErrorMessage(reason: string): string {
     return "Please choose valid active storage racks or inspection holding bays.";
   }
   switch (reason) {
+    case "network_restricted":
+      return "This receiving action is restricted to the configured warehouse network. Connect to approved warehouse Wi-Fi and try again; nothing was stored.";
     case "forbidden":
       return "You do not have permission to confirm receipt for this line.";
     case "not_found":

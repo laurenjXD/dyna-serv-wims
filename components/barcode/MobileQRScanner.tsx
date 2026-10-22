@@ -9,6 +9,7 @@ import {
   Html5QrcodeSupportedFormats,
 } from "html5-qrcode";
 import { RefreshCw, AlertCircle, Camera, Check } from "lucide-react";
+import { useScannerSettings } from "./ScannerSettingsProvider";
 
 // R11 scoped exception: WAN:<uuid> is the only valid Code 128 payload.
 const WAN_UUID_PATTERN =
@@ -75,6 +76,7 @@ export function MobileQRScanner({
   const pausedRef = useRef(paused);
   const onScanRef = useRef(onScan);
   const allowCode128Ref = useRef(allowCode128);
+  const scannerSettings = useScannerSettings();
 
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -93,15 +95,13 @@ export function MobileQRScanner({
     setIsLoading(true);
     setErrorMessage(null);
 
-    const formatsToSupport = allowCode128Ref.current
-      ? [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.CODE_128,
-        ]
-      : [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.DATA_MATRIX,
-        ];
+    const formatsToSupport = [
+      ...(scannerSettings.symbologies.qrCode ? [Html5QrcodeSupportedFormats.QR_CODE] : []),
+      ...(scannerSettings.symbologies.dataMatrix ? [Html5QrcodeSupportedFormats.DATA_MATRIX] : []),
+      ...(allowCode128Ref.current && scannerSettings.symbologies.code128
+        ? [Html5QrcodeSupportedFormats.CODE_128]
+        : []),
+    ];
 
     const scannerConfig = {
       fps: 15,
@@ -118,8 +118,33 @@ export function MobileQRScanner({
         if (!WAN_UUID_PATTERN.test(decodedText)) return;
       }
 
+      // The workflow pauses after every accepted decode to prevent duplicate
+      // physical scans. `continuousStream` remains an admin preference for
+      // future scanner hardware that can resume explicitly; it must not weaken
+      // this approved duplicate-protection contract.
       if (currentScanner?.pause) {
         currentScanner.pause();
+      }
+      if (scannerSettings.hapticFeedback && typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(80);
+      }
+      if (scannerSettings.audioAlertTone) {
+        try {
+          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtx) {
+            const context = new AudioCtx();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.frequency.value = 800;
+            gain.gain.setValueAtTime(0.15, context.currentTime);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.1);
+          }
+        } catch {
+          // Optional feedback must never block scan acceptance.
+        }
       }
       onScanRef.current(decodedText);
     };

@@ -7,12 +7,13 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { auditLog, rbacSecurityEvents, userProfiles } from "@/lib/db/schema";
+import { auditLog, rbacSecurityEvents, systemSettings, userProfiles } from "@/lib/db/schema";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
+import { securitySettingsSchema } from "@/lib/user-settings/settings-schemas";
 
 export interface SecuritySettingsData {
   network: {
@@ -89,21 +90,14 @@ export async function getSecuritySettings(): Promise<{ ok: true; data: SecurityS
   }
 
   try {
-    const [latest] = await withSettingsTimeout(
-      db
-        .select({ diffData: auditLog.diffData })
-        .from(auditLog)
-        .where(eq(auditLog.action, "security_policy_updated"))
-        .orderBy(desc(auditLog.createdAt))
-        .limit(1),
+    const [stored] = await withSettingsTimeout(
+      db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "security")),
       [],
     );
 
-    if (latest?.diffData && typeof latest.diffData === "object" && "settings" in latest.diffData) {
-      const persisted = (latest.diffData as { settings: SecuritySettingsData }).settings;
-      if (persisted && persisted.network && persisted.authRules && persisted.sessionConfig) {
-        runtimeSecuritySettings = { ...DEFAULT_SECURITY_SETTINGS, ...persisted };
-      }
+    const parsed = securitySettingsSchema.safeParse(stored?.value);
+    if (parsed.success) {
+      runtimeSecuritySettings = parsed.data;
     }
   } catch {
     // fallback to runtime state
@@ -119,7 +113,21 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
     return { ok: false, error: "Access denied." };
   }
 
-  runtimeSecuritySettings = { ...settings };
+  const parsed = securitySettingsSchema.safeParse(settings);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Review the security settings and try again." };
+  }
+
+  await db.insert(systemSettings).values({
+    key: "security",
+    value: parsed.data,
+    updatedBy: permission.context.userId,
+  }).onConflictDoUpdate({
+    target: systemSettings.key,
+    set: { value: parsed.data, updatedAt: new Date(), updatedBy: permission.context.userId },
+  });
+
+  runtimeSecuritySettings = parsed.data;
 
   // Write audit record with full policy snapshot
   try {
@@ -130,12 +138,12 @@ export async function saveSecuritySettings(settings: SecuritySettingsData): Prom
       entityType: "system_security",
       entityId: permission.context.userId,
       diffData: {
-        settings: settings as unknown as Record<string, unknown>,
-        wifiEnforcement: settings.network.wifiEnforcementEnabled,
-        allowedIpRangesCount: settings.network.allowedIpRanges.length,
-        passwordMinLength: settings.authRules.passwordMinLength,
-        mfaPolicy: settings.authRules.mfaPolicy,
-        mobileIdleTimeoutMinutes: settings.sessionConfig.mobileIdleTimeoutMinutes,
+        settings: parsed.data as unknown as Record<string, unknown>,
+        wifiEnforcement: parsed.data.network.wifiEnforcementEnabled,
+        allowedIpRangesCount: parsed.data.network.allowedIpRanges.length,
+        passwordMinLength: parsed.data.authRules.passwordMinLength,
+        mfaPolicy: parsed.data.authRules.mfaPolicy,
+        mobileIdleTimeoutMinutes: parsed.data.sessionConfig.mobileIdleTimeoutMinutes,
       },
       correlationId: `SEC-${Date.now()}`,
     });
@@ -177,9 +185,31 @@ function isIpInCidr(ip: string, cidr: string): boolean {
   }
 }
 
+/**
+ * Reads the effective policy without requiring the caller to have the admin
+ * settings capability. Operational enforcement points use this function;
+ * the page-facing getSecuritySettings remains permission-gated.
+ */
+export async function getEffectiveSecuritySettings(): Promise<SecuritySettingsData> {
+  try {
+    const [stored] = await withSettingsTimeout(
+      db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "security")),
+      [],
+    );
+    const parsed = securitySettingsSchema.safeParse(stored?.value);
+    if (parsed.success) {
+      runtimeSecuritySettings = parsed.data;
+    }
+  } catch {
+    // Keep the last validated policy if the settings store is unavailable.
+  }
+  return runtimeSecuritySettings;
+}
+
 export async function verifyFloorNetworkAccess(): Promise<{ allowed: boolean; reason?: string }> {
-  const settings = await getSecuritySettings();
-  if (!settings.ok || !settings.data.network.wifiEnforcementEnabled) {
+  const effectiveSettings = await getEffectiveSecuritySettings();
+
+  if (!effectiveSettings.network.wifiEnforcementEnabled) {
     return { allowed: true };
   }
 
@@ -193,7 +223,7 @@ export async function verifyFloorNetworkAccess(): Promise<{ allowed: boolean; re
       return { allowed: true };
     }
 
-    const isAllowed = settings.data.network.allowedIpRanges.some((cidr) => isIpInCidr(clientIp, cidr));
+    const isAllowed = effectiveSettings.network.allowedIpRanges.some((cidr) => isIpInCidr(clientIp, cidr));
     if (!isAllowed) {
       return {
         allowed: false,
