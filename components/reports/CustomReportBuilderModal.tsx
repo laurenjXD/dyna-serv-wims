@@ -43,6 +43,19 @@ interface CustomReportBuilderModalProps {
 }
 
 // ── Dimension-based Mock/Live Data Sets ──────────────────────────────────────
+type PreviewRow = {
+  name: string;
+  flow: string;
+  cbm: number;
+  valuation: number;
+  marginPct: number;
+  volumeQty: number;
+  otifPct: number;
+  dwellDays: number;
+  accrualUsd: number;
+};
+
+/*
 const DIMENSION_DATA: Record<
   string,
   Array<{
@@ -82,6 +95,9 @@ const DIMENSION_DATA: Record<
     { name: "Direct Trading Commercial Flow", flow: "Trading", cbm: 500.5, valuation: 1467500, marginPct: 24.2, volumeQty: 9860, otifPct: 97.2, dwellDays: 12, accrualUsd: 0 },
   ],
 };
+*/
+
+const DIMENSION_DATA: Record<string, PreviewRow[]> = {};
 
 export function CustomReportBuilderModal({
   isOpen,
@@ -93,8 +109,8 @@ export function CustomReportBuilderModal({
     "Custom Warehouse Analytics & Operational Position Report"
   );
   const [category, setCategory] = useState<ReportCategory>("Financial");
-  const [horizon, setHorizon] = useState("Last 30 Days (Aug 15 - Sep 12, 2026)");
-  const [facilityZone, setFacilityZone] = useState("Warehouse 1 — All Logistics Zones");
+  const [horizon, setHorizon] = useState("Last 30 Days");
+  const [facilityZone, setFacilityZone] = useState("All active locations");
   const [selectedDimension, setSelectedDimension] = useState<string>("Item Category");
   const [chartType, setChartType] = useState<"bar" | "line" | "area" | "none">("bar");
   const [includeAuditSeal, setIncludeAuditSeal] = useState(true);
@@ -110,11 +126,11 @@ export function CustomReportBuilderModal({
   ]);
 
   const reportRefNumber = useMemo(() => {
-    return `DS-CUST-${category.slice(0, 3).toUpperCase()}-2026-${Date.now().toString().slice(-4)}`;
+    return `DS-CUST-${category.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`;
   }, [category]);
 
   const generationTimestamp = useMemo(() => {
-    return "2026-09-12 17:00:00 PST";
+    return new Date().toLocaleString();
   }, []);
 
   if (!isOpen) return null;
@@ -129,18 +145,18 @@ export function CustomReportBuilderModal({
     });
   };
 
-  const activeDataset = DIMENSION_DATA[selectedDimension] || DIMENSION_DATA["Item Category"];
+  const activeDataset = DIMENSION_DATA[selectedDimension] ?? [];
 
   // Totals calculations
   const totalCbm = activeDataset.reduce((acc, row) => acc + row.cbm, 0);
   const totalValuation = activeDataset.reduce((acc, row) => acc + row.valuation, 0);
-  const avgMargin = (
-    activeDataset.reduce((acc, row) => acc + row.marginPct, 0) / activeDataset.length
-  ).toFixed(1);
+  const avgMargin = activeDataset.length > 0
+    ? (activeDataset.reduce((acc, row) => acc + row.marginPct, 0) / activeDataset.length).toFixed(1)
+    : "—";
   const totalVolume = activeDataset.reduce((acc, row) => acc + row.volumeQty, 0);
-  const avgOtif = (
-    activeDataset.reduce((acc, row) => acc + row.otifPct, 0) / activeDataset.length
-  ).toFixed(1);
+  const avgOtif = activeDataset.length > 0
+    ? (activeDataset.reduce((acc, row) => acc + row.otifPct, 0) / activeDataset.length).toFixed(1)
+    : "—";
   const totalAccrual = activeDataset.reduce((acc, row) => acc + row.accrualUsd, 0);
 
   const handlePrint = () => {
@@ -315,10 +331,10 @@ export function CustomReportBuilderModal({
                     onChange={(e) => setHorizon(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 font-label text-xs font-bold text-slate-800 focus:border-brand-navy focus:outline-none"
                   >
-                    <option value="Last 7 Days (Sep 05 - Sep 12, 2026)">Last 7 Days</option>
-                    <option value="Last 30 Days (Aug 15 - Sep 12, 2026)">Last 30 Days</option>
-                    <option value="Current Quarter (Q3 2026)">Current Quarter</option>
-                    <option value="Year-to-Date (FY 2026)">Year-to-Date</option>
+                    <option value="Last 7 Days">Last 7 Days</option>
+                    <option value="Last 30 Days">Last 30 Days</option>
+                    <option value="Current Quarter">Current Quarter</option>
+                    <option value="Year-to-Date">Year-to-Date</option>
                   </select>
                 </div>
               </div>
@@ -332,10 +348,7 @@ export function CustomReportBuilderModal({
                   onChange={(e) => setFacilityZone(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 font-label text-xs font-bold text-slate-800 focus:border-brand-navy focus:outline-none"
                 >
-                  <option value="Warehouse 1 — All Logistics Zones">Warehouse 1 — All Zones</option>
-                  <option value="Zone A — High-Bay Pallet Racks">Zone A — High-Bay Racks</option>
-                  <option value="Zone B — Bulk Staging & Floor Stacks">Zone B — Bulk Staging</option>
-                  <option value="Zone C — Cold Chain Cleanroom">Zone C — Cold Chain</option>
+                  <option value="All active locations">All active locations</option>
                 </select>
               </div>
             </div>
@@ -612,9 +625,6 @@ export function CustomReportBuilderModal({
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
                         ${totalValuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </p>
-                      <p className="mt-0.5 text-[10px] font-semibold text-emerald-700">
-                        +5.2% vs baseline
-                      </p>
                     </div>
                   )}
 
@@ -626,9 +636,6 @@ export function CustomReportBuilderModal({
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
                         {totalCbm.toFixed(1)} m³
                       </p>
-                      <p className="mt-0.5 text-[10px] font-semibold text-blue-700">
-                        84.2% Utilization
-                      </p>
                     </div>
                   )}
 
@@ -639,9 +646,6 @@ export function CustomReportBuilderModal({
                       </p>
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
                         {avgMargin}%
-                      </p>
-                      <p className="mt-0.5 text-[10px] font-semibold text-emerald-700">
-                        &gt; 20.0% Target
                       </p>
                     </div>
                   )}

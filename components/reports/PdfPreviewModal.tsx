@@ -23,6 +23,7 @@ export interface ReportLineRow {
   valuation: string;
 }
 
+/*
 const DEFAULT_REPORT_ROWS: ReportLineRow[] = [
   { id: "1", name: "United Philippine Industrial (UPI)", flow: "VMI", cbm: "382.0 m³", rate: "$0.48/m³-day", valuation: "$5,684.16" },
   { id: "2", name: "Siemens AG Industrial Systems", flow: "VMI", cbm: "215.0 m³", rate: "$0.50/m³-day", valuation: "$3,332.50" },
@@ -31,6 +32,9 @@ const DEFAULT_REPORT_ROWS: ReportLineRow[] = [
   { id: "5", name: "Schneider Electric Logistics", flow: "VMI", cbm: "164.0 m³", rate: "$0.45/m³-day", valuation: "$2,214.00" },
   { id: "6", name: "Omron Electronics Automation", flow: "Trading", cbm: "110.0 m³", rate: "18.5% Margin", valuation: "$82,400.00" },
 ];
+*/
+
+const DEFAULT_REPORT_ROWS: ReportLineRow[] = [];
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -47,7 +51,7 @@ export function PdfPreviewModal({
   onClose,
   reportTitle = "Master Inventory Position & Financial Valuation Summary",
   reportSubtitle = "Official Consolidated WMS Balance Sheet & CBM Space Reconciliation",
-  reportRefNumber = "DS-RPT-2026-0831-VAL",
+  reportRefNumber = "DS-RPT-PREVIEW",
   customRows,
   documentTemplate,
 }: PdfPreviewModalProps) {
@@ -273,19 +277,19 @@ export function PdfPreviewModal({
             <div className="my-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px]">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Consolidated Valuation</p>
-                <p className="font-bold text-brand-navy mt-0.5">$2,480,500.00</p>
+                <p className="font-bold text-brand-navy mt-0.5">—</p>
               </div>
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Active Stock Lines</p>
-                <p className="font-bold text-slate-900 mt-0.5">1,420 Lots</p>
+                <p className="font-bold text-slate-900 mt-0.5">—</p>
               </div>
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Storage Occupancy</p>
-                <p className="font-bold text-brand-navy mt-0.5">1,640 m³ (82%)</p>
+                <p className="font-bold text-brand-navy mt-0.5">—</p>
               </div>
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Accrued Charges</p>
-                <p className="font-bold text-emerald-700 mt-0.5">$34,200.00</p>
+                <p className="font-bold text-emerald-700 mt-0.5">—</p>
               </div>
             </div>
 
@@ -310,7 +314,9 @@ export function PdfPreviewModal({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {pagedRows.map((row) => (
+                  {pagedRows.length === 0 ? (
+                    <tr><td colSpan={5} className="p-6 text-center font-body text-sm text-text-grey">No report rows are available. Generate the report from live data first.</td></tr>
+                  ) : pagedRows.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50">
                       <td className="p-2 font-bold border border-slate-300 text-slate-900">{row.name}</td>
                       <td className="p-2 text-center border border-slate-300 font-bold text-brand-navy">{row.flow}</td>
@@ -321,9 +327,9 @@ export function PdfPreviewModal({
                   ))}
                   <tr className="bg-slate-100 font-bold border-t-2 border-slate-800">
                     <td className="p-2 border border-slate-300 text-[10px] uppercase text-slate-800" colSpan={2}>CONSOLIDATED TOTAL</td>
-                    <td className="p-2 text-right border border-slate-300 text-brand-navy">1,489.0 m³</td>
+                    <td className="p-2 text-right border border-slate-300 text-brand-navy">—</td>
                     <td className="p-2 text-right border border-slate-300 text-slate-500">—</td>
-                    <td className="p-2 text-right border border-slate-300 text-brand-navy">$341,454.02</td>
+                    <td className="p-2 text-right border border-slate-300 text-brand-navy">—</td>
                   </tr>
                 </tbody>
               </table>

@@ -138,7 +138,7 @@ export async function getVmiBillingReconciliationReport(): Promise<VmiBillingRow
       .groupBy(parties.id, parties.name, parties.code, parties.contactPerson, vmiContractTerms.storageRatePerCbmDay, vmiContractTerms.cbmThreshold, vmiContractTerms.billingCurrency);
 
     if (rawClients.length > 0) {
-      return rawClients.map((c, idx) => {
+        return rawClients.map((c) => {
         const alloc = parseFloat(c.cbmThreshold || "0") || 0;
         const occ = Math.round(parseFloat(c.occupiedCbm || "0")) || 0;
         const rate = parseFloat(c.cbmRate || "0") || 0;
@@ -146,7 +146,7 @@ export async function getVmiBillingReconciliationReport(): Promise<VmiBillingRow
         const util = alloc > 0 ? Math.min(100, Math.round((occ / alloc) * 100)) : 0;
 
         return {
-          id: c.id || `vmi-${idx}`,
+          id: c.id,
           clientName: c.name,
           clientCode: c.code,
           allocatedSpaceCbm: alloc,
@@ -154,9 +154,9 @@ export async function getVmiBillingReconciliationReport(): Promise<VmiBillingRow
           utilizationPct: util,
           contractedRatePerCbmDay: rate,
           mtdAccruedStorage: accrued,
-          unbilledDays: 31,
-          billingStatus: "Ready to Invoice" as const,
-          contactPerson: c.contactPerson || "Operations Lead",
+          unbilledDays: 0,
+          billingStatus: "Draft Generated" as const,
+          contactPerson: c.contactPerson || "",
           currency: c.currency || "USD",
         };
       });
@@ -298,7 +298,7 @@ export async function getDeliveryPerformanceReport(): Promise<DeliverySlaDatum[]
 
     if (rawDelivery && rawDelivery.length > 0) {
       return rawDelivery.map((d) => {
-        const otif = d.totalPicks > 0 ? Number(((d.completedPicks / d.totalPicks) * 100).toFixed(1)) : 96.5;
+        const otif = d.totalPicks > 0 ? Number(((d.completedPicks / d.totalPicks) * 100).toFixed(1)) : 0;
         return {
           period: d.period,
           otifRate: otif,
@@ -353,7 +353,7 @@ export async function getReportArchiveList(): Promise<ReportArchiveItem[]> {
             role: doc.userRole,
           },
           generatedAt: doc.createdAt ? doc.createdAt.toISOString().replace("T", " ").slice(0, 16) : "",
-          fileSizeFormatted: "1.2 MB",
+          fileSizeFormatted: "—",
           format: "PDF",
           status: "Ready",
           downloadUrl: `/api/documents/${doc.id}/download`,
@@ -385,10 +385,10 @@ export async function getWarehouseZonesList(): Promise<string[]> {
     if (rows && rows.length > 0) {
       return (rows as Array<{ zone: string }>).map((r) => r.zone).filter(Boolean);
     }
-    return ["ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D"];
+    return [];
   } catch (error) {
     console.error("Error fetching warehouse zones:", error);
-    return ["ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D"];
+    return [];
   }
 }
 

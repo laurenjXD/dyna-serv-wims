@@ -25,40 +25,30 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
 
   if (!isOpen || !row) return null;
 
-  // Generate simulated realistic 30-day daily CBM audit entries for the active consignor
-  const daysInMonth = 30;
-  const rate = row.contractedRatePerCbmDay || 0.48;
-  const baseOccupied = Math.max(row.occupiedCbm, 12.5);
-
-  let cumulativeCost = 0;
-  const dailyAuditRows = Array.from({ length: daysInMonth }, (_, idx) => {
-    const day = idx + 1;
-    const dateStr = `2026-08-${String(day).padStart(2, "0")}`;
-    const inbound = day % 7 === 1 ? +(Math.random() * 3.5 + 1.2).toFixed(2) : 0;
-    const outbound = day % 4 === 0 ? +(Math.random() * 2.8 + 0.8).toFixed(2) : 0;
-    const closingCbm = +(baseOccupied + (day * 0.15) + inbound - outbound).toFixed(2);
-    const dailyFee = +(closingCbm * rate).toFixed(2);
-    cumulativeCost += dailyFee;
-
-    return {
-      date: dateStr,
-      dayNumber: day,
-      openingCbm: +(closingCbm - inbound + outbound).toFixed(2),
-      inboundCbm: inbound,
-      outboundCbm: outbound,
-      closingCbm,
-      rate,
-      dailyFee,
-      cumulativeCost: +cumulativeCost.toFixed(2),
-    };
-  });
-
-  const lotDwellRows = [
-    { lotNumber: `LOT-${row.clientCode}-0801`, itemCode: "ITM-1002", itemName: "Industrial Bearings 12mm", intakeDate: "2026-08-01", qty: 450, cbm: 3.2, dwellDays: 30, status: "Active in Staging" },
-    { lotNumber: `LOT-${row.clientCode}-0808`, itemCode: "ITM-1044", itemName: "High-Temp Gaskets Type B", intakeDate: "2026-08-08", qty: 820, cbm: 4.8, dwellDays: 23, status: "Active in Staging" },
-    { lotNumber: `LOT-${row.clientCode}-0815`, itemCode: "ITM-2091", itemName: "Stainless Steel Fasteners M8", intakeDate: "2026-08-15", qty: 1200, cbm: 2.6, dwellDays: 16, status: "Active in Staging" },
-    { lotNumber: `LOT-${row.clientCode}-0822`, itemCode: "ITM-3110", itemName: "Hydraulic Seal Kit Heavy", intakeDate: "2026-08-22", qty: 310, cbm: 5.1, dwellDays: 9, status: "Active in Staging" },
-  ];
+  // Audit rows must come from the VMI ledger and inventory tables. Do not
+  // synthesize movements or lot identities in a financial audit surface.
+  const dailyAuditRows: Array<{
+    date: string;
+    dayNumber: number;
+    openingCbm: number;
+    inboundCbm: number;
+    outboundCbm: number;
+    closingCbm: number;
+    rate: number;
+    dailyFee: number;
+    cumulativeCost: number;
+  }> = [];
+  const lotDwellRows: Array<{
+    lotNumber: string;
+    itemCode: string;
+    itemName: string;
+    intakeDate: string;
+    qty: number;
+    cbm: number;
+    dwellDays: number;
+    status: string;
+  }> = [];
+  const rate = row.contractedRatePerCbmDay;
 
   const handleExportAuditCsv = () => {
     const headers = ["Date", "Opening CBM", "Inbound CBM", "Outbound CBM", "Closing Billable CBM", "Rate ($/m3/day)", "Daily Storage Fee ($)", "Cumulative ($)"];
@@ -77,7 +67,7 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `vmi-cbm-dwell-audit-${row.clientCode}-2026-08.csv`;
+    link.download = `vmi-cbm-dwell-audit-${row.clientCode}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -102,7 +92,7 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
                 </span>
               </div>
               <p className="font-body text-xs text-text-grey">
-                Consignor: <strong className="text-slate-800">{row.clientName}</strong> ({row.clientCode}) · Period: August 2026 (30 Days)
+                Organization: <strong className="text-slate-800">{row.clientName}</strong> ({row.clientCode}) · Live VMI ledger
               </p>
             </div>
           </div>
@@ -133,7 +123,7 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
                 Storage Rate
               </p>
               <p className="mt-1 font-mono text-title-sm font-bold text-slate-800">
-                ${rate.toFixed(2)} <span className="text-xs font-normal text-text-grey">/ m³ / day</span>
+                {rate > 0 ? `$${rate.toFixed(2)}` : "—"} {rate > 0 && <span className="text-xs font-normal text-text-grey">/ m³ / day</span>}
               </p>
             </div>
 
@@ -198,7 +188,9 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-mono">
-                  {dailyAuditRows.map((d) => (
+                  {dailyAuditRows.length === 0 ? (
+                    <tr><td colSpan={7} className="px-3 py-8 text-center font-body text-sm text-text-grey">No VMI ledger rows are available for this organization.</td></tr>
+                  ) : dailyAuditRows.map((d) => (
                     <tr key={d.date} className="hover:bg-blue-50/40 transition-colors">
                       <td className="px-3 py-2 font-bold text-slate-800">{d.date}</td>
                       <td className="px-3 py-2 text-right text-text-grey">{d.openingCbm} m³</td>
@@ -231,7 +223,9 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-mono">
-                  {lotDwellRows.map((lot) => (
+                  {lotDwellRows.length === 0 ? (
+                    <tr><td colSpan={7} className="px-3 py-8 text-center font-body text-sm text-text-grey">No active lot dwell records are available.</td></tr>
+                  ) : lotDwellRows.map((lot) => (
                     <tr key={lot.lotNumber} className="hover:bg-blue-50/40 transition-colors">
                       <td className="px-3 py-2 font-bold text-brand-navy">{lot.lotNumber}</td>
                       <td className="px-3 py-2 font-body text-slate-800">

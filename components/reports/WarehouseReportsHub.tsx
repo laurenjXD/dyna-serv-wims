@@ -63,10 +63,14 @@ export function WarehouseReportsHub({
   canReadFinancial = true,
   documentTemplate,
 }: WarehouseReportsHubProps) {
+  const today = new Date();
+  const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
+  const defaultEndDate = toInputDate(today);
+  const defaultStartDate = toInputDate(new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000));
   const [facility, setFacility] = useState<FacilityZone>("all");
   const [horizon, setHorizon] = useState<DateHorizon>("30D");
-  const [startDate, setStartDate] = useState("2026-08-14");
-  const [endDate, setEndDate] = useState("2026-09-12");
+  const [startDate, setStartDate] = useState(defaultStartDate);
+  const [endDate, setEndDate] = useState(defaultEndDate);
   const [activeSection, setActiveSection] = useState<"all" | "financial" | "operations" | "heatmap" | "archive">("all");
   const [isSectionPending, startSectionTransition] = React.useTransition();
 
@@ -78,41 +82,27 @@ export function WarehouseReportsHub({
   };
 
   const handleHorizonChange = (h: DateHorizon) => {
+    const end = new Date();
     setHorizon(h);
     if (h === "7D") {
-      setStartDate("2026-09-05");
-      setEndDate("2026-09-12");
+      setStartDate(toInputDate(new Date(end.getTime() - 6 * 24 * 60 * 60 * 1000)));
+      setEndDate(toInputDate(end));
     } else if (h === "30D") {
-      setStartDate("2026-08-14");
-      setEndDate("2026-09-12");
+      setStartDate(toInputDate(new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000)));
+      setEndDate(toInputDate(end));
     } else if (h === "90D") {
-      setStartDate("2026-06-14");
-      setEndDate("2026-09-12");
+      setStartDate(toInputDate(new Date(end.getTime() - 89 * 24 * 60 * 60 * 1000)));
+      setEndDate(toInputDate(end));
     }
   };
 
   // ── Reactive Filtering based on Horizon & Warehouse 1 Storage Zones ─────
-  const activeKpis = React.useMemo(() => {
-    if (!kpis) return undefined;
-    const factor = horizon === "7D" ? 0.23 : horizon === "90D" ? 2.85 : 1.0;
-    return {
-      ...kpis,
-      vmiAccruedStorage: Math.round(kpis.vmiAccruedStorage * factor),
-      tradingGrossRevenue: Math.round(kpis.tradingGrossRevenue * factor),
-      tradingCogs: Math.round(kpis.tradingCogs * factor),
-    };
-  }, [kpis, horizon]);
+  const activeKpis = kpis;
 
   const activeThroughput = React.useMemo(() => {
     if (!throughput || throughput.length === 0) return throughput;
     if (horizon === "7D") {
       return throughput.slice(-7);
-    } else if (horizon === "90D") {
-      return [
-        { label: "Jun 2026", inboundQty: 4850, outboundQty: 4210, vmiQty: 2900, tradingQty: 1950 },
-        { label: "Jul 2026", inboundQty: 5200, outboundQty: 4980, vmiQty: 3100, tradingQty: 2100 },
-        { label: "Aug/Sep 2026", inboundQty: 5640, outboundQty: 5120, vmiQty: 3400, tradingQty: 2240 },
-      ];
     }
     return throughput;
   }, [throughput, horizon]);
@@ -136,13 +126,7 @@ export function WarehouseReportsHub({
     return deliverySla;
   }, [deliverySla, horizon]);
 
-  const activeVmiBillingRows = React.useMemo(() => {
-    if (!vmiBillingRows) return undefined;
-    if (facility === "cold-chain") {
-      return vmiBillingRows.filter((r) => r.clientCode.includes("UPI") || r.clientCode.includes("SCH"));
-    }
-    return vmiBillingRows;
-  }, [vmiBillingRows, facility]);
+  const activeVmiBillingRows = vmiBillingRows;
 
   // Modal States
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);

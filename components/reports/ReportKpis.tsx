@@ -79,10 +79,10 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
             <Warehouse size={14} className="text-blue-600" />
           </div>
           <p className="mt-1.5 font-mono text-xl font-black text-slate-900">
-            795 m³
+            —
           </p>
           <span className="mt-1 inline-block font-mono text-[10px] font-bold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded">
-            Across Clients
+            No live occupancy total
           </span>
         </div>
 
@@ -95,7 +95,7 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
             <Archive size={14} className="text-purple-600" />
           </div>
           <p className="mt-1.5 font-mono text-xl font-black text-slate-900">
-            {kpis?.activeLotsCount ?? 1420} Lots
+            {kpis?.activeLotsCount ?? 0} Lots
           </p>
           <span className="mt-1 inline-block font-mono text-[10px] font-bold text-purple-800 bg-purple-50 px-1.5 py-0.5 rounded">
             Active Inventory
@@ -119,10 +119,6 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
                   <h2 className="min-w-0 break-words font-mono text-2xl font-black text-brand-navy tracking-tight sm:text-3xl">
                     ${valuation.toLocaleString()}
                   </h2>
-                  <span className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-xs font-bold text-emerald-700 border border-emerald-200/60">
-                    <TrendingUp size={12} />
-                    +4.2% MTD
-                  </span>
                 </div>
               </div>
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-brand-navy border border-blue-200/80">
@@ -130,17 +126,6 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
               </div>
             </div>
 
-            {/* Secondary breakdown pills */}
-            <div className="mt-4 pt-3.5 border-t border-slate-100 flex flex-wrap items-center gap-2">
-                <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-xs font-bold text-slate-800 border border-slate-200/60 break-words">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-navy"></span>
-                VMI Consignment: ${(valuation * 0.65 / 1000000).toFixed(1)}M
-              </span>
-                <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 font-mono text-xs font-bold text-blue-900 border border-blue-200/60 break-words">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                Owned Trading: ${(valuation * 0.35 / 1000).toFixed(0)}K
-              </span>
-            </div>
           </div>
         </div>
 
@@ -239,18 +224,6 @@ export function ReportKpis({ kpis }: ReportKpisProps) {
             </div>
 
             <div className="mt-3 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                <div className="flex items-center gap-1.5 text-xs text-slate-700">
-                  <Warehouse size={13} className="text-slate-400 shrink-0" />
-                  <span>VMI Storage Base Rate</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-mono text-xs font-bold text-slate-900">
-                    $0.48 / m³ / day
-                  </span>
-                </div>
-              </div>
-
               <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-xs text-slate-700">Trading Margin (MTD)</span>
                 <div className="text-right">

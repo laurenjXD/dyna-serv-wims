@@ -26,6 +26,14 @@ interface ReportsHeaderProps {
   onExportRawData: (format: "csv" | "xlsx") => void;
 }
 
+function formatDateLabel(value: string): string {
+  if (!value) return "Select date";
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString(undefined, { month: "short", day: "2-digit", year: "numeric" });
+}
+
 export function ReportsHeader({
   facility,
   horizon,
@@ -178,13 +186,7 @@ export function ReportsHeader({
                     {z.startsWith("ZONE-") || z.startsWith("Zone ") ? `${z}` : `Zone ${z}`}
                   </option>
                 ))
-              ) : (
-                <>
-                  <option value="ZONE-A">Zone A — High-Bay Pallet Racks</option>
-                  <option value="ZONE-B">Zone B — Bulk Floor Stacks</option>
-                  <option value="ZONE-C">Zone C — Cold Chain Cleanroom</option>
-                </>
-              )}
+              ) : null}
             </select>
           </div>
 
@@ -232,13 +234,7 @@ export function ReportsHeader({
 
           {/* Active Date Span Pill */}
           <span className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-semibold text-slate-700">
-            {horizon === "7D"
-              ? "Sep 05 – Sep 12, 2026"
-              : horizon === "30D"
-              ? "Aug 14 – Sep 12, 2026"
-              : horizon === "90D"
-              ? "Jun 14 – Sep 12, 2026"
-              : `${startDate} to ${endDate}`}
+            {formatDateLabel(startDate)} to {formatDateLabel(endDate)}
           </span>
         </div>
 

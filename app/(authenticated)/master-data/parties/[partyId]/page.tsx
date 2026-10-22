@@ -197,29 +197,7 @@ export default async function PartyDetailPage({
       </DetailCard>
 
       {/* Billing & Financial Overview Card — Contextual shortcut to Central Billing Hub (Design System Level 1 Elevation) */}
-      {canViewFinancials && (() => {
-        const isEndCustomerOnly =
-          party.roles.length > 0 &&
-          party.roles.every((r) => r.role === "end_customer");
-
-        if (isEndCustomerOnly) {
-          return (
-            <div className="rounded-2xl border border-outline-variant/30 bg-surface-light-grey/40 p-5 shadow-elevation-1 sm:p-6">
-              <div className="flex items-center gap-2">
-                <h2 className="font-heading text-xl font-bold text-text-grey">
-                  Billing &amp; Statements of Account
-                </h2>
-                <span className="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 font-mono text-body-xs font-semibold text-slate-700">
-                  No Billing Applies
-                </span>
-              </div>
-              <p className="mt-2 font-body text-body-sm text-text-grey">
-                End-customers do not receive billings (no billing applies to them). No commercial contracts, storage fees, or Statements of Account (SOA) are generated for this organization.
-              </p>
-            </div>
-          );
-        }
-
+      {canViewFinancials && party.flowRelationships.some((relationship) => relationship.relationship === "vmi_customer") && (() => {
         return (
           <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
