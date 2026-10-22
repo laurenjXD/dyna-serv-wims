@@ -15,6 +15,8 @@ import { UserPreferencesProvider } from "@/lib/user-settings/preferences";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { getEffectiveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
 import { ScannerSettingsProvider } from "@/components/barcode/ScannerSettingsProvider";
+import { SessionIdleGuard } from "@/components/global/SessionIdleGuard";
+import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +31,20 @@ export default async function AuthenticatedLayout({
   // Server Component redirect exceptions.
   const resolver = await createPageResolver();
   const generalSettings = await getEffectiveGeneralSettings();
+  const securitySettings = await getEffectiveSecuritySettings();
   const initialResolution = await resolver.getContext();
 
   return (
     <UserPreferencesProvider>
       <ScannerSettingsProvider settings={generalSettings.scanner}>
-        <AuthenticatedShellBoundary initialResolution={initialResolution}>
-          <ShellChrome>{children}</ShellChrome>
-        </AuthenticatedShellBoundary>
+        <SessionIdleGuard
+          mobileIdleTimeoutMinutes={securitySettings.sessionConfig.mobileIdleTimeoutMinutes}
+          desktopIdleTimeoutMinutes={securitySettings.sessionConfig.desktopIdleTimeoutMinutes}
+        >
+          <AuthenticatedShellBoundary initialResolution={initialResolution}>
+            <ShellChrome>{children}</ShellChrome>
+          </AuthenticatedShellBoundary>
+        </SessionIdleGuard>
       </ScannerSettingsProvider>
     </UserPreferencesProvider>
   );

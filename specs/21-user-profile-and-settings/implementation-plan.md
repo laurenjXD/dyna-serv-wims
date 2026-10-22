@@ -1,6 +1,6 @@
 # Settings Functional-Gap Implementation Plan
 
-Status: In progress
+Status: Implemented with deployment follow-ups
 Source: Approved `requirements.md`, `design.md`, and `tasks.md`
 
 ## Phase 1 — Durable contracts and safe persistence
@@ -45,6 +45,6 @@ Source: Approved `requirements.md`, `design.md`, and `tasks.md`
 
 ## Current implementation status
 
-Completed: Phase 1; Phase 3 network/password enforcement; Phase 2 document/low-stock existing consumers and scanner decoder/feedback wiring; Team reactivation error feedback.
+Completed: Phase 1; Phase 2 document/low-stock existing consumers, low-stock email delivery, quarantine in-app alerts, scanner decoder/feedback wiring, and capability-aware torch/focus constraints; Phase 3 network/password/MFA-unenroll enforcement plus client idle enforcement; Phase 4 team-action feedback and shared state UX; and Phase 5 typecheck, focused unit tests, and production build. The daily PDF control is explicitly disabled until a deployment scheduler is configured, so it cannot falsely appear active.
 
-Remaining: scheduled/email/quarantine delivery controls, browser capability-specific scanner controls, true session idle enforcement, MFA policy enforcement boundary, and full settings Playwright coverage.
+Deployment follow-ups: configure a trusted scheduler/worker for daily PDF delivery, and add full settings Playwright coverage against a running Postgres/Supabase environment. Supabase remains authoritative for server-side session/MFA lifecycle; the application now enforces idle timeout in the authenticated client and rejects protected floor mutations outside the configured network.

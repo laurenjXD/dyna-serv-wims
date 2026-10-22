@@ -42,6 +42,10 @@ interface ScannerInstance {
   pause: () => void;
   stop?: () => Promise<void>;
   clear: () => Promise<void>;
+  getRunningTrackCameraCapabilities?: () => {
+    torchFeature?: () => { isSupported: () => boolean };
+  };
+  applyVideoConstraints?: (constraints: MediaTrackConstraints) => Promise<void>;
   isScanning?: boolean;
 }
 
@@ -216,6 +220,7 @@ export function MobileQRScanner({
             handleSuccess,
             handleError,
           );
+          await applyCameraPreferences(scannerInstance);
           if (isMounted) {
             setIsLoading(false);
             setErrorMessage(null);
@@ -230,6 +235,7 @@ export function MobileQRScanner({
               handleSuccess,
               handleError,
             );
+            await applyCameraPreferences(scannerInstance);
             if (isMounted) {
               setIsLoading(false);
               setErrorMessage(null);
@@ -261,6 +267,36 @@ export function MobileQRScanner({
         if (!isMounted) return;
         setIsLoading(false);
         setErrorMessage("Scanner initialization error.");
+      }
+    }
+
+    async function applyCameraPreferences(scannerInstance: ScannerInstance) {
+      if (!scannerInstance.applyVideoConstraints) return;
+
+      // Camera capabilities are device/browser-specific. Apply each optional
+      // preference only when the active track advertises support; a rejected
+      // optional constraint must never prevent barcode scanning.
+      if (scannerSettings.torchDefault) {
+        try {
+          const capabilities = scannerInstance.getRunningTrackCameraCapabilities?.();
+          if (capabilities?.torchFeature?.().isSupported()) {
+            await scannerInstance.applyVideoConstraints({
+              advanced: [{ torch: true }],
+            } as unknown as MediaTrackConstraints);
+          }
+        } catch {
+          // Torch is an enhancement, not a scanner prerequisite.
+        }
+      }
+
+      if (scannerSettings.tapToFocus) {
+        try {
+          await scannerInstance.applyVideoConstraints({
+            advanced: [{ focusMode: "continuous" }],
+          } as unknown as MediaTrackConstraints);
+        } catch {
+          // Focus mode is not available on every browser/camera combination.
+        }
       }
     }
 

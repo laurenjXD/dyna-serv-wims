@@ -27,6 +27,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { verifyFloorNetworkAccess } from "@/app/(authenticated)/settings/security/actions";
+import { emitQuarantineAlert } from "@/lib/notifications/quarantine";
 import { validateCreateWrr } from "@/lib/receiving/wrr-schema";
 import { matchScan } from "@/lib/receiving/scan-matcher";
 import type { WrrLine } from "@/lib/receiving/scan-matcher";
@@ -228,6 +229,7 @@ export async function createWrr(
 
   const data = validation.data;
   const userId = perm.context.userId;
+  let quarantinedCommit = false;
 
   // 3. Generate WRR number
   const wrrNumber = generateWrrNumber();
@@ -962,6 +964,7 @@ export async function commitWrrLine(
   // this line's inventory rows; retries observe the existing successful
   // result instead.
   let rlsResult: import("@/lib/db/rls-transaction").RlsTransactionResult<CommitWrrLineResult>;
+  let quarantinedCommit = false;
   try {
     rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
       const tx = rlsTx.db as DbLike;
@@ -1171,6 +1174,7 @@ export async function commitWrrLine(
         })));
 
         if (hasInspectionLocation || line.disposition === "inspect") {
+          quarantinedCommit = true;
           await tx.insert(inspectionCases).values({
             contextType: "inbound",
             sourceRefType: "wrr_item",
@@ -1211,7 +1215,10 @@ export async function commitWrrLine(
   if (rlsResult.kind === "unauthenticated") {
     return { ok: false, errors: ["forbidden"] };
   }
-  if (rlsResult.value.ok) await emitLowStockAlerts();
+  if (rlsResult.value.ok) {
+    if (quarantinedCommit) await emitQuarantineAlert(wrrItemId, `WRR ${wrrId}`);
+    await emitLowStockAlerts();
+  }
   return rlsResult.value;
 }
 

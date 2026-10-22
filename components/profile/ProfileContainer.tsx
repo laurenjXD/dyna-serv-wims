@@ -32,7 +32,7 @@ import { SecurityTab } from "./SecurityTab";
 import { PreferencesTab } from "./PreferencesTab";
 import { User, ShieldAlert, Sliders, LogOut, Lock, KeyRound } from "lucide-react";
 
-export function ProfileContainer({ profile }: { profile: OwnProfile }) {
+export function ProfileContainer({ profile, mfaRequiredByPolicy = false }: { profile: OwnProfile; mfaRequiredByPolicy?: boolean }) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
       <div className="flex flex-col gap-1 border-b border-slate-200/80 pb-4">
@@ -91,7 +91,7 @@ export function ProfileContainer({ profile }: { profile: OwnProfile }) {
             </p>
           </div>
         </div>
-        <SecurityTab profile={profile} />
+        <SecurityTab profile={profile} mfaRequiredByPolicy={mfaRequiredByPolicy} />
       </section>
 
       {/* Application Preferences Section */}

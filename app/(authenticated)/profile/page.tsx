@@ -8,6 +8,7 @@
 import { getOwnProfile } from "./actions";
 import { ProfileContainer } from "@/components/profile/ProfileContainer";
 import { ShellStateView } from "@/components/global/ShellStateView";
+import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
 
 export default async function ProfilePage() {
   const profile = await getOwnProfile();
@@ -19,5 +20,11 @@ export default async function ProfilePage() {
     return <ShellStateView state={{ kind: "forbidden" }} />;
   }
 
-  return <ProfileContainer profile={profile} />;
+  const securitySettings = await getEffectiveSecuritySettings();
+  const mfaRequiredByPolicy =
+    securitySettings.authRules.mfaPolicy === "enforced" ||
+    (securitySettings.authRules.mfaPolicy === "role_gated" &&
+      profile.roles.some((role) => role.key === "administrator" || role.key === "supervisor"));
+
+  return <ProfileContainer profile={profile} mfaRequiredByPolicy={mfaRequiredByPolicy} />;
 }

@@ -126,7 +126,7 @@ interface MfaFactor {
   status: string;
 }
 
-function MfaSection() {
+function MfaSection({ mfaRequiredByPolicy }: { mfaRequiredByPolicy: boolean }) {
   const [factors, setFactors] = useState<MfaFactor[]>([]);
   const [enrolling, setEnrolling] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -134,8 +134,6 @@ function MfaSection() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
-
-  const mfaRequiredByPolicy = false;
 
   useEffect(() => {
     const supabase = createClient();
@@ -333,11 +331,11 @@ function ActiveSessionsList({ profile }: { profile: OwnProfile }) {
   );
 }
 
-export function SecurityTab({ profile }: { profile: OwnProfile }) {
+export function SecurityTab({ profile, mfaRequiredByPolicy = false }: { profile: OwnProfile; mfaRequiredByPolicy?: boolean }) {
   return (
     <div className="space-y-6">
       <ChangePasswordForm />
-      <MfaSection />
+      <MfaSection mfaRequiredByPolicy={mfaRequiredByPolicy} />
       <ActiveSessionsList profile={profile} />
     </div>
   );

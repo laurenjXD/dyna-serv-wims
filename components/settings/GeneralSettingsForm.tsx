@@ -507,7 +507,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
               Notification &amp; Floor Alerts
             </h2>
             <p className="font-body text-xs text-slate-500">
-              Configure alert thresholds and delivery preferences. Item-level reorder levels remain the authoritative stock threshold; low-stock notification delivery is not enabled yet.
+              Configure low-stock thresholds, quarantine in-app alerts, and optional low-stock email delivery. Item-level reorder levels remain authoritative when present.
             </p>
           </div>
         </div>
@@ -560,6 +560,41 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
+                checked={settings.alerts.emailAlertsEnabled}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    alerts: { ...settings.alerts, emailAlertsEnabled: e.target.checked },
+                  })
+                }
+                className="h-4 w-4 rounded text-brand-navy focus:ring-brand-navy"
+              />
+              <span className="font-body text-xs font-semibold text-slate-800">
+                Send low-stock email alerts when a new in-app alert is created
+              </span>
+            </label>
+
+            <div>
+              <label className="block font-label text-xs font-bold text-slate-700 mb-1" htmlFor="settings-subscription-email">
+                Low-Stock Alert Email
+              </label>
+              <input
+                id="settings-subscription-email"
+                type="email"
+                value={settings.alerts.subscriptionEmail}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    alerts: { ...settings.alerts, subscriptionEmail: e.target.value },
+                  })
+                }
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+              />
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
                 checked={settings.alerts.qcQuarantineAlerts}
                 onChange={(e) =>
                   setSettings({
@@ -577,23 +612,16 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
               </span>
             </label>
 
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-not-allowed opacity-60">
               <input
                 type="checkbox"
                 checked={settings.alerts.dailyPdfReportSubscription}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    alerts: {
-                      ...settings.alerts,
-                      dailyPdfReportSubscription: e.target.checked,
-                    },
-                  })
-                }
+                disabled
+                readOnly
                 className="h-4 w-4 rounded text-brand-navy focus:ring-brand-navy"
               />
               <span className="font-body text-xs font-semibold text-slate-800">
-                Daily automated Master Inventory &amp; Valuation PDF report delivery at shift closing (06:00 PM)
+                Daily automated Master Inventory &amp; Valuation PDF report delivery (scheduler not configured)
               </span>
             </label>
           </div>

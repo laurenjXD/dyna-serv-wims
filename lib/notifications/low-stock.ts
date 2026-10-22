@@ -5,6 +5,7 @@ import { notifications } from "@/lib/db/schema/notifications";
 import { roles, userProfiles, userRoles } from "@/lib/db/schema/rbac";
 import { systemSettings } from "@/lib/db/schema/system_settings";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { Resend } from "resend";
 
 const LOW_STOCK_COOLDOWN_HOURS = 24;
 
@@ -12,6 +13,8 @@ type GeneralSettingsValue = {
   alerts?: {
     lowStockThresholdUnits?: number;
     lowStockThresholdCbm?: number;
+    emailAlertsEnabled?: boolean;
+    subscriptionEmail?: string;
   };
 };
 
@@ -120,6 +123,16 @@ export async function emitLowStockAlerts(): Promise<number> {
         if (error) throw error;
         created += 1;
       }
+    }
+
+    if (created > 0 && settings.alerts?.emailAlertsEnabled && settings.alerts.subscriptionEmail && process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL,
+        to: [settings.alerts.subscriptionEmail],
+        subject: `WIMS low-stock alert (${lowStockRows.length} item${lowStockRows.length === 1 ? "" : "s"})`,
+        html: `<p>Low-stock notifications were created for ${lowStockRows.length} item(s) in Dyna-Serv WIMS.</p><p>Review the in-app notifications for the authoritative item quantities and thresholds.</p>`,
+      }).catch((error) => console.error("[notifications] low-stock email failed", error));
     }
 
     return created;
