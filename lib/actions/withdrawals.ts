@@ -633,10 +633,20 @@ export async function commitWithdrawal(
     // the inventory reservation. generate_document_number acquires a row-level
     // lock on document_number_sequences so the sequence is atomic.
     try {
-      const numRows = (await db.execute!(
-        sql`SELECT generate_document_number('pick_list')`,
-      )) as Array<{ generate_document_number: string }>;
-      const documentNumber = numRows[0].generate_document_number;
+      let documentNumber: string;
+      let documentStatus: "pending" | "failed" = "pending";
+      try {
+        const numRows = (await db.execute!(
+          sql`SELECT generate_document_number('pick_list')`,
+        )) as Array<{ generate_document_number: string }>;
+        documentNumber = numRows[0]?.generate_document_number ?? "";
+        if (!documentNumber) throw new Error("missing_document_number");
+      } catch {
+        // Keep a durable retry target when the sequence or document service is
+        // unavailable. This row is never treated as a ready artifact.
+        documentNumber = `PL-PENDING-${randomUUID()}`;
+        documentStatus = "failed";
+      }
       await db
         .insert(generatedDocuments)
         .values({
@@ -646,7 +656,7 @@ export async function commitWithdrawal(
           sourceType: "inventory_commitment",
           sourceId: commitmentId,
           snapshotHash: hashSnapshot({ pickListId, commitmentId, lines: data.lines }),
-          status: "pending",
+          status: documentStatus,
           systemExecutor: "commitWithdrawal",
         });
     } catch {
@@ -1318,10 +1328,20 @@ export async function dispatchPickList(
       // transaction ids is still captured in the snapshot hash below for audit.
       try {
         if (!commitmentId) throw new Error("missing_dispatch_commitment");
-        const numRows = (await db.execute!(
-          sql`SELECT generate_document_number('acknowledgement_receipt')`,
-        )) as Array<{ generate_document_number: string }>;
-        const documentNumber = numRows[0].generate_document_number;
+        let documentNumber: string;
+        let documentStatus: "pending" | "failed" = "pending";
+        try {
+          const numRows = (await db.execute!(
+            sql`SELECT generate_document_number('acknowledgement_receipt')`,
+          )) as Array<{ generate_document_number: string }>;
+          documentNumber = numRows[0]?.generate_document_number ?? "";
+          if (!documentNumber) throw new Error("missing_document_number");
+        } catch {
+          // Keep a durable retry target when the document-number sequence is
+          // unavailable. This row is never treated as a ready artifact.
+          documentNumber = `AR-PENDING-${randomUUID()}`;
+          documentStatus = "failed";
+        }
         await db
           .insert(generatedDocuments)
           .values({
@@ -1337,7 +1357,7 @@ export async function dispatchPickList(
                 (t) => (t as { id: string }).id,
               ),
             }),
-            status: "pending",
+            status: documentStatus,
             systemExecutor: "dispatchPickList",
           });
       } catch {

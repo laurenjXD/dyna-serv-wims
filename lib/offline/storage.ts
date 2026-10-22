@@ -54,8 +54,12 @@ export async function enqueueOfflineEntry(entry: OfflineQueueEnvelope, orderingK
   await transact(OUTBOX_STORE, "readwrite", (store) => store.add({ ...entry, orderingKey }));
 }
 
-export async function listPendingOfflineEntries(capturedByUserId: string): Promise<OfflineQueueEnvelope[]> {
-  const rows = await transact<OfflineQueueEnvelope[]>(OUTBOX_STORE, "readonly", (store) => store.index("capturedByUserId").getAll(capturedByUserId));
+export async function listPendingOfflineEntries(capturedByUserId?: string): Promise<OfflineQueueEnvelope[]> {
+  const rows = await transact<OfflineQueueEnvelope[]>(OUTBOX_STORE, "readonly", (store) =>
+    capturedByUserId === undefined
+      ? store.getAll()
+      : store.index("capturedByUserId").getAll(capturedByUserId),
+  );
   return rows.filter((row) => row.status === "pending" || row.status === "failed");
 }
 

@@ -60,38 +60,9 @@ export function FloorLanding({
   pendingSyncCount?: number;
   workQueue?: SmartWorkItem[];
 }) {
-  const defaultWorkQueue: SmartWorkItem[] = workQueue.length > 0 ? workQueue : [
-    {
-      id: "wq-1",
-      title: "Trading Pick #PL-2026-089 (Air Filters)",
-      category: "trading_pick",
-      priority: "urgent",
-      slaLabel: "15 min SLA left",
-      actionUrl: "/outgoing",
-      actionLabel: "Start Pick",
-      countBadge: "12 Lines",
-    },
-    {
-      id: "wq-2",
-      title: "Inbound WRR #WRR-1044 Pallet Putaway",
-      category: "inbound_wrr",
-      priority: "high",
-      slaLabel: "Dock Bay 2",
-      actionUrl: "/receiving",
-      actionLabel: "Putaway",
-      countBadge: "8 Pallets",
-    },
-    {
-      id: "wq-3",
-      title: "VMI Buffer Restock Aisle 04-B (Seals)",
-      category: "vmi_restock",
-      priority: "normal",
-      slaLabel: "Min threshold reached",
-      actionUrl: "/transfers",
-      actionLabel: "Transfer",
-      countBadge: "4 Bins",
-    },
-  ];
+  // The queue must be authoritative. Never show sample work items on the
+  // operational floor surface; an empty result means there is no queued work.
+  const authoritativeWorkQueue = workQueue;
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-5 sm:px-6 sm:py-6">
@@ -256,7 +227,12 @@ export function FloorLanding({
         </div>
 
         <div className="space-y-2.5">
-          {defaultWorkQueue.map((item) => (
+          {authoritativeWorkQueue.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-outline-variant/50 bg-surface-white p-5 text-center">
+              <p className="font-body text-sm font-semibold text-on-surface">No priority work is currently queued.</p>
+              <p className="mt-1 font-body text-xs text-text-grey">New receiving, picking, transfer, and inspection work will appear here when assigned.</p>
+            </div>
+          ) : authoritativeWorkQueue.map((item) => (
             <Link
               key={item.id}
               href={item.actionUrl}

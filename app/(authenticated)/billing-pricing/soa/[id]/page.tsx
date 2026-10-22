@@ -102,11 +102,12 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   let suretyBondUsd = 0;
   const ctfUsd = 0.0;
   let customCbmRows: DailyStorageRow[] | undefined = undefined;
+  let calculationUnavailable = false;
 
   {
       // 1. Warehousing CBM Daily Ledger Rows & Storage Sum
-      const dailyRows = await getVmiDailyBalanceRows(party.id, monthIdx, year);
-      if (dailyRows.length > 0) {
+      try {
+        const dailyRows = await getVmiDailyBalanceRows(party.id, monthIdx, year);
         storageAmount = Number(
           dailyRows.reduce((sum, r) => sum + r.storageAmountUsd, 0).toFixed(2)
         );
@@ -121,6 +122,9 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
           rate: r.appliedStorageRateUsd,
           amount: r.storageAmountUsd,
         }));
+      } catch (error) {
+        calculationUnavailable = true;
+        console.error("SOA detail: daily balance data unavailable", error);
       }
 
       // 2. Handling In / Out Movement Aggregation
@@ -134,6 +138,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         handlingInUsd = Number(handling.handlingInUsd.toFixed(2));
         handlingOutUsd = Number(handling.handlingOutUsd.toFixed(2));
       } catch (error) {
+        calculationUnavailable = true;
         console.error("SOA detail: handling data unavailable", error);
       }
 
@@ -148,6 +153,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         documentationUsd = Number(charges.documentationUsd.toFixed(2));
         deliveryUsd = Number(charges.deliveryUsd.toFixed(2));
       } catch (error) {
+        calculationUnavailable = true;
         console.error("SOA detail: charge data unavailable", error);
       }
 
@@ -166,8 +172,25 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         if (truckLine) truckingAdminUsd = Number(truckLine.amountUsd.toFixed(2));
         if (suretyLine) suretyBondUsd = Number(suretyLine.amountUsd.toFixed(2));
       } catch (error) {
+        calculationUnavailable = true;
         console.error("SOA detail: recurring fee data unavailable", error);
       }
+  }
+
+  if (calculationUnavailable) {
+    return (
+      <div className="mx-auto max-w-container px-8 py-12">
+        <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 p-6">
+          <h1 className="font-heading text-xl font-bold text-on-surface">Statement data unavailable</h1>
+          <p className="mt-2 font-body text-body-md text-on-surface">
+            The system could not load every billing component for this organization and period.
+          </p>
+          <p className="mt-1 font-body text-body-sm text-text-grey">
+            No zero-value substitute was shown. Refresh and retry, or contact an administrator if the issue continues.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const customerName = party.name;

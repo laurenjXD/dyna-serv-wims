@@ -52,11 +52,23 @@ export async function replayStoredOfflineEntries(
   currentUserId: string,
   submit: SyncSubmitter,
 ): Promise<StoredReplayResult[]> {
-  const entries = await listPendingOfflineEntries(currentUserId);
+  // Load all pending entries so observations captured under a revoked or
+  // changed session can be quarantined explicitly instead of disappearing
+  // from the replay scan.
+  const entries = await listPendingOfflineEntries();
   const ordered = [...entries].sort((a, b) => a.createdAt - b.createdAt);
   const results: StoredReplayResult[] = [];
 
   for (const entry of ordered) {
+    if (entry.capturedByUserId !== currentUserId) {
+      const quarantined: OfflineQueueEnvelope = {
+        ...entry,
+        status: "quarantined_actor_mismatch",
+      };
+      await updateOfflineEntry(quarantined);
+      results.push({ entry: quarantined, outcome: "conflict" });
+      continue;
+    }
     const syncing: OfflineQueueEnvelope = {
       ...entry,
       status: "syncing",
