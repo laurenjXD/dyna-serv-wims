@@ -63,6 +63,37 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
+  const pickListErrorMessages: Record<string, { primary: string; next: string }> = {
+    forbidden: {
+      primary: "Your account does not have permission to generate pick lists.",
+      next: "Ask an administrator to grant the required inventory permission.",
+    },
+    fifo_override_required: {
+      primary: "The selected location is not the current FIFO/FEFO source.",
+      next: "Choose the recommended source or submit the required override request.",
+    },
+    no_rate_configured: {
+      primary: "No active Trading price is configured for this organization and item.",
+      next: "Ask an administrator to configure the Trading rate card, then retry.",
+    },
+    fx_rate_required: {
+      primary: "A current exchange rate is required before this Trading pick list can be created.",
+      next: "Ask an administrator to publish the current FX rate, then retry.",
+    },
+    price_invalid: {
+      primary: "The configured Trading price is invalid.",
+      next: "Ask an administrator to correct the rate card before retrying.",
+    },
+    insufficient_stock: {
+      primary: "The available stock changed before the reservation completed.",
+      next: "Refresh the inventory and choose a new allocation.",
+    },
+    stale_record: {
+      primary: "This record changed in another session.",
+      next: "Refresh the page and try again.",
+    },
+  };
+
   const resolver = await createPageResolver();
 
   // Gate: pick_list.read required for all tabs on this hub.
@@ -119,8 +150,8 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {pickListError && (
         <div role="alert" className="mt-4 rounded-lg border border-status-held/40 bg-status-held/5 p-4 shadow-sm">
           <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
-          <p className="mt-1 font-body text-body-md text-on-surface">{pickListError === "forbidden" ? "Your account does not have permission to generate pick lists." : pickListError === "fifo_override_required" ? "The selected location is not the current FIFO/FEFO source." : `Reason: ${pickListError.replaceAll(",", ", ")}`}</p>
-          <p className="mt-1 font-body text-body-md text-text-grey">{pickListError === "fifo_override_required" ? "Choose the recommended source location or submit the required FIFO/FEFO override request before generating the pick list." : "Check the destination organization and available quantity, then try again."}</p>
+          <p className="mt-1 font-body text-body-md text-on-surface">{pickListErrorMessages[pickListError]?.primary ?? `Request could not be completed (${pickListError.replaceAll(",", ", ")}).`}</p>
+          <p className="mt-1 font-body text-body-md text-text-grey">{pickListErrorMessages[pickListError]?.next ?? "Review the current organization and available quantity, then try again."}</p>
         </div>
       )}
 

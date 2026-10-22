@@ -34,7 +34,14 @@ export type VmiPaymentsDbLike = {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 function isMoney(value: string): boolean {
-  return /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(value) && Number(value) > 0;
+  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(value)) return false;
+  const [integerPart] = value.split(".");
+  // vmi_payments.amount_usd is decimal(14,4): at most ten integer digits.
+  // Check the bound before Number() so enormous strings cannot become
+  // Infinity and pass a simple `> 0` test.
+  if (integerPart.length > 10) return false;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0;
 }
 
 function isIsoDate(value: string): boolean {

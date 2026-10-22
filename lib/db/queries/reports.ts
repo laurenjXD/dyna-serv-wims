@@ -60,7 +60,9 @@ export async function getReportsExecutiveKpis(filters?: ReportFilterParams) {
     // Trading Gross Revenue & Margin Realized
     const [tradingMarginAgg] = await db
       .select({
-        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, ${items.sellingPrice}, 0)), 0)`,
+        // Historical Trading revenue must use the immutable document snapshot;
+        // never fall back to mutable master-item sellingPrice.
+        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, 0)), 0)`,
         cogs: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0)), 0)`,
       })
       .from(pickListItems)
@@ -179,7 +181,7 @@ export async function getTradingMarginReport(): Promise<{
       .select({
         period: sql<string>`to_char(${pickLists.createdAt}, 'Mon YYYY')`,
         monthNum: sql<number>`extract(month from ${pickLists.createdAt})::int`,
-        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, ${items.sellingPrice}, 0)), 0)`,
+        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, 0)), 0)`,
         cogs: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0)), 0)`,
       })
       .from(pickLists)
@@ -206,7 +208,7 @@ export async function getTradingMarginReport(): Promise<{
       .select({
         category: sql<string>`coalesce(${itemCategories.name}, 'General')`,
         unitsSold: sql<number>`coalesce(sum(${pickListItems.qty}), 0)::int`,
-        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, ${items.sellingPrice}, 0)), 0)`,
+        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, 0)), 0)`,
         cogs: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0)), 0)`,
       })
       .from(pickListItems)

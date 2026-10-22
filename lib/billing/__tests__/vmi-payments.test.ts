@@ -22,6 +22,17 @@ describe("VMI payment recording", () => {
     })).toEqual(["amount_must_be_positive", "payment_date_invalid"]);
   });
 
+  it("rejects amounts outside the decimal(12,4) storage bound", () => {
+    expect(validateRecordVmiPaymentInput({
+      partyId: "party",
+      periodId: "period",
+      recordedByUserId: "user",
+      amountUsd: "999999999999999999999999",
+      paymentDate: "2026-09-12",
+      type: "payment",
+    })).toEqual(["amount_must_be_positive"]);
+  });
+
   it("records a payment and refreshes a draft period's SOA balance", async () => {
     const selectPeriod = chain([{
       id: "period-1",

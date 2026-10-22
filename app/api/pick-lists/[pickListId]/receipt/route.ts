@@ -112,8 +112,13 @@ export async function GET(
   }
 
   const nonNullPickList = pickList;
-  const headings = ["NO.", "QTY", "SPQ", "NO. OF BOXES", "ITEM CODE", "CUST PN", "ITEM DESCRIPTION", "LOT NUMBER", "PO NUMBER", "INVOICE NO.", "REMARKS", "LOCATION"];
-  const widths = [26, 42, 36, 54, 80, 64, 126, 76, 60, 60, 66, 95.89];
+  const isPricedFlow = nonNullPickList.flowType === "trading" || nonNullPickList.flowType === "vmi";
+  const headings = isPricedFlow
+    ? ["NO.", "QTY", "SPQ", "BOXES", "ITEM CODE", "CUST PN", "DESCRIPTION", "LOT", "LOCATION", "UNIT PRICE", "LINE TOTAL", "REMARKS"]
+    : ["NO.", "QTY", "SPQ", "NO. OF BOXES", "ITEM CODE", "CUST PN", "ITEM DESCRIPTION", "LOT NUMBER", "PO NUMBER", "INVOICE NO.", "REMARKS", "LOCATION"];
+  const widths = isPricedFlow
+    ? [24, 38, 32, 42, 68, 54, 108, 62, 78, 62, 68, 87.89]
+    : [26, 42, 36, 54, 80, 64, 126, 76, 60, 60, 66, 95.89];
 
   // Helper to draw standard document header & table header
   function renderDocumentHeader(page: PDFPage, pageNum: number, totalPages: number): number {
@@ -183,20 +188,20 @@ export async function GET(
     for (const [idxOffset, line] of linesToRender.entries()) {
       const globalIndex = lineCursor - linesToRender.length + idxOffset;
       let x = MARGIN;
-      const values = [
-        String(globalIndex + 1),
-        line.qty.toLocaleString(),
-        line.spq.toLocaleString(),
-        line.numberOfBoxes.toLocaleString(),
-        line.itemCode,
-        line.customerItemCode ?? "—",
-        line.itemDescription ?? "—",
-        line.lotNumber,
-        "—",
-        "—",
-        "—",
-        line.locationLabel,
-      ];
+      const lineTotal = line.unitPrice == null ? null : Number(line.unitPrice) * line.qty;
+      const values = isPricedFlow
+        ? [
+            String(globalIndex + 1), line.qty.toLocaleString(), line.spq.toLocaleString(),
+            line.numberOfBoxes.toLocaleString(), line.itemCode, line.customerItemCode ?? "—",
+            line.itemDescription ?? "—", line.lotNumber, line.locationLabel,
+            line.unitPrice == null ? "—" : Number(line.unitPrice).toFixed(4),
+            lineTotal == null ? "—" : lineTotal.toFixed(2), "—",
+          ]
+        : [
+            String(globalIndex + 1), line.qty.toLocaleString(), line.spq.toLocaleString(),
+            line.numberOfBoxes.toLocaleString(), line.itemCode, line.customerItemCode ?? "—",
+            line.itemDescription ?? "—", line.lotNumber, "—", "—", "—", line.locationLabel,
+          ];
       values.forEach((value, column) => {
         drawCell(
           page,
@@ -219,10 +224,22 @@ export async function GET(
       let x = MARGIN;
       const totalQty = lines.reduce((sum, line) => sum + line.qty, 0);
       const totalBoxes = lines.reduce((sum, line) => sum + line.numberOfBoxes, 0);
-      ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", ""].forEach((value, column) => {
+      const referenceTotal = isPricedFlow
+        ? lines.reduce((sum, line) => sum + (line.unitPrice == null ? 0 : Number(line.unitPrice) * line.qty), 0)
+        : null;
+      const totals = isPricedFlow
+        ? ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", referenceTotal == null ? "—" : referenceTotal.toFixed(2), ""]
+        : ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", ""];
+      totals.forEach((value, column) => {
         drawCell(page, value, x, rowTop, widths[column], 20, bold, 7, column < 4 ? "center" : "left", HEADER_FILL);
         x += widths[column];
       });
+
+      if (nonNullPickList.flowType === "vmi") {
+        page.drawText("Unit prices are per-release reference values only. Authoritative billing is the period VMI statement.", {
+          x: MARGIN, y: rowTop - 32, size: 7, font: regular, color: MUTED,
+        });
+      }
 
       // Delivery Remarks Box
       const instructionTop = rowTop - 20 - 10;

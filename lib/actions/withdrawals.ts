@@ -62,6 +62,7 @@ import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { positiveInteger } from "@/lib/inventory/quantities";
+import { freezeTradingPriceInTransaction } from "@/lib/billing/trading-price-freeze";
 import {
   validateOutboundOrganization,
   validateReceivingOrganization,
@@ -395,6 +396,10 @@ export async function commitWithdrawal(
           itemId: items.id,
           itemCode: items.code,
           itemDescription: items.description,
+          // VMI acknowledgement receipts show the current item selling price
+          // only as a per-release reference. Trading uses its immutable rate
+          // card snapshot below; Supplies intentionally has no price.
+          sellingPrice: items.sellingPrice,
           customerItemCode: items.customerItemCode,
           dsgcItemNumber: items.dsgcItemNumber,
           supplierItemCode: items.supplierItemCode,
@@ -570,9 +575,28 @@ export async function commitWithdrawal(
           // Authoritative qty is base-unit pieces. The document also freezes
           // the physical box count required at dispatch.
           numberOfBoxes: Math.ceil(line.qty / positiveInteger(line.spq)),
+          ...(data.flowType === "vmi" ? { unitPrice: line.sellingPrice ?? null } : {}),
         })
         .returning();
       const pickListItemId = (insertedPickListItem as { id: string }).id;
+
+      // Trading documents require an immutable price snapshot before the
+      // reservation can become durable. VMI carries only a per-release
+      // reference and Supplies carries no price, so neither enters this path.
+      if (data.flowType === "trading") {
+        const price = await freezeTradingPriceInTransaction(db, {
+          partyId: data.customerPartyId,
+          itemId: line.itemId,
+          pickListItemId,
+          qty: String(line.qty),
+          createdByUserId: userId,
+        });
+        if (!price.ok) throw new Error(price.error);
+        await db
+          .update(pickListItems)
+          .set({ unitPrice: price.sellPrice })
+          .where(eq(pickListItems.id, pickListItemId));
+      }
 
       const reserved = await db
         .update(lotLocationBalances)
@@ -642,6 +666,8 @@ export async function commitWithdrawal(
       "approval_consumed",
       "approval_forbidden",
     ].find((code) => message.includes(code));
+    const pricingError = ["no_rate_configured", "fx_rate_required", "price_invalid"]
+      .find((code) => message.includes(code));
     return {
       ok: false,
       errors: [
@@ -649,7 +675,7 @@ export async function commitWithdrawal(
           ? "provisional_item_code"
           : message === "invalid_end_customer"
             ? "invalid_end_customer"
-          : approvalError ?? "unable_to_reserve_stock",
+          : pricingError ?? approvalError ?? "unable_to_reserve_stock",
       ],
     };
   }

@@ -243,8 +243,30 @@ function makeWithdrawalDb(
     select: vi.fn().mockImplementation(() => {
       const chain = makeSelectChain([], forCalls);
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
-        if (table[Symbol.for("drizzle:Name")] === "parties") {
+        const tableName = table[Symbol.for("drizzle:Name")];
+        if (tableName === "parties") {
           return makeSelectChain(organizationRows, forCalls);
+        }
+        if (tableName === "trading_policies") {
+          return makeSelectChain([{
+            id: "trading-policy-uuid-1",
+            partyId: "party-uuid-customer",
+            itemId: "item-uuid-1",
+            buyCost: "10.0000",
+            buyCurrency: "PHP",
+            marginType: "percentage",
+            marginValue: "10.0000",
+            sellPrice: "11.0000",
+            sellPriceIsOverride: false,
+            sellCurrency: "PHP",
+            fxSource: null,
+            isActive: true,
+            effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+            effectiveTo: null,
+          }], forCalls);
+        }
+        if (tableName === "forex_rates") {
+          return makeSelectChain([], forCalls);
         }
         return makeSelectChain(selectRows.shift() ?? pickListRows, forCalls);
       });
@@ -800,12 +822,31 @@ function makeSelectFidelityDb(rows: AnyRecord[]) {
       });
 
       let resultRows = projectedRows;
+      const tradingPolicyRows = [{
+        id: "trading-policy-uuid-1",
+        partyId: "party-uuid-customer",
+        itemId: "item-uuid-1",
+        buyCost: "10.0000",
+        buyCurrency: "PHP",
+        marginType: "percentage",
+        marginValue: "10.0000",
+        sellPrice: "11.0000",
+        sellPriceIsOverride: false,
+        sellCurrency: "PHP",
+        fxSource: null,
+        isActive: true,
+        effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+        effectiveTo: null,
+      }];
       const chain: AnyRecord = {};
       for (const method of ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset"]) {
         chain[method] = vi.fn(() => chain);
       }
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
-        if (table[Symbol.for("drizzle:Name")] === "parties") resultRows = organizationRows;
+        const tableName = table[Symbol.for("drizzle:Name")];
+        if (tableName === "parties") resultRows = organizationRows;
+        if (tableName === "trading_policies") resultRows = tradingPolicyRows;
+        if (tableName === "forex_rates") resultRows = [];
         return chain;
       });
       chain["then"] = (onFulfilled: (value: unknown[]) => unknown, onRejected?: (reason: unknown) => unknown) =>

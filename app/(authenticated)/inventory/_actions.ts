@@ -45,6 +45,9 @@ export async function generatePickList(
       invalid_transition: "This workflow step is no longer available. Refresh the page to see the current state.",
       insufficient_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
       duplicate_operation: "This operation was already completed. The original result is shown.",
+      no_rate_configured: "No active Trading price is configured for this organization and item.",
+      fx_rate_required: "A current exchange rate is required before this Trading withdrawal can be created.",
+      price_invalid: "The configured Trading price is invalid. Contact an administrator before retrying.",
       unable_to_reserve_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
     };
     return { ok: false, error: messages[result.errors[0]] ?? "Pick list was not created. Please try again." };
