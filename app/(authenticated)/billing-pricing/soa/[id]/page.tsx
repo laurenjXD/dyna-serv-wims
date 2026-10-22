@@ -21,6 +21,7 @@ import { getVmiHandlingForPeriod } from "@/lib/billing/vmi-handling";
 import { getVmiChargeAggregationForPeriod } from "@/lib/billing/vmi-charge-aggregation";
 import { getVmiRecurringFeeAggregationForPeriod } from "@/lib/billing/vmi-recurring-fee-aggregation";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
+import { WorkflowState } from "@/components/ui/WorkflowState";
 import {
   SoaDetailClient,
   type SoaData,
@@ -180,15 +181,13 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   if (calculationUnavailable) {
     return (
       <div className="mx-auto max-w-container px-8 py-12">
-        <div role="alert" className="rounded-lg border border-status-held/40 bg-status-held/5 p-6">
-          <h1 className="font-heading text-xl font-bold text-on-surface">Statement data unavailable</h1>
-          <p className="mt-2 font-body text-body-md text-on-surface">
-            The system could not load every billing component for this organization and period.
-          </p>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
-            No zero-value substitute was shown. Refresh and retry, or contact an administrator if the issue continues.
-          </p>
-        </div>
+        <WorkflowState
+          kind="unavailable"
+          title="Statement data unavailable"
+          description="The system could not load every billing component for this Organization and period. No zero-value substitute was shown. Refresh and retry, or contact an administrator if the issue continues."
+          actionLabel="Back to SOA directory"
+          actionHref="/billing-pricing/soa"
+        />
       </div>
     );
   }

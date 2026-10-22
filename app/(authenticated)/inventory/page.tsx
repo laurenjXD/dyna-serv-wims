@@ -30,6 +30,7 @@ import { listPickLists } from "@/lib/db/queries/withdrawals";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listActiveEndCustomers, listActiveCustomerFlowParties } from "@/lib/db/queries/parties";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
+import { WorkflowState } from "@/components/ui/WorkflowState";
 import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
@@ -148,11 +149,15 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       </div>
 
       {pickListError && (
-        <div role="alert" className="mt-4 rounded-lg border border-status-held/40 bg-status-held/5 p-4 shadow-sm">
-          <p className="font-heading text-body-md font-semibold text-on-surface">Pick list was not created</p>
-          <p className="mt-1 font-body text-body-md text-on-surface">{pickListErrorMessages[pickListError]?.primary ?? `Request could not be completed (${pickListError.replaceAll(",", ", ")}).`}</p>
-          <p className="mt-1 font-body text-body-md text-text-grey">{pickListErrorMessages[pickListError]?.next ?? "Review the current organization and available quantity, then try again."}</p>
-        </div>
+        <WorkflowState
+          kind="error"
+          title="Pick list was not created"
+          description={`${pickListErrorMessages[pickListError]?.primary ?? `Request could not be completed (${pickListError.replaceAll(",", ", ")}).`} ${pickListErrorMessages[pickListError]?.next ?? "Review the current Organization and available quantity, then try again."}`}
+          actionLabel="Refresh inventory"
+          actionHref="/inventory"
+          className="mt-4"
+          testId="pick-list-generation-error"
+        />
       )}
 
       {overrideRequested && (

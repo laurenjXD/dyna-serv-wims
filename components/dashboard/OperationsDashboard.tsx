@@ -21,6 +21,7 @@ import {
   PieChart,
   Activity,
 } from "lucide-react";
+import { WorkflowState } from "@/components/ui/WorkflowState";
 
 export interface OperationsDashboardProps {
   kpis?: DashboardKpiData;
@@ -147,9 +148,14 @@ export function OperationsDashboard({
           activeStockFilter={activeStockFilter}
         />
       ) : (
-        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Live KPI data is temporarily unavailable. No placeholder totals are being shown; refresh to retry.
-        </div>
+        <WorkflowState
+          kind="unavailable"
+          title="Live KPI data is unavailable"
+          description="The dashboard could not load current totals. No placeholder values are being shown. Refresh and retry, or continue with the available operational views."
+          actionLabel="Refresh dashboard"
+          onAction={() => router.refresh()}
+          testId="dashboard-kpis-unavailable"
+        />
       )}
 
       {/* ── 3. Charts & Analytics Section ─────────────────────────────────── */}

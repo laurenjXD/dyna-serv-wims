@@ -15,6 +15,7 @@ export * from "./Switch";
 export * from "./Modal";
 export * from "./Alert";
 export * from "./EmptyState";
+export * from "./WorkflowState";
 export * from "./StatCard";
 export * from "./Skeleton";
 export * from "./LoadingSpinner";
