@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ExternalLink, MapPinned, Search } from "lucide-react";
+import { ExternalLink, MapPinned, Search, X } from "lucide-react";
 import type { LocationMapRow } from "@/lib/db/queries/locations";
 import {
   WAREHOUSE_MAP_CELLS,
@@ -14,6 +14,7 @@ import {
   rackLabelsForMap,
 } from "@/lib/location-map/layout";
 import { getMapCellDisplayStatus, type LocationMapStatus } from "@/lib/location-map/status";
+import { toggleMapSelection } from "@/lib/location-map/selection";
 
 const STATUS_META: Record<LocationMapStatus, { label: string; color: string; className: string }> = {
   available: { label: "Available", color: "#10B981", className: "bg-emerald-50 text-emerald-800 border-emerald-200" },
@@ -57,7 +58,9 @@ export function LocationMapView({
   const [statusFilter, setStatusFilter] = useState("all");
   const [rackFilter, setRackFilter] = useState("all");
   const [organizationFilter, setOrganizationFilter] = useState("all");
-  const [selectedLabel, setSelectedLabel] = useState(initialSelectedLabel ?? "");
+  const [selectedLabels, setSelectedLabels] = useState<string[]>(
+    initialSelectedLabel ? [initialSelectedLabel] : [],
+  );
 
   const rowByLabel = useMemo(() => new Map(rows.map((row) => [row.label, row])), [rows]);
   const normalizedSearch = search.trim().toLowerCase();
@@ -92,7 +95,13 @@ export function LocationMapView({
     [filteredRows],
   );
 
-  const selectedRow = selectedLabel ? rowByLabel.get(selectedLabel) : undefined;
+  const selectedRows = useMemo(
+    () => selectedLabels
+      .map((label) => rowByLabel.get(label))
+      .filter((row): row is LocationMapRow => Boolean(row)),
+    [rowByLabel, selectedLabels],
+  );
+  const selectedRow = selectedRows.length === 1 ? selectedRows[0] : undefined;
   const mappedRows = filteredRows.filter((row) => row.isMapped);
   const unmappedRows = filteredRows.filter((row) => !row.isMapped);
   const rackLabels = rackLabelsForMap();
@@ -108,15 +117,37 @@ export function LocationMapView({
     { pieces: 0, boxes: 0, cbm: 0 },
   ), [filteredRows]);
   const mapSummaryScope = rackFilter === "all" ? "All warehouse" : `Rack ${rackFilter}`;
+  const selectedSummary = useMemo(() => selectedRows.reduce(
+    (summary, row) => ({
+      pieces: summary.pieces + row.totalUnits,
+      boxes: summary.boxes + row.totalBoxes,
+      cbm: summary.cbm + row.occupiedCbm,
+      items: summary.items + row.itemCount,
+      lots: summary.lots + row.lotCount,
+    }),
+    { pieces: 0, boxes: 0, cbm: 0, items: 0, lots: 0 },
+  ), [selectedRows]);
 
-  function selectLocation(row: LocationMapRow | undefined, label: string) {
-    setSelectedLabel(label);
+  function selectLocation(row: LocationMapRow | undefined, label: string, additive = false) {
+    const nextSelectedLabels = toggleMapSelection(selectedLabels, label, additive);
+    setSelectedLabels(nextSelectedLabels);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", "locations");
     params.set("view", "map");
-    params.set("label", label);
+    const focusLabel = nextSelectedLabels.at(-1);
+    if (focusLabel) params.set("label", focusLabel);
+    else params.delete("label");
     router.replace(`/enrollment?${params.toString()}`, { scroll: false });
     if (!row) return;
+  }
+
+  function clearSelection() {
+    setSelectedLabels([]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "locations");
+    params.set("view", "map");
+    params.delete("label");
+    router.replace(`/enrollment?${params.toString()}`, { scroll: false });
   }
 
   return (
@@ -200,7 +231,7 @@ export function LocationMapView({
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Layout {WAREHOUSE_MAP_LAYOUT_VERSION}</p>
-              <p className="font-body text-body-sm text-text-grey">Select a cell to inspect its live capacity and stock summary.</p>
+              <p className="font-body text-body-sm text-text-grey">Select a cell to inspect it, or Shift-click to select multiple cells.</p>
             </div>
             <span className="hidden font-mono text-xs text-text-grey sm:inline">{WAREHOUSE_MAP_SOURCE}</span>
           </div>
@@ -216,19 +247,20 @@ export function LocationMapView({
               {visibleCells.map((cell) => {
                 const row = filteredByLabel.get(cell.label) ?? rowByLabel.get(cell.label);
                 const { color, label } = statusForCell(row);
-                const selected = selectedLabel === cell.label;
+                const selected = selectedLabels.includes(cell.label);
                 const isFilteredOut = Boolean(row && !filteredByLabel.has(cell.label));
                 return (
                   <g
                     key={cell.key}
                     role="button"
                     tabIndex={0}
+                    aria-pressed={selected}
                     aria-label={`${cell.label}: ${isFilteredOut ? "filtered out" : label}`}
-                    onClick={() => selectLocation(row, cell.label)}
+                    onClick={(event) => selectLocation(row, cell.label, event.shiftKey)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        selectLocation(row, cell.label);
+                        selectLocation(row, cell.label, event.shiftKey);
                       }
                     }}
                     className="cursor-pointer outline-none"
@@ -334,6 +366,35 @@ export function LocationMapView({
               </div>
             </div>
           </section>
+          {selectedRows.length > 0 && (
+            <section aria-label="Selected locations summary" className="mb-5 overflow-hidden rounded-xl border border-brand-navy/20 bg-blue-50">
+              <div className="flex items-center justify-between gap-2 border-b border-brand-navy/10 px-3 py-2">
+                <h3 className="truncate font-label text-[11px] font-bold uppercase tracking-[0.05em] text-brand-navy">
+                  {selectedRows.length} selected {selectedRows.length === 1 ? "location" : "locations"}
+                </h3>
+                <button type="button" onClick={clearSelection} className="inline-flex items-center gap-1 rounded px-1.5 py-1 font-label text-[10px] font-bold text-brand-navy hover:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/30">
+                  <X size={12} aria-hidden="true" /> Clear
+                </button>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-brand-navy/10">
+                <div className="min-w-0 px-2 py-2.5 text-center">
+                  <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">PCS</p>
+                  <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(selectedSummary.pieces, 0)}>{formatNumber(selectedSummary.pieces, 0)}</p>
+                </div>
+                <div className="min-w-0 px-2 py-2.5 text-center">
+                  <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">Boxes</p>
+                  <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(selectedSummary.boxes)}>{formatNumber(selectedSummary.boxes)}</p>
+                </div>
+                <div className="min-w-0 px-2 py-2.5 text-center">
+                  <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">CBM</p>
+                  <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(selectedSummary.cbm, 2)}>{formatNumber(selectedSummary.cbm, 2)}</p>
+                </div>
+              </div>
+              <p className="border-t border-brand-navy/10 px-3 py-2 font-body text-[11px] text-text-grey">
+                {selectedSummary.items} items · {selectedSummary.lots} lots
+              </p>
+            </section>
+          )}
           {selectedRow ? (
             <>
               <div className="flex items-start justify-between gap-3">
@@ -362,6 +423,20 @@ export function LocationMapView({
                 Open location detail <ExternalLink size={15} aria-hidden="true" />
               </Link>
             </>
+          ) : selectedRows.length > 1 ? (
+            <div className="space-y-3">
+              <div>
+                <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Selected locations</p>
+                <p className="mt-1 font-body text-body-sm text-text-grey">Shift-click cells to add or remove them from this group.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedRows.map((row) => (
+                  <button key={row.id} type="button" onClick={() => selectLocation(row, row.label, true)} className="inline-flex items-center gap-1 rounded-lg border border-brand-navy/20 bg-blue-50 px-2.5 py-1.5 font-mono text-xs font-semibold text-brand-navy hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-brand-navy/30">
+                    {row.label}<X size={12} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="flex min-h-56 flex-col items-center justify-center text-center">
               <MapPinned size={28} className="text-text-grey" aria-hidden="true" />
@@ -378,7 +453,7 @@ export function LocationMapView({
           <p className="mt-1 font-body text-body-sm text-amber-900">These locations are in the system, but their exact place on the map has not been confirmed yet. You can still find them in Table View.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {unmappedRows.slice(0, 20).map((row) => (
-              <button key={row.id} type="button" onClick={() => selectLocation(row, row.label)} className="rounded-lg border border-amber-300 bg-white px-3 py-2 font-mono text-xs font-semibold text-amber-950 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400">
+              <button key={row.id} type="button" onClick={(event) => selectLocation(row, row.label, event.shiftKey)} className="rounded-lg border border-amber-300 bg-white px-3 py-2 font-mono text-xs font-semibold text-amber-950 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400">
                 {row.label}
               </button>
             ))}
