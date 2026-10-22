@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Design
 
 Status: Approved
-Updated: 2026-10-22 (role semantics and outbound recipient clarification)
+Updated: 2026-10-22 — Organization role-family correction approved
 
 ## 1. Design intent
 
@@ -324,3 +324,19 @@ The final policy matrix and SQL policy implementation are supplied with the core
 - [ ] Confirm route, page-header, responsive, and feedback contracts with `05-ui-shell-and-navigation`.
 - [ ] Confirm no mutation is admitted to the offline queue under `03-offline-mode-and-client-storage`.
 - [ ] Run `rbac-rls-reviewer` and `design-system-auditor` before sign-off.
+
+## 11. Pending reapproval — Organization role-family correction (2026-10-22)
+
+The Organization form presents four role families: **Supplier**, **Customer**,
+**End Customer**, and **Internal Supplies**. Internal Supplies is an
+Organization business role limited to the Supplies Inventory Model; it remains
+distinct from the Inventory Model selector itself.
+
+The compatibility layer reads current `internal_supplies` and historical
+`internal_warehouse` classifications as the selectable Internal Supplies role.
+Internal Supplies has no `party_flow_relationships` record. Customer relationship
+controls remain separate and explicitly labeled **Trading Customer** and **VMI
+Customer**. Supplier controls create only `trading_supplier`; End Customer is
+available only for VMI recipient use; Internal Supplies is available only for
+Supplies use. The server rejects every invalid role/Inventory Model combination
+before persisting it without changing the existing role enum.

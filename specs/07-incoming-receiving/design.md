@@ -133,6 +133,19 @@ The office form captures the approved CIPL/packing-list reference and structured
 
 ### 5.1 Expected line fields
 
+### 5.1a Source Organization selector contract (approved 2026-10-22)
+
+The WRR/CIPL header identifies source Organization first. The form then
+derives Inventory Model when exactly one valid relationship exists, or shows
+only that Organization's valid relationship choices when there are multiple.
+The allowed matrix is VMI → VMI Customer, Trading → Supplier, and Supplies →
+Internal Supplies. `vendor_party_id` remains the physical compatibility
+column for the selected Organization ID; all product labels use the
+model-specific Organization label, never the column's historical vendor
+meaning.
+
+Changing model or source invalidates all dependent draft state. If expected lines exist, the operator must explicitly discard them; the UI then clears them and refetches candidates. A server transaction re-resolves the Organization and verifies model/role/scope/item compatibility immediately before writing. Missing or generic legacy relationships are remediated in Organization enrollment and are not valid new-write fallbacks.
+
 All fields confirmed from the approved `01-core-data-model` schema, plus the `disposition` field to be added via `01` amendment:
 
 | Field | Column | Notes |

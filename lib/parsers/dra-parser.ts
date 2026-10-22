@@ -16,6 +16,9 @@ export interface DraParseResult {
   header: {
     draReference?: string;
     releaseDate?: string;
+    requestingOrganization?: string;
+    recipientOrganization?: string;
+    /** @deprecated Use requestingOrganization/recipientOrganization. */
     customerOrganization?: string;
   };
   rows: ParsedDraRow[];
@@ -112,19 +115,34 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
         }
       }
 
-      // Extract Organization (DELIVERY TO:)
-      if (!result.header.customerOrganization) {
+      // Identify the requesting Organization first. DELIVERY TO/SHIP TO is a
+      // separate recipient field and must not be used as the requester.
+      if (!result.header.requestingOrganization) {
         for (let c = 0; c < row.length; c++) {
           const cellStr = String(row[c] ?? "").trim();
-          if (/^DELIVERY\s*TO\s*[:.-]?$/i.test(cellStr)) {
-            // Next row or next col
+          if (/^(REQUESTED\s*BY|REQUESTOR|REQUESTING\s*(?:ORG(?:ANIZATION)?|PARTY)|CUSTOMER|BILL\s*TO)\s*[:.-]?$/i.test(cellStr)) {
             const nextCell = String(row[c + 1] ?? "").trim();
             const belowCell = rawRows[r + 1] ? String(rawRows[r + 1][c] ?? "").trim() : "";
-            result.header.customerOrganization = nextCell || belowCell;
+            result.header.requestingOrganization = nextCell || belowCell;
             break;
           }
         }
       }
+
+      if (!result.header.recipientOrganization) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          if (/^(DELIVERY\s*TO|SHIP\s*TO|DELIVER\s*TO)\s*[:.-]?$/i.test(cellStr)) {
+            // Next row or next col
+            const nextCell = String(row[c + 1] ?? "").trim();
+            const belowCell = rawRows[r + 1] ? String(rawRows[r + 1][c] ?? "").trim() : "";
+            result.header.recipientOrganization = nextCell || belowCell;
+            break;
+          }
+        }
+      }
+
+      result.header.customerOrganization = result.header.recipientOrganization ?? result.header.requestingOrganization;
 
       // Extract Date (REQUESTED WITHDRAWAL DATE:)
       if (!result.header.releaseDate) {
@@ -362,6 +380,11 @@ async function parseDraPdf(buffer: Buffer, fileName: string): Promise<DraParseRe
     const pdfData = await pdfParse(buffer);
     const text: string = pdfData.text || "";
     const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
+    const requestingMatch = text.match(/(?:REQUESTED\s*BY|REQUESTOR|REQUESTING\s*(?:ORGANIZATION|ORG)|CUSTOMER|BILL\s*TO)\s*[:.-]\s*([^\n\r]+)/i);
+    const recipientMatch = text.match(/(?:DELIVERY\s*TO|SHIP\s*TO|DELIVER\s*TO)\s*[:.-]\s*([^\n\r]+)/i);
+    if (requestingMatch?.[1]?.trim()) result.header.requestingOrganization = requestingMatch[1].trim();
+    if (recipientMatch?.[1]?.trim()) result.header.recipientOrganization = recipientMatch[1].trim();
+    result.header.customerOrganization = result.header.recipientOrganization ?? result.header.requestingOrganization;
 
     const refMatch = text.match(/(?:DRA|WRF|DSGC\s*WR|WR)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i) ||
       text.match(/(?:Release|Advice|Ref)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i);

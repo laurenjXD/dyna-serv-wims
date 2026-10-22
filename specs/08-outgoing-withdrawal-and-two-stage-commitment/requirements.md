@@ -46,7 +46,7 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 5. On a successful commitment, the system SHALL create the operational pick-list PDF from the committed snapshot and expose it for preview/download/print. A PDF failure must surface document attention without reversing the committed pick list.
 6. The command SHALL validate active item references, Organization/Inventory Model scope, UOM, and SPQ rules.
 7. The command SHALL refuse allocation if `item_code_is_provisional` is true for any requested line, displaying a 3-component error (**What happened**, **Why it failed**, **Next Action / Solution**).
-8. **DRA Document Parsing (Excel & PDF)**: The system SHALL offer an optional Delivery Release Advice (DRA) import in Excel (`.xlsx`, `.xls`, `.csv`) and PDF (`.pdf`) formats prior to pick list generation. The parsing engine SHALL extract requested item codes (`item_code` / `customer_item_code`) and requested box/unit quantities, match them against available inventory balances (`qty_remaining - qty_committed`), auto-suggest FIFO/FEFO lot/location allocations, and present a pre-commitment preview queue highlighting any stock shortages or provisional items for review.
+8. **DRA Document Parsing (Excel & PDF)**: The system SHALL offer an optional Delivery Release Advice (DRA) import in Excel (`.xlsx`, `.xls`, `.csv`) and PDF (`.pdf`) formats prior to pick list generation. The parser SHALL identify/map the requesting Organization first using a trusted Organization code or approved alias, then derive or request confirmation of the Inventory Model and role. It SHALL extract requested item codes (`item_code` / `customer_item_code`) and requested box/unit quantities, match them against available inventory balances (`qty_remaining - qty_committed`), auto-suggest FIFO/FEFO lot/location allocations, and present a pre-commitment preview queue highlighting any stock shortages or provisional items for review. Ambiguous or unmatched Organization references SHALL block generation until reviewed.
 
 ### R2. FIFO/FEFO allocation & Stage 1 commitment
 
@@ -117,3 +117,15 @@ The outbound recipient contract is flow-specific:
 2. **VMI**: the organization enrolled as `vmi_customer` is the stock owner and commercial customer. The operator must select an active downstream organization enrolled as `end_customer`; that organization is the recipient snapshot.
 3. The immutable database column `pick_lists.end_customer_party_id` is retained as the physical-recipient snapshot for compatibility. For Trading it contains the direct trading customer; for VMI it contains the downstream end customer.
 4. Queue, pick-list, dispatch, ledger, print, and acknowledgement-receipt surfaces label the value as `Customer / Recipient` for Trading and `End Customer` for VMI (or the neutral `Recipient` where a shared table cannot use a flow-specific header).
+
+## 14. Approved amendment — full outbound Organization-selector contract (2026-10-22)
+
+This section supersedes any earlier generic destination/end-customer wording.
+
+1. The operator selects Inventory Model first. The valid header matrix is VMI → active VMI Customer plus active End Customer; Trading → active Trading Customer; Supplies → active Internal Supplies Organization.
+2. Trading and Supplies SHALL not display an End Customer field. VMI SHALL require both role-specific fields; a VMI Customer is never inferred from a selected End Customer, or the reverse.
+3. Supplies auto-selects the Internal Supplies Organization only where there is exactly one active, authorized choice. With no eligible choice, the form blocks and names the missing configuration; with multiple choices, it requires an explicit selection from that restricted list.
+4. On an Inventory Model or header-Organization change, the UI clears incompatible recipient data, all dependent item/lot/location candidates, and all draft lines after explicit discard confirmation. No hidden stale IDs may be submitted.
+5. The generation transaction validates the current active Organization-role/relationship, actor scope, stock owner/source, item/lot/location Inventory Model, and version before any commitment or pick-list snapshot is created. Client filtering, import values, deep links, and cached dropdown values are non-authoritative.
+6. The immutable compatibility column `end_customer_party_id` stores the physical recipient snapshot: the End Customer for VMI, the Trading Customer for Trading, and Internal Supplies Organization for Supplies. It must be labelled `Recipient` or a flow-aware term outside VMI; this does not confer the End Customer business role.
+7. Generic/missing legacy relationships remain visible on historical records but are not selectable for new commitments. The operator receives a named Organization-enrollment recovery path. Internal Supplies remains a role classification and must not acquire a `party_flow_relationships` row.

@@ -1,7 +1,7 @@
 # Organization & Item Enrollment — Requirements
 
 Status: Approved
-Updated: 2026-10-22 (role semantics and outbound recipient clarification)
+Updated: 2026-10-22 — Organization role-family correction approved
 
 ## 1. Purpose and scope
 
@@ -98,3 +98,17 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 - [ ] User-facing UI labels use Organization, Inventory Model, Organization Portal, and Inspection exclusively.
 - [ ] All error surfaces display the 3-component error structure (What, Why, Next Action).
 - [ ] Master-data mutations fail closed offline.
+
+## 6. Pending reapproval — Organization role-family correction (2026-10-22)
+
+- **Internal Supplies is an Organization business role and is valid only for
+  the Supplies Inventory Model.** It SHALL remain available in Organization
+  role enrollment, selectors, filters, exports, and detail views.
+- New Organization enrollment SHALL expose Supplier, Customer, End Customer,
+  and Internal Supplies. Customer relationships SHALL be explicitly assigned
+  as Trading Customer and/or VMI Customer; Supplier is Trading-only; End
+  Customer is VMI-only; Internal Supplies is Supplies-only.
+- Current `internal_supplies` and deployed legacy `internal_warehouse` data
+  SHALL both render as Internal Supplies. The terminology work SHALL preserve
+  historical interpretation without data loss, enum replacement, or silent
+  reclassification.

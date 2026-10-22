@@ -44,9 +44,10 @@ import {
 } from "@/lib/db/schema/commitments";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
+import { auditLog } from "@/lib/db/schema/audit";
 import { approvalRequests } from "@/lib/db/schema/approvals";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
-import { parties, partyRoles } from "@/lib/db/schema/parties";
+import { parties, partyRoles, partyFlowRelationships } from "@/lib/db/schema/parties";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
   type OutgoingLedgerRow,
@@ -61,6 +62,11 @@ import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { positiveInteger } from "@/lib/inventory/quantities";
+import {
+  validateOutboundOrganization,
+  validateReceivingOrganization,
+  validateVmiEndCustomer,
+} from "@/lib/organizations/relationship-contract";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -320,25 +326,48 @@ export async function commitWithdrawal(
     rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
 
-    // Trading always ships to its direct trading customer. VMI ships to the
-    // selected downstream end customer, which must be explicitly enrolled.
-    // The database column is the immutable recipient snapshot for both flows.
-    const recipientPartyId = data.flowType === "trading"
-      ? data.customerPartyId
-      : data.endCustomerPartyId;
+    const recipientPartyId = data.flowType === "supplies"
+      ? data.partyId
+      : data.flowType === "trading"
+        ? data.customerPartyId
+        : data.endCustomerPartyId;
+    const organizationIds = [...new Set([data.partyId, data.customerPartyId, recipientPartyId])];
+    const organizationRows = (await db
+      .select({
+        id: parties.id,
+        isActive: parties.isActive,
+        role: partyRoles.role,
+        relationship: partyFlowRelationships.relationship,
+        relationshipIsActive: partyFlowRelationships.isActive,
+      })
+      .from(parties)
+      .leftJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+      .leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
+      .where(inArray(parties.id, organizationIds))) as AnyRecord[];
+    const rowsFor = (organizationId: string) => organizationRows.filter((row) => row.id === organizationId) as Array<{
+      id: string;
+      isActive: boolean;
+      role: string;
+      relationship: string | null;
+      relationshipIsActive: boolean | null;
+    }>;
+
+    // `partyId` is the stock source/owner context; the customer/recipient
+    // fields are validated independently. This preserves the current schema
+    // while preventing a supplier from being used as a customer relationship.
+    const sourceValidation = validateReceivingOrganization(rowsFor(data.partyId), data.partyId, data.flowType);
+    if (!sourceValidation.ok) throw new Error(sourceValidation.error);
+    const customerValidation = validateOutboundOrganization(rowsFor(data.customerPartyId), data.customerPartyId, data.flowType);
+    if (!customerValidation.ok) throw new Error(customerValidation.error);
     if (data.flowType === "vmi") {
-      const recipientRows = (await db
-        .select({ id: parties.id })
-        .from(parties)
-        .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
-        .where(and(
-          eq(parties.id, recipientPartyId),
-          eq(parties.isActive, true),
-          eq(partyRoles.role, "end_customer"),
-        ))
-        .limit(1)) as AnyRecord[];
-      if (recipientRows.length !== 1) throw new Error("invalid_end_customer");
+      const endCustomerValidation = validateVmiEndCustomer(rowsFor(data.endCustomerPartyId), data.endCustomerPartyId);
+      if (!endCustomerValidation.ok) throw new Error(endCustomerValidation.error);
     }
+
+    // Trading always ships to its direct trading customer. VMI ships to the
+    // selected downstream end customer, which was already validated from the
+    // same organization snapshot above. The database column is the immutable
+    // recipient snapshot for both flows.
 
     // The browser may suggest a quantity, but it must never choose the lots
     // that will be reserved. Rebuild each item's FIFO/FEFO allocation against
@@ -982,6 +1011,14 @@ export async function dispatchPickList(
         return { ok: false as const, errors: ["commitment_not_found"] };
       }
 
+      // A commitment is executable only while it is active. The pick-list
+      // row lock above serializes this check with another dispatch/release,
+      // so a stale page cannot execute a released or already-consumed
+      // reservation.
+      if (commitmentRows[0].status !== "active") {
+        return { ok: false as const, errors: ["invalid_transition"] };
+      }
+
       // Reservation-state recheck (design.md §7) — a commitment past its 24h
       // TTL is rejected here, in real time, rather than being allowed to
       // proceed to the physical dispatch writes below. This is the same
@@ -995,7 +1032,7 @@ export async function dispatchPickList(
         | null;
       if (
         commitmentExpiresAt &&
-        new Date(commitmentExpiresAt).getTime() < Date.now()
+        new Date(commitmentExpiresAt).getTime() <= Date.now()
       ) {
         // Release every reserved balance back to its pre-reservation state —
         // stock never left the shelf, only the reservation is undone.
@@ -1254,11 +1291,7 @@ export async function dispatchPickList(
       // transaction stands in for the whole dispatch event; the full set of
       // transaction ids is still captured in the snapshot hash below for audit.
       try {
-        const lastTransaction = insertedTransactions[insertedTransactions.length - 1] as
-          | { id: string }
-          | undefined;
-        if (!lastTransaction) throw new Error("missing_dispatch_transaction");
-        const transactionId = lastTransaction.id;
+        if (!commitmentId) throw new Error("missing_dispatch_commitment");
         const numRows = (await db.execute!(
           sql`SELECT generate_document_number('acknowledgement_receipt')`,
         )) as Array<{ generate_document_number: string }>;
@@ -1269,8 +1302,8 @@ export async function dispatchPickList(
             documentType: "acknowledgement_receipt",
             documentNumber,
             templateVersion: "1.0",
-            sourceType: "inventory_transaction",
-            sourceId: transactionId,
+            sourceType: "inventory_commitment",
+            sourceId: commitmentId,
             snapshotHash: hashSnapshot({
               pickListId,
               commitmentId,
@@ -1352,23 +1385,125 @@ export async function reportLocationShortage(
   try {
     const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
       const db = tx.db as DbLike;
+      // A fully missing line needs a dedicated release/reallocation command;
+      // leaving a zero-quantity commitment line would violate the database's
+      // positive-commitment invariant. Keep this command for partial,
+      // physically found shortages only.
+      if (!Number.isFinite(opts.actualFoundQty) || !Number.isInteger(opts.actualFoundQty) || opts.actualFoundQty < 1) {
+        return { ok: false, error: "invalid_shortage_quantity" };
+      }
+      if (!opts.pickListId || !opts.pickListItemId) {
+        return { ok: false, error: "invalid_parent_reference" };
+      }
+
+      const [pickList] = await db
+        .select({ id: pickLists.id, status: pickLists.status })
+        .from(pickLists)
+        .where(eq(pickLists.id, opts.pickListId))
+        .limit(1);
+      if (!pickList) return { ok: false, error: "not_found" };
+      if (pickList.status === "dispatched") return { ok: false, error: "invalid_transition" };
+
       const [item] = await db
         .select()
         .from(pickListItems)
-        .where(eq(pickListItems.id, opts.pickListItemId))
+        .where(and(eq(pickListItems.id, opts.pickListItemId), eq(pickListItems.pickListId, opts.pickListId)))
         .limit(1);
 
       if (!item) {
         return { ok: false, error: "not_found" };
       }
+      if (opts.actualFoundQty > Number(item.qty)) {
+        return { ok: false, error: "shortage_quantity_exceeds_requested" };
+      }
 
-      await db
+      const selectedUnits = (await db
+        .select({ id: inventoryUnits.id })
+        .from(inventoryUnits)
+        .where(and(
+          eq(inventoryUnits.pickListItemId, opts.pickListItemId),
+          eq(inventoryUnits.status, "selected"),
+        ))) as AnyRecord[];
+      if (selectedUnits.length > 0) {
+        return { ok: false, error: "shortage_after_selection" };
+      }
+
+      const commitmentLines = (await db
+        .select({
+          id: inventoryCommitmentLines.id,
+          commitmentId: inventoryCommitmentLines.commitmentId,
+          balanceId: inventoryCommitmentLines.lotLocationBalanceId,
+          qtyCommitted: inventoryCommitmentLines.qtyCommitted,
+        })
+        .from(inventoryCommitmentLines)
+        .where(eq(inventoryCommitmentLines.pickListItemId, opts.pickListItemId))
+        .limit(1)) as AnyRecord[];
+      const commitmentLine = commitmentLines[0];
+      if (!commitmentLine) return { ok: false, error: "commitment_not_found" };
+
+      const previousQty = Number(item.qty);
+      const committedQty = Number(commitmentLine.qtyCommitted);
+      if (committedQty !== previousQty) {
+        return { ok: false, error: "stale_record" };
+      }
+      const releasedQty = previousQty - opts.actualFoundQty;
+      if (releasedQty > 0) {
+        const released = await db
+          .update(lotLocationBalances)
+          .set({
+            qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${releasedQty}`,
+            version: sql`${lotLocationBalances.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(lotLocationBalances.id, commitmentLine.balanceId),
+            sql`${lotLocationBalances.qtyCommitted} >= ${releasedQty}`,
+          ))
+          .returning({ id: lotLocationBalances.id });
+        if (released.length !== 1) return { ok: false, error: "stale_record" };
+      }
+
+      const updatedItem = await db
         .update(pickListItems)
         .set({
           qty: opts.actualFoundQty,
           numberOfBoxes: Math.ceil(opts.actualFoundQty / Math.max(item.spq ?? 1, 1)),
         })
-        .where(eq(pickListItems.id, opts.pickListItemId));
+        .where(and(
+          eq(pickListItems.id, opts.pickListItemId),
+          eq(pickListItems.qty, previousQty),
+        ))
+        .returning({ id: pickListItems.id });
+      if (updatedItem.length !== 1) return { ok: false, error: "stale_record" };
+
+      const updatedCommitment = await db
+        .update(inventoryCommitmentLines)
+        .set({
+          qtyCommitted: opts.actualFoundQty,
+          status: opts.actualFoundQty === 0 ? "released" : "active",
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(inventoryCommitmentLines.id, commitmentLine.id),
+          eq(inventoryCommitmentLines.qtyCommitted, committedQty),
+        ))
+        .returning({ id: inventoryCommitmentLines.id });
+      if (updatedCommitment.length !== 1) return { ok: false, error: "stale_record" };
+
+      await db.insert(auditLog).values({
+        actorUserId: perm.context.userId,
+        actorRole: perm.context.activeRoleKeys[0] ?? "unknown",
+        action: "pick_list_shortage_reported",
+        entityType: "pick_list_item",
+        entityId: opts.pickListItemId,
+        beforeData: { qty: previousQty, qtyCommitted: committedQty },
+        afterData: {
+          qty: opts.actualFoundQty,
+          qtyCommitted: opts.actualFoundQty,
+          notes: opts.notes?.trim() || null,
+        },
+        correlationId: randomUUID(),
+      });
 
       return { ok: true };
     });

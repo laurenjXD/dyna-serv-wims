@@ -177,6 +177,7 @@ export type PartyVmiInventoryRow = {
   id: string;
   itemCode: string;
   itemName: string;
+  categoryName: string | null;
   lotNumber: string;
   locationLabel: string;
   qtyOnHand: number;
@@ -204,12 +205,14 @@ export type PartyVmiInventoryRow = {
 export async function listPartyVmiInventory(
   db: DbLike,
   partyId: string,
+  opts: { location?: string; category?: string } = {},
 ): Promise<PartyVmiInventoryRow[]> {
   return (await db
     .select({
       id: lotLocationBalances.id,
       itemCode: items.code,
       itemName: items.name,
+      categoryName: itemCategories.name,
       lotNumber: lots.lotNumber,
       locationLabel: locations.label,
       qtyOnHand: lotLocationBalances.qtyRemaining,
@@ -220,9 +223,15 @@ export async function listPartyVmiInventory(
     .from(lotLocationBalances)
     .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
     .innerJoin(items, eq(lots.itemId, items.id))
+    .leftJoin(itemCategories, eq(items.categoryId, itemCategories.id))
     .innerJoin(locations, eq(lotLocationBalances.locationId, locations.id))
     .where(
-      and(eq(lots.flowType, "vmi"), eq(lots.ownerPartyId, partyId)),
+      and(
+        eq(lots.flowType, "vmi"),
+        eq(lots.ownerPartyId, partyId),
+        opts.location ? eq(locations.label, opts.location) : undefined,
+        opts.category ? eq(itemCategories.name, opts.category) : undefined,
+      ),
     )
     .orderBy(asc(items.code), asc(lots.lotNumber))) as PartyVmiInventoryRow[];
 }

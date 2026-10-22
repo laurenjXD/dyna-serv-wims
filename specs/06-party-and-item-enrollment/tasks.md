@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Implementation Plan
 
 Status: Approved
-Updated: 2026-10-22 (role semantics and outbound recipient clarification)
+Updated: 2026-10-22 — Organization role-family correction approved
 
 ## Implementation gate
 
@@ -221,6 +221,27 @@ Status: Approved
 - [x] Enforce role compatibility and duplicate prevention server-side.
 - [x] Product owner approval — Developer approval, 2026-10-22.
 - [x] Second approver approval — Developer approval, 2026-10-22.
+
+## Pending reapproval — Organization role-family correction implementation
+
+- [ ] Retain Internal Supplies in new Organization role controls, validation,
+  filters, exports, and user-facing terminology; map both current
+  `internal_supplies` and deployed legacy `internal_warehouse` through a
+  documented read-compatible adapter without replacing the enum.
+- [ ] Enforce the four Organization role families and their Inventory Model
+  relationship matrix in server validation and database constraints.
+- [ ] Verify the already-existing role migration and deployment state before
+  any backfill; preserve and render historical `internal_warehouse` references
+  as Internal Supplies without data loss or a new relationship row.
+- [ ] Add unit, real-Postgres/RLS, and Playwright coverage for all valid and
+  invalid role/Inventory Model selections, multi-role Organizations, stale
+  enrollment forms, and legacy-record rendering.
+
+### Amendment sign-off
+
+- [x] Product Owner approval — User, 2026-10-22 (cross-cutting plan).
+- [ ] Technical/data-model/RBAC review and real-Postgres verification.
+- [x] Second amendment sign-off — System standing approval, 2026-10-22.
 
 ## Role semantics amendment — outbound recipient and relationship boundaries (2026-10-22)
 

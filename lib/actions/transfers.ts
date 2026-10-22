@@ -30,6 +30,7 @@ import { validateCreateTransfer } from "@/lib/transfer/transfer-validator";
 import { validateInspectionDisposition } from "@/lib/transfer/inspection-state";
 import {
   transferRequests,
+  transferLines,
   inspectionCases,
   inspectionDispositions,
 } from "@/lib/db/schema/transfers";
@@ -139,6 +140,19 @@ export async function createTransfer(
       })
       .returning();
 
+    // Header and every validated line are one atomic command. A transfer
+    // without persisted lines is not an operational transfer.
+    await db.insert(transferLines).values(
+      data.lines.map((line) => ({
+        transferRequestId: (inserted as { id: string }).id,
+        lotId: line.lotId,
+        itemId: line.itemId,
+        qtyRequested: String(line.qtyRequested),
+        qtyTransferred: "0",
+        status: "pending",
+      })),
+    );
+
     // 4. Return result
     return { ok: true, transferId: (inserted as { id: string }).id } as const;
   });
@@ -179,11 +193,25 @@ export async function updateTransferStatus(
       return { ok: false, reason: "not_found" } as const;
     }
 
+    const transitions: Record<string, string[]> = {
+      staged: ["in_progress", "cancelled"],
+      in_progress: ["completed", "cancelled"],
+      completed: [],
+      cancelled: [],
+    };
+    if (!transitions[transfer.status]?.includes(newStatus)) {
+      return { ok: false, reason: "invalid_transition" } as const;
+    }
+
     // 3. UPDATE status
     await db
       .update(transferRequests)
-      .set({ status: newStatus, updatedAt: new Date() })
-      .where(eq(transferRequests.id, transferId));
+      .set({ status: newStatus, version: (transfer as AnyRecord).version + 1, updatedAt: new Date() })
+      .where(and(
+        eq(transferRequests.id, transferId),
+        eq(transferRequests.status, transfer.status),
+        eq(transferRequests.version, (transfer as AnyRecord).version),
+      ));
 
     return { ok: true } as const;
   });
@@ -222,11 +250,30 @@ export async function openInspectionCase(
     return { ok: false, reason: "forbidden" };
   }
 
+  if (
+    !["inbound", "transfer"].includes(input.contextType) ||
+    !["wrr_item", "transfer_line"].includes(input.sourceRefType) ||
+    !["vmi", "trading", "supplies"].includes(input.flowType) ||
+    !input.sourceRefId.trim() || !input.lotId.trim() || !input.itemId.trim() || !input.partyId.trim()
+  ) {
+    return { ok: false, reason: "invalid_source_context" };
+  }
+
   const userId = perm.context.userId;
   const now = new Date();
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
+
+    const existing = (await db
+      .select({ id: inspectionCases.id })
+      .from(inspectionCases)
+      .where(and(
+        eq(inspectionCases.sourceRefType, input.sourceRefType),
+        eq(inspectionCases.sourceRefId, input.sourceRefId),
+        eq(inspectionCases.status, "open"),
+      ))) as Array<{ id: string }>;
+    if (existing.length > 0) return { ok: false, reason: "open_case_exists" } as const;
 
     // 2. INSERT into inspection_cases
     const [inserted] = await db
@@ -357,7 +404,7 @@ export async function resolveInspectionCase(
         resolvedBy: userId,
         resolvedAt: now,
       })
-      .where(eq(inspectionCases.id, caseId));
+      .where(and(eq(inspectionCases.id, caseId), eq(inspectionCases.status, "open")));
 
     // 6. INSERT inspection disposition record
     const dispositionRows = putawayAllocations.length > 0 && isStorageDisposition

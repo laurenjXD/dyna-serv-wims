@@ -1,7 +1,7 @@
 # RBAC & Roles — Design
 
 Status: Approved
-Updated: 2026-08-06 (financial reporting capability amendment approved)
+Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 Depends on:
 
@@ -743,3 +743,42 @@ Migrations must be rerunnable only where explicitly designed, must not renumber 
 - Complete downstream capability identifiers and role grants as specs `07` through `19` define their operations.
 - Set production audit retention, rate-limit thresholds, session-revocation behavior, and bootstrap procedure in spec `04`.
 - Complete the RLS matrix per protected core table before implementation approval; the examples in section 7.4 are patterns, not a signed-off policy inventory.
+
+## 16. Pending reapproval — Organization / Inventory Model compatibility design (2026-10-22)
+
+### 16.1 Scope vocabulary
+
+New authorization-context fields, query projections, and administrative UI use
+`organizationId` and `inventoryModel`. Existing `party_id`/`flow_type`
+columns, functions, and RLS policies remain a compatibility implementation
+detail until the `01` expand → migrate → contract sequence completes. The
+compatibility adapter must preserve current RLS semantics exactly and must not
+turn a null legacy flow scope into Supplies access.
+
+### 16.2 Organization relationship gate
+
+For a scoped resource, authorization evaluates:
+
+1. the caller's capability;
+2. the active Organization assignment;
+3. the actual resource Organization;
+4. the actual Inventory Model; and
+5. the explicit Organization relationship valid for that Inventory Model.
+
+The only role relationships are Trading Supplier, Trading Customer, VMI
+Customer, VMI End Customer, and Internal Supplies for Supplies. No check may infer one from another or use
+stock owner/source/destination as a substitute role. Supplier-only operations
+require Trading Supplier; customer document/inventory access requires the
+matching Trading or VMI Customer relationship; VMI final-recipient operations
+require VMI End Customer; Supplies-internal operations require Internal
+Supplies under global operational permissions. No `party_flow_relationships`
+value is introduced for Internal Supplies, and `assigned_party` scope remains
+unable to access Supplies.
+
+### 16.3 Required verification additions
+
+Real-Postgres tests must prove deny-by-default for every cross-model and
+cross-relationship combination, including a multi-role Organization, a revoked
+relationship, a stale browser request, direct Server Action invocation, signed
+document URL access, and offline replay. Tests must also prove legacy field
+adapters cannot expand scope.

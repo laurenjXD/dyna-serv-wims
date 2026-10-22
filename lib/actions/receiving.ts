@@ -32,6 +32,7 @@ import type { WrrLine } from "@/lib/receiving/scan-matcher";
 import { validateLineCommit } from "@/lib/receiving/commit-validation";
 import type { CommitLocation } from "@/lib/receiving/commit-validation";
 import { wrrDocuments, wrrItems, wrrItemUnitScans, wrrItemPutawayAllocations } from "@/lib/db/schema/wrr";
+import { parties, partyRoles, partyFlowRelationships } from "@/lib/db/schema/parties";
 import { items as itemCatalog } from "@/lib/db/schema/items";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
@@ -50,6 +51,7 @@ import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
 import { randomUUID } from "node:crypto";
 import { boxesToPieces, positiveInteger } from "@/lib/inventory/quantities";
+import { validateReceivingOrganization } from "@/lib/organizations/relationship-contract";
 
 // Every action below binds its DB work to the caller's RLS-claimed
 // transaction (specs/02-rbac-roles/design.md §6.3) rather than an
@@ -237,6 +239,33 @@ export async function createWrr(
     rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
       const db = tx.db as DbLike;
 
+      const organizationRows = await db
+        .select({
+          id: parties.id,
+          isActive: parties.isActive,
+          role: partyRoles.role,
+          relationship: partyFlowRelationships.relationship,
+          relationshipIsActive: partyFlowRelationships.isActive,
+        })
+        .from(parties)
+        .leftJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+        .leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
+        .where(eq(parties.id, data.vendorPartyId));
+      const organizationValidation = validateReceivingOrganization(
+        organizationRows as Array<{
+          id: string;
+          isActive: boolean;
+          role: string;
+          relationship: string | null;
+          relationshipIsActive: boolean | null;
+        }>,
+        data.vendorPartyId,
+        data.flowType,
+      );
+      if (!organizationValidation.ok) {
+        return { ok: false, errors: [organizationValidation.error] } satisfies CreateWrrActionResult;
+      }
+
       const selectedItemIds = data.lines
         .map((line) => line.itemId)
         .filter((id): id is string => Boolean(id));
@@ -400,6 +429,32 @@ export async function updateWrrHeader(
   }
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
+    const organizationRows = await db
+      .select({
+        id: parties.id,
+        isActive: parties.isActive,
+        role: partyRoles.role,
+        relationship: partyFlowRelationships.relationship,
+        relationshipIsActive: partyFlowRelationships.isActive,
+      })
+      .from(parties)
+      .leftJoin(partyRoles, eq(partyRoles.partyId, parties.id))
+      .leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
+      .where(eq(parties.id, input.vendorPartyId));
+    const organizationValidation = validateReceivingOrganization(
+      organizationRows as Array<{
+        id: string;
+        isActive: boolean;
+        role: string;
+        relationship: string | null;
+        relationshipIsActive: boolean | null;
+      }>,
+      input.vendorPartyId,
+      input.flowType,
+    );
+    if (!organizationValidation.ok) {
+      return { ok: false, errors: [organizationValidation.error] } satisfies UpdateWrrResult;
+    }
     const updated = await db.update(wrrDocuments).set({
       vendorPartyId: input.vendorPartyId,
       flowType: input.flowType,
@@ -680,10 +735,18 @@ export async function recordScan(
 
     // 5. Increment scannedQty. Every accepted QR represents exactly one
     // physical pallet or unit.
-    await db
+    const claimedRows = await db
       .update(wrrItems)
       .set({ scannedQty: line.scannedQty + matchResult.scanQty })
-      .where(eq(wrrItems.id, line.id));
+      .where(and(
+        eq(wrrItems.id, line.id),
+        eq(wrrItems.scannedQty, line.scannedQty),
+        eq(wrrItems.wrrId, wrrId),
+      ))
+      .returning({ id: wrrItems.id });
+    if (Array.isArray(claimedRows) && claimedRows.length !== 1) {
+      return { ok: false, reason: "stale_scan" } satisfies RecordScanResult;
+    }
 
     // 5a. Persist the per-unit scan record for a successful wrr_item_unit
     // match, in the same transaction as the scannedQty increment above —
@@ -751,10 +814,17 @@ export async function startReceiving(
     }
 
     // 4. Transition status
-    await db
+    const transitioned = await db
       .update(wrrDocuments)
       .set({ status: "receiving_in_progress", updatedAt: new Date() })
-      .where(eq(wrrDocuments.id, wrrId));
+      .where(and(
+        eq(wrrDocuments.id, wrrId),
+        eq(wrrDocuments.status, "staged_pending_arrival"),
+      ))
+      .returning({ id: wrrDocuments.id });
+    if (Array.isArray(transitioned) && transitioned.length !== 1) {
+      return { ok: false as const, errors: ["stale_record"] };
+    }
 
     return { ok: true as const };
   });

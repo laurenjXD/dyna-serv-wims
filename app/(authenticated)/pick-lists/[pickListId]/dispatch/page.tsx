@@ -165,11 +165,14 @@ export default async function DispatchConfirmationPage({
     const pickListItemId = String(formData.get("shortageLineId") ?? "");
     const actualFoundQty = Number(formData.get("actualFoundQty") ?? 0);
     const actionResolver = await createPageResolver();
-    await reportLocationShortage(actionResolver, {
+    const shortageResult = await reportLocationShortage(actionResolver, {
       pickListId,
       pickListItemId,
       actualFoundQty,
     });
+    if (!shortageResult.ok) {
+      redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(shortageResult.error ?? "shortage_failed")}`);
+    }
     revalidatePath(`/pick-lists/${pickListId}/dispatch`);
     redirect(`/pick-lists/${pickListId}/dispatch?shortageReported=true`);
   }
@@ -333,12 +336,12 @@ export default async function DispatchConfirmationPage({
                   Approve Pick List for Dispatch
                 </button>
               </form>
-              <Link
-                href={`/pick-lists/${pickListId}/edit`}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-4 font-label text-body-md font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              <span
+                aria-disabled="true"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-light-grey px-4 font-label text-body-md font-semibold text-text-grey"
               >
-                Edit Line Items (Qty / SPQ / Boxes)
-              </Link>
+                Line Items Locked After Reservation
+              </span>
               <Link
                 href={`/pick-lists/${pickListId}/print`}
                 target="_blank"
@@ -384,7 +387,15 @@ export default async function DispatchConfirmationPage({
                     ? "Pick list not found. Contact a supervisor."
                     : errorReason === "commitment_expired"
                       ? "Pick list no longer active — return to queue."
-                      : errorReason === "wrong_item_or_lot_qr"
+                      : errorReason === "invalid_transition"
+                        ? "This pick list or reservation is no longer dispatchable. Refresh the page and review the current status."
+                        : errorReason === "shortage_after_selection"
+                          ? "This line already has selected boxes. Complete or reset the selection before reporting a shortage."
+                          : errorReason === "shortage_quantity_exceeds_requested"
+                            ? "The found quantity cannot exceed the quantity reserved on this pick list."
+                            : errorReason === "stale_record"
+                              ? "This record changed in another session. Refresh to see the current state."
+                              : errorReason === "wrong_item_or_lot_qr"
                         ? "This QR does not match an unfinished item or lot on this Pick List."
                         : errorReason === "line_complete"
                           ? "This item has already reached its required box count. Continue with the next line."

@@ -181,8 +181,8 @@ function validateLine(
 
   // qty — must be a number > 0
   const qty = line["qty"];
-  if (typeof qty !== "number" || qty <= 0) {
-    errors.push(`lines[${index}]: qty must be a number greater than 0`);
+  if (typeof qty !== "number" || !Number.isFinite(qty) || !Number.isInteger(qty) || qty <= 0) {
+    errors.push(`lines[${index}]: qty must be a finite positive whole number`);
   }
 
   if (errors.length > 0) {

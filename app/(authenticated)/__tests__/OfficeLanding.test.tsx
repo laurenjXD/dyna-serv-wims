@@ -244,9 +244,9 @@ describe("OfficeLanding (2026-08-17 restyle — dispatch rate ring, flow-type ac
     expect(screen.getByText("Dispatch rate unavailable")).toBeInTheDocument();
   });
 
-  it("renders the Activity by Flow Type bar chart with a bar per flow", () => {
+  it("renders the Activity by Inventory Model bar chart with a bar per model", () => {
     render(<OfficeLanding {...baseProps} />);
-    const chart = screen.getByLabelText("Activity by Flow Type");
+    const chart = screen.getByLabelText("Activity by Inventory Model");
     // BarChart legitimately renders each label twice (visible bar label +
     // sr-only accessible table row) — assert presence, not uniqueness.
     expect(within(chart).getAllByText("VMI").length).toBeGreaterThan(0);
@@ -256,7 +256,7 @@ describe("OfficeLanding (2026-08-17 restyle — dispatch rate ring, flow-type ac
 
   it("omits the flow-type bar chart entirely when flowActivity is null (no pick_list.read)", () => {
     render(<OfficeLanding {...baseProps} hasPickListAccess={false} flowActivity={null} />);
-    expect(screen.queryByLabelText("Activity by Flow Type")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Activity by Inventory Model")).not.toBeInTheDocument();
   });
 
   it("renders the Monthly Outgoing Qty stat block with the same value and testid as before the restyle", () => {

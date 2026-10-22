@@ -7,9 +7,12 @@ import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
+import { pickLists } from "@/lib/db/schema/pick_lists";
 import { getStorageClient } from "@/lib/supabase/storage";
-import { reportLocationShortage } from "@/lib/actions/withdrawals";
+import {
+  completeExactPick,
+  reportLocationShortage,
+} from "@/lib/actions/withdrawals";
 
 function validReceipt(file: File) {
   return file.size > 0 && file.size <= 10 * 1024 * 1024 && ["application/pdf", "image/png", "image/jpeg"].includes(file.type);
@@ -68,11 +71,10 @@ export async function approvePickList(formData: FormData) {
   const permission = await requirePermission(resolver, "pick_list.execute");
   if (permission.kind !== "authorized") redirect("/inventory?tab=pick-lists&error=forbidden");
   const pickListId = String(formData.get("pickListId") ?? "");
-  if (pickListId) {
-    await db
-      .update(pickLists)
-      .set({ status: "picked", updatedAt: new Date() })
-      .where(eq(pickLists.id, pickListId));
+  if (!pickListId) redirect("/inventory?tab=pick-lists&error=invalid_payload");
+  const result = await completeExactPick(resolver, pickListId);
+  if (!result.ok) {
+    redirect(`/inventory?tab=pick-lists&error=${encodeURIComponent(result.errors[0] ?? "invalid_transition")}`);
   }
   revalidatePath("/inventory");
   revalidatePath("/outgoing");
@@ -91,37 +93,12 @@ export async function updateQueuedPickListLineItems(formData: FormData) {
     redirect(`/pick-lists/${pickListId}/edit?error=invalid_payload`);
   }
 
-  try {
-    const parsed = JSON.parse(payload) as Array<{
-      lineId: string;
-      qty: number;
-      spq: number;
-      numberOfBoxes: number;
-    }>;
-
-    for (const line of parsed) {
-      if (line.lineId && Number(line.qty) >= 0) {
-        await db
-          .update(pickListItems)
-          .set({
-            qty: line.qty,
-            spq: line.spq,
-            numberOfBoxes: line.numberOfBoxes,
-          })
-          .where(eq(pickListItems.id, line.lineId));
-      }
-    }
-
-    await db.update(pickLists).set({ updatedAt: new Date() }).where(eq(pickLists.id, pickListId));
-  } catch {
-    redirect(`/pick-lists/${pickListId}/edit?error=save_failed`);
-  }
-
-  revalidatePath("/inventory");
-  revalidatePath("/pick-lists");
-  revalidatePath(`/pick-lists/${pickListId}/dispatch`);
-  revalidatePath(`/pick-lists/${pickListId}/print`);
-  redirect(`/pick-lists/${pickListId}/dispatch?result=updated`);
+  // Stage 1 already reserved the authoritative quantities when this pick list
+  // was created. Mutating line quantities here would orphan the reservation
+  // unless the caller performs a dedicated, audited reallocation. Keep the
+  // committed snapshot immutable and direct operators to the shortage/
+  // reallocation workflow instead.
+  redirect(`/pick-lists/${pickListId}/edit?error=pick_list_locked`);
 }
 
 export async function reportPickListShortage(formData: FormData) {

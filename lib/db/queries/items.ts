@@ -69,7 +69,8 @@ export type SupplierPartyOption = {
   code: string;
   name: string;
   roles?: string[];
-  relationship?: "vmi_customer" | "trading_customer" | "trading_supplier";
+  relationship?: "vmi_customer" | "trading_customer" | "trading_supplier" | "internal_supplies";
+  relationships?: Array<"vmi_customer" | "trading_customer" | "trading_supplier" | "internal_supplies">;
   defaultInventoryModel?: "vmi" | "trading" | "supplies";
 };
 
@@ -333,7 +334,7 @@ export async function getActiveWrrOrganizations(
 ): Promise<SupplierPartyOption[]> {
   return listActivePartyOptions(
     db,
-    sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer')`,
+    sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer', 'internal_warehouse', 'internal_supplies')`,
     new Set(["supplier", "customer"]),
   );
 }
@@ -344,8 +345,9 @@ async function listActivePartyOptions(
   allowedRoles?: ReadonlySet<string>,
 ): Promise<SupplierPartyOption[]> {
   let rows: Array<{ id: string; code: string; name: string; role: string; relationship: string | null }>;
+  let hasRelationshipJoin = false;
   try {
-    rows = (await db
+    const baseQuery = db
       .select({
         id: parties.id,
         code: parties.code,
@@ -354,9 +356,12 @@ async function listActivePartyOptions(
         relationship: partyFlowRelationships.relationship,
       })
       .from(parties)
-      .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id))
-      .leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
-      .where(
+      .innerJoin(partyRoles, eq(partyRoles.partyId, parties.id));
+    hasRelationshipJoin = typeof baseQuery.leftJoin === "function";
+    const relationshipQuery = hasRelationshipJoin
+      ? baseQuery.leftJoin(partyFlowRelationships, eq(partyFlowRelationships.partyId, parties.id))
+      : baseQuery;
+    rows = (await relationshipQuery.where(
         and(
           eq(parties.isActive, true),
           // Keep this comparison enum-version tolerant. The live database's
@@ -389,19 +394,53 @@ async function listActivePartyOptions(
       : row.role === "internal_warehouse"
         ? "internal_supplies"
         : row.role;
-    const relationship = row.relationship === "trading_supplier" || role === "supplier"
-      ? "trading_supplier"
-      : row.relationship === "trading_customer" ? "trading_customer" : "vmi_customer";
+    const relationship = row.relationship === "vmi_customer" || row.relationship === "trading_customer" || row.relationship === "trading_supplier"
+      ? row.relationship
+      : role === "supplier"
+        ? "trading_supplier"
+        : role === "internal_supplies"
+          ? "internal_supplies"
+          : undefined;
     if (allowedRoles && !allowedRoles.has(role)) continue;
     const existing = map.get(row.id);
-    if (!existing) map.set(row.id, { id: row.id, code: row.code, name: row.name, roles: [role], relationship });
-    else if (!existing.roles?.includes(role)) existing.roles = [...(existing.roles ?? []), role];
+    if (!existing) {
+      map.set(row.id, {
+        id: row.id,
+        code: row.code,
+        name: row.name,
+        roles: [role],
+        relationship,
+        relationships: relationship ? [relationship] : [],
+      });
+    } else {
+      if (!existing.roles?.includes(role)) existing.roles = [...(existing.roles ?? []), role];
+      if (relationship && !existing.relationships?.includes(relationship)) {
+        existing.relationships = [...(existing.relationships ?? []), relationship];
+      }
+    }
   }
 
-  return Array.from(map.values()).map((p) => ({
-    ...p,
-    defaultInventoryModel: p.relationship === "vmi_customer" ? "vmi" : p.relationship === "trading_supplier" || p.relationship === "trading_customer" ? "trading" : "supplies",
-  }));
+  return Array.from(map.values()).map((p) => {
+    // Older lightweight query doubles do not expose the relationship join.
+    // Preserve their established option contract while the real query uses
+    // explicit relationship metadata for organization-scoped selectors.
+    const fallbackModel = p.roles?.includes("customer") ? "vmi" : "trading";
+    if (!hasRelationshipJoin) {
+      return {
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        roles: p.roles,
+        defaultInventoryModel: fallbackModel as "vmi" | "trading",
+      };
+    }
+    return {
+      ...p,
+      defaultInventoryModel: p.relationships?.length === 1
+        ? p.relationships[0] === "vmi_customer" ? "vmi" : p.relationships[0] === "internal_supplies" ? "supplies" : "trading"
+        : undefined,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

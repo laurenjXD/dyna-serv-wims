@@ -11,6 +11,8 @@ import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db as globalDb } from "@/lib/db/client";
 import { generatedDocuments, documentEvents } from "@/lib/db/schema/documents";
+import { inventoryCommitments } from "@/lib/db/schema/commitments";
+import { getStorageClient } from "@/lib/supabase/storage";
 
 type DbLike = {
   select: (...args: any[]) => any;
@@ -52,6 +54,16 @@ export async function requestDocumentReprint(
 
   if (!doc) {
     return { ok: false, error: "Document not found", code: "DOCUMENT_NOT_FOUND" };
+  }
+
+  if (doc.status === "pending" || doc.status === "generating") {
+    return { ok: false, error: "The document is still being generated. Refresh shortly.", code: "DOCUMENT_PENDING" };
+  }
+  if (doc.status === "failed") {
+    return { ok: false, error: "Document generation failed. Retry generation before downloading.", code: "DOCUMENT_FAILED" };
+  }
+  if (doc.status === "voided") {
+    return { ok: false, error: "This document has been voided and is no longer downloadable.", code: "DOCUMENT_VOIDED" };
   }
 
   if (doc.status !== "ready") {
@@ -114,11 +126,33 @@ export async function getDocumentSignedUrl(
     return { ok: false, error: "Document not found", code: "DOCUMENT_NOT_FOUND" };
   }
 
-  // Fallback direct path or storage URL
+  // Pick-list/receipt routes are generated dynamically; stored artifacts use
+  // a short-lived private-storage URL and never expose the bucket path.
   const filename = `${doc.documentNumber}.pdf`;
-  const url = doc.artifactPath
-    ? `/api/documents/${doc.id}/download`
-    : `/api/pick-lists/${doc.sourceId}/receipt`;
+  let url: string;
+  if (doc.artifactPath) {
+    const { data, error } = await (await getStorageClient())
+      .from("generated-documents")
+      .createSignedUrl(doc.artifactPath, 60 * 15);
+    if (error || !data?.signedUrl) {
+      return { ok: false, error: "Document storage is temporarily unavailable. Retry shortly.", code: "DOCUMENT_STORAGE_UNAVAILABLE" };
+    }
+    url = data.signedUrl;
+  } else {
+    let pickListId = doc.sourceId as string;
+    if (doc.sourceType === "inventory_commitment") {
+      const [commitment] = await db
+        .select({ pickListId: inventoryCommitments.pickListId })
+        .from(inventoryCommitments)
+        .where(eq(inventoryCommitments.id, doc.sourceId))
+        .limit(1);
+      if (!commitment?.pickListId) {
+        return { ok: false, error: "The document source is unavailable. Retry generation or contact an administrator.", code: "DOCUMENT_SOURCE_UNAVAILABLE" };
+      }
+      pickListId = commitment.pickListId;
+    }
+    url = `/api/pick-lists/${pickListId}/receipt`;
+  }
 
   return {
     ok: true,
@@ -151,6 +185,14 @@ export async function retryDocumentGeneration(
 
   if (!doc) {
     return { ok: false, error: "Document not found", code: "DOCUMENT_NOT_FOUND" };
+  }
+
+  if (doc.status !== "failed") {
+    return {
+      ok: false,
+      error: "Only failed documents can be retried. The existing document state was preserved.",
+      code: "DOCUMENT_NOT_RETRYABLE",
+    };
   }
 
   await db

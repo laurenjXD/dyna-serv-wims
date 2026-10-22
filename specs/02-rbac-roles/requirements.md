@@ -1,7 +1,7 @@
 # RBAC & Roles — Requirements
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 Depends on:
 
@@ -242,3 +242,30 @@ These are not unresolved RBAC model choices, but the final capability matrix can
 - `04-services-and-infrastructure`: Auth administration boundary, email templates, rate-limit values, retention, and monitoring alerts.
 - `05-ui-shell-and-navigation`: protected route groups and navigation behavior.
 - `07` through `19`: workflow-specific view, execute, approve, document, report, notification, and file capabilities.
+
+## 10. Pending reapproval — Organization / Inventory Model authorization amendment (2026-10-22)
+
+- **Organization** and **Inventory Model** SHALL replace party/flow terminology
+  in new product-facing authorization contracts, administration UI, audit
+  events, errors, and feature APIs. Legacy `party`/`flow_type` names may remain
+  only behind the approved compatibility boundary defined by `01`.
+- An Organization assignment SHALL be authorized by both its active
+  Organization relationship and its Inventory Model. The permitted relationships
+  are Trading Supplier, Trading Customer, VMI Customer, VMI End Customer, and
+  Internal Supplies for the Supplies Inventory Model. Internal Supplies is an
+  internal/global-staff classification, not an `assigned_party` relationship;
+  it MUST NOT weaken the existing Supplies exclusion for party-user scope.
+  The same Organization may hold several explicit relationships; no role or
+  scope SHALL be inferred from another relationship.
+- Supplier, Customer, End Customer, Internal Supplies, and any legacy role
+  compatibility value are business classifications only; none grants or
+  expands application access by itself. Internal Supplies operations remain
+  protected by existing global staff capabilities, never party-user scope.
+- RLS helpers and direct server-action authorization SHALL derive scope from
+  the actual protected resource, not from a client-supplied organization ID or
+  inventory-model value. A scope failure SHALL be indistinguishable from
+  not-found where disclosing record existence would leak data.
+- Permission revocation, Organization-relationship deactivation, and
+  Inventory Model scope changes SHALL take effect on the next protected request
+  and at offline replay. Every denial/replay rejection SHALL be auditable with
+  actor, requested resource, actual scope, result code, and correlation ID.

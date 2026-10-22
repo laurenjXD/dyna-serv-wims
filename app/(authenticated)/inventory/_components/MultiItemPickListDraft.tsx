@@ -65,8 +65,11 @@ export function MultiItemPickListDraft({
   const [importingDra, setImportingDra] = useState(false);
   const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
   const visibleCustomers = useMemo(() => customers.filter((customer) =>
-    !flowType || flowType === "supplies" || customer.relationship === "customer" ||
-    (flowType === "vmi" ? customer.relationship === "vmi_customer" : customer.relationship === "trading_customer"),
+    flowType === "vmi"
+      ? customer.relationship === "vmi_customer"
+      : flowType === "trading"
+        ? customer.relationship === "trading_customer"
+        : false,
   ), [customers, flowType]);
 
   const catalog = useMemo(() => {
@@ -121,7 +124,9 @@ export function MultiItemPickListDraft({
   const request = useMemo(() => {
     if (!organizationId || !customerPartyId || !flowType || lineDetails.length === 0) return "";
     if (flowType === "vmi" && !endCustomerPartyId) return "";
-    const recipientPartyId = flowType === "trading" ? customerPartyId : endCustomerPartyId;
+    const recipientPartyId = flowType === "supplies"
+      ? organizationId
+      : flowType === "trading" ? customerPartyId : endCustomerPartyId;
     const prepared = lineDetails.map(({ line, item, source }) => ({
       itemId: line.itemId,
       lotId: source?.lotId,
@@ -162,7 +167,9 @@ export function MultiItemPickListDraft({
       qty <= 0 ||
       boxesToPieces(qty, alternate.item?.spq ?? 1) > alternate.source.availableQty
     ) return "";
-    const recipientPartyId = flowType === "trading" ? customerPartyId : endCustomerPartyId;
+    const recipientPartyId = flowType === "supplies"
+      ? organizationId
+      : flowType === "trading" ? customerPartyId : endCustomerPartyId;
     return JSON.stringify({
       partyId: organizationId,
       customerPartyId,
@@ -189,20 +196,24 @@ export function MultiItemPickListDraft({
     );
     if (availableFlows.length > 0) {
       setFlowType(availableFlows[0]);
+      setCustomerPartyId(availableFlows[0] === "supplies" ? value : "");
+      setEndCustomerPartyId(availableFlows[0] === "supplies" ? value : "");
     } else {
       setFlowType("");
+      setCustomerPartyId("");
+      setEndCustomerPartyId("");
     }
   };
   const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => {
     setFlowType(value);
     resetDraft();
-    if (value === "trading" && customerPartyId) {
-      setEndCustomerPartyId(customerPartyId);
-    } else if (value === "vmi") {
-      setEndCustomerPartyId(
-        endCustomers.some((party) => party.id === customerPartyId) ? customerPartyId : "",
-      );
-    } else if (value !== "trading") {
+    if (value === "supplies") {
+      setCustomerPartyId(organizationId);
+      setEndCustomerPartyId(organizationId);
+    } else {
+      // Customer/end-customer selections are model-specific. Never carry a
+      // valid selection from one model into another model's relationship.
+      setCustomerPartyId("");
       setEndCustomerPartyId("");
     }
   };
@@ -225,7 +236,7 @@ export function MultiItemPickListDraft({
       return;
     }
 
-    const { rows: draRows } = res.parseResult;
+    const { rows: draRows, header: draHeader } = res.parseResult;
     if (draRows.length === 0) {
       setImportSummary({ type: "warning", message: "No release line items were extracted from the document." });
       return;
@@ -233,6 +244,32 @@ export function MultiItemPickListDraft({
 
     let targetOrgId = organizationId;
     let targetFlow = flowType;
+
+    const requestedOrganization = draHeader.requestingOrganization ?? draHeader.customerOrganization;
+    if (!requestedOrganization && !targetOrgId) {
+      setImportSummary({
+        type: "warning",
+        message: "DRA must identify the requesting Organization before items can be imported.",
+      });
+      return;
+    }
+    if (requestedOrganization && !targetOrgId) {
+      const normalizedRequested = requestedOrganization.trim().toLowerCase();
+      const organizationMatches = organizations.filter((organization) =>
+        organization.name.trim().toLowerCase() === normalizedRequested,
+      );
+      if (organizationMatches.length !== 1) {
+        setImportSummary({
+          type: "warning",
+          message: organizationMatches.length === 0
+            ? `The DRA Organization “${requestedOrganization}” is not enrolled or is not present in current stock.`
+            : `The DRA Organization “${requestedOrganization}” matched multiple records. Select the Organization manually before importing.`,
+        });
+        return;
+      }
+      targetOrgId = organizationMatches[0].id;
+      setOrganizationId(targetOrgId);
+    }
 
     if (!targetOrgId) {
       for (const draRow of draRows) {
@@ -258,6 +295,22 @@ export function MultiItemPickListDraft({
             break;
           }
         }
+      }
+    }
+
+    if (targetOrgId && !targetFlow) {
+      const organizationFlows = [...new Set(
+        stock.filter((row) => row.organizationId === targetOrgId).map((row) => row.flowType),
+      )];
+      if (organizationFlows.length === 1) {
+        targetFlow = organizationFlows[0];
+        setFlowType(targetFlow);
+      } else if (organizationFlows.length > 1) {
+        setImportSummary({
+          type: "warning",
+          message: "The DRA Organization has more than one Inventory Model. Select the correct model before importing its lines.",
+        });
+        return;
       }
     }
 
@@ -432,7 +485,15 @@ export function MultiItemPickListDraft({
             </select>
           </label>
 
-          {flowType === "trading" ? (
+          {flowType === "supplies" ? (
+            <div className="grid gap-1 font-label text-xs font-bold text-slate-700">
+              Internal Supplies Organization
+              <div className="flex min-h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-700">
+                {organizations.find((organization) => organization.id === organizationId)?.name ?? "Selected Internal Supplies Organization"}
+              </div>
+              <span className="font-body text-[11px] font-normal text-slate-500">Supplies issues are assigned to the selected Internal Supplies Organization.</span>
+            </div>
+          ) : flowType === "trading" ? (
             <div className="grid gap-1 font-label text-xs font-bold text-slate-700">
               Customer / Recipient
               <div className="flex min-h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-700">
@@ -462,7 +523,7 @@ export function MultiItemPickListDraft({
           )}
 
           <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
-            {flowType === "vmi" ? "VMI Customer / Stock Owner" : "Customer / Bill-to"}
+            {flowType === "vmi" ? "VMI Customer / Stock Owner" : flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
             <select
               value={customerPartyId}
               onChange={(event) => {
@@ -474,10 +535,16 @@ export function MultiItemPickListDraft({
                     : endCustomers.some((party) => party.id === nextCustomerId) ? nextCustomerId : "",
                 );
               }}
-              required
+              required={flowType !== "supplies"}
+              disabled={flowType === "supplies"}
               className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
             >
               <option value="">Select customer…</option>
+              {flowType === "supplies" && (
+                <option value={organizationId}>
+                  {organizations.find((organization) => organization.id === organizationId)?.name ?? "Internal Supplies Organization"}
+                </option>
+              )}
               {visibleCustomers.map((customer) => (
                 <option key={`${customer.id}:${customer.relationship}`} value={customer.id}>
                   {customer.name} — {customer.relationship === "vmi_customer" ? "Customer · VMI" : customer.relationship === "trading_customer" ? "Customer · Trading" : "Customer"}
@@ -487,7 +554,9 @@ export function MultiItemPickListDraft({
             <span className="font-body text-[11px] font-normal text-slate-500">
               {flowType === "vmi"
                 ? "The VMI customer owns the selected stock; choose the downstream recipient above."
-                : "The trading customer is both the bill-to and delivery recipient."}
+                : flowType === "supplies"
+                  ? "The Internal Supplies Organization is the consuming recipient."
+                  : "The trading customer is both the bill-to and delivery recipient."}
             </span>
           </label>
 

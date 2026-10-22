@@ -1,6 +1,6 @@
 # Core Data Model — Design
 Status: Approved
-Updated: 2026-08-24 — WRR document-field ownership amendment
+Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions
@@ -787,3 +787,66 @@ export const wrrAdvanceNoticeStatusEnum = pgEnum("wrr_advance_notice_status", [
 - **`submitted_by_user_id` (added 2026-08-06)**: **`db-migration-verifier` pass 4 (2026-08-06)** ran against this column: NOT NULL enforcement PASS; but the column was found genuinely spoofable — the RLS policy as it stood after pass 3 never referenced it, so a client could INSERT an arbitrary UUID (not their own `auth.uid()`) and the self-review check §7.4a exists to enable would silently never fire. **Fixed**: added condition 4 (`submitted_by_user_id = auth.uid()`) to `02` design.md §7.4's WITH CHECK clause. **`db-migration-verifier` pass 5 (2026-08-06)** confirmed the fix: the spoofed insert is now rejected outright (no row ever created), the honest case still succeeds, and a simulated confirm correctly blocks the same dual-role identity from self-reviewing. **This column and its RLS enforcement are now fully verified.**
 - **`db-migration-verifier` pass 1 (2026-08-06)**: real-Postgres run against this literal DDL — every FK (`party_id`, `item_id`, `matched_wrr_item_id`), the `status` enum, required-field NOT NULL constraints, `supplier_lot_number` nullability, and the documented no-uniqueness-on-`(party_id, item_id)` behavior all PASS. RESTRICT-by-default delete behavior on all three FK columns confirmed (no silent orphaning of `matched_wrr_item_id`). One real bug found and fixed: the code block's import line included an unused `text` import (no column uses `text`; `supplier_lot_number` is `varchar`), which fails a literal `tsc --noEmit` compile under `noUnusedLocals` — removed. RLS enforcement itself remains untested here (correctly out of scope for `01`, owned by `02`); a second `db-migration-verifier` pass is still needed once `02`'s corrected RLS pattern (the `rbac-rls-reviewer` fixes below) can be exercised together with this table.
 - No uniqueness constraint is proposed on `(party_id, item_id)` — a party may submit multiple advance notices for the same item across different shipments.
+
+## 7. Pending reapproval — Organization / Inventory Model compatibility and integrity design (2026-10-22)
+
+### 7.1 Compatibility boundary
+
+The existing `parties`, `party_roles`, `party_flow_relationships`,
+`*_party_id`, `flow_type`, and `flowType` physical names remain intact during
+the first migration release. New product-facing server contracts, query
+projections, TypeScript domain types, audit payloads, documents, and UI copy
+use `organization`/`organizationId` and `inventoryModel`.
+
+A compatibility mapper or database view may expose Organization-facing names,
+but it MUST be read/write-safe, RLS-equivalent to the underlying relation, and
+verified before any caller is migrated. Physical table/column renames are a
+later contract phase, after all callers, exports, jobs, RLS policies, and
+historical-document readers have moved.
+
+### 7.2 Role relationship model
+
+`party_flow_relationships` is the legacy physical relationship store for the
+Organization relationship model. Its target relationship values are:
+
+| Organization role | Inventory Model | Relationship value |
+|---|---|---|
+| Supplier | Trading | `trading_supplier` |
+| Customer | Trading | `trading_customer` |
+| Customer | VMI | `vmi_customer` |
+| End Customer | VMI | explicit end-customer role; no Trading relationship |
+| Internal Supplies | Supplies | existing `party_roles` classification (`internal_supplies`, with deployed `internal_warehouse` compatibility); no `party_flow_relationships` row |
+
+The compatibility layer must not infer any row from another. A single
+Organization may have multiple explicit, active relationships. Legacy
+`vendor` is historical compatibility data. `internal_supplies` is the current
+application-schema value; `internal_warehouse` is a deployed-database
+compatibility value rendered as **Internal Supplies**. This amendment does not
+rename either enum value. Internal Supplies is valid only for the Supplies
+Inventory Model and deliberately has no `party_flow_relationships` value.
+Stock owner/source/destination remain fields of a lot or transaction context
+rather than additional role values.
+
+### 7.3 Atomic transition and idempotency design
+
+All state-changing operations use a single authoritative transaction with:
+
+1. parent-record and scope validation;
+2. current-status/version lock or compare-and-swap predicate;
+3. item/lot/location/Inventory Model/Organization relationship validation;
+4. child-record insert or quantity mutation;
+5. audit/idempotency record;
+6. affected-row-count verification before returning success.
+
+For transfer creation, `transfer_requests` and every `transfer_lines` row are
+inserted in the same transaction. For inspection resolution, the transition is
+`UPDATE ... WHERE id = :id AND status = 'open'`; a zero-row result is a stale
+or already-resolved case and MUST NOT create another disposition. Equivalent
+conditional-update rules apply to WRR scans, commitments, dispatch, document
+retry, and billing-period close in their owning specs.
+
+Operation identities are unique per actor/command/parent-record/client key.
+On replay, the stored completed result is returned; no quantity, status, or
+ledger mutation is repeated. Any schema support for these records belongs in a
+dedicated approved migration with RLS and retention rules reviewed by `02` and
+`04`.

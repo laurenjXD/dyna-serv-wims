@@ -1,6 +1,6 @@
 # Core Data Model — Requirements
 Status: Approved
-Updated: 2026-08-24 — WRR document-field ownership amendment
+Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
 Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
 
 ## 1. Overview
@@ -122,3 +122,58 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
 - A single `parties` row SHALL remain the organization master record.
 - The system SHALL store explicit active flow-specific relationships so one Customer organization can be selected distinctly as a VMI Customer or Trading Customer, and a Supplier can be selected as a Trading inbound source.
 - Relationship values SHALL be `vmi_customer`, `trading_customer`, and `trading_supplier`; they SHALL be unique per party and independently activatable without duplicating the organization.
+
+## 7. Pending reapproval — Organization / Inventory Model and workflow-integrity amendment (2026-10-22)
+
+### 7.1 Canonical product terminology with compatibility boundary
+
+- **Organization** SHALL be the canonical product and new domain/API term for
+  an organization or company. `party`/`parties` is legacy physical-schema
+  vocabulary during the staged migration only; it SHALL not appear in new
+  user-facing copy or new domain contracts.
+- **Inventory Model** SHALL be the canonical product and new domain/API term
+  for the `vmi`, `trading`, and `supplies` partition. `flow_type`/`flowType`
+  is legacy physical-schema vocabulary during the staged migration only.
+- The first release SHALL use expand → migrate → contract: add approved
+  Organization/Inventory Model compatibility contracts, migrate callers and
+  documents, verify data and RLS, then retire legacy names. It MUST NOT perform
+  a destructive table or column rename in the first release.
+
+### 7.2 Organization roles and inventory-model relationships
+
+- The only organization role families are:
+  1. **Supplier** — Trading only;
+  2. **Customer** — explicitly either Trading Customer or VMI Customer;
+  3. **End Customer** — VMI only.
+  4. **Internal Supplies** — Supplies only.
+- Existing `internal_supplies` is the current application-schema role value.
+  Older deployed `internal_warehouse` values SHALL render as Internal Supplies
+  through a read-compatible adapter until their already-planned migration is
+  verified. This terminology amendment SHALL NOT alter the enum, table, or
+  existing records by itself.
+- Internal Supplies SHALL remain valid only for the Supplies Inventory Model
+  and SHALL NOT create a `party_flow_relationships` row.
+- Stock owner, stock source, and destination SHALL be treated as transaction or
+  lot context, not additional Organization roles.
+- Every relationship selection SHALL validate the Organization, active status,
+  allowed role, and Inventory Model inside the authoritative transaction.
+
+### 7.3 Core transaction integrity requirements
+
+- A transfer SHALL persist its header and all `transfer_lines` atomically. Each
+  line SHALL belong to the submitted transfer and validate item, lot, source
+  location, Inventory Model, whole/SPQ-compatible quantity, and available
+  balance before it is accepted.
+- Transfer, WRR, inspection case, pick list, commitment, billing period, and
+  generated-document transitions SHALL use an explicit allowed-transition
+  graph. Every state-changing update SHALL condition on its expected current
+  status/version and check that exactly one row changed.
+- An inspection case SHALL have at most one open case for the approved source
+  identity/context, and resolution SHALL atomically claim the open case before
+  recording its disposition.
+- Quantity fields used for inventory movement or commitment SHALL reject null,
+  non-finite, zero, negative, fractional, and non-SPQ-compatible values where
+  whole physical units are required.
+- Every mutating floor command SHALL have a stable operation identity and
+  return the original authoritative result on a safe retry after a lost
+  response. It SHALL never apply stock movement twice.

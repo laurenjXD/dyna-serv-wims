@@ -29,6 +29,8 @@ const BUSINESS_ROLE_LABELS: Record<string, string> = {
   supplier: "Supplier",
   vendor: "Supplier",
   customer: "Customer",
+  internal_supplies: "Internal Supplies",
+  internal_warehouse: "Internal Supplies",
 };
 
 function getBusinessRoleLabel(party: SupplierPartyOption): string {
@@ -81,6 +83,10 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
     return !query || `${party.code} ${party.name}`.toLowerCase().includes(query);
   });
   const selectedVendor = vendorParties.find((party) => party.id === vendorPartyId);
+  const selectedRelationships = selectedVendor?.relationships ?? (selectedVendor?.relationship ? [selectedVendor.relationship] : []);
+  const availableModels = selectedRelationships
+    .map((relationship) => relationship === "vmi_customer" ? "vmi" : relationship === "internal_supplies" ? "supplies" : "trading")
+    .filter((model, index, models): model is "vmi" | "trading" | "supplies" => models.indexOf(model) === index);
 
   async function handleCiplFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -250,12 +256,14 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                       key={`${party.id}:${party.relationship ?? "legacy"}`}
                       type="button"
                       onClick={() => {
+                        if (vendorPartyId !== party.id) setImportedLines([]);
                         setVendorPartyId(party.id);
                         setVendorSearch(`${party.code} — ${party.name}`);
                         setIsVendorOpen(false);
-                        // Auto-assign inventory model based on organization role
                         if (party.defaultInventoryModel) {
                           setFlowType(party.defaultInventoryModel);
+                        } else {
+                          setFlowType("");
                         }
                       }}
                       className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left font-body text-body-sm text-on-surface hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-navy"
@@ -327,9 +335,9 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="">Select inventory model…</option>
-              <option value="vmi">VMI (Consignment)</option>
-              <option value="trading">Trading (Owned)</option>
-              <option value="supplies">Supplies</option>
+              {availableModels.includes("vmi") && <option value="vmi">VMI (Consignment)</option>}
+              {availableModels.includes("trading") && <option value="trading">Trading (Owned)</option>}
+              {availableModels.includes("supplies") && <option value="supplies">Supplies</option>}
             </select>
           </div>
 

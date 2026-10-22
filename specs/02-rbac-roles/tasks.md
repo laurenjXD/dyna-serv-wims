@@ -1,7 +1,7 @@
 # RBAC & Roles — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-08 (cycle 2.4 implemented and real-Postgres verified — see below)
+Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 ## Scope and implementation gate
 
@@ -239,3 +239,25 @@ Conditional recommendations were resolved as `1F=B` (party plus optional `flow_t
 - [x] `db-migration-verifier` review complete — real-Postgres run (2026-08-05) found and fixed 4 implementation-detail bugs invisible from reading the SQL alone (a non-`IMMUTABLE` function in a partial-unique-index expression; three missing `GRANT USAGE`/`EXECUTE` statements on `auth`, `rbac_internal`, and `rbac_internal.has_permission` that would have broken every helper call and the entire admin mutation path). All 6 requested verification items now PASS; see design.md §13 for exactly what remains for a follow-up pass.
 - [x] Product owner approval — Name: Lauren Date: 2026-08-05
 - [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
+
+## Pending reapproval — Organization / Inventory Model authorization implementation
+
+- [ ] Introduce Organization/Inventory Model compatibility fields in the
+  authorization context, admin selectors, RLS-facing API helpers, and audit
+  event vocabulary without destructive physical schema renames.
+- [ ] Extend scope resolution to require the explicit Trading Supplier, Trading
+  Customer, VMI Customer, or VMI End Customer relationship appropriate to the
+  resource's Inventory Model.
+- [ ] Prove direct actions, storage signed URLs, realtime, exports, and offline
+  replay cannot use a legacy adapter or client-supplied value to broaden scope.
+- [ ] Add real-Postgres RLS coverage for all cross-relationship/cross-model
+  denials, multi-role Organizations, relationship revocation, and stale
+  requests.
+- [ ] Add regression assertions that new product-facing authorization messages,
+  audit payloads, and admin UI use Organization/Inventory Model terminology.
+
+### Amendment sign-off
+
+- [x] Product Owner approval — User, 2026-10-22 (cross-cutting plan).
+- [ ] Technical/RBAC review and real-Postgres verification.
+- [x] Second amendment sign-off — System standing approval, 2026-10-22.

@@ -255,3 +255,15 @@ The Stage 1 request carries `endCustomerPartyId`. The server validates that the 
 ### 12.1 Flow-specific recipient interpretation
 
 The command normalizes the outbound recipient before writing the immutable snapshot. In Trading, the recipient is always `customerPartyId` and must represent the selected `trading_customer`; any separate end-customer value from a client is ignored. In VMI, the recipient is `endCustomerPartyId` and must be an active party with the `end_customer` role, while `customerPartyId` remains the VMI stock owner/customer. The UI therefore exposes one `Customer / Recipient` selector for Trading and separate `VMI Customer / Stock Owner` plus `End Customer / Recipient` selectors for VMI.
+
+## 13. Approved amendment — selector dependency and server-validation matrix (2026-10-22)
+
+| Inventory Model | Header fields | Allowed Organization relationship | Snapshot semantics |
+|---|---|---|---|
+| VMI | VMI Customer; End Customer | `vmi_customer`; `end_customer` | owner/customer → `customer_party_id`; physical recipient → `end_customer_party_id` |
+| Trading | Trading Customer | `trading_customer` | direct recipient → both compatibility columns |
+| Supplies | Internal Supplies Organization | `internal_supplies` role only | consuming recipient → both compatibility columns |
+
+The form never renders an irrelevant field. It clears model-incompatible header values and every draft allocation when a controlling value changes, requiring confirmation before discarding draft lines. Only exactly one eligible Internal Supplies Organization can be auto-defaulted; zero choices produce a configuration error and multiple choices require explicit selection.
+
+`createPickList` (or its successor) repeats all checks inside the commitment transaction: active Organization, exact relationship, user/RLS scope, model-compatible item/lot/location/stock context, concurrency version, and current allocation. Failure leaves no commitment, pick list, or document snapshot. Legacy generic customer rows are read-compatible but fail new-write validation with a remediation error. This contract also applies to imported DRA values, stale browser state, URL parameters, and direct action calls.

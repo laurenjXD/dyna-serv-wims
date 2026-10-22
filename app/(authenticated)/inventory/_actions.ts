@@ -37,6 +37,14 @@ export async function generatePickList(
       forbidden: "You do not have permission to generate pick lists.",
       provisional_item_code: "This item needs its DSGC/supplier item code before a pick list can be created.",
       invalid_end_customer: "The selected end customer is inactive or is not enrolled with the End Customer role.",
+      organization_inactive_or_not_found: "The selected Organization is inactive or no longer enrolled.",
+      organization_relationship_required: "The selected Organization is not authorized for this Inventory Model.",
+      end_customer_inactive_or_not_found: "The selected End Customer is inactive or no longer enrolled.",
+      end_customer_relationship_required: "The selected Organization is not enrolled as an End Customer.",
+      stale_record: "This record changed in another session. Refresh the page and try again.",
+      invalid_transition: "This workflow step is no longer available. Refresh the page to see the current state.",
+      insufficient_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
+      duplicate_operation: "This operation was already completed. The original result is shown.",
       unable_to_reserve_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
     };
     return { ok: false, error: messages[result.errors[0]] ?? "Pick list was not created. Please try again." };

@@ -10,6 +10,7 @@ export interface InventoryRow {
   id: string;
   itemCode: string;
   itemName: string;
+  categoryName?: string | null;
   lotNumber: string;
   location: string;
   qtyOnHand: number;

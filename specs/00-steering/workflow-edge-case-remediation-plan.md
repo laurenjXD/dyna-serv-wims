@@ -1,7 +1,7 @@
 # Workflow Edge-Case Remediation Plan
 
-Status: Draft implementation plan  
-Updated: 2026-10-22  
+Status: Product Owner approved — feature-level spec amendments and required sign-offs pending before implementation
+Updated: 2026-10-22
 Scope: End-to-end WIMS workflow from enrollment through receiving, inspection,
 transfers, inventory, pick-list commitment, dispatch, documents, portal,
 billing, offline recovery, and reporting.
@@ -18,10 +18,11 @@ edge case must have:
    the risk;
 5. idempotency or a safe retry result where a network timeout can occur.
 
-No application implementation or migration may begin until the owning
-feature's `requirements.md`, `design.md`, and `tasks.md` are Approved with the
-required sign-offs. This document is a planning artifact and does not authorize
-implementation by itself.
+Product Owner approved this remediation and terminology direction on
+2026-10-22. No application implementation or migration may begin until each
+owning feature's `requirements.md`, `design.md`, and `tasks.md` incorporates
+the applicable amendment and has the required sign-offs. This document is the
+cross-cutting source plan; it does not replace feature-level approval records.
 
 ## 2. Priority and execution order
 
@@ -46,6 +47,34 @@ Execution order:
 4. Run real-Postgres/RLS and concurrency verification.
 5. Implement UI recovery states and floor/portal flows.
 6. Run Playwright, mobile scanner simulation, offline tests, and UAT.
+
+### 2.1 Feature-level amendment backlog
+
+Each row requires synchronized updates to the feature's `requirements.md`,
+`design.md`, and `tasks.md`. A task may move to implementation only after its
+own amendment is signed off.
+
+| Order | Owning spec | Amendment required before implementation | Primary acceptance gate |
+|---|---|---|---|
+| 1 | `01-core-data-model` | Organization/Inventory Model compatibility and migration contract; three-role organization relationship model; state/version/idempotency constraints; transfer-line atomicity; inspection uniqueness; quantity and parent-record invariants. | Full migration chain plus real-Postgres constraints/concurrency tests. |
+| 2 | `02-rbac-roles` | Organization-scoped authorization vocabulary; role/relationship scope rules; direct-action/RLS contract; session-revocation and audit-event requirements. | RLS tests for every internal role, organization relationship, and revoked session. |
+| 3 | `06-party-and-item-enrollment` | Organization enrollment terminology; Supplier, Trading Customer, VMI Customer, VMI End Customer, and Internal Supplies role validation; inactive/stale/duplicate behavior; legacy `party` compatibility UX. | Enrollment Playwright and duplicate/stale-write integration tests. |
+| 4 | `07-incoming-receiving` | Inventory Model barcode enforcement; atomic scan/idempotency behavior; shortage/OS&D close rules; allocation/disposition and CIPL failure recovery. | Real-Postgres scan race tests and floor scanner E2E. |
+| 5 | `11-transfer-and-inspection` | Transfer header/line atomicity; source/lot/item/inventory-model validation; transition graph; single-open-case and single-resolution rules. | Transfer and inspection concurrency/RLS integration tests. |
+| 6 | `08-outgoing-withdrawal-and-two-stage-commitment` | Organization relationship validation; integer/SPQ rules; shortage reconciliation; exact-unit/shared-label decision; expiry/retry and dispatch idempotency. | Reservation/shortage/dispatch real-Postgres and Playwright tests. |
+| 7 | `10-pick-list-and-acknowledgement-receipt` | Immutable Trading/VMI price snapshot contract; document-state recovery; terminology on documents; signed download/reprint contract. | Price/document snapshot and retry tests. |
+| 8 | `03-offline-mode-and-client-storage` | Tier 1 payload, ordering, replay authorization, conflict classes, and truthful connectivity/status vocabulary. | IndexedDB, replay, revoked-session, and browser offline tests. |
+| 9 | `04-services-and-infrastructure` | Idempotency/correlation standard; document storage/signing/retry jobs; provider timeout and artifact retention recovery. | Storage, PDF, email, and failure-injection integration tests. |
+| 10 | `12-vmi-billing` | Missing-ledger/forex/duplicate-close/payment/PDF/email recovery behavior; organization terminology. | Period-close, payment, artifact, and resend E2E tests. |
+| 11 | `13-trading-orders-and-pricing` | Pricing-to-pick-list handoff; Trading Customer and Supplier role validation; unresolved adjustment policy; Inventory Model terminology. | Full Trading price-freeze-to-document E2E test. |
+| 12 | `22-parties-portal` | Rename product-facing party language to Organization; multi-organization scope; working inventory filters/export/download/labels; no mock/inert controls. | Organization portal scope and signed-download Playwright tests. |
+| 13 | `05-ui-shell-and-navigation`, `16-reporting-and-analytics` | Product-wide Organization/Inventory Model labels, error/recovery states, and no-synthetic-data reporting policy. | Accessibility, terminology scan, report-failure, and visual regression tests. |
+
+The cross-cutting Organization/Inventory Model rename must use an expand →
+migrate → contract sequence: introduce approved Organization-facing contracts,
+migrate callers and documents, backfill/verify data, then retire legacy
+`party`/`flowType` names only after compatibility telemetry shows no remaining
+callers. No destructive schema rename occurs in the first release.
 
 ## 3. Cross-cutting contracts to establish first
 
@@ -111,7 +140,7 @@ error server-side; never expose raw SQL/provider errors.
 | Concurrent duplicate role assignment | Add scoped uniqueness or transactional duplicate prevention for party roles. | Two simultaneous role-add commands. |
 | Bulk location naming collision or huge range | Validate bounded range, normalize names, preflight conflicts, and return per-row results. | Duplicate, overflow, partial-failure, and retry tests. |
 | Stale item edit | Use an explicit version/updated-at CAS and return `stale_record`; never overwrite silently. | Two-tab edit test. |
-| Organization-role ambiguity | Keep the UI label **Organization** for the record; model Trading Supplier, Trading Customer, VMI Customer, and VMI End Customer relationships explicitly. Treat stock owner/source and destination as workflow context. Do not overload `default_supplier_party_id`. | Spec decision, migration review, and pick-list scope tests. |
+| Organization-role ambiguity | Keep the UI label **Organization** for the record; model Trading Supplier, Trading Customer, VMI Customer, VMI End Customer, and Internal Supplies explicitly. Treat stock owner/source and destination as workflow context. Do not overload `default_supplier_party_id`. | Spec decision, migration review, and pick-list scope tests. |
 | Inactive item/location appears in a stale form | Revalidate server-side and refresh the selector after rejection. | Stale browser page test. |
 
 ### 4.2 Receiving and WRR
@@ -290,13 +319,16 @@ The following terms are mandatory throughout new code and user-facing text:
 
 The canonical product term is **Organization**. An organization or company is
 represented by one organization record. The organization-role model has exactly
-three role families:
+four role families:
 
 1. **Supplier** — Trading only.
 2. **Customer** — either Trading customer or VMI customer; these are distinct
    inventory-model-specific relationships, not one interchangeable customer
    role.
 3. **End customer** — VMI only.
+4. **Internal Supplies** — Supplies only; this is the internal-use
+   Organization business role stored in the existing role classification, not
+   a new flow-relationship record.
 
 The same organization may hold more than one valid role when the relationships
 are explicitly recorded and do not violate inventory-model rules. Stock owner,
@@ -314,9 +346,9 @@ Therefore:
   queries, RLS-facing APIs, audit events, and specifications;
 - use **Organization** in all user-facing screens and documents for the
   organization/company record;
-- use only the approved role labels **Supplier**, **Customer**, and **End
-  customer**; qualify Customer as **Trading customer** or **VMI customer**
-  whenever the inventory model matters;
+- use only the approved role labels **Supplier**, **Customer**, **End
+  customer**, and **Internal Supplies**; qualify Customer as **Trading
+  customer** or **VMI customer** whenever the inventory model matters;
 - use **stock owner**, **stock source**, and **destination** only as contextual
   workflow fields, never as organization roles;
 - never rename the general organization relationship to **Stock Source**,
@@ -336,8 +368,9 @@ relationships, store them separately instead of overloading an
 
 This resolves the terminology clarification: **Organization is the canonical
 product and domain term; `party` is a temporary legacy/schema compatibility
-term; the only organization roles are Trading Supplier, Trading/VMI Customer,
-and VMI End Customer.**
+term; the only Organization business roles are Supplier, Customer, End
+Customer, and Internal Supplies, each constrained to its approved Inventory
+Model relationship.**
 
 ### 6.3 Refactoring sequence
 
@@ -372,6 +405,7 @@ and VMI End Customer.**
 | A form says “supplier” while the action parameter says `organizationId` | Replace the copy or rename the parameter after the role decision; do not leave the mismatch. |
 | A Trading supplier is selected as a VMI customer or end customer | Reject the selection and require an organization with an active VMI customer/end-customer relationship. |
 | A Trading customer is selected for a VMI flow, or a VMI customer is selected for Trading | Reject the selection unless the organization has the matching inventory-model-specific customer relationship. |
+| Internal Supplies is selected for VMI or Trading | Reject the selection; Internal Supplies is valid only in the Supplies Inventory Model and must not create a `party_flow_relationships` row. |
 | An organization has multiple valid roles | Represent each role relationship explicitly; do not infer one role from another. |
 | A historical document contains an old term | Preserve legally/audit-required historical text, but identify the canonical term in the current UI and template version. |
 | External CIPL/DRA uses “supplier” or “SKU” | Preserve the imported source label only in raw-source evidence; map it to `organization`/`item` in the operational model. |
@@ -394,6 +428,69 @@ and VMI End Customer.**
   and Playwright assertions use the same vocabulary.
 - Compatibility aliases, if retained, are isolated, documented, tested, and
   scheduled for removal.
+
+### 6.6 Organization selector and relationship contract (approved 2026-10-22)
+
+For document-driven workflows, the Organization is identified first from the
+source/requesting document. The form then derives or asks the operator to
+choose the Inventory Model from that Organization's valid relationships. For
+stock-view workflows, Inventory Model may be selected first because it is the
+operator's starting context. In both cases, a selector is only an assistance
+mechanism: the authoritative server command resolves the current
+Organization, its active role/relationship, actor scope, item/lot ownership,
+and Inventory Model again in the same transaction that creates or commits the
+workflow record.
+
+| Workflow | Inventory Model | Required Organization context | Fields shown to the operator | Legacy-column compatibility |
+|---|---|---|---|---|
+| WRR staging / receiving | VMI | active **VMI Customer** (stock owner/source) | `VMI Customer` | `vendor_party_id` stores that Organization ID until a schema migration is approved. |
+| WRR staging / receiving | Trading | active **Supplier** | `Trading Supplier` | `vendor_party_id` stores that Organization ID. |
+| WRR staging / receiving | Supplies | active **Internal Supplies** | `Internal Supplies Organization` | `vendor_party_id` stores that Organization ID. |
+| Pick-list generation / dispatch | VMI | active **VMI Customer** plus active **End Customer** recipient | `VMI Customer` and `End Customer` | `customer_party_id` is the VMI Customer; `end_customer_party_id` is the End Customer. |
+| Pick-list generation / dispatch | Trading | active **Trading Customer** recipient | `Trading Customer` only | `customer_party_id` and legacy `end_customer_party_id` both snapshot the Trading Customer; UI never calls it an End Customer. |
+| Pick-list generation / dispatch | Supplies | active **Internal Supplies** consuming Organization | `Internal Supplies Organization` only | `customer_party_id` and legacy `end_customer_party_id` both snapshot the Internal Supplies Organization; UI never calls either a Customer. |
+
+For Supplies, the form auto-selects the Organization only when exactly one
+active, authorized Internal Supplies Organization is eligible. If there are
+zero, it blocks submission with an enrollment/configuration recovery path. If
+there are multiple, it requires an explicit choice from the restricted
+Internal Supplies list.
+
+1. In WRR/CIPL and DRA import, identify the Organization first, then derive
+   or select the Inventory Model. In Stock View pick-list creation, either
+   order is allowed, but the Organization field remains role-specific.
+2. Changing Inventory Model or Organization clears every incompatible
+   dependent field and all draft lines/allocation candidates. If the draft
+   contains lines, require an explicit discard confirmation before the change.
+   The form must never keep a hidden stale ID.
+3. Selectors contain active, authorized Organizations only, filtered by the
+   exact required role/relationship. A generic `customer` fallback, a
+   Supplier in VMI, an End Customer in Trading, and Internal Supplies outside
+   Supplies are not selectable.
+4. An Organization with several valid roles may appear in more than one
+   role-specific field, but each option carries its exact role/model label;
+   one selected role never implies another.
+5. Missing relationship data is a master-data remediation state, not a
+   permissive fallback. Historical records remain readable; new writes fail
+   with a field-level `organization_relationship_required` recovery message.
+6. Query parameters, deep links, cached dropdown values, import payloads,
+   browser retries, and direct server-action calls use the same validation.
+7. The `internal_supplies` role remains role-only. Do not manufacture a
+   `party_flow_relationships` row for Supplies; tolerate deployed
+   `internal_warehouse` only through the existing compatibility adapter.
+
+| Edge case | Resolution |
+|---|---|
+| Model changes after recipient/source or lines were selected | Clear invalid values; require confirmation before discarding lines; re-query eligible options. |
+| Organization becomes inactive, loses a role, or scope is revoked while the form is open | Server rejects the stale command without any partial mutation. |
+| No eligible Organization exists | Do not show a broad fallback list; explain the missing required role and link an authorized user to Organization enrollment. |
+| More than one Internal Supplies Organization exists | Require explicit restricted-list selection; never choose arbitrarily. |
+| Direct payload supplies IDs from another model/role | Reject before reservation, scan mutation, document snapshot, or ledger mutation. |
+| Import names/codes resolve ambiguously | Require a reviewed exact Organization selection; imported text remains source evidence only. |
+| Existing legacy data has generic customer/no relationship row | Render read-only historical context; block new use until classified. |
+| Same Organization is VMI Customer and End Customer | Permit it only in the two explicitly named VMI fields; snapshot each role purpose independently. |
+| Trading or Supplies hits non-null legacy `end_customer_party_id` | Persist the direct recipient/Internal Supplies compatibility snapshot, but use flow-aware labels so it is never represented as an End Customer. |
+| Stock/lot belongs to a different model or selected Organization scope | Clear client allocation and reject server-side in the transaction; no mixed-model pick list or WRR is created. |
 
 ## 7. Required test program
 

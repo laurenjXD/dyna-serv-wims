@@ -1,5 +1,73 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Product Owner clarification: document-driven Organization-first forms (2026-10-23)
+
+For CIPL/WRR and DRA workflows, the source or requesting **Organization is
+identified first**. The system then derives the Inventory Model when that
+Organization has one valid relationship, or asks the operator to choose among
+that Organization's valid relationships. This corrects the earlier generic
+model-first wording for document-driven workflows. Stock View pick-list
+creation may remain model-first because the operator begins from inventory
+context, but all Organization choices remain role-specific.
+
+The DRA parser maps the requesting Organization before item/quantity
+allocation. Ambiguous or unmatched Organization references block generation
+until reviewed. The WRR/CIPL form maps the source Organization before deciding
+VMI, Trading, or Supplies.
+
+## Product Owner decision: strict Organization selector contract (2026-10-22)
+
+The Product Owner directed the project to apply the best-practice resolution for all Organization/Inventory Model selector edge cases. The adopted contract is context-first (Organization first for document workflows, Inventory Model first where Stock View is the starting context), exact-role/relationship filtering, server-side repeat validation, and no permissive generic-customer fallback for new writes.
+
+- Receiving: VMI Customer for VMI, Supplier for Trading, Internal Supplies for Supplies.
+- Outgoing: VMI Customer + End Customer for VMI, Trading Customer for Trading, Internal Supplies Organization for Supplies.
+- Supplies auto-defaults only when exactly one active, authorized Internal Supplies Organization is eligible; zero blocks with a remediation path and multiple requires an explicit restricted-list choice.
+- Changing a model or controlling Organization clears invalid dependent state and draft allocations after confirmation. Historical legacy records remain readable, but incomplete generic relationships cannot create new WRRs or pick lists.
+- Existing `vendor_party_id`, `customer_party_id`, and non-null `end_customer_party_id` columns are retained as compatibility storage. In Trading/Supplies the latter is a recipient snapshot, not evidence of an End Customer role. Internal Supplies remains role-only and gains no flow row.
+
+The detailed contract and tests are in the workflow remediation plan and the approved `07` and `08` amendments. This is compatibility-first: no schema rename or destructive data migration is authorized by this decision.
+
+## Product Owner approval: workflow remediation and Organization / Inventory Model nomenclature direction (2026-10-22)
+
+**Decision**: The Product Owner approved the cross-cutting workflow remediation
+plan at `specs/00-steering/workflow-edge-case-remediation-plan.md` as the
+implementation direction for the audit's critical defects, workflow gaps, and
+edge cases.
+
+**Canonical product nomenclature**:
+
+1. **Organization** is the canonical product/domain term for an organization
+   or company record. Existing `party`/`parties` schema vocabulary is legacy
+   compatibility vocabulary until an approved data-model/RBAC migration
+   replaces or isolates it.
+2. **Inventory Model** is the canonical product-facing term for the existing
+   `vmi`, `trading`, and `supplies` partition; `flowType` is legacy/internal
+   compatibility vocabulary until refactored through approved feature work.
+3. The organization-role model contains exactly four role families:
+   - **Supplier** — Trading only.
+   - **Customer** — explicitly either Trading Customer or VMI Customer.
+   - **End Customer** — VMI only.
+   - **Internal Supplies** — Supplies only; it remains the existing
+     organization business classification and does not add a flow-relationship
+     value.
+4. Stock owner, stock source, and destination describe workflow context; they
+   are not additional organization roles. Roles must be explicit and must not
+   be inferred from another role.
+
+**Implementation gate**: This decision authorizes preparation of feature-level
+spec amendments and the terminology migration plan. It does not authorize a
+schema, RLS, API, or application-code rename until the applicable
+requirements/design/tasks amendments are reviewed and signed off under the
+repository's normal governance rule.
+
+**Feature-level amendment approval**: The Product Owner approved the drafted
+`01-core-data-model`, `02-rbac-roles`, and `06-party-and-item-enrollment`
+requirements/design/tasks amendments on 2026-10-22. The repository's standing
+second-approver convention is recorded alongside each amendment. The documents
+are Approved; their unchecked implementation and real-Postgres verification
+tasks remain required before each corresponding code change is considered
+complete.
+
 ## Nomenclature updates (Internal Supplies, Material tab, Compliance Fee) & End-Customer non-billable rule (2026-10-13)
 
 **What changed**:

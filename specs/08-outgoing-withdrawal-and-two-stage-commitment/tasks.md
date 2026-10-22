@@ -55,6 +55,7 @@ Testing: Authorization contract tests; real-Postgres integration before sign-off
 
 - [ ] Add candidate withdrawal/allocation/dispatch/document capabilities to the canonical RBAC catalog and obtain `02` approval.
 - [ ] Define party/flow scope for request, pick list, lot/location, document, and ledger reads/mutations.
+- [x] **Added 2026-10-22:** Adopt the context-specific outbound selector matrix: DRA imports identify the requesting Organization first; Stock View may begin with Inventory Model. The valid relationships are VMI Customer + End Customer for VMI, Trading Customer for Trading, and Internal Supplies Organization for Supplies, with strict server validation and compatibility-column recipient snapshots.
 - [ ] Define FIFO override request payload and approval reference contract with `09`; commitment must revalidate current approval.
 - [ ] Define RLS policies and default-deny behavior for pick lists, items, lots, transactions, and document access.
 - [ ] Define server command idempotency, locking/version checks, transaction boundaries, and safe retry behavior with `04`.
@@ -66,6 +67,7 @@ Testing: Unit allocation/validation tests; real-Postgres concurrency/RLS integra
 
 - [ ] Build the office request/list/detail surface through `05`.
 - [ ] Validate party, flow, item, quantity, UOM, SPQ, roll/meter, and destination inputs on client and server.
+- [ ] Implement the approved dependent selector behavior: restricted options, conservative Supplies auto-default, discard-confirmed stale-state clearing, and the same direct-action validation for client, import, deep-link, and retry paths.
 - [ ] Validate `item_code_is_provisional` (per `01`'s `master_inventory_tracking` read model) for every requested line and block generation with a named-item, recoverable error before any reservation/snapshot is created (R1.3; design.md §6 Stage 1 step 4).
 - [ ] Integrate the authoritative FIFO/FEFO allocation engine using available lots and dispersed location quantities.
 - [ ] Account for existing commitments and reject stale/over-available plans.
@@ -164,6 +166,7 @@ Testing: Full applicable matrix below.
 - [ ] Verify Stage 1 reserves without decrementing and Stage 2 decrements/releases/writes exactly once. *(Unit-level coverage exists; real-Postgres call-through still open — see note above.)*
 - [ ] Verify the Stage 2 `inventory_transactions` row carries `pick_list_id` set to the dispatched pick list's id. *(Unit-level coverage exists; real-Postgres call-through still open — see note above.)*
 - [ ] Verify stale, revoked, out-of-scope, invalid-approval, and cross-party requests fail safely under RLS.
+- [ ] Verify the full Organization matrix: every allowed model/relationship pair; supplier/customer/end-customer/internal-supplies cross-selection; zero/multiple Supplies choices; stale form; inactive relationship; legacy generic relationship; stock-owner mismatch; and direct-action bypass.
 - [ ] Verify duplicate/lost-response commands return one authoritative outcome.
 - [ ] Verify Outgoing Ledger is read-only and scope-filtered.
 
@@ -208,6 +211,11 @@ Testing: Full applicable matrix below.
 - [x] Allocated-to-picked queue amendment — Second approver approval: Granted in conversation, 2026-08-25
 - [x] End-customer recipient workflow amendment — Product owner approval: Granted in conversation, 2026-10-22
 - [x] End-customer recipient workflow amendment — Second approver approval: System standing approval, 2026-10-22
+## Approved clarification — model-specific selectors and recipient compatibility (2026-10-22)
+
+- [x] Product Owner approval: User, 2026-10-22
+- [x] Second approver approval: System standing approval, 2026-10-22
+
 ## Approved clarification - flow-specific outbound recipient (2026-10-22)
 
 - [x] Trading pick lists use the selected `trading_customer` as the recipient; no separate end-customer selection is required.

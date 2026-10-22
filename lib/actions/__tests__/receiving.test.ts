@@ -176,6 +176,15 @@ function makeReceivingDb(
       const allRows = [...wrrRows, ...wrrItemRows];
       const chain = makeSelectChain(allRows);
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
+        if (table[Symbol.for("drizzle:Name")] === "parties") {
+          return makeSelectChain([{
+            id: "party-uuid-vendor",
+            isActive: true,
+            role: "customer",
+            relationship: "vmi_customer",
+            relationshipIsActive: true,
+          }]);
+        }
         if (table[Symbol.for("drizzle:Name")] === "locations") {
           return makeSelectChain([{ id: "location-storage-uuid" }]);
         }

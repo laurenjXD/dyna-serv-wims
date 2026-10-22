@@ -41,6 +41,7 @@ function toInventoryRow(row: PartyVmiInventoryRow): InventoryRow {
     id: row.id,
     itemCode: row.itemCode,
     itemName: row.itemName,
+    categoryName: row.categoryName,
     lotNumber: row.lotNumber,
     location: row.locationLabel,
     qtyOnHand: row.qtyOnHand,
@@ -57,7 +58,7 @@ interface PageProps {
 }
 
 export default async function PortalInventoryPage({ searchParams }: PageProps) {
-  await searchParams; // consumed for future filter wiring — TODO
+  const filters = await searchParams;
 
   const resolver = await createPageResolver();
   const resolution = await resolver.getContext();
@@ -80,7 +81,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
     return <PermissionDenied />;
   }
 
-  const rows = (await listPartyVmiInventory(db, partyScope.partyId)).map(
+  const rows = (await listPartyVmiInventory(db, partyScope.partyId, filters)).map(
     toInventoryRow,
   );
 
@@ -97,15 +98,13 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
           </p>
         </div>
 
-        {/* Export CSV — h-11 (44px) office touch target */}
-        {/* TODO: wire to CSV export server action scoped to session party */}
-        <button
-          type="button"
+        <a
+          href={`/api/portal/inventory/export${filters.location || filters.category ? `?${new URLSearchParams(filters).toString()}` : ""}`}
           className="flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:transition-transform motion-safe:duration-100 motion-safe:active:scale-[0.97] hover:opacity-90"
         >
           <Download size={16} aria-hidden="true" />
           Export CSV
-        </button>
+        </a>
       </div>
 
       {/* ── Filter bar ────────────────────────────────────────────────────────
@@ -125,7 +124,9 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
               className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="">All locations</option>
-              {/* TODO: wire to locations query */}
+              {[...new Set(rows.map((row) => row.location))].sort().map((location) => (
+                <option key={location} value={location}>{location}</option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">
@@ -141,7 +142,9 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
               className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="">All categories</option>
-              {/* TODO: wire to item categories via party_visible_items */}
+              {[...new Set(rows.map((row) => row.categoryName).filter((value): value is string => Boolean(value)))].sort().map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
             </select>
           </div>
           <button

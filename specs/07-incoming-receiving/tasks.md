@@ -43,6 +43,7 @@ Testing: Documentation/schema review; no implementation tests.
 - [x] Define the exact receipt commit invariant: what must be complete before confirmation and what can remain pending for putaway. — Defined in design.md §9: all scan totals, conformance decisions, and disposition values must be valid; putaway is a post-commit handoff, not a commit prerequisite.
 - [x] Define whether non-conformant quantities can be committed to a non-available state or must remain outside the committed receipt. — Defined: `inspect` disposition commits the quantity as a `quarantined` lot at the `inspection` location (non-available); `returned_to_vendor` action in `wrr_inspection_logs` means the line is not committed at all (design.md §7, §8).
 - [ ] Define party/flow and item activation rules at staging, scanning, and commit time.
+- [x] **Added 2026-10-22:** Adopt the flow-specific WRR source-Organization matrix: VMI Customer for VMI, Supplier for Trading, and Internal Supplies for Supplies. Require exact active relationships, conservative Supplies auto-defaulting, stale-form clearing, and server-side repeat validation.
 - [ ] Record cross-cutting decisions in `specs/00-steering/revision-log.md`.
 
 ### 2. Define authorization, audit, and infrastructure contracts
@@ -64,6 +65,7 @@ Testing: Unit validation; Playwright office flows; real-Postgres integration for
 
 - [ ] Build WRR create/edit form for CIPL reference, attachment, party, flow, regulatory references, and expected lines.
 - [ ] Resolve party/item/category references from authorized server queries; reject stale/inactive/unauthorized references.
+- [ ] Implement the approved source-Organization selector/validator matrix; block generic legacy relationships from new WRRs while keeping historical records readable.
 - [ ] Validate quantities, UOM, packaging/CBM references, WRR `lot_number`, and required line fields on client and server.
 - [ ] Persist staged WRRs and lines without creating lots or receiving ledger transactions.
 - [ ] Implement staged-list/detail/search/filter views with capability/scope-safe results.
@@ -154,6 +156,7 @@ Testing: Full applicable matrix below.
 ### Unit tests (Vitest)
 
 - [ ] WRR/line validation, status transitions, quantity reconciliation, UOM, and discrepancy rules.
+- [ ] Source-Organization matrix: each permitted model/relationship pair, cross-model/role rejection, zero/multiple Internal Supplies choices, stale form state, inactive role, and direct-action payload rejection.
 - [ ] Barcode matcher behavior and duplicate/over-quantity/unknown-item rejection.
 - [ ] Conformance/non-conformance validation and required evidence/reason rules.
 - [ ] Receipt commit precondition and idempotency result handling. **Re-scoped 2026-08-20, then again 2026-08-24 (batch model adopted, per-unit retired); `commit-validation.ts` itself fixed 2026-08-24 (see above and revision-log.md)**: `lib/receiving/__tests__/commit-validation.test.ts` is now correctly reconciled to the batch model — it tests `validateLineCommit`'s disposition-uniform scan-completeness gate, not a per-unit contract. What's still thin: `validateLineCommit` never owned the batch-specific preconditions (allocation total equals `expected_qty`, presence attestation required for a multi-slot placement, per-location CBM fit) — those live inline in `commitWrrLine` (`lib/actions/receiving.ts`) itself, and mocked-db coverage for their rejection paths (`presence_attestation_required`, `allocation_qty_must_equal_expected`) is currently thin-to-absent in `lib/actions/__tests__/receiving.test.ts`; only one positive-path batch case exists in the real-Postgres `receiving.commit-line.integration.test.ts`, which could not be run in the environment that made this pass (no live `DATABASE_URL`). Still open.
@@ -193,6 +196,8 @@ Testing: Full applicable matrix below.
 - [x] `01-core-data-model` tables/transitions are approved and reconciled.
 - [x] RBAC/RLS review passes for the documented receiving and advance-notice authorization boundary; the controlled function independently checks `receiving.confirm`.
 - [ ] Offline Tier 1 scan boundary and Tier 2 denylist are approved.
+- [x] Flow-specific source-Organization amendment approval — Product owner: User, 2026-10-22
+- [x] Flow-specific source-Organization amendment approval — Second approver: System (standing auto-sign-off), 2026-10-22
 - [ ] All applicable tests pass, including real-Postgres verification.
 - [ ] Design-system and print/physical workflow reviews pass.
 - [x] Product owner approval — Name: User / System Date: 2026-08-06

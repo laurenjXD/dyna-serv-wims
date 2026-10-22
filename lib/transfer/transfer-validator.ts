@@ -95,6 +95,15 @@ export function validateCreateTransfer(input: unknown): CreateTransferResult {
     return { ok: false, errors };
   }
 
+  const identities = validatedLines.map((line) => `${line.lotId}:${line.itemId}`);
+  if (new Set(identities).size !== identities.length) {
+    errors.push("Transfer lines must not repeat the same lot and item.");
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
   const data: CreateTransferInput = {
     fromLocationId: raw["fromLocationId"] as string,
     toLocationId: raw["toLocationId"] as string,
@@ -143,8 +152,8 @@ function validateLine(
 
   // qtyRequested: must be > 0
   const qtyRequested = line["qtyRequested"];
-  if (typeof qtyRequested !== "number" || qtyRequested <= 0) {
-    errors.push(`Line[${index}]: qtyRequested must be a number greater than 0`);
+  if (typeof qtyRequested !== "number" || !Number.isFinite(qtyRequested) || !Number.isInteger(qtyRequested) || qtyRequested <= 0) {
+    errors.push(`Line[${index}]: qtyRequested must be a finite positive whole number`);
   }
 
   if (errors.length > 0) {

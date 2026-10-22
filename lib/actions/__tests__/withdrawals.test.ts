@@ -223,6 +223,16 @@ function makeWithdrawalDb(
   // test can assert `.for('update')` was requested at all without caring
   // which individual chain instance it was called on.
   const forCalls: string[] = [];
+  const organizationRows = [
+    { id: "party-uuid-customer", isActive: true, role: "customer", relationship: "vmi_customer", relationshipIsActive: true },
+    { id: "party-uuid-customer", isActive: true, role: "customer", relationship: "trading_customer", relationshipIsActive: true },
+    { id: "party-uuid-customer", isActive: true, role: "supplier", relationship: "trading_supplier", relationshipIsActive: true },
+    { id: "party-uuid-customer", isActive: true, role: "end_customer", relationship: null, relationshipIsActive: true },
+    { id: "party-uuid-owner", isActive: true, role: "customer", relationship: "vmi_customer", relationshipIsActive: true },
+    { id: "party-uuid-owner", isActive: true, role: "customer", relationship: "trading_customer", relationshipIsActive: true },
+    { id: "party-uuid-owner", isActive: true, role: "supplier", relationship: "trading_supplier", relationshipIsActive: true },
+    { id: "party-uuid-owner", isActive: true, role: "end_customer", relationship: null, relationshipIsActive: true },
+  ];
 
   return {
     _inserted: inserted,
@@ -230,9 +240,16 @@ function makeWithdrawalDb(
     _forCalls: forCalls,
     execute: vi.fn().mockResolvedValue([]),
 
-    select: vi.fn().mockImplementation(() =>
-      makeSelectChain(selectRows.shift() ?? pickListRows, forCalls),
-    ),
+    select: vi.fn().mockImplementation(() => {
+      const chain = makeSelectChain([], forCalls);
+      chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
+        if (table[Symbol.for("drizzle:Name")] === "parties") {
+          return makeSelectChain(organizationRows, forCalls);
+        }
+        return makeSelectChain(selectRows.shift() ?? pickListRows, forCalls);
+      });
+      return chain;
+    }),
 
     insert: vi.fn().mockImplementation(() => ({
       values: vi.fn().mockImplementation((row: unknown) => {
@@ -755,6 +772,12 @@ function fidelityLotRow(
 function makeSelectFidelityDb(rows: AnyRecord[]) {
   const inserted: unknown[] = [];
   const updated: unknown[] = [];
+  const organizationRows = [
+    { id: "party-uuid-customer", isActive: true, role: "customer", relationship: "vmi_customer", relationshipIsActive: true },
+    { id: "party-uuid-customer", isActive: true, role: "customer", relationship: "trading_customer", relationshipIsActive: true },
+    { id: "party-uuid-customer", isActive: true, role: "supplier", relationship: "trading_supplier", relationshipIsActive: true },
+    { id: "party-uuid-customer", isActive: true, role: "end_customer", relationship: null, relationshipIsActive: true },
+  ];
 
   return {
     _inserted: inserted,
@@ -776,14 +799,19 @@ function makeSelectFidelityDb(rows: AnyRecord[]) {
         return visible;
       });
 
+      let resultRows = projectedRows;
       const chain: AnyRecord = {};
       for (const method of ["from", "where", "innerJoin", "leftJoin", "orderBy", "limit", "offset"]) {
         chain[method] = vi.fn(() => chain);
       }
-      const resolved = Promise.resolve(projectedRows);
-      chain["then"] = resolved.then.bind(resolved);
-      chain["catch"] = resolved.catch.bind(resolved);
-      chain["finally"] = resolved.finally.bind(resolved);
+      chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
+        if (table[Symbol.for("drizzle:Name")] === "parties") resultRows = organizationRows;
+        return chain;
+      });
+      chain["then"] = (onFulfilled: (value: unknown[]) => unknown, onRejected?: (reason: unknown) => unknown) =>
+        Promise.resolve(resultRows).then(onFulfilled, onRejected);
+      chain["catch"] = (onRejected: (reason: unknown) => unknown) => Promise.resolve(resultRows).catch(onRejected);
+      chain["finally"] = (onFinally: () => void) => Promise.resolve(resultRows).finally(onFinally);
       return chain;
     }),
 

@@ -44,6 +44,24 @@ describe("dra-parser", () => {
     expect(result.rows[0].requestedQty).toBe(15);
   });
 
+  it("keeps the requesting Organization separate from the delivery recipient", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("DRA Sheet");
+
+    worksheet.addRow(["DRA Ref:", "DRA-ORG-1"]);
+    worksheet.addRow(["REQUESTED BY:", "Customer Organization"]);
+    worksheet.addRow(["DELIVERY TO:", "End Customer Organization"]);
+    worksheet.addRow(["Item Code", "Requested Qty", "UOM"]);
+    worksheet.addRow(["ITEM-500", 5, "BOX"]);
+
+    const buffer = (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+    const result = await parseDraDocument(Buffer.from(buffer), "release-advice.xlsx");
+
+    expect(result.ok).toBe(true);
+    expect(result.header.requestingOrganization).toBe("Customer Organization");
+    expect(result.header.recipientOrganization).toBe("End Customer Organization");
+  });
+
   it("handles unsupported file extensions cleanly", async () => {
     const result = await parseDraDocument(Buffer.from("dummy"), "document.docx");
     expect(result.ok).toBe(false);

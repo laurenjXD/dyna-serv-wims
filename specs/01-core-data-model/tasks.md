@@ -1,6 +1,6 @@
 # Core Data Model — Tasks
 Status: Approved
-Updated: 2026-08-24 — WRR document-field ownership amendment
+Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
 
 ## Implementation Tasks
 
@@ -28,6 +28,46 @@ The approved amendment decision is: `lot_history_export` refreshes daily, retain
 - [x] **2. Database Migration Scripts** — **implemented and real-Postgres verified 2026-08-07**
   - [x] Generate initial SQL migration `0001_core_data_model.sql` using Drizzle Kit (`npx drizzle-kit generate`)
   - [x] Add foreign key constraints, indexes on barcodes/location labels/lot numbers, scoped WRR lot-number uniqueness, and non-negative check constraints — indexes and the hand-written `lot_inventory_totals` view live in the follow-up `0002_lot_inventory_totals_and_indexes.sql`; "scoped WRR lot-number uniqueness" confirmed intentionally absent, not a gap (see Integration Tests below)
+
+### 3. Pending reapproval — Organization / Inventory Model and workflow-integrity implementation
+
+- [ ] Define the Organization/Inventory Model compatibility contract in schema
+  exports, server-domain types, and read projections without a destructive
+  physical rename of `parties` or `flow_type`.
+- [ ] Constrain Organization relationships to Trading Supplier, Trading
+  Customer, VMI Customer, VMI End Customer, and Supplies Internal Supplies
+  semantics. Keep Internal Supplies in `party_roles`; do not add a
+  `party_flow_relationships` value. Preserve current `internal_supplies` and
+  deployed `internal_warehouse` compatibility without an enum/table rewrite.
+- [ ] Add/verify schema constraints and authorized transaction helpers for
+  atomic transfer header/line creation, line-parent membership, item/lot/
+  location/Inventory Model validation, and whole/SPQ quantity rules.
+- [ ] Add/verify one-open-inspection-case identity and conditional resolution
+  claim before disposition insertion.
+- [ ] Define an idempotency record/key contract for mutating floor commands;
+  specify retention, RLS, correlation ID, replay result, and unique scope.
+- [ ] Add state/version conditional-update contracts for WRR, transfer,
+  inspection, pick-list/commitment, document, and billing transitions. Owning
+  feature specs implement the individual command paths.
+- [ ] Produce one additive migration per concern, with no table/column drops or
+  destructive rename in this release.
+
+#### Amendment verification
+
+- [ ] Real Postgres: apply the full migration chain and prove Organization/
+  Inventory Model compatibility projections preserve existing rows and RLS.
+- [ ] Real Postgres: race transfer creation, WRR scan, inspection resolution,
+  reservation, and idempotent replay; prove one authoritative mutation/result.
+- [ ] Unit: validate all role/Inventory Model combinations, quantity edge
+  cases, transition graph rejections, and stale-version responses.
+- [ ] Contract: scan source, generated documents, exports, audit payloads, and
+  APIs for prohibited new `party`/`flowType` domain vocabulary outside the
+  explicit legacy compatibility boundary.
+
+#### Amendment sign-off
+
+- [x] Product Owner approval — User, 2026-10-22.
+- [x] Second approver approval — System standing approval, 2026-10-22.
 
 ## Testing Requirements (per `00-steering/testing.md`)
 
