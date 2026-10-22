@@ -231,7 +231,8 @@ export function LocationMapView({
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Layout {WAREHOUSE_MAP_LAYOUT_VERSION}</p>
-              <p className="font-body text-body-sm text-text-grey">Select a cell to inspect it, or Shift-click to select multiple cells.</p>
+              <p className="font-body text-body-sm text-text-grey">Select a cell to inspect its live details.</p>
+              <p className="mt-1 font-body text-xs text-text-grey">Tip: Hold Shift and click to compare cells.</p>
             </div>
             <span className="hidden font-mono text-xs text-text-grey sm:inline">{WAREHOUSE_MAP_SOURCE}</span>
           </div>
@@ -366,11 +367,11 @@ export function LocationMapView({
               </div>
             </div>
           </section>
-          {selectedRows.length > 0 && (
+          {selectedRows.length > 1 && (
             <section aria-label="Selected locations summary" className="mb-5 overflow-hidden rounded-xl border border-brand-navy/20 bg-blue-50">
               <div className="flex items-center justify-between gap-2 border-b border-brand-navy/10 px-3 py-2">
-                <h3 className="truncate font-label text-[11px] font-bold uppercase tracking-[0.05em] text-brand-navy">
-                  {selectedRows.length} selected {selectedRows.length === 1 ? "location" : "locations"}
+                <h3 className="font-label text-[11px] font-bold uppercase tracking-[0.05em] text-brand-navy">
+                  {selectedRows.length} locations selected
                 </h3>
                 <button type="button" onClick={clearSelection} className="inline-flex items-center gap-1 rounded px-1.5 py-1 font-label text-[10px] font-bold text-brand-navy hover:bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/30">
                   <X size={12} aria-hidden="true" /> Clear
