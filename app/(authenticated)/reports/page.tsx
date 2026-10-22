@@ -26,7 +26,6 @@ import {
   getThroughputReport,
   getDeliveryPerformanceReport,
   getReportArchiveList,
-  getWarehouseZonesList,
 } from "@/lib/db/queries/reports";
 
 const REPORT_QUERY_TIMEOUT_MS = 8_000;
@@ -88,7 +87,6 @@ export default async function ReportsPage() {
     throughput,
     deliverySla,
     archiveItems,
-    availableZones,
     documentTemplate,
   ] = await Promise.all([
     loadReport(getReportsExecutiveKpis),
@@ -101,7 +99,6 @@ export default async function ReportsPage() {
     loadReport(() => getThroughputReport("daily")),
     loadReport(getDeliveryPerformanceReport),
     loadReport(getReportArchiveList),
-    loadReport(getWarehouseZonesList),
     getDocumentTemplate(db),
   ]);
 
@@ -114,7 +111,6 @@ export default async function ReportsPage() {
         throughput={throughput}
         deliverySla={deliverySla}
         archiveItems={archiveItems}
-        availableZones={availableZones}
         canReadFinancial={canReadFinancial}
         documentTemplate={documentTemplate}
       />

@@ -47,7 +47,6 @@ export interface WarehouseReportsHubProps {
   throughput?: MovementThroughputDatum[];
   deliverySla?: DeliverySlaDatum[];
   archiveItems?: ReportArchiveItem[];
-  availableZones?: string[];
   canReadFinancial?: boolean;
   documentTemplate?: DocumentTemplate;
 }
@@ -59,7 +58,6 @@ export function WarehouseReportsHub({
   throughput,
   deliverySla,
   archiveItems,
-  availableZones,
   canReadFinancial = true,
   documentTemplate,
 }: WarehouseReportsHubProps) {
@@ -67,7 +65,6 @@ export function WarehouseReportsHub({
   const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
   const defaultEndDate = toInputDate(today);
   const defaultStartDate = toInputDate(new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000));
-  const [facility, setFacility] = useState<FacilityZone>("all");
   const [horizon, setHorizon] = useState<DateHorizon>("30D");
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultEndDate);
@@ -263,12 +260,9 @@ export function WarehouseReportsHub({
     <div className="space-y-5">
       {/* ── 1. Global Header & Control Toolbar ────────────────────────────── */}
       <ReportsHeader
-        facility={facility}
         horizon={horizon}
         startDate={startDate}
         endDate={endDate}
-        availableZones={availableZones}
-        onFacilityChange={setFacility}
         onHorizonChange={handleHorizonChange}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}

@@ -44,7 +44,6 @@ describe("reports modal smoke render", () => {
         throughput={[{ label: "Oct 01", inboundQty: 4, outboundQty: 2, vmiQty: 2, tradingQty: 2 }]}
         deliverySla={[{ period: "Oct 2026", otifRate: 98, otdRate: 99, fillRate: 99, targetOtif: 95 }]}
         archiveItems={[{ id: "1", reportName: "RPT-1.pdf", category: "Operations", dateRangeCovered: "2026-10-01", generatedBy: { name: "System", role: "Admin" }, generatedAt: "2026-10-01 10:00", fileSizeFormatted: "1 KB", format: "PDF", status: "Ready" }]}
-        availableZones={["ZONE-A"]}
         canReadFinancial
       />
     )).not.toThrow();

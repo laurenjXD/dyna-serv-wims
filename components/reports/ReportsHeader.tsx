@@ -7,17 +7,13 @@ import {
   Plus,
   ChevronDown,
   Search,
-  Warehouse,
 } from "lucide-react";
-import type { DateHorizon, FacilityZone } from "./types";
+import type { DateHorizon } from "./types";
 
 interface ReportsHeaderProps {
-  facility: FacilityZone;
   horizon: DateHorizon;
   startDate: string;
   endDate: string;
-  availableZones?: string[];
-  onFacilityChange: (f: FacilityZone) => void;
   onHorizonChange: (h: DateHorizon) => void;
   onStartDateChange: (d: string) => void;
   onEndDateChange: (d: string) => void;
@@ -35,12 +31,9 @@ function formatDateLabel(value: string): string {
 }
 
 export function ReportsHeader({
-  facility,
   horizon,
   startDate,
   endDate,
-  availableZones,
-  onFacilityChange,
   onHorizonChange,
   onStartDateChange,
   onEndDateChange,
@@ -167,31 +160,6 @@ export function ReportsHeader({
       {/* ── Global Filters Toolbar ────────────────────────────────────────── */}
       <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white/80 p-2.5 shadow-2xs backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/80">
         <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-          {/* Storage Zone Selector (Warehouse 1 Single Facility) */}
-          <div className="flex items-center gap-1.5">
-            <Warehouse size={15} className="text-brand-navy/70 shrink-0 ml-1" />
-            <label htmlFor="facility-select" className="font-label text-xs font-bold text-text-grey sr-only">
-              Storage Zone
-            </label>
-            <select
-              id="facility-select"
-              value={facility}
-              onChange={(e) => onFacilityChange(e.target.value as FacilityZone)}
-              className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2.5 font-label text-xs font-bold text-brand-navy focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
-            >
-              <option value="all">Warehouse 1 — All Storage Zones</option>
-              {availableZones && availableZones.length > 0 ? (
-                availableZones.map((z) => (
-                  <option key={z} value={z}>
-                    {z.startsWith("ZONE-") || z.startsWith("Zone ") ? `${z}` : `Zone ${z}`}
-                  </option>
-                ))
-              ) : null}
-            </select>
-          </div>
-
-          <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-
           {/* Date Horizon & Preset Switcher */}
           <div className="flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 p-1 font-label text-xs font-semibold">
             <button
