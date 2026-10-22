@@ -164,7 +164,9 @@ describe.skipIf(!hasLiveDb)(
     let inactiveLocationId: string;
 
     beforeAll(async () => {
-      sql = postgres(connectionString, { prepare: false, max: 5 });
+      // The migration chain includes explicit BEGIN/COMMIT scripts; replay
+      // them through a single postgres.js connection.
+      sql = postgres(connectionString, { prepare: false, max: 1 });
 
       // Fresh schema every run — this test may reuse a persistent disposable
       // Postgres container across multiple invocations (not a fresh

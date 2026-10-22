@@ -22,6 +22,7 @@ const context: AuthorizationContext = {
   activeRoleKeys: ["supervisor"],
   grants: [
     { resource: "pick_list", action: "generate", scopeKind: "global" },
+    { resource: "pick_list", action: "execute", scopeKind: "global" },
     { resource: "dispatch", action: "execute", scopeKind: "global" },
   ],
   partyScopes: [],
@@ -38,7 +39,9 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
   let locationId: string;
 
   beforeAll(async () => {
-    sql = postgres(connectionString, { prepare: false, max: 5 });
+    // The migration chain includes explicit BEGIN/COMMIT scripts; replay
+    // them through a single postgres.js connection.
+    sql = postgres(connectionString, { prepare: false, max: 1 });
     await sql.unsafe("DROP SCHEMA IF EXISTS public CASCADE");
     await sql.unsafe("DROP SCHEMA IF EXISTS auth CASCADE");
     await sql.unsafe("DROP SCHEMA IF EXISTS rbac_internal CASCADE");
@@ -94,9 +97,19 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
       wrr_items, wrr_documents, items, locations, parties RESTART IDENTITY CASCADE`);
     const [party] = await sql`INSERT INTO parties (code, name) VALUES ('CUST-01', 'Customer One') RETURNING id`;
     partyId = party.id as string;
+    await sql`INSERT INTO party_roles (party_id, role) VALUES (${partyId}, 'customer')`;
+    await sql`INSERT INTO party_roles (party_id, role) VALUES (${partyId}, 'supplier')`;
+    await sql`INSERT INTO party_flow_relationships (party_id, relationship) VALUES (${partyId}, 'trading_customer')`;
+    await sql`INSERT INTO party_flow_relationships (party_id, relationship) VALUES (${partyId}, 'trading_supplier')`;
     const [item] = await sql`INSERT INTO items (code, name, barcode, dsgc_item_number, default_supplier_party_id, volume_cbm)
       VALUES ('ITEM-01', 'Test Item', 'BARCODE-01', 'DSGC-01', ${partyId}, 0.1) RETURNING id`;
     itemId = item.id as string;
+    await sql`INSERT INTO trading_policies
+      (party_id, item_id, buy_cost, buy_currency, margin_type, margin_value,
+       sell_price, sell_price_is_override, sell_currency, is_active,
+       created_by_user_id)
+      VALUES (${partyId}, ${itemId}, 100, 'PHP', 'percentage', 0,
+        100, true, 'PHP', true, ${userId})`;
     const [location] = await sql`INSERT INTO locations (zone, rack, level, position, label, location_type, max_cbm_capacity)
       VALUES ('A', '1', '1', '01', 'A1-01', 'storage', 100) RETURNING id`;
     locationId = location.id as string;
@@ -112,7 +125,7 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
   });
 
   it("reserves without decrementing, then dispatches once with the committed scan evidence", async () => {
-    const { commitWithdrawal, dispatchPickList } = await import("../withdrawals");
+    const { commitWithdrawal, completeExactPick, selectPickUnit, dispatchPickList } = await import("../withdrawals");
     const committed = await commitWithdrawal(resolver, {
       partyId,
       flowType: "trading",
@@ -125,6 +138,13 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
     expect(balance[0]).toMatchObject({ qty_remaining: 20, qty_committed: 10 });
     const line = await sql`SELECT id FROM pick_list_items WHERE pick_list_id = ${committed.pickListId}`;
     expect(line).toHaveLength(1);
+
+    expect(await completeExactPick(resolver, committed.pickListId, await rlsDeps())).toEqual({ ok: true });
+    expect(await selectPickUnit(resolver, committed.pickListId, "BARCODE-01", await rlsDeps())).toEqual({
+      ok: true,
+      selectedCount: 10,
+      requiredCount: 10,
+    });
 
     const dispatched = await dispatchPickList(resolver, committed.pickListId, [line[0].id as string], await rlsDeps());
     expect(dispatched).toEqual({ ok: true });
@@ -234,7 +254,7 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
   // assertion below fails, not because of a thrown error.
   // ---------------------------------------------------------------------
   it("(AC: expired commitment rejects dispatch, releases reservation, writes no pick transaction) rejects dispatch with commitment_expired, marks the commitment 'expired', releases qty_committed back to its pre-reservation value, and creates no inventory_transactions row", async () => {
-    const { commitWithdrawal, dispatchPickList } = await import("../withdrawals");
+    const { commitWithdrawal, completeExactPick, selectPickUnit, dispatchPickList } = await import("../withdrawals");
     const committed = await commitWithdrawal(resolver, {
       partyId,
       flowType: "trading",
@@ -251,6 +271,13 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
 
     const line = await sql`SELECT id FROM pick_list_items WHERE pick_list_id = ${committed.pickListId}`;
     expect(line).toHaveLength(1);
+
+    expect(await completeExactPick(resolver, committed.pickListId, await rlsDeps())).toEqual({ ok: true });
+    expect(await selectPickUnit(resolver, committed.pickListId, "BARCODE-01", await rlsDeps())).toEqual({
+      ok: true,
+      selectedCount: 10,
+      requiredCount: 10,
+    });
 
     const dispatched = await dispatchPickList(resolver, committed.pickListId, [line[0].id as string], await rlsDeps());
     expect(dispatched).toEqual({ ok: false, errors: ["commitment_expired"] });

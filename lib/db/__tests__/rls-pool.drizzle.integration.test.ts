@@ -63,7 +63,10 @@ describe.skipIf(!hasLiveDb)(
     const otherUserId = "22222222-2222-2222-2222-222222222222";
 
     beforeAll(async () => {
-      sql = postgres(connectionString, { prepare: false, max: 5 });
+      // The migration chain includes scripts with explicit BEGIN/COMMIT
+      // blocks. postgres.js only permits those multi-statement migration
+      // payloads when the client is single-connection (`max: 1`).
+      sql = postgres(connectionString, { prepare: false, max: 1 });
 
       await sql.unsafe(`DROP SCHEMA IF EXISTS public CASCADE`);
       await sql.unsafe(`DROP SCHEMA IF EXISTS auth CASCADE`);

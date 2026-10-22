@@ -1035,7 +1035,12 @@ export async function commitWrrLine(
       const locationsById = new Map(normalizedLocationRows.map((row) => [row.id, row]));
       const validationLine = {
         ...line,
-        scannedQty: isBatch && params.presenceAttested ? line.expectedQty : allocatedTotal,
+        // A normal commit must validate the persisted scan count. The
+        // allocation path is the only path allowed to rely on an explicit
+        // presence attestation rather than the scan ledger itself.
+        scannedQty: isBatch
+          ? (params.presenceAttested ? line.expectedQty : allocatedTotal)
+          : line.scannedQty,
       };
       for (const targetLocationId of targetLocationIds) {
         const row = locationsById.get(targetLocationId);

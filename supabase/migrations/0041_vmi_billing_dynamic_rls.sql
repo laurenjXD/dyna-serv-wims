@@ -13,6 +13,35 @@
 --   7. vmi_payments
 --   8. vmi_manpower_hours_log
 
+-- This repository contains two historical 0041 migrations. The companion
+-- contract/permit migration may already have created several of these policy
+-- names when migrations are replayed from a clean database in lexical order.
+-- Remove the names owned by this migration first so the full chain is
+-- deterministic and replay-safe; subsequent migrations re-apply their final
+-- definitions where needed.
+DROP POLICY IF EXISTS vmi_contract_terms_select ON public.vmi_contract_terms;
+DROP POLICY IF EXISTS vmi_contract_terms_insert ON public.vmi_contract_terms;
+DROP POLICY IF EXISTS vmi_contract_terms_update ON public.vmi_contract_terms;
+DROP POLICY IF EXISTS vmi_recurring_fee_lines_select ON public.vmi_recurring_fee_lines;
+DROP POLICY IF EXISTS vmi_recurring_fee_lines_insert ON public.vmi_recurring_fee_lines;
+DROP POLICY IF EXISTS vmi_recurring_fee_lines_update ON public.vmi_recurring_fee_lines;
+DROP POLICY IF EXISTS vmi_daily_balance_ledger_select ON public.vmi_daily_balance_ledger;
+DROP POLICY IF EXISTS vmi_daily_balance_ledger_insert ON public.vmi_daily_balance_ledger;
+DROP POLICY IF EXISTS vmi_charge_lines_select ON public.vmi_charge_lines;
+DROP POLICY IF EXISTS vmi_charge_lines_insert ON public.vmi_charge_lines;
+DROP POLICY IF EXISTS vmi_charge_lines_update ON public.vmi_charge_lines;
+DROP POLICY IF EXISTS vmi_charge_lines_delete ON public.vmi_charge_lines;
+DROP POLICY IF EXISTS vmi_permits_select ON public.vmi_permits;
+DROP POLICY IF EXISTS vmi_permits_insert ON public.vmi_permits;
+DROP POLICY IF EXISTS vmi_permits_update ON public.vmi_permits;
+DROP POLICY IF EXISTS vmi_billing_periods_select ON public.vmi_billing_periods;
+DROP POLICY IF EXISTS vmi_billing_periods_insert ON public.vmi_billing_periods;
+DROP POLICY IF EXISTS vmi_billing_periods_update ON public.vmi_billing_periods;
+DROP POLICY IF EXISTS vmi_payments_select ON public.vmi_payments;
+DROP POLICY IF EXISTS vmi_manpower_hours_log_select ON public.vmi_manpower_hours_log;
+DROP POLICY IF EXISTS vmi_manpower_hours_log_insert ON public.vmi_manpower_hours_log;
+DROP POLICY IF EXISTS vmi_manpower_hours_log_update ON public.vmi_manpower_hours_log;
+
 -- ===========================================================================
 -- 1. `vmi_contract_terms`
 -- ===========================================================================

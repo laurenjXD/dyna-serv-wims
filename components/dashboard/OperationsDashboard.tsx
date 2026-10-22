@@ -33,16 +33,8 @@ export interface OperationsDashboardProps {
   recentActivity?: Array<{ id: string; description: string; timestamp?: string }>;
 }
 
-const DEFAULT_KPIS: DashboardKpiData = {
-  valuation: { total: 2480500, trendPct: 4.2, trendDirection: "up", vmiAmount: 1600000, tradingAmount: 880500 },
-  floorQueues: { pendingReceivingWrrs: 12, activePickLists: 8, pendingQcInspections: 3 },
-  stockHealth: { lowStockCount: 5, heldLotsCount: 2, qcPassRatePct: 97.4 },
-  financialSummary: { vmiDailyCbmRate: 0.48, vmiClientCount: 3, tradingMarginPct: 18.4, tradingMarginTargetPct: 20.0, pendingBillingAmount: 34200, pendingInvoicesCount: 7 },
-  inventoryPosition: { distinctItems: 0, totalPieces: 0, totalBoxes: 0, knownPalletEquivalent: 0, stockRows: 0, rowsMissingPalletFactor: 0 },
-};
-
 export function OperationsDashboard({
-  kpis = DEFAULT_KPIS,
+  kpis,
   flowData,
   occupancyData,
   deliveryPerformance,
@@ -148,11 +140,17 @@ export function OperationsDashboard({
       )}
 
       {/* ── 2. Top Metric & KPI Cards (Bento Row) ─────────────────────────── */}
-      <KpiGrid
-        data={kpis}
-        onFilterStockHealth={setActiveStockFilter}
-        activeStockFilter={activeStockFilter}
-      />
+      {kpis ? (
+        <KpiGrid
+          data={kpis}
+          onFilterStockHealth={setActiveStockFilter}
+          activeStockFilter={activeStockFilter}
+        />
+      ) : (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Live KPI data is temporarily unavailable. No placeholder totals are being shown; refresh to retry.
+        </div>
+      )}
 
       {/* ── 3. Charts & Analytics Section ─────────────────────────────────── */}
       {/* 🖥️ DESKTOP BENTO GRID (>= 1024px) */}

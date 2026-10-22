@@ -57,7 +57,8 @@ describe.skipIf(!hasLiveDb)(
   "rls-transaction.ts — real-Postgres commit/rollback + claim propagation",
   () => {
     let sql: Sql;
-    const table = "rls_transaction_test_rows";
+    const table = "public.rls_transaction_test_rows";
+    const sequence = "public.rls_transaction_test_rows_id_seq";
 
     beforeAll(async () => {
       sql = postgres(connectionString, { prepare: false });
@@ -68,8 +69,9 @@ describe.skipIf(!hasLiveDb)(
       // §7.1's default-deny baseline, has zero table privileges until
       // explicitly granted -- this scratch table needs the same explicit
       // grant any real table would get in its own migration.
+      await sql.unsafe(`GRANT USAGE ON SCHEMA public TO authenticated`);
       await sql.unsafe(`GRANT SELECT, INSERT ON ${table} TO authenticated`);
-      await sql.unsafe(`GRANT USAGE, SELECT ON SEQUENCE ${table}_id_seq TO authenticated`);
+      await sql.unsafe(`GRANT USAGE, SELECT ON SEQUENCE ${sequence} TO authenticated`);
     });
 
     afterAll(async () => {

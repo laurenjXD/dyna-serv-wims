@@ -242,7 +242,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="mt-2 flex min-h-11 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-royal-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+            className="mt-2 flex h-11 min-h-11 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-royal-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>

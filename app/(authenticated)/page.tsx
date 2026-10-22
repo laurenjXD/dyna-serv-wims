@@ -337,13 +337,7 @@ export default async function Home() {
       ? withDashboardDataFallback(getPickListCountByFlow({ startDate: weekStart, endDate: now }), [])
       : Promise.resolve([] as Array<{ flow_type: string; count: string }>),
     // Real-time WMS Operations Dashboard queries
-    withDashboardDataFallback(getDashboardKpis(), {
-      valuation: { total: 0, trendPct: 0, trendDirection: "flat" as const, vmiAmount: 0, tradingAmount: 0 },
-      floorQueues: { pendingReceivingWrrs: 0, activePickLists: 0, pendingQcInspections: 0 },
-      stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 0 },
-      financialSummary: { vmiDailyCbmRate: 0, vmiClientCount: 0, tradingMarginPct: 0, tradingMarginTargetPct: 0, pendingBillingAmount: 0, pendingInvoicesCount: 0 },
-      inventoryPosition: { distinctItems: 0, totalPieces: 0, totalBoxes: 0, knownPalletEquivalent: 0, stockRows: 0, rowsMissingPalletFactor: 0 },
-    }),
+    withDashboardDataFallback(getDashboardKpis(), null),
     withDashboardDataFallback(getDashboardMonthlyFlow(), { all: [], vmi: [], trading: [], supplies: [] }),
     withDashboardDataFallback(getDashboardLocationOccupancy(), []),
     withDashboardDataFallback(getDashboardDeliveryPerformance(), {
@@ -478,7 +472,7 @@ export default async function Home() {
       dispatchRate={dispatchRate}
       flowActivity={flowActivity}
       stockOwnershipSplit={stockOwnershipSplit}
-      dashboardKpis={dashboardKpis}
+      dashboardKpis={dashboardKpis ?? undefined}
       dashboardMonthlyFlow={dashboardMonthlyFlow}
       dashboardLocationOccupancy={dashboardLocationOccupancy}
       dashboardDeliveryPerformance={dashboardDeliveryPerformance}
