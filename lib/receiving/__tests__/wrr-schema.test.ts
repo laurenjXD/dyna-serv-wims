@@ -30,6 +30,7 @@ const VALID_LINE = {
   lotNumber: "LOT-2026-001",
   expectedQty: 10,
   unitCbm: 0.5,
+  uom: "piece",
   disposition: "store" as const,
   putawayLocationId: "location-storage-uuid",
 };
@@ -161,6 +162,30 @@ describe("validateCreateWrr — line expectedQty must be > 0 (design.md §5.2, r
     const result = validateCreateWrr({
       ...VALID_CREATE_WRR,
       lines: [{ ...VALID_LINE, expectedQty: -5 }],
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("AC-R1.3: returns { ok: false } when a line has a fractional expectedQty", async () => {
+    const { validateCreateWrr } = await import("@/lib/receiving/wrr-schema");
+
+    const result = validateCreateWrr({
+      ...VALID_CREATE_WRR,
+      lines: [{ ...VALID_LINE, expectedQty: 1.5 }],
+    });
+
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("validateCreateWrr — line UOM is required (requirements.md R1.3)", () => {
+  it("AC-R1.3: returns { ok: false } when a line has no UOM", async () => {
+    const { validateCreateWrr } = await import("@/lib/receiving/wrr-schema");
+
+    const result = validateCreateWrr({
+      ...VALID_CREATE_WRR,
+      lines: [{ ...VALID_LINE, uom: " " }],
     });
 
     expect(result.ok).toBe(false);

@@ -78,6 +78,7 @@ export type WrrItemOption = {
   defaultSupplierPartyId: string | null;
   code: string;
   name: string;
+  description: string | null;
   supplierItemCode: string | null;
   customerItemCode: string | null;
   dsgcItemNumber: string | null;
@@ -101,6 +102,7 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
         defaultSupplierPartyId: items.defaultSupplierPartyId,
         code: items.code,
         name: items.name,
+        description: items.description,
         supplierItemCode: items.supplierItemCode,
         customerItemCode: items.customerItemCode,
         dsgcItemNumber: items.dsgcItemNumber,

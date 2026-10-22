@@ -162,10 +162,17 @@ function validateLine(
     errors.push(`Line[${index}]: lotNumber is required and must be a non-empty string`);
   }
 
-  // expectedQty: must be > 0
+  // expectedQty: must be a positive whole unit count
   const expectedQty = line["expectedQty"];
-  if (typeof expectedQty !== "number" || expectedQty <= 0) {
-    errors.push(`Line[${index}]: expectedQty must be a number greater than 0`);
+  if (typeof expectedQty !== "number" || !Number.isInteger(expectedQty) || expectedQty <= 0) {
+    errors.push(`Line[${index}]: expectedQty must be a whole number greater than 0`);
+  }
+
+  // uom: required because wrr_items.uom is NOT NULL and the receiving form
+  // presents it as a required field.
+  const uom = line["uom"];
+  if (typeof uom !== "string" || uom.trim() === "") {
+    errors.push(`Line[${index}]: uom is required and must be a non-empty string`);
   }
 
   // unitCbm: must be > 0
@@ -228,10 +235,10 @@ function validateLine(
   return {
     errors: [],
     line: {
-      lotNumber: line["lotNumber"] as string,
+      lotNumber: (line["lotNumber"] as string).trim(),
       expectedQty: expectedQty as number,
       unitCbm: unitCbm as number,
-      uom: typeof line["uom"] === "string" ? line["uom"] : "",
+      uom: (uom as string).trim(),
       disposition,
       putawayLocationId:
         typeof putawayLocationId === "string" ? putawayLocationId : null,

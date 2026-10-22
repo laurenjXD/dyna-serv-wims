@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from "react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
+import { filterReceivingItemOptions } from "@/lib/receiving/item-selection";
 import { ItemSearchCombobox } from "./ItemSearchCombobox";
 
 export interface ImportedWrrLine {
@@ -98,7 +99,7 @@ export function WrrLineItems({
               ? (item.dsgcItemNumber ?? item.code)
               : (item.supplierItemCode ?? item.code)
             : "",
-          itemDescription: item ? item.name : (imp.description || ""),
+          itemDescription: item ? (item.description?.trim() || item.name) : (imp.description || ""),
           customerItemCode: imp.customerItemCode || (item ? (item.customerItemCode ?? "") : ""),
           manufactureDate: imp.mfgDate || "",
           expiryDate: imp.expiryDate || "",
@@ -115,13 +116,39 @@ export function WrrLineItems({
   // unless imported lines were just applied.
   useEffect(() => {
     if (!importedLines || importedLines.length === 0) {
-      setLines((prev) => prev.map((line) => ({ ...line, itemId: "", itemCode: "", itemDescription: "", customerItemCode: "" })));
+      setLines((prev) => prev.map((line) => ({
+        ...line,
+        itemId: "",
+        itemCode: "",
+        itemDescription: "",
+        customerItemCode: "",
+        unitCbm: "",
+        uom: "",
+        expiryDate: "",
+      })));
     }
   }, [vendorPartyId, importedLines]);
 
-  const availableItems = vendorPartyId
-    ? itemOptions.filter((item) => item.defaultSupplierPartyId === vendorPartyId)
-    : [];
+  // Keep item-derived values aligned when the operator changes the inventory
+  // model (the display code can change between supplier and DSGC fields) or
+  // when the catalog finishes loading after the form has mounted.
+  useEffect(() => {
+    if (importedLines && importedLines.length > 0) return;
+    setLines((prev) => prev.map((line) => {
+      const item = itemOptions.find((candidate) => candidate.id === line.itemId);
+      if (!item) return line;
+      return {
+        ...line,
+        itemCode: codeFor(item),
+        itemDescription: item.description?.trim() || item.name,
+        customerItemCode: item.customerItemCode ?? "",
+        uom: item.uom,
+        unitCbm: item.volumeCbm,
+      };
+    }));
+  }, [flowType, importedLines, itemOptions]);
+
+  const availableItems = filterReceivingItemOptions(itemOptions, vendorPartyId);
 
   function codeFor(item: WrrItemOption): string {
     return flowType === "trading"
@@ -136,7 +163,7 @@ export function WrrLineItems({
       ...line,
       itemId: item.id,
       itemCode: codeFor(item),
-      itemDescription: item.name,
+      itemDescription: item.description?.trim() || item.name,
       customerItemCode: item.customerItemCode ?? "",
       uom: item.uom,
       unitCbm: item.volumeCbm,

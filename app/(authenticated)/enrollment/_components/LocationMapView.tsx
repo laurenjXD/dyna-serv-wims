@@ -374,8 +374,8 @@ export function LocationMapView({
 
       {unmappedRows.length > 0 && (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4" aria-label="Unmapped locations">
-          <h3 className="font-heading text-data-display font-semibold text-amber-950">Locations not drawn on this reference layout</h3>
-          <p className="mt-1 font-body text-body-sm text-amber-900">These records remain available and searchable in Table View. They are not placed on the SVG until their physical geometry is confirmed.</p>
+          <h3 className="font-heading text-data-display font-semibold text-amber-950">Locations still waiting for confirmation</h3>
+          <p className="mt-1 font-body text-body-sm text-amber-900">These locations are in the system, but their exact place on the map has not been confirmed yet. You can still find them in Table View.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {unmappedRows.slice(0, 20).map((row) => (
               <button key={row.id} type="button" onClick={() => selectLocation(row, row.label)} className="rounded-lg border border-amber-300 bg-white px-3 py-2 font-mono text-xs font-semibold text-amber-950 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400">

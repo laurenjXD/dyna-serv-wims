@@ -146,6 +146,11 @@ export function ItemSearchCombobox({
                             (Cust: {item.customerItemCode})
                           </span>
                         )}
+                        {item.defaultSupplierPartyId === null && (
+                          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                            Unassigned
+                          </span>
+                        )}
                       </div>
                       <p className="mt-0.5 truncate font-body text-body-sm text-on-surface">
                         {item.name}
