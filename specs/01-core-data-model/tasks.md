@@ -1,8 +1,16 @@
 # Core Data Model — Tasks
-Status: Approved
-Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
+Status: Under Revision
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
 
 ## Implementation Tasks
+
+### Zone-only tracking areas amendment — 2026-10-23 (Pending Reapproval)
+
+- [ ] Amend `locations` nullability so `rack`, `level`, `position`, `label`, and `max_cbm_capacity` may be NULL for `rcv`/`hold` while remaining required for `storage`.
+- [ ] Enforce the `zone` value set (`storage`, `rcv`, `hold`) and storage rack/level/position ranges in the schema and server validation.
+- [ ] Add and verify the migration, schema, read-model, and RLS impact of the conditional location contract in real Postgres.
+- [ ] Product owner approval — pending.
+- [ ] Technical/data-model/RBAC review and second approval — pending.
 
 - [x] **1. Drizzle ORM Schema Definitions** — **implemented and fully verified 2026-08-07**
   - [x] Define PostgreSQL enums in `lib/db/schema/enums.ts` (`partyRoleEnum` with vendor/supplier/customer/end_customer/internal_warehouse, `flowTypeEnum`, `locationTypeEnum`, `lotStatusEnum`, `wrrStatusEnum`, `movementTypeEnum`, `pickListStatusEnum`, `conformanceStatusEnum`, `nonConformanceReasonEnum`, `commitmentStatusEnum`)

@@ -1,10 +1,18 @@
 # Warehouse Map Visualization — Tasks
 
-Status: Approved
+Status: Under Revision
+Updated: 2026-10-23 — Final rack range and zone-only tracking clarification pending reapproval
 
 No map component, route behavior, server query, or layout configuration may
 be implemented until `requirements.md`, `design.md`, and this file are
 Approved with both required sign-offs.
+
+## Final rack range amendment — 2026-10-23 (Pending Reapproval)
+
+- [ ] Reconcile the canonical layout to A levels 1–4/positions 1–30 and B–I levels 1–4/positions 1–15.
+- [ ] Keep RCV/Hold tracking rows out of rack-cell rendering while including them in the Table View/list view.
+- [ ] Product/Operations Lead approval — pending.
+- [ ] Technical approval and map verification — pending.
 
 ## Task Group A — Contract and layout fixture
 

@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Implementation Plan
 
-Status: Approved
-Updated: 2026-10-22 — Organization role-family correction approved
+Status: Under Revision
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
 
 ## Implementation gate
 
@@ -92,10 +92,10 @@ Testing: Unit validation/calculation tests; real-Postgres constraints/RLS integr
 Testing: Unit validation/calculation tests; real-Postgres constraints/RLS integration; Playwright create/edit/deactivate flows.
 
 - [ ] Define typed location input/read models mapped to the approved `locations` schema (design.md §2 canonical fields block).
-- [ ] Build the location form with `zone`, `rack`, `level`, `position`, `location_type` dropdown, `max_cbm_capacity`, and active state; server computes and displays the `Rack+Level-Position` label (design.md §6a Create step 3).
-- [ ] Validate `max_cbm_capacity` positivity, `location_type` enum membership, and required field combinations on client and server.
+- [ ] Build the location form with a `Storage`/`RCV`/`Hold` zone select; disable and grey rack, level, position, and max CBM for RCV/Hold; server computes the storage `Rack+Level-Position` label (design.md §6a).
+- [ ] Validate storage rack A–I, level 1–4, position A 1–30/B–I 1–15, positive max CBM, and RCV/Hold NULL-field semantics on client and server.
 - [ ] Enforce server-side `label` uniqueness re-validation on both create and edit (design.md §6a Create step 4, Edit/deactivate).
-- [ ] Build paginated/searchable location list with `locations.read`-scoped filtering (design.md §7).
+- [ ] Build paginated/searchable location Table View with `locations.read`-scoped filtering; include Storage, RCV, and Hold rows, leaving rack-specific cells blank for RCV/Hold (design.md §7).
 - [ ] Build location detail/edit/deactivate flow with the same stale-edit protection pattern used for parties/items.
 - [ ] Prevent destructive deletion when `lot_location_balances` or `inventory_transactions` reference the location; preserve historical records (requirements.md R3.8, design.md §6a Edit/deactivate).
 - [ ] Gate create/edit/deactivate behind `locations.manage`; gate read/list behind `locations.read` — verify both against the `02-rbac-roles` §3.2 catalog before implementation, do not invent capability names.
@@ -204,6 +204,14 @@ Status: Pending Reapproval
 - [ ] After implementation and test evidence are complete, obtain both required sign-offs and change all three 06 documents back to `Status: Approved`.
 
 ## Sign-off
+
+## Zone-only tracking areas amendment — 2026-10-23
+
+Status: Pending Reapproval
+
+- [ ] Update the shared schema/migration contract for nullable RCV/Hold fields and storage-only labels/capacity.
+- [ ] Product owner approval — pending.
+- [ ] Technical/data-model/RBAC review and second approval — pending.
 
 - [ ] `01-core-data-model` fields and constraints are amended, approved, and reconciled for canonical roles and RBE.
 - [ ] RBAC/RLS review passes for Data Management subtabs and exports.

@@ -1,7 +1,7 @@
 # Organization & Item Enrollment — Requirements
 
-Status: Approved
-Updated: 2026-10-22 — Organization role-family correction approved
+Status: Under Revision
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
 
 ## 1. Purpose and scope
 
@@ -71,11 +71,12 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 
 ### R3. Location enrollment
 
-1. An authorized user SHALL create `locations` with `zone`, `rack`, `level`, `position`, `location_type`, and `max_cbm_capacity`.
-2. The system SHALL auto-generate `label` in `Rack+Level-Position` format (e.g. `A1-01`).
-3. `location_type` SHALL be selected from `receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`.
-4. `max_cbm_capacity` SHALL be a validated positive decimal.
+1. An authorized user SHALL create `locations` with a zone selected from exactly `storage`, `rcv`, or `hold`, plus the existing `location_type` and active state.
+2. For `storage`, rack SHALL be `A`–`I`, level SHALL be `1`–`4`, position SHALL be `1`–`30` for rack A or `1`–`15` for racks B–I, and max CBM capacity SHALL be a positive decimal. The system SHALL auto-generate `label` in `Rack+Level-Position` format (e.g. `A1-01`).
+3. For `rcv` and `hold`, rack, level, position, label, and max CBM capacity SHALL be NULL. The form SHALL disable those controls and the server SHALL reject client attempts to provide values for them.
+4. `location_type` SHALL be selected from `receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`.
 5. Deactivation (`is_active = false`) SHALL prevent new workflow assignments while preserving historical balances.
+6. The location Table View SHALL include Storage, RCV, and Hold rows. RCV/Hold rows SHALL remain discoverable there even though they have no rack-map cell.
 
 ### R4. Authorization, accessibility & 3-component error feedback
 

@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Design
 
-Status: Approved
-Updated: 2026-10-22 — Organization role-family correction approved
+Status: Under Revision
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
 
 ## 1. Design intent
 
@@ -53,7 +53,7 @@ The following column names are final per the approved `01` schema. All forms, va
 
 No provisional field names (`sku`, `warehouse_id`, or flow-specific columns) appear in the approved schema. The cross-reference fields `supplier_item_code`, `customer_item_code`, and `dsgc_item_number` are the final names; forms and API contracts must not use alternate names for these columns.
 
-**`locations`** (added 2026-08-07, per `01-core-data-model/design.md`'s `locations` table) — `id`, `zone` (varchar 50, NOT NULL), `rack` (varchar 50, NOT NULL), `level` (varchar 50, NOT NULL), `position` (varchar 50, NOT NULL), `label` (varchar 100, NOT NULL, UNIQUE — server-generated as `Rack+Level-Position`, e.g. `A1-01`; never free-typed), `location_type` (`location_type` enum, NOT NULL, default `storage` — approved values `receiving_bay`, `inspection`, `storage`, `picking`, `dispatch`), `max_cbm_capacity` (decimal 10,4, NOT NULL), `is_active` (boolean NOT NULL, default `true`), `created_at`. No `updated_at` column in the approved `01` schema for `locations`; edits update the row in place without a tracked modification timestamp beyond what the audit boundary records separately.
+**`locations`** (amended 2026-10-23, pending reapproval) — `id`, `zone` (varchar 50, constrained to `storage`, `rcv`, or `hold`), `rack`, `level`, `position`, and `label` (all nullable for `rcv`/`hold`; label is server-generated and unique for `storage`), `location_type` (existing enum), `max_cbm_capacity` (nullable for `rcv`/`hold` and positive for `storage`), `is_active`, and `created_at`. Storage rows require rack `A`–`I`, level `1`–`4`, position `1`–`30` for A or `1`–`15` for B–I. RCV/Hold are tracking-only and never receive placeholder rack fields or labels.
 
 ## 3. Route and shell integration
 
@@ -248,17 +248,18 @@ When `07-incoming-receiving` encounters a WRR line whose scanned barcode does no
 
 Ownership boundary: `06` owns the enrollment step (item master record creation, validation, and barcode assignment). `07` owns the exception/hold state on the WRR line, the trigger that flags the unknown barcode, and the resume logic after enrollment is confirmed.
 
-## 6a. Location model and workflows (added 2026-08-07)
+## 6a. Location model and workflows (amended 2026-10-23, pending reapproval)
 
 This is the spec's third master-data type, following the identical create/edit/deactivate pattern as parties (§5) and items (§6). It uses the same office-primary, mobile-reviewable surface treatment stated in `requirements.md` §3: creating/editing a rack is an office task, but a warehouseman must be able to look up a location's label and remaining capacity on a handheld device while working the floor — this is a lookup/review case, not a floor scan-and-mutate flow, so it does not require the floor-priority form treatment `ui-ux-design-plan.md` §3 reserves for scan-driven screens.
 
 ### Create
 
 1. User opens the location create route through an authorized capability (`locations.manage` — Administrator only per the `02` catalog).
-2. The form collects `zone`, `rack`, `level`, `position`, `location_type` (dropdown, default `storage`), and `max_cbm_capacity` using the exact column names from the approved `locations` schema. `is_active` defaults to `true`.
-3. The server (not the client) computes `label` as `Rack+Level-Position` from the submitted `rack`, `level`, `position` values, exactly matching `01-core-data-model`'s documented format (e.g. Rack `A`, Level `1`, Position `01` → `A1-01`). The computed label is shown to the user for confirmation before submit, but the authoritative value is server-computed and re-verified at write time — a client-supplied label is never trusted.
-4. The server revalidates `label` uniqueness (catching the case where two different `zone`/`rack`/`level`/`position` combinations would resolve to the same formatted label), `location_type` enum membership, `max_cbm_capacity` positivity, and actor capability in one transaction.
-5. The `locations` row is committed, with an audit event if required by the approved audit design.
+2. The form presents a required zone select with `Storage`, `RCV`, and `Hold`. Storage enables required rack/level/position/max-CBM controls. RCV and Hold disable and visually grey those controls, clear them, and submit NULL values.
+3. Storage validation is exact: rack `A`–`I`, level `1`–`4`, position `1`–`30` for A or `1`–`15` for B–I, and positive max CBM. The server generates the unique `Rack+Level-Position` label.
+4. RCV/Hold validation requires all rack-specific values and label to be NULL; these zones are tracking-only and do not create capacity-bearing physical slots.
+5. The server revalidates zone membership, `location_type` enum membership, conditional fields, label uniqueness where applicable, and actor capability in one transaction.
+6. The `locations` row is committed, with an audit event if required by the approved audit design.
 
 ### Edit/deactivate
 
@@ -285,7 +286,7 @@ This is a read-only view. No new capability is introduced: the ledger is gated b
 - Detail views show lifecycle status and safe related references. They do not become an inventory dashboard or expose lots/transactions without the owning feature's authorization.
 - Realtime, if enabled, invalidates the relevant list/detail query and triggers an authoritative refetch. It is not used as the sole source of truth.
 - Empty, loading, error, and stale-edit states use the shared shell and feature contracts from `05`.
-- **(Added 2026-08-07)** Location list/search matches normalized `zone`, `rack`, `level`, `position`, `label`, and `location_type`; results are filtered by `locations.read` scope. Location detail shows lifecycle status and provides a read-only Inventory View beside the Movement Ledger. It does not mutate stock or replace `01`'s Master Inventory projection.
+- **(Amended 2026-10-23)** Location list/search matches `zone`, `rack`, `level`, `position`, `label`, and `location_type`; results are filtered by `locations.read` scope and include all Storage, RCV, and Hold rows. RCV/Hold rows remain visible in Table View with blank rack-specific columns and are excluded only from rack-cell rendering. Location detail shows lifecycle status and provides a read-only Inventory View beside the Movement Ledger. It does not mutate stock or replace `01`'s Master Inventory projection.
 
 ## 8. Authorization and RLS
 

@@ -1,6 +1,7 @@
 # Warehouse Map Visualization — Requirements
 
-Status: Approved
+Status: Under Revision
+Updated: 2026-10-23 — Final rack range and zone-only tracking clarification pending reapproval
 Depends on: `specs/01-core-data-model/`, `specs/05-ui-shell-and-navigation/`, `specs/06-party-and-item-enrollment/`, and `specs/24-data-migration-and-seeding/`
 
 ## Purpose
@@ -29,10 +30,19 @@ their visible level/position arrangement. Layout geometry SHALL be versioned
 in application configuration for v1; editing geometry in the browser is out of
 scope.
 
+#### Final rack range amendment — 2026-10-23 (Pending Reapproval)
+
+Canonical storage cells are rack A levels 1–4 with positions 1–30, and racks
+B–I levels 1–4 with positions 1–15. RCV and Hold are zone-only tracking
+records and SHALL not render as rack cells because they have no rack, level,
+position, label, or capacity.
+
 ### R3. Locations view
 
 The existing `/enrollment?tab=locations` surface SHALL provide a `Table View`
-and `Map View` toggle. No new sidebar entry is required for v1.
+and `Map View` toggle. Table View SHALL include Storage, RCV, and Hold rows;
+RCV/Hold rows remain visible there even though they have no rack-map cell. No
+new sidebar entry is required for v1.
 
 ### R4. Location interaction
 

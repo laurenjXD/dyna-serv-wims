@@ -1,6 +1,7 @@
 # Warehouse Map Visualization — Design
 
-Status: Approved
+Status: Under Revision
+Updated: 2026-10-23 — Final rack range and zone-only tracking clarification pending reapproval
 Depends on: `specs/25-warehouse-map-visualization/requirements.md`
 
 ## 1. Design intent
@@ -54,6 +55,11 @@ The configuration maps a canonical WIMS label such as `A1-01` to one SVG
 cell. The workbook's position-level identifiers are normalized to WIMS's
 level-position convention before they are used as map keys. Unmapped canonical
 locations appear in an exceptions summary and remain available in Table View.
+
+The final canonical storage geometry is A × 4 levels × 30 positions and
+B–I × 4 levels × 15 positions. RCV/Hold tracking rows have no label and are
+excluded from SVG rack-cell rendering while remaining available in table/list
+views.
 
 The v1 configuration MUST NOT invent CBM capacity, ownership, or allocation
 status from the workbook. Capacity comes from canonical locations; the
