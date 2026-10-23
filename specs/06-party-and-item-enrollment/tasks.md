@@ -1,7 +1,7 @@
 # Party & Item Enrollment — Implementation Plan
 
-Status: Under Revision
-Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
+Status: Approved
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 
 ## Implementation gate
 
@@ -207,11 +207,11 @@ Status: Pending Reapproval
 
 ## Zone-only tracking areas amendment — 2026-10-23
 
-Status: Pending Reapproval
+Status: Approved
 
-- [ ] Update the shared schema/migration contract for nullable RCV/Hold fields and storage-only labels/capacity.
-- [ ] Product owner approval — pending.
-- [ ] Technical/data-model/RBAC review and second approval — pending.
+- [x] Update the shared schema/migration contract for nullable RCV/Hold fields and storage-only labels/capacity.
+- [x] Product owner approval — User, 2026-10-23.
+- [x] Technical/data-model/RBAC review and second approval — System standing approval, 2026-10-23.
 
 - [ ] `01-core-data-model` fields and constraints are amended, approved, and reconciled for canonical roles and RBE.
 - [ ] RBAC/RLS review passes for Data Management subtabs and exports.

@@ -28,12 +28,12 @@ export type DbLike = { select: (...args: any[]) => any };
 export type LocationListRow = {
   id: string;
   zone: string;
-  rack: string;
-  level: string;
-  position: string;
-  label: string;
+  rack: string | null;
+  level: string | null;
+  position: string | null;
+  label: string | null;
   locationType: string;
-  maxCbmCapacity: string;
+  maxCbmCapacity: string | null;
   isActive: boolean;
   createdAt: Date;
 };
@@ -41,12 +41,12 @@ export type LocationListRow = {
 export type LocationDetail = {
   id: string;
   zone: string;
-  rack: string;
-  level: string;
-  position: string;
-  label: string;
+  rack: string | null;
+  level: string | null;
+  position: string | null;
+  label: string | null;
   locationType: string;
-  maxCbmCapacity: string;
+  maxCbmCapacity: string | null;
   isActive: boolean;
   createdAt: Date;
 };
@@ -203,12 +203,12 @@ export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]>
   return (rawRows as Array<{
     id: string;
     zone: string;
-    rack: string;
-    level: string;
-    position: string;
-    label: string;
+    rack: string | null;
+    level: string | null;
+    position: string | null;
+    label: string | null;
     locationType: string;
-    maxCbmCapacity: string | number;
+    maxCbmCapacity: string | number | null;
     isActive: boolean;
     createdAt: Date;
     occupiedCbm: string | number | null;
@@ -222,7 +222,7 @@ export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]>
   }>).map((row) => {
     const maxCbmCapacity = Number(row.maxCbmCapacity ?? 0);
     const occupiedCbm = Number(row.occupiedCbm ?? 0);
-    const isMapped = mappedLabels.has(row.label);
+    const isMapped = row.label !== null && mappedLabels.has(row.label);
 
     return {
       id: row.id,
@@ -232,7 +232,7 @@ export async function listLocationMapRows(db: DbLike): Promise<LocationMapRow[]>
       position: row.position,
       label: row.label,
       locationType: row.locationType,
-      maxCbmCapacity: String(row.maxCbmCapacity),
+      maxCbmCapacity: row.maxCbmCapacity === null ? null : String(row.maxCbmCapacity),
       isActive: row.isActive,
       createdAt: row.createdAt,
       occupiedCbm,

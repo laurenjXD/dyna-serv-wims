@@ -1,6 +1,6 @@
 # Core Data Model — Design
-Status: Under Revision
-Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
+Status: Approved
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions

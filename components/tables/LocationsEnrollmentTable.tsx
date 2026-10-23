@@ -25,7 +25,7 @@ export function LocationsEnrollmentTable({
         filterLabel: "Location Label",
       },
       cell: (info) => (
-        <span className="font-mono font-bold text-brand-navy">{String(info.getValue())}</span>
+        <span className="font-mono font-bold text-brand-navy">{String(info.getValue() ?? "—")}</span>
       ),
     },
 
@@ -37,14 +37,14 @@ export function LocationsEnrollmentTable({
         filterVariant: "text",
         filterLabel: "Rack",
       },
-      cell: (info) => <span className="font-mono text-sm font-semibold text-slate-800">{String(info.getValue())}</span>,
+      cell: (info) => <span className="font-mono text-sm font-semibold text-slate-800">{String(info.getValue() ?? "—")}</span>,
     },
 
     // 3. Level & Position
     {
       id: "coordinates",
       header: "Level / Pos",
-      accessorFn: (row) => `L${row.level} / P${row.position}`,
+      accessorFn: (row) => row.level && row.position ? `L${row.level} / P${row.position}` : "—",
       meta: {
         filterVariant: "text",
         filterLabel: "Coordinates",
@@ -84,7 +84,7 @@ export function LocationsEnrollmentTable({
       },
       cell: (info) => (
         <span className="font-mono text-sm text-slate-900 font-semibold">
-          {Number(info.getValue())?.toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
+          {info.getValue() == null ? "—" : `${Number(info.getValue()).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³`}
         </span>
       ),
     },
@@ -125,15 +125,17 @@ export function LocationsEnrollmentTable({
         const loc = info.row.original;
         return (
           <div className="flex items-center justify-end gap-1.5">
-            <Link
-              href={`/enrollment?tab=locations&view=map&label=${encodeURIComponent(loc.label)}`}
-              aria-label={`Locate ${loc.label} on map`}
-              title="Locate on map"
-              className="inline-flex items-center gap-1 rounded bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-navy transition-colors shadow-sm hover:bg-brand-navy hover:text-white"
-            >
-              <MapPinned size={13} aria-hidden="true" />
-              Map
-            </Link>
+            {loc.label && (
+              <Link
+                href={`/enrollment?tab=locations&view=map&label=${encodeURIComponent(loc.label)}`}
+                aria-label={`Locate ${loc.label} on map`}
+                title="Locate on map"
+                className="inline-flex items-center gap-1 rounded bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-navy transition-colors shadow-sm hover:bg-brand-navy hover:text-white"
+              >
+                <MapPinned size={13} aria-hidden="true" />
+                Map
+              </Link>
+            )}
             <Link
               href={`/master-data/locations/${loc.id}`}
               className="rounded bg-slate-100 hover:bg-brand-navy hover:text-white px-2.5 py-1 text-xs font-bold text-slate-800 transition-colors shadow-sm"

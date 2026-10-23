@@ -29,9 +29,9 @@ export default async function EditLocationPage({ params }: PageProps) {
   if (!location) notFound();
   const suggestions = {
     zones: [...new Set(locationList.rows.map((row) => row.zone))].sort(),
-    racks: [...new Set(locationList.rows.map((row) => row.rack))].sort(),
-    levels: [...new Set(locationList.rows.map((row) => row.level))].sort(),
-    positions: [...new Set(locationList.rows.map((row) => row.position))].sort(),
+    racks: [...new Set(locationList.rows.map((row) => row.rack).filter((value): value is string => Boolean(value)))].sort(),
+    levels: [...new Set(locationList.rows.map((row) => row.level).filter((value): value is string => Boolean(value)))].sort(),
+    positions: [...new Set(locationList.rows.map((row) => row.position).filter((value): value is string => Boolean(value)))].sort(),
   };
 
   return (
@@ -41,7 +41,7 @@ export default async function EditLocationPage({ params }: PageProps) {
           Edit Location
         </h1>
         <p className="mt-1 font-mono text-mono-md text-text-grey">
-          {location.label}
+          {location.label ?? `${location.zone.toUpperCase()} tracking zone`}
         </p>
         <p className="mt-1 font-body text-body-sm text-text-grey">
           Changing rack, level, or position will recompute the label

@@ -250,7 +250,11 @@ export async function parseOpeningStockFile(
     ]);
 
     const itemMap = new Map(itemRows.map((i) => [i.code.toLowerCase(), i]));
-    const locationMap = new Map(locationRows.map((l) => [l.label.toUpperCase(), l]));
+    const locationMap = new Map(
+      locationRows
+        .filter((l): l is typeof l & { label: string } => Boolean(l.label))
+        .map((l) => [l.label.toUpperCase(), l]),
+    );
 
     let totalBoxes = 0;
     let totalPcs = 0;

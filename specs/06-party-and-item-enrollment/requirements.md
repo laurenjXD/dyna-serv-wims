@@ -1,7 +1,7 @@
 # Organization & Item Enrollment — Requirements
 
-Status: Under Revision
-Updated: 2026-10-23 — Zone-only RCV/Hold location amendment pending reapproval
+Status: Approved
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 
 ## 1. Purpose and scope
 

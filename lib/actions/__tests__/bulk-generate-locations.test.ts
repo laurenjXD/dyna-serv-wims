@@ -82,7 +82,7 @@ const supervisorResolver = () =>
 const unauthenticatedResolver = () => makeResolver({ kind: "unauthenticated" });
 
 const validBulkInput = {
-  zone: "ZONE-A",
+  zone: "storage",
   locationType: "storage",
   maxCbmCapacity: "10.0000",
   racks: "A,B",

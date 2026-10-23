@@ -72,7 +72,7 @@ import {
 } from "@/lib/enrollment/location-schema";
 
 const BASE_VALID = {
-  zone: "ZONE-A",
+  zone: "storage",
   locationType: "storage",
   maxCbmCapacity: "10.0000",
   racks: "A,B",
@@ -281,7 +281,7 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
     expect(result.success).toBe(true);
     if (result.success) {
       const [candidate] = result.candidates;
-      expect(candidate.zone).toBe("ZONE-A");
+      expect(candidate.zone).toBe("storage");
       expect(candidate.locationType).toBe("storage");
       expect(candidate.maxCbmCapacity).toBe("10.0000");
       expect(candidate.isActive).toBe(true);
@@ -314,9 +314,9 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
       ...BASE_VALID,
       racks: "A",
       levelStart: "1",
-      levelEnd: "30",
+      levelEnd: "4",
       positionStart: "1",
-      positionEnd: "4",
+      positionEnd: "30",
     });
     expect(rackA.success).toBe(true);
 
@@ -324,22 +324,22 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
       ...BASE_VALID,
       racks: "B",
       levelStart: "1",
-      levelEnd: "15",
+      levelEnd: "4",
       positionStart: "1",
-      positionEnd: "5",
+      positionEnd: "16",
     });
     expect(rackB.success).toBe(false);
     if (!rackB.success) {
-      expect(rackB.errors.some((error) => error.message.includes("positions 1-4"))).toBe(true);
+      expect(rackB.errors.some((error) => error.message.includes("positions 1-15"))).toBe(true);
     }
 
     const rackF = parseBulkLocationGeneratorInput({
       ...BASE_VALID,
       racks: "F",
       levelStart: "1",
-      levelEnd: "15",
+      levelEnd: "4",
       positionStart: "1",
-      positionEnd: "4",
+      positionEnd: "15",
     });
     expect(rackF.success).toBe(true);
 
@@ -347,13 +347,13 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
       ...BASE_VALID,
       racks: "H",
       levelStart: "1",
-      levelEnd: "15",
+      levelEnd: "4",
       positionStart: "1",
-      positionEnd: "3",
+      positionEnd: "16",
     });
     expect(rackH.success).toBe(false);
     if (!rackH.success) {
-      expect(rackH.errors.some((error) => error.message.includes("positions 1-2"))).toBe(true);
+      expect(rackH.errors.some((error) => error.message.includes("positions 1-15"))).toBe(true);
     }
   });
 });

@@ -347,7 +347,7 @@ export async function getDashboardDeliveryPerformance(): Promise<{
  */
 export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
   try {
-    const locRows = await db
+    const queriedLocRows = await db
       .select({
         label: locations.label,
         zone: locations.zone,
@@ -356,6 +356,10 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       .from(locations)
       .where(eq(locations.isActive, true))
       .limit(6);
+
+    const locRows = queriedLocRows.filter(
+      (row): row is typeof row & { label: string } => Boolean(row.label),
+    );
 
     if (locRows.length === 0) {
       return [];
@@ -580,7 +584,7 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
       .where(eq(locations.label, cleanCode))
       .limit(1);
 
-    if (locMatch) {
+    if (locMatch?.label) {
       return {
         found: true,
         type: "location",

@@ -1,5 +1,5 @@
-export const WAREHOUSE_MAP_LAYOUT_VERSION = "v6-rack-a-i-30-15";
-export const WAREHOUSE_MAP_SOURCE = "DSGC PALLET POSITION.pdf / RACK A-I operating range";
+export const WAREHOUSE_MAP_LAYOUT_VERSION = "v7-pdf-footprint-canonical-labels";
+export const WAREHOUSE_MAP_SOURCE = "DSGC PALLET POSITION.pdf / confirmed RACK A-I footprint";
 
 export type RackLayout = {
   rack: string;
@@ -27,36 +27,41 @@ export type WarehouseMapCell = {
 };
 
 /**
- * The supplied warehouse position drawing is the current geometry reference:
- * Rack A has thirty levels and four positions; racks B-G have fifteen levels
- * and four positions; and racks H-I have fifteen levels and two positions. The layout follows the
- * drawing's physical arrangement: A occupies the full left side, followed by
- * F/G and H/I above B/C and D/E. Canonical labels remain level-position
- * labels, so map clicks continue to resolve live locations.
+ * The supplied PDF is the current geometry reference. Its physical footprint
+ * is represented as positions running vertically: A is 30 positions across 4
+ * layers, B-E are 12 positions across 4 layers, F-G are 14 positions across
+ * 4 layers, and H-I are 12 positions across 2 layers. Canonical labels remain
+ * level-position labels, so map clicks continue to resolve live locations.
+ *
+ * WAREHOUSE_RACK_LIMITS below is intentionally separate: it describes the
+ * location-entry contract (A: 1-30, B-I: 1-15; levels 1-4), while this layout
+ * describes only the confirmed PDF drawing footprint.
  */
 export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
   // Keep the first rack title below the warehouse subtitle with a clear gap.
-  { rack: "A", levels: 30, positions: 4, x: 84, y: 150, width: 168, height: 600, reversePositions: true },
-  { rack: "F", levels: 15, positions: 4, x: 332, y: 150, width: 180, height: 270 },
-  { rack: "G", levels: 15, positions: 4, x: 580, y: 150, width: 180, height: 270, reversePositions: true },
-  { rack: "H", levels: 15, positions: 2, x: 828, y: 150, width: 128, height: 270 },
-  { rack: "I", levels: 15, positions: 2, x: 1024, y: 150, width: 128, height: 270, reversePositions: true },
-  { rack: "B", levels: 15, positions: 4, x: 332, y: 510, width: 180, height: 270 },
-  { rack: "C", levels: 15, positions: 4, x: 580, y: 510, width: 180, height: 270, reversePositions: true },
-  { rack: "D", levels: 15, positions: 4, x: 828, y: 510, width: 180, height: 270 },
-  { rack: "E", levels: 15, positions: 4, x: 1024, y: 510, width: 180, height: 270, reversePositions: true },
+  { rack: "A", levels: 4, positions: 30, x: 84, y: 150, width: 168, height: 600, reversePositions: true, verticalPositions: true },
+  { rack: "F", levels: 4, positions: 14, x: 332, y: 150, width: 180, height: 270, verticalPositions: true },
+  { rack: "G", levels: 4, positions: 14, x: 580, y: 150, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "H", levels: 2, positions: 12, x: 828, y: 150, width: 128, height: 270, verticalPositions: true },
+  { rack: "I", levels: 2, positions: 12, x: 1024, y: 150, width: 128, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "B", levels: 4, positions: 12, x: 332, y: 510, width: 180, height: 270, verticalPositions: true },
+  { rack: "C", levels: 4, positions: 12, x: 580, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "D", levels: 4, positions: 12, x: 828, y: 510, width: 180, height: 270, verticalPositions: true },
+  { rack: "E", levels: 4, positions: 12, x: 1024, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
 ];
 
+// Form/storage-entry limits. These are broader than the visible PDF footprint
+// for B-I and must not be derived from the rendered cell counts above.
 export const WAREHOUSE_RACK_LIMITS = {
-  A: { levels: 30, positions: 4 },
-  B: { levels: 15, positions: 4 },
-  C: { levels: 15, positions: 4 },
-  D: { levels: 15, positions: 4 },
-  E: { levels: 15, positions: 4 },
-  F: { levels: 15, positions: 4 },
-  G: { levels: 15, positions: 4 },
-  H: { levels: 15, positions: 2 },
-  I: { levels: 15, positions: 2 },
+  A: { levels: 4, positions: 30 },
+  B: { levels: 4, positions: 15 },
+  C: { levels: 4, positions: 15 },
+  D: { levels: 4, positions: 15 },
+  E: { levels: 4, positions: 15 },
+  F: { levels: 4, positions: 15 },
+  G: { levels: 4, positions: 15 },
+  H: { levels: 4, positions: 15 },
+  I: { levels: 4, positions: 15 },
 } as const;
 
 export const WAREHOUSE_MAP_VIEWBOX = { width: 1200, height: 820 } as const;

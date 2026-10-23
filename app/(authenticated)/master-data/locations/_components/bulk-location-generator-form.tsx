@@ -158,15 +158,15 @@ export function BulkLocationGeneratorForm({
             Zone{" "}
             <span aria-hidden="true" className="text-brand-red">*</span>
           </label>
-          <input
+          <select
             id="zone"
             name="zone"
-            type="text"
             required
-            maxLength={50}
-            placeholder="e.g. A"
+            defaultValue="storage"
             className={inputClass("zone")}
-          />
+          >
+            <option value="storage">Storage</option>
+          </select>
           {fieldError("zone")}
         </div>
 
@@ -207,7 +207,7 @@ export function BulkLocationGeneratorForm({
           />
           {fieldError("racks")}
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            Workbook layout: Rack A uses levels 1–4 and positions 1–30. Racks B–G use levels 1–4 and positions 1–15.
+            Bulk generation is for Storage rack cells only. Racks use levels 1–4; Rack A supports positions 1–30 and racks B–I support positions 1–15.
           </p>
         </div>
 

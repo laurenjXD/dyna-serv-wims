@@ -91,7 +91,7 @@ describe("generateLocationLabel — label format (R3.2, design.md §6a Create st
 
 describe("parseLocationInput — client-supplied label is ignored (R3.2, design.md §6a)", () => {
   const BASE_VALID = {
-    zone: "ZONE-A",
+    zone: "storage",
     rack: "A",
     level: "1",
     position: "01",
@@ -129,7 +129,7 @@ describe("parseLocationInput — client-supplied label is ignored (R3.2, design.
 
 describe("parseLocationInput — required fields (R3.1, design.md §2 locations schema)", () => {
   const BASE_VALID = {
-    zone: "ZONE-A",
+    zone: "storage",
     rack: "A",
     level: "1",
     position: "01",
@@ -182,13 +182,71 @@ describe("parseLocationInput — required fields (R3.1, design.md §2 locations 
   });
 });
 
+describe("parseLocationInput — zone-specific location contract", () => {
+  it("accepts an RCV tracking row with no rack fields or capacity", () => {
+    const result = parseLocationInput({
+      zone: "rcv",
+      rack: null,
+      level: null,
+      position: null,
+      maxCbmCapacity: null,
+    });
+
+    expect(result).toEqual({
+      success: true,
+      data: expect.objectContaining({
+        zone: "rcv",
+        rack: null,
+        level: null,
+        position: null,
+        maxCbmCapacity: null,
+      }),
+    });
+  });
+
+  it("accepts a Hold tracking row with no rack fields or capacity", () => {
+    const result = parseLocationInput({ zone: "hold" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rack).toBeNull();
+      expect(result.data.maxCbmCapacity).toBeNull();
+    }
+  });
+
+  it("rejects rack-specific values for RCV", () => {
+    const result = parseLocationInput({ zone: "rcv", rack: "A" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors.find((error) => error.field === "rack")).toBeDefined();
+    }
+  });
+
+  it("accepts Storage rack A position 30 and rejects position 31", () => {
+    expect(parseLocationInput({
+      zone: "storage", rack: "A", level: "4", position: "30", maxCbmCapacity: "1",
+    }).success).toBe(true);
+    expect(parseLocationInput({
+      zone: "storage", rack: "A", level: "4", position: "31", maxCbmCapacity: "1",
+    }).success).toBe(false);
+  });
+
+  it("accepts Storage rack I position 15 and rejects position 16", () => {
+    expect(parseLocationInput({
+      zone: "storage", rack: "I", level: "1", position: "15", maxCbmCapacity: "1",
+    }).success).toBe(true);
+    expect(parseLocationInput({
+      zone: "storage", rack: "I", level: "1", position: "16", maxCbmCapacity: "1",
+    }).success).toBe(false);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // R3.4 — locationType enum validation (design.md §6a, §2 location_type enum)
 // ---------------------------------------------------------------------------
 
 describe("parseLocationInput — locationType enum (R3.4, design.md §2 location_type enum)", () => {
   const BASE_VALID = {
-    zone: "ZONE-A",
+    zone: "storage",
     rack: "A",
     level: "1",
     position: "01",
@@ -259,7 +317,7 @@ describe("parseLocationInput — locationType enum (R3.4, design.md §2 location
 
 describe("parseLocationInput — maxCbmCapacity (R3.5, design.md §2 decimal(10,4) positive)", () => {
   const BASE_VALID = {
-    zone: "ZONE-A",
+    zone: "storage",
     rack: "A",
     level: "1",
     position: "01",
@@ -306,7 +364,7 @@ describe("parseLocationInput — maxCbmCapacity (R3.5, design.md §2 decimal(10,
 
 describe("parseLocationInput — isActive lifecycle (R3.6, design.md §2 is_active boolean NOT NULL default true)", () => {
   const BASE_VALID = {
-    zone: "ZONE-A",
+    zone: "storage",
     rack: "A",
     level: "1",
     position: "01",

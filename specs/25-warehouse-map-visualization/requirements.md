@@ -1,14 +1,14 @@
 # Warehouse Map Visualization — Requirements
 
-Status: Under Revision
-Updated: 2026-10-23 — Final rack range and zone-only tracking clarification pending reapproval
+Status: Approved
+Updated: 2026-10-23 — Final PDF rack footprint and label-spacing amendment approved
 Depends on: `specs/01-core-data-model/`, `specs/05-ui-shell-and-navigation/`, `specs/06-party-and-item-enrollment/`, and `specs/24-data-migration-and-seeding/`
 
 ## Purpose
 
 Provide an interactive, read-only visualization of the single Dyna-Serv
-warehouse layout using the `Racking ID` sheet in the supplied workbook as the
-current location source. The map helps authorized staff locate stock, understand
+warehouse layout using the supplied PDF as the current geometry reference. The
+map helps authorized staff locate stock, understand
 location capacity, and navigate from a location record or Master Inventory.
 
 The map is a visualization of canonical WIMS data. It is not a second
@@ -25,17 +25,24 @@ as authoritative stock.
 
 ### R2. Initial layout
 
-The first layout SHALL represent the workbook's rack groups A through I and
-their visible level/position arrangement. Layout geometry SHALL be versioned
-in application configuration for v1; editing geometry in the browser is out of
-scope.
+The first layout SHALL represent the supplied PDF's rack groups A through I
+and visible level/position arrangement. The PDF is the authoritative geometry
+reference for v1; layout geometry SHALL be versioned in application
+configuration, and editing geometry in the browser is out of scope.
 
-#### Final rack range amendment — 2026-10-23 (Pending Reapproval)
+#### Final PDF rack mapping amendment — 2026-10-23 (Approved)
 
-Canonical storage cells are rack A levels 1–4 with positions 1–30, and racks
-B–I levels 1–4 with positions 1–15. RCV and Hold are zone-only tracking
-records and SHALL not render as rack cells because they have no rack, level,
-position, label, or capacity.
+The confirmed PDF allocation is: rack A has 30 pallet positions per layer
+across 4 layers; racks B–E have 12 per layer across 4 layers; racks F–G have
+14 per layer across 4 layers; and racks H–I have 12 positions per layer across
+2 layers, exactly as shown in the supplied PDF. RCV and Hold are zone-only
+tracking records and SHALL not render as rack cells because they have no rack,
+level, position, label, or capacity.
+
+Map text SHALL have deliberate spacing between the warehouse title, rack
+titles, level/position headers, and cell labels. Labels MUST remain readable
+and must not overlap one another at the desktop map width or in focused-rack
+view.
 
 ### R3. Locations view
 
@@ -88,9 +95,9 @@ feature workflows and capabilities.
 
 ### R10. Reference artifact
 
-The supplied PDF MAY be available as an older reference/download artifact.
-The workbook's location identifiers and geometry SHALL be treated as the
-current reference, while capacity and stock remain canonical WIMS data.
+The supplied PDF SHALL remain available as the visual reference artifact.
+Its rack geometry is the current map reference, while capacity and stock
+remain canonical WIMS data.
 
 ## Out of scope
 
@@ -119,3 +126,5 @@ current reference, while capacity and stock remain canonical WIMS data.
 
 - Technical Lead: User / System, 2026-10-21
 - Product/Operations Lead: User / System, 2026-10-21
+- Product/Operations approval of final PDF mapping and spacing: User, 2026-10-23
+- Technical/map verification approval: System standing approval, 2026-10-23
