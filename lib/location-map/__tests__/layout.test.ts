@@ -9,14 +9,20 @@ import {
 describe("warehouse map layout", () => {
   it("uses the canonical Rack+Level-Position label", () => {
     expect(canonicalLocationLabel("A", 1, 1)).toBe("A1-01");
-    expect(canonicalLocationLabel("G", 14, 4)).toBe("G14-04");
+    expect(canonicalLocationLabel("I", 12, 2)).toBe("I12-02");
   });
 
-  it("renders the visible RACKING sheet footprint as 480 rack cells", () => {
-    expect(WAREHOUSE_MAP_CELLS).toHaveLength(480);
+  it("renders the A-I operating footprint as 540 rack cells", () => {
+    expect(WAREHOUSE_MAP_CELLS).toHaveLength(540);
     expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A")).toHaveLength(120);
-    for (const rack of ["B", "C", "D", "E", "F", "G"]) {
+    for (const rack of ["B", "C", "D", "E"]) {
       expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rack)).toHaveLength(60);
+    }
+    for (const rack of ["F", "G"]) {
+      expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rack)).toHaveLength(60);
+    }
+    for (const rack of ["H", "I"]) {
+      expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rack)).toHaveLength(30);
     }
   });
 
@@ -35,18 +41,19 @@ describe("warehouse map layout", () => {
     }
   });
 
-  it("uses the physical column order A, F/B, G/C, D/E", () => {
+  it("uses the physical column order A, F/G, H/I, B/C, D/E", () => {
     expect(WAREHOUSE_RACK_LAYOUT.map((layout) => layout.rack)).toEqual([
-      "A", "F", "B", "G", "C", "D", "E",
+      "A", "F", "G", "H", "I", "B", "C", "D", "E",
     ]);
-    expect(WAREHOUSE_RACK_LAYOUT[0]).toMatchObject({ levels: 4, positions: 30 });
-    expect(WAREHOUSE_RACK_LAYOUT[1]).toMatchObject({ levels: 4, positions: 15 });
-    expect(WAREHOUSE_RACK_LAYOUT.every((layout) => layout.verticalPositions)).toBe(true);
+    expect(WAREHOUSE_RACK_LAYOUT[0]).toMatchObject({ levels: 30, positions: 4, reversePositions: true });
+    expect(WAREHOUSE_RACK_LAYOUT[1]).toMatchObject({ levels: 15, positions: 4 });
+    expect(WAREHOUSE_RACK_LAYOUT[4]).toMatchObject({ levels: 15, positions: 2, reversePositions: true });
+    expect(WAREHOUSE_RACK_LAYOUT.some((layout) => layout.verticalPositions)).toBe(false);
   });
 
-  it("keeps vertical display orientation linked to canonical level-position labels", () => {
+  it("keeps the PDF display orientation linked to canonical level-position labels", () => {
     const rackA = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A");
-    expect(rackA[0]).toMatchObject({ label: "A4-30", level: "4", position: "30" });
+    expect(rackA[0]).toMatchObject({ label: "A30-04", level: "30", position: "04" });
     expect(rackA.at(-1)).toMatchObject({ label: "A1-01", level: "1", position: "01" });
   });
 

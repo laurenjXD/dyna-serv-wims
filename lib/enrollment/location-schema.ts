@@ -295,13 +295,13 @@ export function parseBulkLocationGeneratorInput(
       if (levelStart < 1 || levelEnd > limit.levels) {
         errors.push({
           field: "levelEnd",
-          message: `Rack ${rack.toUpperCase()} supports levels 1-${limit.levels}. Generate the workbook rack range separately.`,
+          message: `Rack ${rack.toUpperCase()} supports levels 1-${limit.levels}. Generate the approved rack range separately.`,
         });
       }
       if (positionStart < 1 || positionEnd > limit.positions) {
         errors.push({
           field: "positionEnd",
-          message: `Rack ${rack.toUpperCase()} supports positions 1-${limit.positions}. Generate the workbook rack range separately.`,
+          message: `Rack ${rack.toUpperCase()} supports positions 1-${limit.positions}. Generate the approved rack range separately.`,
         });
       }
     }

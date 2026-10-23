@@ -1852,9 +1852,50 @@ labels, removes only safe duplicate/out-of-grid rows, and fills any missing
 canonical cells. Legacy H/I records remain outside the aligned map registry so
 their operational history is not deleted without a separate source-backed
 decision.
+
+## A-I rack footprint restored from supplied position drawing (2026-10-23)
+
+The Product Owner clarified that the warehouse location registry and map must
+cover **Racks A through I**, matching the supplied pallet-position drawing.
+The prior A-G implementation was an incorrect regression from the approved
+`25-warehouse-map-visualization` A-I contract and must not be treated as the
+canonical footprint.
+
+The corrected geometry is:
+
+- Rack A: 30 levels × 4 positions (120 locations).
+- Racks B-E: 12 levels × 4 positions (48 locations each).
+- Racks F-G: 14 levels × 4 positions (56 locations each).
+- Racks H-I: 12 levels × 2 positions (24 locations each).
+- Total: 472 canonical rack locations.
+
+The map layout is versioned as `v5-pdf-rack-a-i`, with the reference drawing's
+position order preserved per rack. Migration
+`0062_align_pdf_rack_locations_a_i.sql` rotates the transposed A-G rows from
+the prior map implementation, normalizes H-I to the supplied footprint,
+preserves referenced location IDs and stock, and removes only duplicate or
+out-of-grid rows with no operational references.
 ## End-customer recipient identity (2026-10-22)
 
 The Product Owner clarified that `customer` is the company's direct commercial buyer for both VMI and Trading. `supplier` is the Trading-side inbound source. `end_customer` is the non-billable outbound recipient and may also be classified as a supplier or customer. The approved amendment adds `pick_lists.end_customer_party_id`, backfills it from the legacy `customer_party_id`, requires recipient selection before commitment, keeps commercial customer/bill-to identity in `customer_party_id`, and displays the physical recipient in the ICL/Pick Lists queue, dispatch, Outgoing Ledger, pick-list print, and acknowledgement receipt. Same-party cases display one combined value; post-commitment changes require release/reissue or superseding documentation.
 
 The same role boundary applies to master-data enrollment: the default inbound-source/supplier selector admits only Supplier-classified organizations (legacy `vendor` only for migration compatibility); Customer is not a Trading supplier, and End-Customer is not an inbound source merely because it is an outbound recipient. Multi-role parties remain valid, but each workflow uses the relationship-specific role and field.
+
+## FS1/FS2 are not warehouse locations (2026-10-23)
+
+The Product Owner clarified that `FS1-*` and `FS2-*` records are not part of
+the physical warehouse location layout, and no stock is stored there. Empty
+legacy FS rows must not appear as “unmapped” exceptions on the Rack A-I map.
+The map now reports only unmapped locations that contain live stock. Migration
+`0063_remove_unused_fs_locations.sql` removes unreferenced FS1/FS2 rows while
+retaining any row with operational references for historical safety.
+
+## Rack operating-level range clarified (2026-10-23)
+
+The Product Owner further clarified the operating range: Rack A runs through
+level 30, while every rack B-I runs through level 15. The map and enrollment
+generator now use that range, retaining four positions for B-G and two
+positions for H-I. The resulting operating registry is 540 cells. Migration
+`0064_expand_rack_levels_a_30_b_i_15.sql` adds only the newly required empty
+locations and leaves existing location IDs, stock, and history unchanged.
 

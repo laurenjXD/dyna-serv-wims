@@ -103,7 +103,9 @@ export function LocationMapView({
   );
   const selectedRow = selectedRows.length === 1 ? selectedRows[0] : undefined;
   const mappedRows = filteredRows.filter((row) => row.isMapped);
-  const unmappedRows = filteredRows.filter((row) => !row.isMapped);
+  const unmappedRows = filteredRows.filter((row) => (
+    !row.isMapped && (row.totalUnits > 0 || row.totalBoxes > 0 || row.occupiedCbm > 0)
+  ));
   const rackLabels = rackLabelsForMap();
   const visibleCells = rackFilter === "all"
     ? WAREHOUSE_MAP_CELLS
@@ -219,7 +221,7 @@ export function LocationMapView({
           </span>
         ))}
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-label text-label text-slate-600">
-          {mappedRows.length} mapped rack locations{unmappedRows.length > 0 ? ` · ${unmappedRows.length} unmapped matches` : ""}
+          {mappedRows.length} mapped rack locations{unmappedRows.length > 0 ? ` · ${unmappedRows.length} unmapped stock locations` : ""}
         </span>
       </div>
       <p className="font-body text-xs text-text-grey">
@@ -240,8 +242,8 @@ export function LocationMapView({
             <svg
               viewBox={`0 0 ${WAREHOUSE_MAP_VIEWBOX.width} ${WAREHOUSE_MAP_VIEWBOX.height}`}
               role="img"
-              aria-label="Warehouse rack layout for racks A through G"
-              className={`h-auto ${rackFilter === "all" ? "min-w-[760px] w-full" : "min-w-[520px] w-full max-w-[760px]"}`}
+              aria-label="Warehouse rack layout for racks A through I"
+              className={`h-auto ${rackFilter === "all" ? "min-w-[1120px] w-full" : "min-w-[520px] w-full max-w-[760px]"}`}
             >
               <text x="24" y="34" className="fill-slate-700 text-[22px] font-bold">DSGC WAREHOUSE</text>
               <text x="24" y="58" className="fill-slate-500 text-[13px]">Rack positions · live WIMS status</text>
@@ -290,8 +292,8 @@ export function LocationMapView({
                 .map((layout) => {
                   const cellWidth = layout.width / (layout.verticalPositions ? layout.levels : layout.positions);
                   const cellHeight = layout.height / (layout.verticalPositions ? layout.positions : layout.levels);
-                    const rackTitleY = layout.y - 22;
-                    const headerY = layout.y - 8;
+                    const rackTitleY = layout.y - 28;
+                    const headerY = layout.y - 10;
                   return (
                     <g key={`${layout.rack}-labels`} className="pointer-events-none">
                       <text
@@ -331,9 +333,20 @@ export function LocationMapView({
                         </>
                       ) : (
                         <>
-                          <text x={layout.x - 7} y={layout.y - 2} textAnchor="end" className="fill-slate-500 text-[7px] font-bold">LVL</text>
+                          <text x={layout.x - 14} y={headerY} textAnchor="end" className="fill-slate-500 text-[7px] font-bold">LVL</text>
+                          {Array.from({ length: layout.positions }, (_, positionIndex) => (
+                            <text
+                              key={`${layout.rack}-position-${positionIndex}`}
+                              x={layout.x + positionIndex * cellWidth + cellWidth / 2}
+                              y={headerY}
+                              textAnchor="middle"
+                              className="fill-slate-500 text-[8px] font-mono font-semibold"
+                            >
+                              {layout.reversePositions ? layout.positions - positionIndex : positionIndex + 1}
+                            </text>
+                          ))}
                           {Array.from({ length: layout.levels }, (_, levelIndex) => (
-                            <text key={`${layout.rack}-level-${layout.levels - levelIndex}`} x={layout.x - 7} y={layout.y + levelIndex * cellHeight + cellHeight / 2 + 2.5} textAnchor="end" className="fill-slate-500 text-[8px] font-mono font-semibold">
+                            <text key={`${layout.rack}-level-${layout.levels - levelIndex}`} x={layout.x - 14} y={layout.y + levelIndex * cellHeight + cellHeight / 2 + 2.5} textAnchor="end" className="fill-slate-500 text-[8px] font-mono font-semibold">
                               {layout.levels - levelIndex}
                             </text>
                           ))}
@@ -450,8 +463,8 @@ export function LocationMapView({
 
       {unmappedRows.length > 0 && (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4" aria-label="Unmapped locations">
-          <h3 className="font-heading text-data-display font-semibold text-amber-950">Locations still waiting for confirmation</h3>
-          <p className="mt-1 font-body text-body-sm text-amber-900">These locations are in the system, but their exact place on the map has not been confirmed yet. You can still find them in Table View.</p>
+          <h3 className="font-heading text-data-display font-semibold text-amber-950">Stock outside the rack map</h3>
+          <p className="mt-1 font-body text-body-sm text-amber-900">These locations contain stock but are not part of the confirmed Rack A–I layout. Review them in Table View before assigning a rack location.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {unmappedRows.slice(0, 20).map((row) => (
               <button key={row.id} type="button" onClick={(event) => selectLocation(row, row.label, event.shiftKey)} className="rounded-lg border border-amber-300 bg-white px-3 py-2 font-mono text-xs font-semibold text-amber-950 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400">
