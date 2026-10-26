@@ -108,7 +108,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
       </div>
 
       {/* ── Filter bar ────────────────────────────────────────────────────────
-          TODO: wire to real filters once lot_location_balances query is built */}
+          Filters are applied server-side by the scoped inventory query. */}
       <div className="mt-6">
         <form method="GET" className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
@@ -121,6 +121,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
             <select
               id="location-filter"
               name="location"
+              defaultValue={filters.location ?? ""}
               className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="">All locations</option>
@@ -139,6 +140,7 @@ export default async function PortalInventoryPage({ searchParams }: PageProps) {
             <select
               id="category-filter"
               name="category"
+              defaultValue={filters.category ?? ""}
               className="h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
               <option value="">All categories</option>

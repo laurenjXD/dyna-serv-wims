@@ -71,13 +71,14 @@ export function OfficeLanding({
   dashboardMonthlyFlow,
   dashboardLocationOccupancy,
   dashboardDeliveryPerformance,
+  dataUnavailable,
 }: {
   dateString: string;
-  openWrrs: number;
-  openPickLists: number;
-  pendingTransfers: number;
-  openInspections: number;
-  pendingApprovals: number;
+  openWrrs: number | null;
+  openPickLists: number | null;
+  pendingTransfers: number | null;
+  openInspections: number | null;
+  pendingApprovals: number | null;
   inventoryKpis: { totalLotsInStock: number; totalCommittedQty: number; lowStockItemsCount: number } | null;
   hasReceivingAccess: boolean;
   quickJumpAction?: (formData: FormData) => void;
@@ -106,9 +107,15 @@ export function OfficeLanding({
     chartData: DeliveryPerformanceDatum[];
     miniMetrics: DeliveryPerformanceMiniMetrics;
   };
+  dataUnavailable?: boolean;
 }) {
   return (
     <div className="space-y-6">
+      {dataUnavailable && (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900">
+          Some live dashboard data is unavailable. Affected values are withheld until the warehouse data source responds.
+        </div>
+      )}
       {/* ── Direct WMS Operations Dashboard Suite ─────────────────────────────── */}
       <OperationsDashboard
         kpis={dashboardKpis}

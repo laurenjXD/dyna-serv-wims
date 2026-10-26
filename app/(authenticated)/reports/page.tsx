@@ -27,6 +27,7 @@ import {
   getDeliveryPerformanceReport,
   getReportArchiveList,
 } from "@/lib/db/queries/reports";
+import { getDashboardHeatmapData } from "@/lib/db/queries/dashboard";
 
 const REPORT_QUERY_TIMEOUT_MS = 8_000;
 
@@ -87,6 +88,7 @@ export default async function ReportsPage() {
     throughput,
     deliverySla,
     archiveItems,
+    heatmap,
     documentTemplate,
   ] = await Promise.all([
     loadReport(getReportsExecutiveKpis),
@@ -99,6 +101,7 @@ export default async function ReportsPage() {
     loadReport(() => getThroughputReport("daily")),
     loadReport(getDeliveryPerformanceReport),
     loadReport(getReportArchiveList),
+    loadReport(getDashboardHeatmapData),
     getDocumentTemplate(db),
   ]);
 
@@ -111,6 +114,7 @@ export default async function ReportsPage() {
         throughput={throughput}
         deliverySla={deliverySla}
         archiveItems={archiveItems}
+        heatmap={heatmap}
         canReadFinancial={canReadFinancial}
         documentTemplate={documentTemplate}
       />

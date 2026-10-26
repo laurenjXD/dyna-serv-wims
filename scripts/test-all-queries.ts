@@ -17,13 +17,13 @@ import {
   getDashboardMasterInventory,
 } from '../lib/db/queries/dashboard';
 
-async function testQuery(name: string, fn: () => Promise<any>) {
+async function testQuery(name: string, fn: () => Promise<unknown>) {
   try {
     const start = Date.now();
     await fn();
     console.log(`[PASS] ${name} (${Date.now() - start}ms)`);
-  } catch (err: any) {
-    console.error(`[FAIL] ${name}:`, err.message || err);
+  } catch (err: unknown) {
+    console.error(`[FAIL] ${name}:`, err instanceof Error ? err.message : err);
   }
 }
 

@@ -74,6 +74,15 @@ function getTodayString(): string {
 
 const DASHBOARD_DATA_TIMEOUT_MS = 8000;
 
+type DashboardDataResult<T> = {
+  data: T;
+  unavailable: boolean;
+};
+
+function availableDashboardData<T>(data: T): DashboardDataResult<T> {
+  return { data, unavailable: false };
+}
+
 function withDashboardDataTimeout<T>(request: Promise<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -88,16 +97,21 @@ function withDashboardDataTimeout<T>(request: Promise<T>): Promise<T> {
   });
 }
 
-function withDashboardDataFallback<T>(request: Promise<T>, fallback: T): Promise<T> {
+function withDashboardDataFallback<T>(request: Promise<T>, fallback: T): Promise<DashboardDataResult<T>> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<T>((resolve) => {
-    timeoutId = setTimeout(() => resolve(fallback), 5000);
+  const timeout = new Promise<DashboardDataResult<T>>((resolve) => {
+    timeoutId = setTimeout(() => resolve({ data: fallback, unavailable: true }), 5000);
   });
 
-  return Promise.race([request.catch((error) => {
-    console.error("[dashboard] widget data unavailable", error);
-    return fallback;
-  }), timeout]).finally(() => {
+  return Promise.race([
+    request
+      .then((data) => ({ data, unavailable: false }))
+      .catch((error) => {
+        console.error("[dashboard] widget data unavailable", error);
+        return { data: fallback, unavailable: true };
+      }),
+    timeout,
+  ]).finally(() => {
     if (timeoutId) clearTimeout(timeoutId);
   });
 }
@@ -225,7 +239,8 @@ export default async function Home() {
     .from(userProfiles)
     .where(eq(userProfiles.id, context.userId))
     .limit(1);
-  const profileRows = await withDashboardDataFallback(profileRowsPromise, []);
+  const profileResult = await withDashboardDataFallback(profileRowsPromise, []);
+  const profileRows = profileResult.data;
   const displayName = profileRows[0]?.displayName ?? "";
   const firstName = displayName.split(" ")[0] || "there";
 
@@ -235,17 +250,24 @@ export default async function Home() {
 
   // ─── Capability-gated count aggregates (all tiers) ───────────────────
   const [openWrrResult, openPickListResult, pendingTransferResult, openInspectionResult, pendingApprovalResult] = await Promise.all([
-    hasReceivingAccess ? withDashboardDataFallback(listWrrDocuments(db, { limit: 1, offset: 0, status: "receiving_in_progress" }), { rows: [] as WrrDocumentRow[], total: 0 }) : Promise.resolve({ rows: [] as WrrDocumentRow[], total: 0 }),
-    hasPickListAccess ? withDashboardDataFallback(listPickLists(db, { limit: 1, offset: 0, status: "allocated" }), { rows: [] as PickListRow[], total: 0 }) : Promise.resolve({ rows: [] as PickListRow[], total: 0 }),
-    hasTransferAccess ? withDashboardDataFallback(listTransferRequests(db, { limit: 1, offset: 0, status: "staged" }), { rows: [], total: 0 }) : Promise.resolve({ rows: [], total: 0 }),
-    hasInspectionAccess ? withDashboardDataFallback(listInspectionCases(db, { status: "open", limit: 1 }), { rows: [] as InspectionCaseListRow[], total: 0 }) : Promise.resolve({ rows: [] as InspectionCaseListRow[], total: 0 }),
-    hasApprovalAccess ? withDashboardDataFallback(listPendingApprovalRequests(db, { limit: 1, offset: 0 }), { rows: [] as ApprovalRequestRow[], total: 0 }) : Promise.resolve({ rows: [], total: 0 }),
+    hasReceivingAccess ? withDashboardDataFallback(listWrrDocuments(db, { limit: 1, offset: 0, status: "receiving_in_progress" }), { rows: [] as WrrDocumentRow[], total: 0 }) : Promise.resolve(availableDashboardData({ rows: [] as WrrDocumentRow[], total: 0 })),
+    hasPickListAccess ? withDashboardDataFallback(listPickLists(db, { limit: 1, offset: 0, status: "allocated" }), { rows: [] as PickListRow[], total: 0 }) : Promise.resolve(availableDashboardData({ rows: [] as PickListRow[], total: 0 })),
+    hasTransferAccess ? withDashboardDataFallback(listTransferRequests(db, { limit: 1, offset: 0, status: "staged" }), { rows: [], total: 0 }) : Promise.resolve(availableDashboardData({ rows: [], total: 0 })),
+    hasInspectionAccess ? withDashboardDataFallback(listInspectionCases(db, { status: "open", limit: 1 }), { rows: [] as InspectionCaseListRow[], total: 0 }) : Promise.resolve(availableDashboardData({ rows: [] as InspectionCaseListRow[], total: 0 })),
+    hasApprovalAccess ? withDashboardDataFallback(listPendingApprovalRequests(db, { limit: 1, offset: 0 }), { rows: [] as ApprovalRequestRow[], total: 0 }) : Promise.resolve(availableDashboardData({ rows: [] as ApprovalRequestRow[], total: 0 })),
   ]);
-  const openWrrs = openWrrResult.total;
-  const openPickLists = openPickListResult.total;
-  const pendingTransfers = pendingTransferResult.total;
-  const openInspections = openInspectionResult.total;
-  const pendingApprovals = pendingApprovalResult.total;
+  const openWrrs = hasReceivingAccess && !openWrrResult.unavailable ? openWrrResult.data.total : null;
+  const openPickLists = hasPickListAccess && !openPickListResult.unavailable ? openPickListResult.data.total : null;
+  const pendingTransfers = hasTransferAccess && !pendingTransferResult.unavailable ? pendingTransferResult.data.total : null;
+  const openInspections = hasInspectionAccess && !openInspectionResult.unavailable ? openInspectionResult.data.total : null;
+  const pendingApprovals = hasApprovalAccess && !pendingApprovalResult.unavailable ? pendingApprovalResult.data.total : null;
+  const countDataUnavailable = [
+    openWrrResult,
+    openPickListResult,
+    pendingTransferResult,
+    openInspectionResult,
+    pendingApprovalResult,
+  ].some((result) => result.unavailable);
 
   // ─── Floor variant ────────────────────────────────────────────────────
   if (tier === "floor") {
@@ -258,6 +280,7 @@ export default async function Home() {
         openPickLists={openPickLists}
         pendingTransfers={pendingTransfers}
         openInspections={openInspections}
+        dataUnavailable={countDataUnavailable}
       />
     );
   }
@@ -270,72 +293,80 @@ export default async function Home() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // ─── Office variant — additional data fetches ─────────────────────────
-  // All run in parallel for performance.
+  // Keep each batch bounded. The dashboard is a wide read surface, but
+  // opening every widget query at once can exhaust the small Supabase
+  // transaction-pooler allocation during a cold authenticated request.
+  // Two bounded batches preserve parallelism without making one page compete
+  // with the shell's own authorization/notification reads.
   const [
-    inventoryKpis,
-    stockRows,
-    openWrrRows,
-    openPickListRows,
-    openInspectionRows,
-    approvalRows,
-    weeklyTrendRows,
-    monthlyTrendRows,
-    recentWrrRows,
-    recentPickListRows,
-    dispatchRateRow,
-    flowActivityRows,
-    dashboardKpis,
-    dashboardMonthlyFlow,
-    dashboardLocationOccupancy,
-    dashboardDeliveryPerformance,
+    inventoryKpisResult,
+    stockRowsResult,
+    openWrrRowsResult,
+    openPickListRowsResult,
+    openInspectionRowsResult,
+    approvalRowsResult,
+    weeklyTrendRowsResult,
+    monthlyTrendRowsResult,
   ] = await withDashboardDataTimeout(Promise.all([
     // Low Stock Items KPI — operational stock-count metric, gated
     // reporting.read (NOT reporting.financial_read — that gate was wrong
     // for a non-financial count; see specs/05 R11.5 gate-fix decision).
-    hasReportingAccess ? withDashboardDataFallback(getInventoryKpis(), null) : Promise.resolve(null),
+    hasReportingAccess ? withDashboardDataFallback(getInventoryKpis(), null) : Promise.resolve(availableDashboardData(null)),
     // Master inventory preview — uses listStockView (lot_inventory_totals-backed)
     // Gated reporting.financial_read so only supervisors/admins see it.
-    hasFinancialAccess ? withDashboardDataFallback(listStockView(db), [] as StockViewRow[]) : Promise.resolve([] as StockViewRow[]),
+    hasFinancialAccess ? withDashboardDataFallback(listStockView(db), [] as StockViewRow[]) : Promise.resolve(availableDashboardData([] as StockViewRow[])),
     // Action queue rows (max 3 each)
     hasReceivingAccess
       ? withDashboardDataFallback(listWrrDocuments(db, { limit: 3, offset: 0, status: "receiving_in_progress" }), { rows: [] as WrrDocumentRow[], total: 0 })
-      : Promise.resolve({ rows: [] as WrrDocumentRow[], total: 0 }),
+      : Promise.resolve(availableDashboardData({ rows: [] as WrrDocumentRow[], total: 0 })),
     hasPickListAccess
       ? withDashboardDataFallback(listPickLists(db, { limit: 3, offset: 0, status: "allocated" }), { rows: [] as PickListRow[], total: 0 })
-      : Promise.resolve({ rows: [] as PickListRow[], total: 0 }),
+      : Promise.resolve(availableDashboardData({ rows: [] as PickListRow[], total: 0 })),
     hasInspectionAccess
       ? withDashboardDataFallback(listInspectionCases(db, { status: "open", limit: 3 }), { rows: [] as InspectionCaseListRow[], total: 0 })
-      : Promise.resolve({ rows: [] as InspectionCaseListRow[], total: 0 }),
+      : Promise.resolve(availableDashboardData({ rows: [] as InspectionCaseListRow[], total: 0 })),
     hasApprovalAccess
       ? withDashboardDataFallback(listPendingApprovalRequests(db, { limit: 3, offset: 0 }), { rows: [] as ApprovalRequestRow[], total: 0 })
-      : Promise.resolve({ rows: [] as ApprovalRequestRow[], total: 0 }),
+      : Promise.resolve(availableDashboardData({ rows: [] as ApprovalRequestRow[], total: 0 })),
     // Weekly transaction line graph (R11.3/R11.5 — outgoing qty + CBM only)
     hasPickListAccess
       ? withDashboardDataFallback(getPickListQtyAndCbmTrend({ startDate: weekStart, endDate: now }, "all", "day"), [])
-      : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
+      : Promise.resolve(availableDashboardData([] as Array<{ period: string; total_qty: string; total_cbm: string }>)),
     // Monthly outgoing KPI summary (month-to-date) — daily granularity
     // (2026-08-19: was period="month", collapsing the whole range into one
     // bucket; changed to "day" so the total can be shown as a bar graph,
     // not just a single number).
     hasPickListAccess
       ? withDashboardDataFallback(getPickListQtyAndCbmTrend({ startDate: monthStart, endDate: now }, "all", "day"), [])
-      : Promise.resolve([] as Array<{ period: string; total_qty: string; total_cbm: string }>),
+      : Promise.resolve(availableDashboardData([] as Array<{ period: string; total_qty: string; total_cbm: string }>)),
+  ]));
+
+  const [
+    recentWrrRowsResult,
+    recentPickListRowsResult,
+    dispatchRateRowResult,
+    flowActivityRowsResult,
+    dashboardKpisResult,
+    dashboardMonthlyFlowResult,
+    dashboardLocationOccupancyResult,
+    dashboardDeliveryPerformanceResult,
+  ] = await withDashboardDataTimeout(Promise.all([
     // Recent Activity feed source — genuinely recency-sorted (createdAt
     // DESC), distinct from the oldest-first action-queue rows above.
     hasReceivingAccess
       ? withDashboardDataFallback(listRecentWrrDocuments(db, { limit: 5 }), [] as WrrDocumentRow[])
-      : Promise.resolve([] as WrrDocumentRow[]),
+      : Promise.resolve(availableDashboardData([] as WrrDocumentRow[])),
     hasPickListAccess
       ? withDashboardDataFallback(listRecentPickLists(db, { limit: 5 }), [] as PickListRow[])
-      : Promise.resolve([] as PickListRow[]),
+      : Promise.resolve(availableDashboardData([] as PickListRow[])),
     // Dispatch rate ring + flow-type activity bar chart (2026-08-17 restyle)
     // — same weekly range as the Weekly Outgoing Trend chart they sit next to.
     hasPickListAccess
       ? withDashboardDataFallback(getDispatchRate({ startDate: weekStart, endDate: now }), null)
-      : Promise.resolve(null as { dispatched: string; not_dispatched: string } | null),
+      : Promise.resolve(availableDashboardData(null as { dispatched: string; not_dispatched: string } | null)),
     hasPickListAccess
       ? withDashboardDataFallback(getPickListCountByFlow({ startDate: weekStart, endDate: now }), [])
-      : Promise.resolve([] as Array<{ flow_type: string; count: string }>),
+      : Promise.resolve(availableDashboardData([] as Array<{ flow_type: string; count: string }>)),
     // Real-time WMS Operations Dashboard queries
     withDashboardDataFallback(getDashboardKpis(), null),
     withDashboardDataFallback(getDashboardMonthlyFlow(), { all: [], vmi: [], trading: [], supplies: [] }),
@@ -345,6 +376,41 @@ export default async function Home() {
       miniMetrics: { avgLeadTimeHours: 0, firstAttemptDeliveryRatePct: 0, freightDamageClaimsPct: 0, slaTargetPct: 95 },
     }),
   ]));
+
+  const inventoryKpis = inventoryKpisResult.data;
+  const stockRows = stockRowsResult.data;
+  const openWrrRows = openWrrRowsResult.data;
+  const openPickListRows = openPickListRowsResult.data;
+  const openInspectionRows = openInspectionRowsResult.data;
+  const approvalRows = approvalRowsResult.data;
+  const weeklyTrendRows = weeklyTrendRowsResult.data;
+  const monthlyTrendRows = monthlyTrendRowsResult.data;
+  const recentWrrRows = recentWrrRowsResult.data;
+  const recentPickListRows = recentPickListRowsResult.data;
+  const dispatchRateRow = dispatchRateRowResult.data;
+  const flowActivityRows = flowActivityRowsResult.data;
+  const dashboardKpis = dashboardKpisResult.data;
+  const dashboardMonthlyFlow = dashboardMonthlyFlowResult.data;
+  const dashboardLocationOccupancy = dashboardLocationOccupancyResult.data;
+  const dashboardDeliveryPerformance = dashboardDeliveryPerformanceResult.data;
+  const officeDataUnavailable = [
+    inventoryKpisResult,
+    stockRowsResult,
+    openWrrRowsResult,
+    openPickListRowsResult,
+    openInspectionRowsResult,
+    approvalRowsResult,
+    weeklyTrendRowsResult,
+    monthlyTrendRowsResult,
+    recentWrrRowsResult,
+    recentPickListRowsResult,
+    dispatchRateRowResult,
+    flowActivityRowsResult,
+    dashboardKpisResult,
+    dashboardMonthlyFlowResult,
+    dashboardLocationOccupancyResult,
+    dashboardDeliveryPerformanceResult,
+  ].some((result) => result.unavailable);
 
   // Build top-5 inventory preview from stock rows.
   const inventoryPreview = buildInventoryPreview(stockRows, 5);
@@ -472,10 +538,11 @@ export default async function Home() {
       dispatchRate={dispatchRate}
       flowActivity={flowActivity}
       stockOwnershipSplit={stockOwnershipSplit}
-      dashboardKpis={dashboardKpis ?? undefined}
-      dashboardMonthlyFlow={dashboardMonthlyFlow}
-      dashboardLocationOccupancy={dashboardLocationOccupancy}
-      dashboardDeliveryPerformance={dashboardDeliveryPerformance}
+      dashboardKpis={dashboardKpisResult.unavailable ? undefined : dashboardKpis ?? undefined}
+      dashboardMonthlyFlow={dashboardMonthlyFlowResult.unavailable ? undefined : dashboardMonthlyFlow}
+      dashboardLocationOccupancy={dashboardLocationOccupancyResult.unavailable ? undefined : dashboardLocationOccupancy}
+      dashboardDeliveryPerformance={dashboardDeliveryPerformanceResult.unavailable ? undefined : dashboardDeliveryPerformance}
+      dataUnavailable={countDataUnavailable || officeDataUnavailable}
     />
   );
 }

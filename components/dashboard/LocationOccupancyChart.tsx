@@ -42,6 +42,11 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
 
         {/* Donut Chart with Center Metric */}
         <div className="relative mt-2 min-h-44 w-full flex-1">
+          {data.length === 0 ? (
+            <div className="flex h-full min-h-44 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-sm text-text-grey">
+              No live location capacity data is available.
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -76,6 +81,7 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
               />
             </PieChart>
           </ResponsiveContainer>
+          )}
 
             {/* Center Metric */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">

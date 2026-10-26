@@ -1,7 +1,7 @@
 # RBAC & Roles — Implementation Plan
 
-Status: Approved
-Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
+Status: Pending Reapproval
+Updated: 2026-10-27 — proposed custom-role management amendment
 
 ## Scope and implementation gate
 
@@ -157,12 +157,14 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 | ID | Decision | Options | Recommended default | Selected |
 |---|---|---|---|---|
 | 6A | Admin information architecture | **A. One dense user-and-role screen**. **B. User list plus user detail/edit flow and separate role/permission reference**. **C. Command-line administration only**. | **B**. | **B** |
-| 6B | Role customization in v1 | **A. Admins can create and edit arbitrary roles**. **B. Admins assign protected system roles but cannot redefine capabilities**. **C. Developers edit roles directly in the database**. | **B** for v1. | **B** |
+| 6B | Role customization in v1 | **A. Admins can create and edit custom roles from the canonical permission catalog**. **B. Admins assign protected system roles but cannot redefine capabilities**. **C. Developers edit roles directly in the database**. | **A**, with system roles still protected and no arbitrary permission invention. | **A — pending amendment approval** |
 | 6C | Assignment changes | **A. Save immediately with no confirmation**. **B. Confirmation for privilege grants/revocations, with reason required for sensitive changes**. **C. Require two-person approval for every change**. | **B**. | **B** |
 | 6D | Party-scope assignment UI | **A. Free-text party ID**. **B. Searchable party selector showing canonical party code/name and current scope**. **C. Infer from user email**. | **B**. | **B** |
 | 6E | Last-administrator handling | **A. Allow removal**. **B. Block it with a clear recovery instruction**. **C. Automatically promote another user**. | **B**. | **B** |
 | 6F | Audit visibility | **A. Administrators only**. **B. Administrators plus a read-only auditor capability**. **C. All supervisors**. | **B**, even if the initial auditor capability is assigned only to administrators. | **B** |
 | 6G | Deactivation | **A. Hard-delete user profile**. **B. Mark inactive, revoke assignments/sessions, and retain audit history**. **C. Remove only the Auth user**. | **B**. | **B** |
+| 6H | Custom-role permission source | **A. Client-defined resource/action strings**. **B. Live active permission catalog, revalidated in the mutation transaction**. **C. A second role-specific permission table**. | **B**. | **B — pending amendment approval** |
+| 6I | Assigned custom-role removal | **A. Hard-delete the role**. **B. Deactivate/archive the role and retain assignment history**. **C. Silently replace it with warehouse staff**. | **B**. | **B — pending amendment approval** |
 
 ### 7. Integrate authorization with feature boundaries
 
@@ -171,6 +173,17 @@ The role model is explicitly unstable (`specs/00-steering/revision-log.md`). The
 - [x] Define which operations are deliberately unavailable offline. RBAC must not accidentally authorize Tier 2 actions such as approval, pricing, or FIFO allocation through the offline queue.
 - [x] Define authorization for notifications and realtime events so users receive only events within their effective scope.
 - [ ] Add contract tests proving downstream features consume the shared authorization interface rather than embedding role-name conditionals.
+
+### 8. Add administrator-managed custom roles (pending amendment approval)
+
+- [ ] Add the approved migration for custom-role metadata, role-management capabilities, and role/RLS constraints.
+- [ ] Extend the Drizzle schema and role queries to distinguish protected system roles from administrator-created custom roles without changing the four system-role keys.
+- [ ] Implement transactional create, metadata update, grant replacement, deactivate/reactivate, and guarded removal actions with live catalog validation.
+- [ ] Add immutable-key, unknown-permission, invalid-scope, system-role, assigned-role-deactivation, and last-administrator safeguards.
+- [ ] Replace the read-only role reference UI with a live permission-catalog editor for custom roles while keeping system roles read-only.
+- [ ] Include custom roles in invitation and access-assignment selectors, with inactive-role rejection and clear role type/status labels.
+- [ ] Add audit events and reason capture for every role-definition mutation.
+- [ ] Add unit, real-Postgres/RLS, browser, and manual accessibility coverage for the full lifecycle.
 
 #### Decisions for Task 7
 
@@ -261,3 +274,9 @@ Conditional recommendations were resolved as `1F=B` (party plus optional `flow_t
 - [x] Product Owner approval — User, 2026-10-22 (cross-cutting plan).
 - [ ] Technical/RBAC review and real-Postgres verification.
 - [x] Second amendment sign-off — System standing approval, 2026-10-22.
+
+### Custom-role management amendment sign-off (2026-10-27)
+
+- [ ] Product Owner approval — pending explicit recording for this amendment.
+- [ ] Technical/RBAC review and real-Postgres verification — pending.
+- [ ] Second approver approval — pending.

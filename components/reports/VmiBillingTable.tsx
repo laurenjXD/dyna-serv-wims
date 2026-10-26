@@ -162,6 +162,15 @@ export function VmiBillingTable({
                 <Clock size={12} className="text-brand-navy/70" />
                 <span>Audit</span>
               </button>
+              <button
+                type="button"
+                onClick={() => onGenerateInvoicePdf(item)}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-surface-white px-2.5 py-1 font-label text-xs font-semibold text-brand-navy hover:bg-blue-50/60 hover:border-blue-200 transition-colors shadow-2xs cursor-pointer"
+                title={`Preview invoice PDF for ${item.clientName}`}
+              >
+                <Receipt size={12} className="text-brand-navy/70" />
+                <span>Invoice</span>
+              </button>
               <Link
                 href={`/billing-pricing/soa/${item.id || item.clientCode}?partyId=${item.id}`}
                 className="inline-flex items-center gap-1 rounded-lg bg-brand-navy px-2.5 py-1 font-label text-xs font-bold text-white hover:bg-brand-navy/90 transition-colors shadow-2xs"

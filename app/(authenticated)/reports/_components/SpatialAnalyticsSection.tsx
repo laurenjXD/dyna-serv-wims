@@ -48,10 +48,12 @@ export function SpatialAnalyticsSection({
             </div>
           </div>
           <p className="mt-2 font-heading text-2xl font-bold text-on-surface">
-            {spaceForecast.utilizationPct}%
+            {spaceForecast.totalCapacityCbm > 0 ? `${spaceForecast.utilizationPct}%` : "—"}
           </p>
           <p className="mt-1 font-body text-xs text-text-grey">
-            {spaceForecast.currentCbmUsed.toLocaleString()} / {spaceForecast.totalCapacityCbm.toLocaleString()} CBM occupied
+            {spaceForecast.totalCapacityCbm > 0
+              ? `${spaceForecast.currentCbmUsed.toLocaleString()} / ${spaceForecast.totalCapacityCbm.toLocaleString()} CBM occupied`
+              : "Warehouse capacity is not configured"}
           </p>
         </div>
 
@@ -65,10 +67,12 @@ export function SpatialAnalyticsSection({
             </div>
           </div>
           <p className="mt-2 font-heading text-2xl font-bold text-amber-600">
-            ~{spaceForecast.projectedDaysToFull} Days
+            {spaceForecast.projectedDaysToFull === null ? "—" : `~${spaceForecast.projectedDaysToFull} Days`}
           </p>
           <p className="mt-1 font-body text-xs text-text-grey">
-            Net growth rate: +{spaceForecast.growthRateCbmPerDay} CBM/day
+            {spaceForecast.growthRateCbmPerDay === null
+              ? "No observed growth trend yet"
+              : `Net growth rate: +${spaceForecast.growthRateCbmPerDay} CBM/day`}
           </p>
         </div>
 
@@ -82,7 +86,7 @@ export function SpatialAnalyticsSection({
             </div>
           </div>
           <p className="mt-2 font-heading text-2xl font-bold text-status-available font-mono">
-            ₱{tdcData[tdcData.length - 1]?.costPerUnit.toFixed(2) ?? "11.10"}
+            {tdcData.length > 0 ? `$${tdcData[tdcData.length - 1].costPerUnit.toFixed(2)}` : "—"}
           </p>
           <p className="mt-1 font-body text-xs text-text-grey">
             Total Distribution Cost per dispatched unit
@@ -143,11 +147,16 @@ export function SpatialAnalyticsSection({
             </p>
           </div>
           <div className="h-72 w-full">
+            {tdcData.length === 0 ? (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-sm text-text-grey">
+                No live distribution-cost data is available for this period.
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={tdcData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 12 }} />
-                <YAxis yAxisId="left" tick={{ fill: "#64748B", fontSize: 12 }} unit="₱" />
+                <YAxis yAxisId="left" tick={{ fill: "#64748B", fontSize: 12 }} unit="$" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#FFFFFF",
@@ -161,13 +170,14 @@ export function SpatialAnalyticsSection({
                   yAxisId="left"
                   type="monotone"
                   dataKey="costPerUnit"
-                  name="TDC / Unit (₱)"
+                  name="TDC / Unit (USD)"
                   stroke="#2E4094"
                   strokeWidth={3}
                   dot={{ fill: "#2E4094", r: 4 }}
                 />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 

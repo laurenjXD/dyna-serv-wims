@@ -13,7 +13,7 @@ import {
 import { parties, partyRoles } from "@/lib/db/schema/parties";
 import { vmiContractTerms, vmiPermits, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_billing";
 import { listTradingPolicies, type TradingPolicyRow } from "@/lib/db/queries/trading-policies";
-import { eq, desc, or, and, isNull } from "drizzle-orm";
+import { eq, desc, or, and, isNull, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 
@@ -424,6 +424,17 @@ export async function listContracts(resolver: PageResolver) {
   }
 
   try {
+    // Some deployments use the approved VMI contract-terms and trading-policy
+    // tables without installing this older commercial-contract master. Check
+    // before compiling against it so the normal fallback path does not emit a
+    // misleading missing-relation error on every configuration page load.
+    const tableCheck = await db.execute(
+      sql`select to_regclass('public.contracts') as name`,
+    );
+    if (!tableCheck[0]?.name) {
+      throw new Error("Commercial contracts master is not installed");
+    }
+
     const result = await db
       .select({
         id: contracts.id,
@@ -446,7 +457,9 @@ export async function listContracts(resolver: PageResolver) {
       return result;
     }
   } catch (error) {
-    console.warn("Contracts master table list note:", error);
+    if (!(error instanceof Error && error.message === "Commercial contracts master is not installed")) {
+      console.warn("Contracts master table list note:", error);
+    }
   }
 
   // Fallback 1: Active vmi_contract_terms in PostgreSQL

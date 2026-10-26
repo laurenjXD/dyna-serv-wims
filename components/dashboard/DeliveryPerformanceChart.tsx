@@ -50,7 +50,7 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
 
         <div className="flex items-center gap-2">
           <span className="font-mono text-mono-md font-bold text-emerald-700">
-            {currentOtif}% OTIF
+            {chartData.length > 0 ? `${currentOtif}% OTIF` : "— OTIF"}
           </span>
         </div>
       </div>
@@ -77,8 +77,13 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
 
       {/* Recharts Multi-Line Chart */}
       <div className="mt-4 h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
+        {chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-sm text-text-grey">
+            No live delivery performance data is available for this period.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
             <XAxis
               dataKey="month"
@@ -87,8 +92,8 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
               tick={{ fill: "#64748B", fontSize: 11, fontWeight: 600 }}
             />
             <YAxis
-              domain={[90, 100]}
-              ticks={[90, 92, 94, 96, 98, 100]}
+              domain={[0, 100]}
+              ticks={[0, 25, 50, 75, 100]}
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#64748B", fontSize: 11, fontFamily: "monospace" }}
@@ -163,8 +168,9 @@ export function DeliveryPerformanceChart({ initialData }: DeliveryPerformanceCha
               dot={{ fill: "#0D9488", r: 2.5 }}
               activeDot={{ r: 4, fill: "#0D9488" }}
             />
-          </LineChart>
-        </ResponsiveContainer>
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Clean Structured Metric Footer */}

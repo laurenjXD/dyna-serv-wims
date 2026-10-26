@@ -4,16 +4,12 @@ import React from "react";
 import {
   X,
   Calendar,
-  Layers,
   User,
   Clock,
   AlertTriangle,
   Lock,
   CheckCircle2,
-  Package,
-  FileSpreadsheet,
   Activity,
-  History,
 } from "lucide-react";
 import type { BinAuditRecord, HeatmapMetricView } from "./types";
 

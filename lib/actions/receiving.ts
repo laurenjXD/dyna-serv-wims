@@ -229,7 +229,7 @@ export async function createWrr(
 
   const data = validation.data;
   const userId = perm.context.userId;
-  let quarantinedCommit = false;
+  const quarantinedCommit = false;
 
   // 3. Generate WRR number
   const wrrNumber = generateWrrNumber();

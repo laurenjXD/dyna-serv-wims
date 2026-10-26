@@ -9,12 +9,8 @@ import {
   ClipboardList,
   AlertTriangle,
   Lock,
-  Warehouse,
-  Receipt,
   ArrowRight,
-  Sparkles,
   Layers,
-  ArrowUpRight,
 } from "lucide-react";
 import type { DashboardKpiData } from "./types";
 

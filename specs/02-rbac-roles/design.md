@@ -1,7 +1,7 @@
 # RBAC & Roles — Design
 
-Status: Approved
-Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
+Status: Pending Reapproval
+Updated: 2026-10-27 — proposed custom-role management amendment
 
 Depends on:
 
@@ -18,7 +18,7 @@ Depends on:
 
 ## 1. Design summary
 
-RBAC uses fixed system roles backed by centrally defined capabilities. Users may hold multiple active roles; grants combine additively, and all ungranted access is denied. Party users also require explicit party scope, optionally narrowed by `flow_type`.
+RBAC uses protected system roles and administrator-managed custom roles backed by centrally defined capabilities. Users may hold multiple active roles; grants combine additively, and all ungranted access is denied. Party users also require explicit party scope, optionally narrowed by `flow_type`.
 
 Supabase Auth owns identity and sessions. PostgreSQL owns profiles, roles, capabilities, assignments, party scopes, and durable security events. Every protected request resolves current authorization data from PostgreSQL. The result is memoized only within that request, so deactivation or revocation takes effect on the next protected request.
 
@@ -72,8 +72,41 @@ The final RLS policy for each table is delivered with the feature that finalizes
 | `supervisor` | Oversight and selected workflow approvals. | Operational/global; approval capabilities remain separate per workflow. |
 | `administrator` | User/access administration, master configuration, and global audit oversight. | Global for explicitly granted admin capabilities; still evaluated by RLS. |
 | `party_user` | Scoped party self-service. | Requires active `user_party_scopes`; no implicit scope from email or role alone. |
+| custom role | Administrator-defined role assembled from the canonical permission catalog. | Uses the scope kind stored on each selected `role_permissions` grant; no implicit scope from the role name. |
 
-The role catalog is seeded by migration. `is_system = true` roles cannot be deleted or edited through the v1 UI. Feature code never branches on these role keys; it checks capabilities.
+The four system roles are seeded by migration. `is_system = true` roles cannot be deleted or edited through the application UI. `is_system = false` roles are administrator-managed custom roles. Feature code never branches on role keys; it checks capabilities.
+
+### 3.1.1 Custom-role lifecycle
+
+Custom roles are stored in the existing `roles` table and use the existing
+`role_permissions` join table. The application adds a stable, normalized key,
+bounded display metadata, `is_system = false`, and the existing active/status
+fields when creating a role. The key is immutable after creation.
+
+The role editor loads the active `permissions` catalog and presents each
+permission's resource, action, description, and allowed scope kinds. It never
+accepts a permission ID, resource, action, or scope kind as authoritative from
+the browser: the server re-reads and validates every selected grant inside the
+same transaction as the role mutation.
+
+Role mutations follow these rules:
+
+1. `roles.create` is required to create a custom role.
+2. `roles.update` is required to edit metadata or replace grants.
+3. `roles.deactivate` is required to archive a role; active assignments are
+   retained for history but stop contributing permissions immediately.
+4. A system role, unknown permission, invalid scope kind, duplicate grant,
+   immutable key change, or last-administrator violation fails the whole
+   transaction.
+5. Deactivation is the supported removal path while a custom role is assigned;
+   physical deletion is prohibited for any role with assignment or audit
+   history.
+6. Every successful role mutation writes one append-only RBAC security event
+   containing a redacted before/after grant summary.
+
+The resolver already joins `user_roles` to `roles`, `role_permissions`, and
+`permissions`; once custom-role rows are committed, effective capabilities are
+therefore live on the next protected request without adding role-name logic.
 
 ### 3.2 Capability model
 
@@ -105,6 +138,7 @@ Initial RBAC-owned capability identifiers:
 | `access_assignments` | `read`, `grant`, `revoke` | `administrator` |
 | `party_scopes` | `read`, `grant`, `revoke` | `administrator` |
 | `security_events` | `read` | `administrator` |
+| `roles` | `create`, `update`, `deactivate` | `administrator` |
 | `audit_log` | `read` | `supervisor`, `administrator` |
 
 The following operational capability catalog defines stable resource identifiers and the action vocabulary for first-wave feature domains (2026-08-05). Downstream specs confirm or extend actions within each resource; they do not rename these resource keys. Where the same resource permits both `global` and `assigned_party` scope kinds, both rows are listed. The full `role_permissions` seed data is derived from this table.
@@ -589,7 +623,7 @@ Proposed information architecture:
 | User detail | Show identity, status, active/history assignments, party scopes, and related security events. |
 | Invite flow | Invite user and capture intended role/scope. |
 | Access-change dialog | Confirm grant/revoke, summarize resulting access, and capture reason when required. |
-| Role reference | Read-only system-role and capability matrix. |
+| Role editor/reference | Create and edit custom roles from the live permission catalog; read-only system-role matrix. |
 | Security events | Filter durable events by actor, target, type, and date. |
 
 UI rules:
@@ -599,7 +633,7 @@ UI rules:
 - Clearly distinguish invited, active, and inactive status with text/icon as well as color.
 - Warn and block last-administrator removal.
 - Hide or disable unavailable controls for usability, while preserving server/RLS enforcement.
-- Do not provide custom-role editing, impersonation, or break-glass controls in v1.
+- Keep system-role definitions read-only. Custom-role create/edit/deactivate controls must show the resulting grant set and require confirmation. Do not provide impersonation or break-glass controls in v1.
 
 ## 10. Auth, error, and abuse handling
 

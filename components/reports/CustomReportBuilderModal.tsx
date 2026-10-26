@@ -28,7 +28,7 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
-import type { ReportCategory, ReportFormat } from "./types";
+import type { CustomReportPreviewRow, ReportCategory, ReportFormat } from "./types";
 
 interface CustomReportBuilderModalProps {
   isOpen: boolean;
@@ -40,69 +40,14 @@ interface CustomReportBuilderModalProps {
     metrics: string[];
     dimensions: string[];
   }) => void;
+  previewData?: Record<string, CustomReportPreviewRow[]>;
 }
-
-// ── Dimension-based Mock/Live Data Sets ──────────────────────────────────────
-type PreviewRow = {
-  name: string;
-  flow: string;
-  cbm: number;
-  valuation: number;
-  marginPct: number;
-  volumeQty: number;
-  otifPct: number;
-  dwellDays: number;
-  accrualUsd: number;
-};
-
-/*
-const DIMENSION_DATA: Record<
-  string,
-  Array<{
-    name: string;
-    flow: string;
-    cbm: number;
-    valuation: number;
-    marginPct: number;
-    volumeQty: number;
-    otifPct: number;
-    dwellDays: number;
-    accrualUsd: number;
-  }>
-> = {
-  "Item Category": [
-    { name: "Semiconductors & Microelectronics", flow: "VMI", cbm: 310.5, valuation: 1420500, marginPct: 24.5, volumeQty: 4820, otifPct: 98.2, dwellDays: 14, accrualUsd: 4850 },
-    { name: "Industrial Motors & Precision Drives", flow: "Trading", cbm: 425.0, valuation: 890000, marginPct: 22.8, volumeQty: 1650, otifPct: 96.5, dwellDays: 22, accrualUsd: 0 },
-    { name: "Hydraulic Valves & Pneumatics", flow: "VMI", cbm: 185.2, valuation: 412000, marginPct: 19.4, volumeQty: 2900, otifPct: 97.0, dwellDays: 18, accrualUsd: 2640 },
-    { name: "Precision Fasteners & Structural Parts", flow: "Trading", cbm: 140.8, valuation: 275000, marginPct: 26.1, volumeQty: 11200, otifPct: 99.1, dwellDays: 9, accrualUsd: 0 },
-    { name: "Industrial Electrical Switchgear", flow: "VMI", cbm: 260.0, valuation: 685000, marginPct: 21.0, volumeQty: 940, otifPct: 95.8, dwellDays: 28, accrualUsd: 3980 },
-  ],
-  "Consignor / Vendor Organization": [
-    { name: "United Philippine Industrial (UPI)", flow: "VMI", cbm: 382.0, valuation: 920000, marginPct: 23.0, volumeQty: 5400, otifPct: 98.5, dwellDays: 15, accrualUsd: 5684 },
-    { name: "Siemens AG Industrial Systems", flow: "VMI", cbm: 215.0, valuation: 610000, marginPct: 21.5, volumeQty: 2100, otifPct: 96.2, dwellDays: 19, accrualUsd: 3332 },
-    { name: "ABB Power & Distribution", flow: "VMI", cbm: 198.0, valuation: 540000, marginPct: 20.0, volumeQty: 1800, otifPct: 95.0, dwellDays: 24, accrualUsd: 2823 },
-    { name: "Industrial Bearings & Transmission Hub", flow: "Trading", cbm: 420.0, valuation: 1150000, marginPct: 25.4, volumeQty: 8900, otifPct: 97.8, dwellDays: 12, accrualUsd: 0 },
-    { name: "Schneider Electric Logistics", flow: "VMI", cbm: 164.0, valuation: 462500, marginPct: 22.0, volumeQty: 3310, otifPct: 97.4, dwellDays: 16, accrualUsd: 2214 },
-  ],
-  "Warehouse Zone": [
-    { name: "Zone A — High-Bay Pallet Racks (Aisle 1-12)", flow: "Mixed", cbm: 680.0, valuation: 1680000, marginPct: 23.5, volumeQty: 9800, otifPct: 97.5, dwellDays: 18, accrualUsd: 7420 },
-    { name: "Zone B — Bulk Staging & Floor Stacking", flow: "Trading", cbm: 420.0, valuation: 940000, marginPct: 21.8, volumeQty: 6200, otifPct: 98.0, dwellDays: 11, accrualUsd: 0 },
-    { name: "Zone C — Temperature Controlled Cleanroom", flow: "VMI", cbm: 145.0, valuation: 762500, marginPct: 26.4, volumeQty: 3100, otifPct: 99.4, dwellDays: 14, accrualUsd: 4620 },
-    { name: "Zone D — Fast-Pick & Cross-Dock Staging", flow: "Mixed", cbm: 134.5, valuation: 300000, marginPct: 20.2, volumeQty: 2410, otifPct: 96.0, dwellDays: 6, accrualUsd: 2010 },
-  ],
-  "Inventory Model (VMI vs Trading)": [
-    { name: "VMI Consignment Storage Flow", flow: "VMI", cbm: 879.0, valuation: 2215000, marginPct: 22.0, volumeQty: 11650, otifPct: 97.6, dwellDays: 19, accrualUsd: 14050 },
-    { name: "Direct Trading Commercial Flow", flow: "Trading", cbm: 500.5, valuation: 1467500, marginPct: 24.2, volumeQty: 9860, otifPct: 97.2, dwellDays: 12, accrualUsd: 0 },
-  ],
-};
-*/
-
-const DIMENSION_DATA: Record<string, PreviewRow[]> = {};
 
 export function CustomReportBuilderModal({
   isOpen,
   onClose,
   onBuildComplete,
+  previewData = {},
 }: CustomReportBuilderModalProps) {
   // Configuration State
   const [reportTitle, setReportTitle] = useState(
@@ -111,7 +56,7 @@ export function CustomReportBuilderModal({
   const [category, setCategory] = useState<ReportCategory>("Financial");
   const [horizon, setHorizon] = useState("Last 30 Days");
   const [facilityZone, setFacilityZone] = useState("All active locations");
-  const [selectedDimension, setSelectedDimension] = useState<string>("Item Category");
+  const [selectedDimension, setSelectedDimension] = useState<string>("Consignor / Vendor Organization");
   const [chartType, setChartType] = useState<"bar" | "line" | "area" | "none">("bar");
   const [includeAuditSeal, setIncludeAuditSeal] = useState(true);
   const [includeSignatures, setIncludeSignatures] = useState(true);
@@ -145,19 +90,23 @@ export function CustomReportBuilderModal({
     });
   };
 
-  const activeDataset = DIMENSION_DATA[selectedDimension] ?? [];
+  const activeDataset = previewData[selectedDimension] ?? [];
 
-  // Totals calculations
-  const totalCbm = activeDataset.reduce((acc, row) => acc + row.cbm, 0);
-  const totalValuation = activeDataset.reduce((acc, row) => acc + row.valuation, 0);
-  const avgMargin = activeDataset.length > 0
-    ? (activeDataset.reduce((acc, row) => acc + row.marginPct, 0) / activeDataset.length).toFixed(1)
-    : "—";
-  const totalVolume = activeDataset.reduce((acc, row) => acc + row.volumeQty, 0);
-  const avgOtif = activeDataset.length > 0
-    ? (activeDataset.reduce((acc, row) => acc + row.otifPct, 0) / activeDataset.length).toFixed(1)
-    : "—";
-  const totalAccrual = activeDataset.reduce((acc, row) => acc + row.accrualUsd, 0);
+  const sumMetric = (metric: keyof Pick<CustomReportPreviewRow, "cbm" | "valuation" | "volumeQty" | "accrualUsd">) => {
+    const values = activeDataset.map((row) => row[metric]).filter((value): value is number => value !== null);
+    return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) : null;
+  };
+  const averageMetric = (metric: keyof Pick<CustomReportPreviewRow, "marginPct" | "otifPct">) => {
+    const values = activeDataset.map((row) => row[metric]).filter((value): value is number => value !== null);
+    return values.length > 0 ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1) : "—";
+  };
+
+  const totalCbm = sumMetric("cbm");
+  const totalValuation = sumMetric("valuation");
+  const avgMargin = averageMetric("marginPct");
+  const totalVolume = sumMetric("volumeQty");
+  const avgOtif = averageMetric("otifPct");
+  const totalAccrual = sumMetric("accrualUsd");
 
   const handlePrint = () => {
     window.print();
@@ -179,11 +128,11 @@ export function CustomReportBuilderModal({
         [
           `"${row.name}"`,
           `"${row.flow}"`,
-          row.cbm.toFixed(1),
-          row.valuation.toFixed(2),
-          `${row.marginPct}%`,
-          row.volumeQty,
-          `${row.otifPct}%`,
+          row.cbm === null ? "" : row.cbm.toFixed(1),
+          row.valuation === null ? "" : row.valuation.toFixed(2),
+          row.marginPct === null ? "" : `${row.marginPct}%`,
+          row.volumeQty === null ? "" : row.volumeQty,
+          row.otifPct === null ? "" : `${row.otifPct}%`,
         ].join(",")
       );
     });
@@ -623,7 +572,7 @@ export function CustomReportBuilderModal({
                         Total Valuation
                       </p>
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
-                        ${totalValuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        {totalValuation === null ? "—" : `$${totalValuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
                       </p>
                     </div>
                   )}
@@ -634,7 +583,7 @@ export function CustomReportBuilderModal({
                         Occupied Space
                       </p>
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
-                        {totalCbm.toFixed(1)} m³
+                        {totalCbm === null ? "—" : `${totalCbm.toFixed(1)} m³`}
                       </p>
                     </div>
                   )}
@@ -656,7 +605,7 @@ export function CustomReportBuilderModal({
                         Throughput Volume
                       </p>
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
-                        {totalVolume.toLocaleString()} units
+                        {totalVolume === null ? "—" : `${totalVolume.toLocaleString()} units`}
                       </p>
                       <p className="mt-0.5 text-[10px] font-semibold text-slate-600">
                         Consolidated flow
@@ -684,7 +633,7 @@ export function CustomReportBuilderModal({
                         VMI Storage Accruals
                       </p>
                       <p className="mt-1 font-heading text-base font-black text-brand-navy">
-                        ${totalAccrual.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        {totalAccrual === null ? "—" : `$${totalAccrual.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
                       </p>
                       <p className="mt-0.5 text-[10px] font-semibold text-amber-700">
                         Pending Period Close
@@ -707,6 +656,11 @@ export function CustomReportBuilderModal({
                   </div>
 
                   <div className="h-44 w-full">
+                    {activeDataset.length === 0 ? (
+                      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-4 text-center text-xs text-slate-500">
+                        No live records are available for this dimension and scope.
+                      </div>
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
                       {chartType === "bar" ? (
                         <BarChart
@@ -790,6 +744,7 @@ export function CustomReportBuilderModal({
                         </LineChart>
                       )}
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               )}
@@ -819,7 +774,13 @@ export function CustomReportBuilderModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                      {activeDataset.map((row, idx) => (
+                      {activeDataset.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-3.5 py-8 text-center font-body text-xs text-slate-500">
+                            No live records are available for this dimension and scope.
+                          </td>
+                        </tr>
+                      ) : activeDataset.map((row, idx) => (
                         <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                           <td className="px-3.5 py-2 font-body font-semibold text-slate-900">
                             {row.name}
@@ -838,19 +799,19 @@ export function CustomReportBuilderModal({
                             </span>
                           </td>
                           <td className="px-3 py-2 text-right text-slate-700">
-                            {row.cbm.toFixed(1)} m³
+                            {row.cbm === null ? "—" : `${row.cbm.toFixed(1)} m³`}
                           </td>
                           <td className="px-3 py-2 text-right font-bold text-slate-900">
-                            ${row.valuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            {row.valuation === null ? "—" : `$${row.valuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
                           </td>
                           <td className="px-3 py-2 text-right text-emerald-700 font-bold">
-                            {row.marginPct}%
+                            {row.marginPct === null ? "—" : `${row.marginPct}%`}
                           </td>
                           <td className="px-3 py-2 text-right text-slate-700">
-                            {row.volumeQty.toLocaleString()}
+                            {row.volumeQty === null ? "—" : row.volumeQty.toLocaleString()}
                           </td>
                           <td className="px-3 py-2 text-right text-blue-700 font-bold">
-                            {row.otifPct}%
+                            {row.otifPct === null ? "—" : `${row.otifPct}%`}
                           </td>
                         </tr>
                       ))}
@@ -859,12 +820,12 @@ export function CustomReportBuilderModal({
                       <tr className="border-t-2 border-slate-900 bg-slate-100 font-mono text-xs font-bold text-slate-900">
                         <td className="px-3.5 py-2.5 font-body">TOTALS / COMPOSITE AVERAGE</td>
                         <td className="px-3 py-2.5 text-center">—</td>
-                        <td className="px-3 py-2.5 text-right">{totalCbm.toFixed(1)} m³</td>
+                        <td className="px-3 py-2.5 text-right">{totalCbm === null ? "—" : `${totalCbm.toFixed(1)} m³`}</td>
                         <td className="px-3 py-2.5 text-right">
-                          ${totalValuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                          {totalValuation === null ? "—" : `$${totalValuation.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
                         </td>
                         <td className="px-3 py-2.5 text-right text-emerald-800">{avgMargin}%</td>
-                        <td className="px-3 py-2.5 text-right">{totalVolume.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right">{totalVolume === null ? "—" : totalVolume.toLocaleString()}</td>
                         <td className="px-3 py-2.5 text-right text-blue-800">{avgOtif}%</td>
                       </tr>
                     </tfoot>

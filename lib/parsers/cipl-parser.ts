@@ -82,7 +82,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
     }
 
     const worksheet = workbook.Sheets[targetSheetName];
-    const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+    const rawRows: unknown[][] = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
 
     if (!rawRows || rawRows.length === 0) {
       result.ok = false;

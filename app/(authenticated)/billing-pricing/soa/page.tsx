@@ -4,13 +4,13 @@
 // periods (months/years), inspect aggregated charges, and open the full 7-schedule SOA document.
 
 import Link from "next/link";
-import { FileText, ArrowLeft, Calendar, Building2, CheckCircle2, ChevronRight } from "lucide-react";
+import { FileText, ArrowLeft, Calendar, Building2 } from "lucide-react";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { partyRoles } from "@/lib/db/schema/parties";
 import { listParties } from "@/lib/db/queries/parties";
-import { getVmiCbmLedgerSummary } from "@/lib/billing/queries/vmi-ledger";
+import { getVmiCbmLedgerSummary, listVmiBillingPeriods } from "@/lib/billing/queries/vmi-ledger";
 import { SoaDirectoryClient } from "./_components/SoaDirectoryClient";
 import { getBillablePartyDecision } from "@/lib/billing/billable-party-policy";
 
@@ -71,6 +71,26 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
 
   // Fetch VMI monthly summary for the period
   const vmiSummaries = await getVmiCbmLedgerSummary(selectedMonth, selectedYear);
+  const billingPeriods = await listVmiBillingPeriods(undefined, 500);
+  const activePeriodStatuses: Record<string, string> = {};
+  const selectedPeriodStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+  for (const period of billingPeriods) {
+    if (period.periodStartDate === selectedPeriodStart && !activePeriodStatuses[period.partyId]) {
+      activePeriodStatuses[period.partyId] = period.status;
+    }
+  }
+  const historicalPeriods = selectedParty
+    ? billingPeriods.filter((period) => period.partyId === selectedParty.id).map((period) => {
+        const [year, month] = period.periodStartDate.split("-").map(Number);
+        return {
+          month: new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }),
+          monthIdx: month - 1,
+          year,
+          status: period.status,
+          tier: "Live billing archive",
+        };
+      })
+    : [];
 
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -128,7 +148,7 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* Statements Directory & Historical Tables with Editable Status */}
+      {/* Statements Directory & Historical Tables with live persisted status */}
       <SoaDirectoryClient
         displayedParties={displayedParties.map((p) => ({
           id: p.id,
@@ -140,6 +160,7 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
           avgDailyCbm: s.avgDailyCbm,
           subtotal: s.subtotal,
         }))}
+        activePeriodStatuses={activePeriodStatuses}
         selectedMonth={selectedMonth}
         selectedYear={selectedYear}
         monthName={MONTHS[selectedMonth]}
@@ -152,6 +173,7 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
               }
             : undefined
         }
+        initialHistoricalPeriods={historicalPeriods}
       />
     </div>
   );

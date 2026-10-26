@@ -55,7 +55,11 @@ export function ScatterPlot({
         </div>
       </div>
 
-      <div style={{ width: "100%", height }}>
+      {data.length === 0 ? (
+        <div className="flex items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center font-body text-sm text-text-grey">
+          No live trading item data is available for this matrix.
+        </div>
+      ) : <div style={{ width: "100%", height }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -124,7 +128,7 @@ export function ScatterPlot({
             />
           </ScatterChart>
         </ResponsiveContainer>
-      </div>
+      </div>}
     </div>
   );
 }

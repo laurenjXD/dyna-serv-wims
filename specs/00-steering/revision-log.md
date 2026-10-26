@@ -1899,3 +1899,43 @@ positions for H-I. The resulting operating registry is 540 cells. Migration
 `0064_expand_rack_levels_a_30_b_i_15.sql` adds only the newly required empty
 locations and leaves existing location IDs, stock, and history unchanged.
 
+## Custom-role management requested for RBAC v1 (2026-10-27)
+
+The Product Owner requested true administrator-managed custom-role creation,
+editing, assignment, and deactivation after reviewing the Role Capability
+Reference surface. The prior v1 decision (protected system roles only) is
+therefore superseded by a pending amendment, not silently implemented in
+application code.
+
+The proposed contract keeps the four seeded system roles protected and permits
+custom roles only as compositions of the canonical active permission catalog.
+Permission invention, system-role mutation, role-name authorization branches,
+and hard deletion of assigned roles remain prohibited. Custom-role mutations
+must be transactional, audited, RLS-protected, and covered by disposable
+real-Postgres tests before release.
+
+`specs/02-rbac-roles/{requirements,design,tasks}.md` are marked `Pending
+Reapproval` and contain the amendment and its sign-off checklist. No
+application or migration code for custom roles may be written until that
+checklist is complete under the repository implementation gate.
+
+## Runtime schema and migration-history blocker pass (2026-10-27)
+
+The configured runtime database was read-audited against the current repository
+contracts. The approved additive schemas for canonical `party_rbe_classifications`,
+`system_settings`, `compliance_applications`/`compliance_application_fees`, and
+the optional `billing_frequency` type were applied and verified without changing
+existing party-role rows. Runtime migration history was repaired only for schema
+effects already verified present. Duplicate local migration prefixes were given
+unique ordered filenames so future Supabase migration checks are deterministic.
+
+The location rewrite was not applied. The live registry still contains
+referenced legacy transposed rack rows and unused FS rows; the existing guard
+correctly refuses a conversion that could move or delete operational references.
+The location migrations remain a release blocker pending approval of the current
+zone/location contract and a source-backed disposable-copy conversion test.
+
+The real-Postgres integration tier now covers 4 files and 23 tests, including
+approval reviewer boundaries and administrator-versus-supervisor enrollment and
+settings mutations. The disposable database was removed after verification.
+

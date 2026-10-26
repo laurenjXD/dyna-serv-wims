@@ -40,8 +40,8 @@ export function DocumentReprintDialog({
       } else {
         setErrorMsg(res.error || "Failed to initiate reprint");
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "An unexpected error occurred");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }

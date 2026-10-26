@@ -5,12 +5,6 @@ import {
   X,
   Clock,
   Download,
-  Building2,
-  Calendar,
-  Layers,
-  ArrowDownRight,
-  ArrowUpRight,
-  ShieldCheck,
 } from "lucide-react";
 import type { VmiBillingRow } from "./types";
 

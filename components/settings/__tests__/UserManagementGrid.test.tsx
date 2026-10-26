@@ -7,6 +7,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+vi.mock("@/app/(authenticated)/settings/team/actions", () => ({
+  listRoles: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+  listTeamMembers: vi.fn().mockResolvedValue({ ok: false, error: "test fixture refresh disabled" }),
+  resendInvite: vi.fn().mockResolvedValue({ ok: true }),
+  cancelInvite: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
 import { UserManagementGrid } from "../UserManagementGrid";
 import type { TeamMember } from "@/app/(authenticated)/settings/team/actions";
 

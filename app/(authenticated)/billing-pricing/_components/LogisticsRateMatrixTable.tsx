@@ -200,6 +200,9 @@ export function LogisticsRateMatrixTable() {
           <p className="mt-1 font-body text-xs text-text-grey">
             Pre-defined trucking delivery charges (PHP) by vehicle class and delivery drop-off zone. Used for auto-pricing dispatches in Outgoing and SOA billing.
           </p>
+          <p role="status" className="mt-2 font-body text-xs font-semibold text-amber-800">
+            Rate-card edits are session-only until persistent logistics-rate storage is enabled; they are not applied to other users or future sessions.
+          </p>
         </div>
 
         {/* Live BSP Exchange Rate Controller */}
@@ -217,6 +220,7 @@ export function LogisticsRateMatrixTable() {
                 aria-label="USD to PHP exchange rate"
               />
             </div>
+            <span className="font-body text-[11px] text-text-grey">{fxSourceLabel}</span>
           </div>
           <button
             type="button"

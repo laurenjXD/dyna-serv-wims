@@ -40,53 +40,19 @@
 // redirecting) — assertion failure "expected redirectSpy to have been
 // called with ... but it was not called", not a setup/import crash.
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-const redirectSpy = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  redirect: (url: string) => redirectSpy(url),
-}));
-
-// Stub out the current page's auth/DB dependencies so its still-real
-// implementation renders successfully (floor branch, empty lists) rather
-// than throwing on missing request context — once this page is rewritten
-// as a pure redirect (per the master-data/items precedent), none of these
-// modules will even be imported by it anymore.
-vi.mock("@/lib/auth/page-resolver", () => ({
-  createPageResolver: vi.fn(async () => ({})),
-}));
-
-vi.mock("@/lib/rbac/guard", () => ({
-  requirePermission: vi.fn(async () => ({
-    kind: "authorized",
-    context: { userId: "test-user", activeRoleKeys: ["warehouse_staff"] },
-  })),
-}));
-
-vi.mock("@/lib/db/client", () => ({
-  db: {},
-}));
-
-vi.mock("@/lib/db/queries/transfers", () => ({
-  listTransferRequests: vi.fn(async () => ({ rows: [], total: 0 })),
-  listInspectionCases: vi.fn(async () => ({ rows: [] })),
-}));
+import { describe, it, expect } from "vitest";
 
 describe("TransferListPage (app/(authenticated)/transfers/page.tsx)", () => {
-  beforeEach(() => {
-    redirectSpy.mockClear();
-    vi.resetModules();
-  });
-
   // AC (ui-implementation-plan.md P4 / multi-agent-work-division.md
   // 2026-08-17 sidebar/IA decision): `/transfers` retires as a top-level
   // page and forwards to the merged Master Inventory Inspection tab queue.
   it("AC ui-implementation-plan.md P4: redirects to /inventory?tab=inspection", async () => {
     const { default: TransferListPage } = await import("../page");
 
-    await TransferListPage({ searchParams: Promise.resolve({}) });
+    const result = await TransferListPage({ searchParams: Promise.resolve({}) });
 
-    expect(redirectSpy).toHaveBeenCalledWith("/inventory?tab=inspection");
+    expect(result).toMatchObject({
+      props: { href: "/inventory?tab=inspection" },
+    });
   });
 });

@@ -11,19 +11,16 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import {
-  FileText,
   Download,
   Search,
   Share2,
   Archive,
   User,
-  Clock,
   ExternalLink,
 } from "lucide-react";
 import type { ReportArchiveItem } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 
 interface ReportArchiveTableProps {
   initialData?: ReportArchiveItem[];

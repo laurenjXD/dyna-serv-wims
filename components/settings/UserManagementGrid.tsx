@@ -358,7 +358,7 @@ export function UserManagementGrid({
               </span>
             </div>
             <p className="mt-0.5 font-body text-xs text-slate-500">
-              Searchable employee accounts directory, dynamic role management, and granular permission matrices.
+              Searchable employee accounts directory, approved role assignment, and capability reference.
             </p>
           </div>
 
@@ -369,7 +369,7 @@ export function UserManagementGrid({
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-label text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
             >
               <Sliders className="h-4 w-4 text-slate-500" />
-              Dynamic Roles &amp; Permissions
+              Role Capability Reference
             </button>
             <button
               type="button"
@@ -529,7 +529,6 @@ export function UserManagementGrid({
         isOpen={rolesModalOpen}
         onClose={() => setRolesModalOpen(false)}
         roles={roles}
-        onRolesUpdated={refreshData}
       />
     </div>
   );

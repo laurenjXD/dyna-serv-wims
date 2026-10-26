@@ -44,10 +44,17 @@ function getDb(): Db {
         "DATABASE_URL environment variable is missing. Please configure it in your Vercel Project Settings > Environment Variables."
       );
     }
+    // Local development often uses the same Supabase session-pooler URL as
+    // deployed runtimes. Route that URL through transaction mode as well;
+    // otherwise a warm Next dev process can consume the project's small
+    // session-client quota during page-by-page QA and fail with
+    // EMAXCONNSESSION. Direct Supabase connections remain unchanged.
     const isServerless = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+    const useTransactionPooler =
+      isServerless || configuredConnectionString.includes(".pooler.supabase.com:5432");
     const connectionString = normalizeDatabaseConnectionString(
       configuredConnectionString,
-      isServerless,
+      useTransactionPooler,
     );
     const client = postgres(connectionString, {
       prepare: false,

@@ -58,6 +58,8 @@ vi.mock("@/lib/db/client", () => {
     "offset",
     "leftJoin",
     "innerJoin",
+    "groupBy",
+    "having",
     "returning",
     "values",
     "set",

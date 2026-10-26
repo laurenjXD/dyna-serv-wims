@@ -14,7 +14,7 @@ import {
 import {
   Warehouse,
 } from "lucide-react";
-import type { IntervalType, FlowSegment, MovementThroughputDatum, LocationOccupancyDatum } from "./types";
+import type { IntervalType, MovementThroughputDatum } from "./types";
 
 interface ThroughputSectionProps {
   initialData?: MovementThroughputDatum[];
@@ -22,7 +22,6 @@ interface ThroughputSectionProps {
 
 export function ThroughputSection({ initialData }: ThroughputSectionProps) {
   const [interval, setInterval] = useState<IntervalType>("daily");
-  const [flow, setFlow] = useState<FlowSegment>("all");
 
   const chartData: MovementThroughputDatum[] = initialData || [];
 

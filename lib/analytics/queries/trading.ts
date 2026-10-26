@@ -66,23 +66,23 @@ export async function getGmroiAndTurnover(
     SELECT
       COALESCE(SUM(dt.dispatched_qty * (i.selling_price - i.buying_price)), 0) AS gross_margin_total,
       COALESCE(SUM(dt.dispatched_qty * i.buying_price), 0) AS cogs_total,
-      COALESCE(SUM(i.qty_remaining * i.buy_price), 1) AS avg_inventory_value
+      COALESCE(SUM(i.qty_remaining * i.buy_price), 0) AS avg_inventory_value
     FROM item_financials i
     LEFT JOIN dispatched_trading dt ON dt.item_id = i.id
   `);
 
   const grossMargin = toNumber(row?.gross_margin_total ?? 0);
-  const avgInvValue = Math.max(1, toNumber(row?.avg_inventory_value ?? 1));
+  const avgInvValue = Math.max(0, toNumber(row?.avg_inventory_value ?? 0));
   const cogs = toNumber(row?.cogs_total ?? 0);
 
-  const gmroi = Math.round((grossMargin / avgInvValue) * 100) / 100;
-  const turns = Math.round((cogs / avgInvValue) * 10) / 10;
+  const gmroi = avgInvValue > 0 ? Math.round((grossMargin / avgInvValue) * 100) / 100 : 0;
+  const turns = avgInvValue > 0 ? Math.round((cogs / avgInvValue) * 10) / 10 : 0;
 
   return {
-    gmroiScore: gmroi || 1.85,
-    grossMarginTotal: grossMargin || 450000,
-    averageInventoryValue: avgInvValue || 250000,
-    inventoryTurnoverRatio: turns || 4.2,
+    gmroiScore: gmroi,
+    grossMarginTotal: grossMargin,
+    averageInventoryValue: avgInvValue,
+    inventoryTurnoverRatio: turns,
   };
 }
 
@@ -163,10 +163,10 @@ export async function getStarsAndDogsMatrix(
       CASE
         WHEN i.buying_price > 0 AND i.selling_price > 0
         THEN ROUND(((i.selling_price - i.buying_price) / i.selling_price * 100)::numeric, 1)
-        ELSE 20.0
+        ELSE NULL
       END AS gross_margin_pct,
-      COALESCE(ROUND((COALESCE(SUM(pli.requested_qty), 10) / NULLIF(COALESCE(SUM(lit.qty_available), 1), 0))::numeric, 1), 3.5) AS turnover_velocity,
-      COALESCE(SUM(lit.qty_available), 50) AS volume
+      COALESCE(ROUND((COALESCE(SUM(pli.requested_qty), 0) / NULLIF(COALESCE(SUM(lit.qty_available), 0), 0))::numeric, 1), 0) AS turnover_velocity,
+      COALESCE(SUM(lit.qty_available), 0) AS volume
     FROM items i
     LEFT JOIN item_categories c ON c.id = i.categoryId
     LEFT JOIN lots l ON l.item_id = i.id AND l.flow_type = 'trading'::flow_type
@@ -178,14 +178,7 @@ export async function getStarsAndDogsMatrix(
   `);
 
   if (rows.length === 0) {
-    // Fallback baseline demonstration dataset
-    return [
-      { id: "1", code: "TRD-PUMP-01", name: "High Pressure Hydraulic Pump", category: "Pumps", xTurnover: 8.5, yGrossMarginPct: 38, volume: 140 },
-      { id: "2", code: "TRD-VALVE-04", name: "3-Way Solenoid Valve", category: "Valves", xTurnover: 6.2, yGrossMarginPct: 42, volume: 220 },
-      { id: "3", code: "TRD-SEAL-09", name: "Viton O-Ring Pack (100pc)", category: "Seals", xTurnover: 9.1, yGrossMarginPct: 18, volume: 500 },
-      { id: "4", code: "TRD-FLTR-12", name: "Industrial Air Filter Core", category: "Filters", xTurnover: 2.1, yGrossMarginPct: 12, volume: 45 },
-      { id: "5", code: "TRD-GEAR-02", name: "Bevel Gear Set 45deg", category: "Gears", xTurnover: 1.8, yGrossMarginPct: 48, volume: 30 },
-    ];
+    return [];
   }
 
   return rows.map((r) => ({
@@ -193,8 +186,8 @@ export async function getStarsAndDogsMatrix(
     code: r.code,
     name: r.name,
     category: r.category ?? "General",
-    xTurnover: toNumber(r.turnover_velocity ?? 3),
-    yGrossMarginPct: toNumber(r.gross_margin_pct ?? 25),
-    volume: toNumber(r.volume ?? 100),
+    xTurnover: toNumber(r.turnover_velocity),
+    yGrossMarginPct: toNumber(r.gross_margin_pct),
+    volume: toNumber(r.volume),
   }));
 }

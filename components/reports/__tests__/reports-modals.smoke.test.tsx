@@ -30,9 +30,23 @@ describe("reports modal smoke render", () => {
   });
 
   it("opens the custom report builder from the reports hub", () => {
-    render(<WarehouseReportsHub />);
+    render(<WarehouseReportsHub vmiBillingRows={[{
+      id: "1",
+      clientName: "Org",
+      clientCode: "ORG-1",
+      allocatedSpaceCbm: 100,
+      occupiedCbm: 50,
+      utilizationPct: 50,
+      contractedRatePerCbmDay: 0.5,
+      mtdAccruedStorage: 20,
+      unbilledDays: 3,
+      billingStatus: "Ready to Invoice",
+      contactPerson: "Ops",
+      currency: "USD",
+    }]} />);
     fireEvent.click(screen.getAllByRole("button", { name: /Custom Report Builder/i })[0]);
     expect(screen.getByRole("dialog", { name: /Executive Custom Report Builder/i })).toBeInTheDocument();
+    expect(screen.getByText("Org")).toBeInTheDocument();
   });
 
   it("renders the reports hub with live-shaped datasets", () => {
@@ -44,6 +58,26 @@ describe("reports modal smoke render", () => {
         throughput={[{ label: "Oct 01", inboundQty: 4, outboundQty: 2, vmiQty: 2, tradingQty: 2 }]}
         deliverySla={[{ period: "Oct 2026", otifRate: 98, otdRate: 99, fillRate: 99, targetOtif: 95 }]}
         archiveItems={[{ id: "1", reportName: "RPT-1.pdf", category: "Operations", dateRangeCovered: "2026-10-01", generatedBy: { name: "System", role: "Admin" }, generatedAt: "2026-10-01 10:00", fileSizeFormatted: "1 KB", format: "PDF", status: "Ready" }]}
+        heatmap={[[{
+          binRow: "A1-01",
+          day: 1,
+          isWeekend: false,
+          pickActivityCount: 3,
+          inventoryAgingDays: 2,
+          varianceRatePct: 0,
+          auditRecord: {
+            binId: "bin-1",
+            date: "2026-10-01",
+            dayNumber: 1,
+            monthName: "Oct",
+            year: 2026,
+            metricType: "pickActivity",
+            metricValue: 3,
+            metricFormatted: "3 picks",
+            status: "normal",
+            activities: [],
+          },
+        }]]}
         canReadFinancial
       />
     )).not.toThrow();

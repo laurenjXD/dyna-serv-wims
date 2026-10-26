@@ -3,18 +3,10 @@
 import { useState, useEffect } from "react";
 import {
   X,
-  Shield,
-  Plus,
-  Trash2,
-  Copy,
-  Check,
-  Save,
   Sliders,
-  CheckCircle2,
-  AlertCircle,
+  Info,
 } from "lucide-react";
 import type { DynamicRole } from "@/app/(authenticated)/settings/team/actions";
-import { saveDynamicRole, deleteDynamicRole } from "@/app/(authenticated)/settings/team/actions";
 
 const MODULE_NAMES = [
   { id: "Dashboard", desc: "View metrics, financial cards, location heatmap, export PDF" },
@@ -40,18 +32,14 @@ interface RoleManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   roles: DynamicRole[];
-  onRolesUpdated: () => void;
 }
 
 export function RoleManagementModal({
   isOpen,
   onClose,
   roles,
-  onRolesUpdated,
 }: RoleManagementModalProps) {
   const [selectedRole, setSelectedRole] = useState<DynamicRole | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const activeRole = selectedRole ?? roles[0] ?? null;
 
@@ -63,74 +51,13 @@ export function RoleManagementModal({
 
   if (!isOpen || !activeRole) return null;
 
-  function handleCapabilityToggle(moduleName: string, capKey: "view" | "create" | "edit" | "approve" | "delete") {
-    if (!activeRole) return;
-    const caps = [...activeRole.capabilities];
-    const modIdx = caps.findIndex((c) => c.module === moduleName);
-    if (modIdx >= 0) {
-      caps[modIdx] = { ...caps[modIdx], [capKey]: !caps[modIdx][capKey] };
-    } else {
-      caps.push({
-        module: moduleName,
-        view: capKey === "view",
-        create: capKey === "create",
-        edit: capKey === "edit",
-        approve: capKey === "approve",
-        delete: capKey === "delete",
-      });
-    }
-    setSelectedRole({ ...activeRole, capabilities: caps });
-  }
-
-  function handleCreateNew() {
-    const newId = `role-${Date.now()}`;
-    const newRole: DynamicRole = {
-      id: newId,
-      key: `custom_role_${Date.now().toString().slice(-4)}`,
-      name: "New Custom Role",
-      description: "Custom floor capability matrix definition.",
-      color: "bg-slate-100 text-slate-800 border-slate-200",
-      isSystem: false,
-      capabilities: MODULE_NAMES.map((m) => ({
-        module: m.id,
-        view: true,
-        create: false,
-        edit: false,
-        approve: false,
-        delete: false,
-      })),
-    };
-    setSelectedRole(newRole);
-    setStatus(null);
-  }
-
-  async function handleSave() {
-    if (!activeRole) return;
-    setIsSaving(true);
-    setStatus(null);
-    const res = await saveDynamicRole(activeRole);
-    setIsSaving(false);
-    if (res.ok) {
-      setStatus({ type: "success", message: "Role and permission matrix saved." });
-      onRolesUpdated();
-    } else {
-      setStatus({ type: "error", message: res.error || "Failed to save role." });
-    }
-  }
-
-  async function handleDelete() {
-    if (!activeRole || activeRole.isSystem) return;
-    if (confirm(`Delete role "${activeRole.name}"?`)) {
-      setIsSaving(true);
-      await deleteDynamicRole(activeRole.id);
-      setIsSaving(false);
-      onRolesUpdated();
-      setSelectedRole(roles.find((r) => r.id !== activeRole.id) || null);
-    }
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="role-capability-reference-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+    >
       <div className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 bg-[#F8FAFC] px-6 py-4">
@@ -139,11 +66,11 @@ export function RoleManagementModal({
               <Sliders className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-heading text-base font-bold text-slate-900">
-                Dynamic Role Creator &amp; Permission Matrix
+              <h3 id="role-capability-reference-title" className="font-heading text-base font-bold text-slate-900">
+                Approved Role Capability Reference
               </h3>
               <p className="font-body text-xs text-slate-500">
-                Configure module-by-module capability toggles and role definitions.
+                Review the approved capability reference before assigning a role.
               </p>
             </div>
           </div>
@@ -164,14 +91,9 @@ export function RoleManagementModal({
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-label">
                 Roles Catalog
               </span>
-              <button
-                type="button"
-                onClick={handleCreateNew}
-                className="inline-flex items-center gap-1 rounded-lg bg-brand-navy px-2.5 py-1 font-label text-[11px] font-bold text-white hover:bg-brand-navy/90 shadow-2xs"
-              >
-                <Plus className="h-3 w-3" />
-                Add Role
-              </button>
+              <span className="rounded bg-slate-100 px-2 py-1 font-mono text-[9px] font-bold uppercase text-slate-500">
+                System roles
+              </span>
             </div>
 
             <div className="space-y-1.5">
@@ -183,7 +105,6 @@ export function RoleManagementModal({
                     type="button"
                     onClick={() => {
                       setSelectedRole(r);
-                      setStatus(null);
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all text-xs ${
                       isSelected
@@ -217,8 +138,8 @@ export function RoleManagementModal({
                 <input
                   type="text"
                   value={activeRole.name}
-                  onChange={(e) => setSelectedRole({ ...activeRole, name: e.target.value })}
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+                  readOnly
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-900 shadow-2xs outline-none"
                 />
               </div>
 
@@ -228,8 +149,8 @@ export function RoleManagementModal({
                 </label>
                 <select
                   value={activeRole.color}
-                  onChange={(e) => setSelectedRole({ ...activeRole, color: e.target.value })}
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+                  disabled
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-900 shadow-2xs outline-none disabled:opacity-100"
                 >
                   {COLOR_OPTIONS.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -246,16 +167,24 @@ export function RoleManagementModal({
                 <input
                   type="text"
                   value={activeRole.description}
-                  onChange={(e) => setSelectedRole({ ...activeRole, description: e.target.value })}
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy"
+                  readOnly
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-900 shadow-2xs outline-none"
                 />
               </div>
             </div>
 
-            {/* Granular Permission Checkbox Matrix */}
+            <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
+              <p>
+                Capability grants are managed by the approved RBAC migrations and are read-only here.
+                Use <strong>Invite Operator</strong> to assign one of these roles to a new user.
+              </p>
+            </div>
+
+            {/* Approved capability reference — intentionally read-only in v1. */}
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-3 font-label">
-                Module-by-Module Capability Matrix
+                Approved capability reference
               </span>
 
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
@@ -292,8 +221,10 @@ export function RoleManagementModal({
                               <input
                                 type="checkbox"
                                 checked={Boolean(currentCap[capKey])}
-                                onChange={() => handleCapabilityToggle(mod.id, capKey)}
-                                className="h-4 w-4 rounded text-brand-navy focus:ring-brand-navy"
+                                readOnly
+                                disabled
+                                aria-label={`${mod.id} ${capKey}`}
+                                className="h-4 w-4 rounded text-brand-navy focus:ring-brand-navy disabled:opacity-100"
                               />
                             </td>
                           ))}
@@ -305,39 +236,14 @@ export function RoleManagementModal({
               </div>
             </div>
 
-            {status && (
-              <div
-                className={`flex items-center gap-2 rounded-xl p-3 text-xs font-medium border ${
-                  status.type === "success"
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                    : "bg-rose-50 text-rose-800 border-rose-200"
-                }`}
-              >
-                {status.type === "success" ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
-                )}
-                <span>{status.message}</span>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-slate-100 bg-[#F8FAFC] px-6 py-3">
-          <div>
-            {!activeRole.isSystem && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:underline"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete Role
-              </button>
-            )}
-          </div>
+          <p className="font-body text-[11px] text-slate-500">
+            Role definitions are versioned with the RBAC schema.
+          </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -345,15 +251,6 @@ export function RoleManagementModal({
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 font-label text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-navy px-5 py-2 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 disabled:opacity-50"
-            >
-              <Save className="h-3.5 w-3.5" />
-              {isSaving ? "Saving..." : "Save Role Matrix"}
             </button>
           </div>
         </div>

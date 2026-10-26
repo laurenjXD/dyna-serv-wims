@@ -7,13 +7,44 @@ import {
   vmiPermits,
 } from "@/lib/db/schema/vmi_billing";
 import type { VmiPdfData } from "@/lib/documents/render-vmi-billing-pdf";
+import type { VmiDocumentArtifactsDbLike } from "@/lib/billing/vmi-document-artifacts";
+
+type PdfDailyRow = {
+  date: string;
+  beginningCbm: string | number;
+  inboundFgCbm: string | number;
+  inboundRawCbm: string | number;
+  outboundFgCbm: string | number;
+  outboundRawCbm: string | number;
+  endingCbm: string | number;
+  rateUsd: string | number;
+  amountUsd: string | number;
+};
+
+type PdfPaymentRow = {
+  date: string;
+  type: string;
+  amountUsd: string | number;
+  notes: string | null;
+};
+
+type PdfPermitRow = {
+  permitNumber: string;
+  itemScope: string | null;
+  validFrom: string;
+  validTo: string;
+  monthlyFeeUsd: string | number;
+};
 
 /**
  * Loads the single immutable billing-period snapshot used for both draft
  * preview and official rendering. Keeping this here prevents a preview and
  * issued PDF from using subtly different joins or totals.
  */
-export async function loadVmiDocumentPdfData(db: any, periodId: string): Promise<VmiPdfData | null> {
+export async function loadVmiDocumentPdfData(
+  db: Pick<VmiDocumentArtifactsDbLike, "select">,
+  periodId: string,
+): Promise<VmiPdfData | null> {
   const [period] = await db.select({
     id: vmiBillingPeriods.id,
     periodNumber: vmiBillingPeriods.periodNumber,
@@ -71,8 +102,8 @@ export async function loadVmiDocumentPdfData(db: any, periodId: string): Promise
       adHocChargesUsd: Number(period.adHocChargesUsd), creditsAppliedUsd: Number(period.creditsAppliedUsd), billingStatementTotalUsd: Number(period.billingStatementTotalUsd),
       soaOpeningBalanceUsd: Number(period.soaOpeningBalanceUsd), soaPaymentsAppliedUsd: Number(period.soaPaymentsAppliedUsd), soaClosingBalanceUsd: Number(period.soaClosingBalanceUsd), lockedExchangeRatePhp: Number(period.lockedExchangeRatePhp),
     },
-    dailyRows: dailyRows.map((row: any) => ({ date: row.date, beginningCbm: Number(row.beginningCbm), inboundCbm: Number(row.inboundFgCbm) + Number(row.inboundRawCbm), outboundCbm: Number(row.outboundFgCbm) + Number(row.outboundRawCbm), endingCbm: Number(row.endingCbm), rateUsd: Number(row.rateUsd), amountUsd: Number(row.amountUsd) })),
-    payments: payments.map((row: any) => ({ date: row.date, type: row.type, amountUsd: Number(row.amountUsd), notes: row.notes })),
-    permits: permits.map((row: any) => ({ permitNumber: row.permitNumber, itemScope: row.itemScope, validFrom: row.validFrom, validTo: row.validTo, monthlyFeeUsd: Number(row.monthlyFeeUsd) })),
+    dailyRows: (dailyRows as PdfDailyRow[]).map((row) => ({ date: row.date, beginningCbm: Number(row.beginningCbm), inboundCbm: Number(row.inboundFgCbm) + Number(row.inboundRawCbm), outboundCbm: Number(row.outboundFgCbm) + Number(row.outboundRawCbm), endingCbm: Number(row.endingCbm), rateUsd: Number(row.rateUsd), amountUsd: Number(row.amountUsd) })),
+    payments: (payments as PdfPaymentRow[]).map((row) => ({ date: row.date, type: row.type, amountUsd: Number(row.amountUsd), notes: row.notes })),
+    permits: (permits as PdfPermitRow[]).map((row) => ({ permitNumber: row.permitNumber, itemScope: row.itemScope ?? "", validFrom: row.validFrom, validTo: row.validTo, monthlyFeeUsd: Number(row.monthlyFeeUsd) })),
   };
 }

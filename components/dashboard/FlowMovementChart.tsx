@@ -50,7 +50,7 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
             </span>
           </div>
           <p className="mt-1 font-body text-base leading-6 text-text-grey">
-            Inbound Receiving vs. Outbound Dispatch volumes (0 – 600 unit scale)
+            Inbound Receiving vs. Outbound Dispatch volumes from the live movement ledger
           </p>
         </div>
 
@@ -89,8 +89,13 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
 
       {/* Recharts Grouped Bar Chart */}
       <div className="mt-4 h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        {data.length === 0 ? (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-sm text-text-grey">
+            No live movement data is available for this period.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
             <XAxis
               dataKey="month"
@@ -99,8 +104,7 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
               tick={{ fill: "#64748B", fontSize: 11, fontWeight: 600 }}
             />
             <YAxis
-              domain={[0, 600]}
-              ticks={[0, 150, 300, 450, 600]}
+              domain={[0, "auto"]}
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#64748B", fontSize: 11, fontFamily: "monospace" }}
@@ -148,8 +152,9 @@ export function FlowMovementChart({ initialData }: FlowMovementChartProps) {
             />
             <Bar dataKey="inbound" name="Inbound Receiving" fill="#002060" radius={[4, 4, 0, 0]} maxBarSize={28} />
             <Bar dataKey="outbound" name="Outbound Dispatch" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={28} />
-          </BarChart>
-        </ResponsiveContainer>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

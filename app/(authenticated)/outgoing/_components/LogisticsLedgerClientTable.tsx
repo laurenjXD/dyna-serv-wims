@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit3, Check, DollarSign, Truck, FileText, RefreshCw, Zap } from "lucide-react";
+import { Edit3, Check, DollarSign, Truck, FileText, RefreshCw } from "lucide-react";
 import { syncLiveBspRateAction } from "@/lib/actions/forex";
 import {
   VEHICLE_TYPES,
@@ -74,7 +74,7 @@ export function LogisticsLedgerClientTable() {
       } else {
         alert(`Failed to fetch live BSP rate: ${res.error}`);
       }
-    } catch (e) {
+    } catch {
       alert("Error contacting live BSP Forex server.");
     } finally {
       setIsSyncingFx(false);

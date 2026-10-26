@@ -27,10 +27,11 @@ export function convertUsdToPhp(amountUsd: number, fxRate: number): number {
 
 /**
  * Fetch the daily Forex exchange rate (USD to PHP) for a given date.
- * If no explicit rate is recorded for the exact date, returns the latest prior rate,
- * falling back to 61.71 if unrecorded.
+ * If no explicit rate is recorded for the exact date, returns the latest prior rate.
+ * A missing rate is reported as null so billing never silently prices a document
+ * with an invented exchange rate.
  */
-export async function getDailyForexRate(dateInput?: Date | string): Promise<number> {
+export async function getDailyForexRate(dateInput?: Date | string): Promise<number | null> {
   try {
     const targetDate = dateInput
       ? typeof dateInput === "string"
@@ -65,9 +66,9 @@ export async function getDailyForexRate(dateInput?: Date | string): Promise<numb
       return Number(latestMatch.usdToPhpRate);
     }
 
-    return 61.71; // Fallback canonical June baseline rate
+    return null;
   } catch (error) {
     console.error("Error fetching daily Forex rate:", error);
-    return 61.71;
+    return null;
   }
 }

@@ -111,7 +111,7 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
       VALUES (${partyId}, ${itemId}, 100, 'PHP', 'percentage', 0,
         100, true, 'PHP', true, ${userId})`;
     const [location] = await sql`INSERT INTO locations (zone, rack, level, position, label, location_type, max_cbm_capacity)
-      VALUES ('A', '1', '1', '01', 'A1-01', 'storage', 100) RETURNING id`;
+      VALUES ('storage', 'A', '1', '01', 'A1-01', 'storage', 100) RETURNING id`;
     locationId = location.id as string;
     const [wrr] = await sql`INSERT INTO wrr_documents (wrr_number, vendor_party_id, flow_type, status, staged_by_user_id)
       VALUES ('WRR-OUTBOUND-01', ${partyId}, 'trading', 'confirmed', ${userId}) RETURNING id`;

@@ -16,7 +16,7 @@ import {
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib/user-settings/schemas";
+import { inviteUserSchema, suspendUserSchema, SYSTEM_ROLE_KEYS, type InviteUserInput } from "@/lib/user-settings/schemas";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
@@ -320,7 +320,7 @@ const DEFAULT_MODULE_CAPS = [
   { module: "Master Data", view: false, create: false, edit: false, approve: false, delete: false },
 ];
 
-let runtimeCustomRoles: DynamicRole[] = [
+const runtimeCustomRoles: DynamicRole[] = [
   {
     id: "role-admin",
     key: "administrator",
@@ -348,15 +348,6 @@ let runtimeCustomRoles: DynamicRole[] = [
     isSystem: true,
     capabilities: DEFAULT_MODULE_CAPS,
   },
-  {
-    id: "role-audit",
-    key: "audit_lead",
-    name: "Audit & Inventory Clerk",
-    description: "Cycle count verification, stock adjustment reviews, and discrepancy audits.",
-    color: "bg-amber-100 text-amber-800 border-amber-200",
-    isSystem: false,
-    capabilities: DEFAULT_MODULE_CAPS.map((m) => ({ ...m, view: true, create: false, edit: m.module === "Master Inventory", approve: false, delete: false })),
-  },
 ];
 
 export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
@@ -367,8 +358,11 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
 
   try {
     const dbRoles = await db.select().from(roles).where(eq(roles.isActive, true));
-    if (dbRoles.length > 0) {
-      const mapped: DynamicRole[] = dbRoles.map((r) => {
+    const approvedRoles = dbRoles.filter(
+      (role) => role.isSystem && (SYSTEM_ROLE_KEYS as readonly string[]).includes(role.key),
+    );
+    if (approvedRoles.length > 0) {
+      const mapped: DynamicRole[] = approvedRoles.map((r) => {
         const matchingRuntime = runtimeCustomRoles.find((cr) => cr.key === r.key);
         return {
           id: r.id,
@@ -386,7 +380,12 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
     // fallback
   }
 
-  return { ok: true, data: runtimeCustomRoles };
+  return {
+    ok: true,
+    data: runtimeCustomRoles.filter((role) =>
+      (SYSTEM_ROLE_KEYS as readonly string[]).includes(role.key),
+    ),
+  };
 }
 
 export async function saveDynamicRole(role: DynamicRole): Promise<ActionResult> {
@@ -395,56 +394,11 @@ export async function saveDynamicRole(role: DynamicRole): Promise<ActionResult> 
     return { ok: false, error: "Access denied." };
   }
 
-  const existingIdx = runtimeCustomRoles.findIndex((r) => r.id === role.id || r.key === role.key);
-  if (existingIdx >= 0) {
-    runtimeCustomRoles[existingIdx] = role;
-  } else {
-    runtimeCustomRoles.push(role);
-  }
-
-  // Persist role in Postgres DB
-  try {
-    const existing = await db.select({ id: roles.id }).from(roles).where(eq(roles.key, role.key)).limit(1);
-    if (existing.length > 0) {
-      await db
-        .update(roles)
-        .set({
-          name: role.name,
-          description: role.description,
-          isSystem: role.isSystem,
-          updatedAt: new Date(),
-        })
-        .where(eq(roles.id, existing[0]!.id));
-    } else {
-      await db.insert(roles).values({
-        key: role.key,
-        name: role.name,
-        description: role.description,
-        isSystem: role.isSystem,
-        isActive: true,
-      });
-    }
-
-    // Write audit record
-    await db.insert(auditLog).values({
-      actorUserId: permission.context.userId,
-      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-      action: "dynamic_role_saved",
-      entityType: "roles",
-      entityId: role.id.includes("-") && role.id.length === 36 ? role.id : permission.context.userId,
-      diffData: {
-        roleKey: role.key,
-        name: role.name,
-        capabilities: role.capabilities,
-      },
-      correlationId: `ROLE-${Date.now()}`,
-    }).catch(() => {});
-  } catch {
-    // runtime array fallback kept in sync
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+  void role;
+  return {
+    ok: false,
+    error: "Role capabilities are migration-managed in v1. Assign an approved system role instead.",
+  };
 }
 
 export async function deleteDynamicRole(roleId: string): Promise<ActionResult> {
@@ -453,23 +407,8 @@ export async function deleteDynamicRole(roleId: string): Promise<ActionResult> {
     return { ok: false, error: "Access denied." };
   }
 
-  const target = runtimeCustomRoles.find((r) => r.id === roleId);
-  if (target?.isSystem) {
-    return { ok: false, error: "System-defined roles cannot be deleted." };
-  }
-
-  runtimeCustomRoles = runtimeCustomRoles.filter((r) => r.id !== roleId);
-
-  try {
-    if (target) {
-      await db.delete(roles).where(eq(roles.key, target.key)).catch(() => {});
-    }
-  } catch {
-    // fallback
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+  void roleId;
+  return { ok: false, error: "System role definitions cannot be deleted in v1." };
 }
 
 // ── Per-User Administrative Audit Trail ─────────────────────

@@ -9,7 +9,7 @@ import type { AnalyticsExecutor } from "../shared";
 
 const dialect = new PgDialect();
 
-function captureExecutor(mockReturn: any[] = []): AnalyticsExecutor & { captured: SQL[] } {
+function captureExecutor(mockReturn: unknown[] = []): AnalyticsExecutor & { captured: SQL[] } {
   const captured: SQL[] = [];
   return {
     captured,

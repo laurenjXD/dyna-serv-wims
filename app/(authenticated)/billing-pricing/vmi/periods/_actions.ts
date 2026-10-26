@@ -133,7 +133,7 @@ export async function redeliverVmiDocumentsAction(_prev: VmiRedeliveryState, for
     const { Resend } = await import("resend");
     const from = process.env.RESEND_FROM_OPERATIONS ?? process.env.RESEND_FROM_EMAIL;
     if (!from) return { ok: false, error: "RESEND_FROM_EMAIL is not configured." };
-    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to: [period.email], subject: `VMI billing documents — ${period.periodNumber}`, html: `<p>Dear ${period.partyName},</p><p>Your issued VMI billing documents for <strong>${period.periodNumber}</strong> are attached.</p><p>Regards,<br/>Dyna-Serv Operations Team</p>`, attachments: attachments as any });
+    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to: [period.email], subject: `VMI billing documents — ${period.periodNumber}`, html: `<p>Dear ${period.partyName},</p><p>Your issued VMI billing documents for <strong>${period.periodNumber}</strong> are attached.</p><p>Regards,<br/>Dyna-Serv Operations Team</p>`, attachments });
     if (sent.error) return { ok: false, error: sent.error.message };
     return { ok: true };
   } catch (cause) { return { ok: false, error: cause instanceof Error ? cause.message : "Unable to redeliver documents." }; }
