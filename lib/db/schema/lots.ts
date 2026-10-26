@@ -15,6 +15,7 @@ export const lots = pgTable("lots", {
   flowType: flowTypeEnum("flow_type").notNull(), // 'vmi' | 'trading' | 'supplies'
   ownerPartyId: uuid("owner_party_id").references(() => parties.id), // Required for VMI, optional for Trading/Supplies
   status: lotStatusEnum("status").default("staged").notNull(), // FIFO/FEFO eligibility gate
+  cartonTraceStatus: varchar("carton_trace_status", { length: 20 }).default("pending").notNull(),
   pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (manual)
   commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Commercial Invoice (CIPL)
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number

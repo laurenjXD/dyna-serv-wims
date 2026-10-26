@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 
 export function LotQrViewer({
@@ -16,6 +16,22 @@ export function LotQrViewer({
 }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+
+    document.body.dataset.lotQrPrintMode = "true";
+    return () => {
+      delete document.body.dataset.lotQrPrintMode;
+    };
+  }, [open]);
+
+  const handlePrint = () => {
+    // Let the QR SVG finish painting before Chromium snapshots the page.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
+  };
+
   return (
     <>
       <button
@@ -30,7 +46,8 @@ export function LotQrViewer({
           role="dialog"
           aria-modal="true"
           aria-labelledby={`lot-qr-${lotId}`}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/60 p-4 print:p-0 print:bg-white print:static"
+          data-lot-qr-print-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/60 p-4 print:static print:block print:bg-white print:p-0"
         >
           <style>{`
             @page {
@@ -46,15 +63,26 @@ export function LotQrViewer({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
-              body * {
+              body[data-lot-qr-print-mode] * {
                 visibility: hidden !important;
               }
-              #lot-qr-print-card,
-              #lot-qr-print-card * {
+              body[data-lot-qr-print-mode] [data-lot-qr-print-modal],
+              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] #lot-qr-print-card,
+              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] #lot-qr-print-card * {
                 visibility: visible !important;
               }
+              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
+                position: static !important;
+                display: block !important;
+                width: 2in !important;
+                min-width: 2in !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                background: #FFFFFF !important;
+              }
               #lot-qr-print-card {
-                position: fixed !important;
+                position: static !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 2in !important;
@@ -75,6 +103,12 @@ export function LotQrViewer({
                 justify-content: space-between !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
+              }
+              #lot-qr-print-card svg {
+                display: block !important;
+                width: 30mm !important;
+                height: 30mm !important;
+                visibility: visible !important;
               }
               .print-hide {
                 display: none !important;
@@ -147,7 +181,7 @@ export function LotQrViewer({
             <div className="mt-5 flex gap-2 print:hidden print-hide">
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-primary font-label text-label font-bold text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 <span>&#128424;</span>

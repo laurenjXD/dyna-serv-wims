@@ -16,6 +16,7 @@ import { locations } from "@/lib/db/schema/locations";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 import { vmiContractTerms, vmiRecurringFeeLines } from "@/lib/db/schema/vmi_billing";
 import { migrationBatches, migrationExceptions, migrationSourceRows } from "@/lib/db/schema/migrations";
 import { parseUbotVmiWorkbook, ubotPartyRole } from "@/lib/migration/ubot-vmi-adapter";
@@ -23,6 +24,7 @@ import { selectEffectiveUbotRates } from "@/lib/migration/rate-selection";
 import { migrationVolumeCbm } from "@/lib/migration/volume";
 import { isMigrationResolutionCategory, type MigrationResolutionCategory } from "@/lib/migration/exception-resolution";
 import type { UbotMigrationDraft } from "@/lib/migration/types";
+import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 
 const defaultRlsDeps = { getAuthenticatedSession, pool: rlsPool };
 const SOURCE_BUCKET = "migration-source-files";
@@ -64,6 +66,32 @@ export type MigrationBatchListResult =
   | { ok: true; batches: MigrationBatchListItem[] }
   | { ok: false; error: string };
 
+export type MigratedLotQrLabel = {
+  lotId: string;
+  lotNumber: string;
+  itemCode: string;
+};
+
+export type MigratedLotQrLabelResult =
+  | { ok: true; labels: MigratedLotQrLabel[] }
+  | { ok: false; error: string };
+
+export type MigrationCartonResolution = { lotId: string; cartonCount: number };
+
+export type MigrationCartonQrLabel = {
+  unitId: string;
+  cartonId: string;
+  lotNumber: string;
+  itemCode: string;
+};
+
+export type MigrationPendingCartonLot = {
+  lotId: string;
+  lotNumber: string;
+  itemCode: string;
+  quantity: number;
+};
+
 async function canManageMigration() {
   const resolver = await createPageResolver();
   const [partiesPermission, itemsPermission, locationsPermission] = await Promise.all([
@@ -87,6 +115,102 @@ async function canManageMigration() {
     // restricted to administrator users above.
     canManageRates: ratePermission.kind === "authorized" || financialPermission.kind === "authorized",
   };
+}
+
+/** Returns the immutable lot identities created by one committed migration. */
+export async function getMigratedLotQrLabels(batchId: string): Promise<MigratedLotQrLabelResult> {
+  const access = await canManageMigration();
+  if (!access) return { ok: false, error: "You do not have permission to print migration lot labels." };
+  if (!/^[0-9a-f-]{36}$/i.test(batchId)) return { ok: false, error: "Invalid migration batch." };
+
+  try {
+    const rows = await defaultDb
+      .select({ lotId: lots.id, lotNumber: lots.lotNumber, itemCode: items.code })
+      .from(lots)
+      .innerJoin(items, eq(lots.itemId, items.id))
+      .where(eq(lots.migrationBatchId, batchId))
+      .orderBy(lots.lotNumber, items.code);
+
+    return { ok: true, labels: rows };
+  } catch (error) {
+    console.error("[data-migration] migrated lot QR labels failed", error);
+    return { ok: false, error: "Migrated lot labels are temporarily unavailable." };
+  }
+}
+
+export async function getMigrationCartonQrLabels(batchId: string): Promise<{ ok: true; labels: MigrationCartonQrLabel[] } | { ok: false; error: string }> {
+  const access = await canManageMigration();
+  if (!access) return { ok: false, error: "You do not have permission to print migration carton labels." };
+  try {
+    const rows = await defaultDb
+      .select({ unitId: inventoryUnits.unitId, cartonId: inventoryUnits.cartonId, lotNumber: lots.lotNumber, itemCode: items.code })
+      .from(inventoryUnits)
+      .innerJoin(lots, eq(inventoryUnits.lotId, lots.id))
+      .innerJoin(items, eq(lots.itemId, items.id))
+      .where(eq(inventoryUnits.migrationBatchId, batchId))
+      .orderBy(lots.lotNumber, inventoryUnits.unitIndex);
+    return { ok: true, labels: rows };
+  } catch (error) {
+    console.error("[data-migration] migration carton QR labels failed", error);
+    return { ok: false, error: "Migration carton labels are temporarily unavailable." };
+  }
+}
+
+export async function getPendingMigrationCartonLots(batchId: string): Promise<{ ok: true; lots: MigrationPendingCartonLot[] } | { ok: false; error: string }> {
+  const access = await canManageMigration();
+  if (!access) return { ok: false, error: "You do not have permission to resolve migration cartons." };
+  try {
+    const rows = await defaultDb
+      .select({ lotId: lots.id, lotNumber: lots.lotNumber, itemCode: items.code, quantity: lotLocationBalances.qtyReceived })
+      .from(lots)
+      .innerJoin(items, eq(lots.itemId, items.id))
+      .innerJoin(lotLocationBalances, eq(lotLocationBalances.lotId, lots.id))
+      .where(and(eq(lots.migrationBatchId, batchId), eq(lots.cartonTraceStatus, "pending")))
+      .orderBy(lots.lotNumber);
+    return { ok: true, lots: rows.map((row) => ({ ...row, quantity: Number(row.quantity) })) };
+  } catch (error) {
+    console.error("[data-migration] pending migration cartons failed", error);
+    return { ok: false, error: "Pending migration cartons are temporarily unavailable." };
+  }
+}
+
+export async function resolveMigrationCartons(batchId: string, resolutions: MigrationCartonResolution[]): Promise<{ ok: true; created: number } | { ok: false; error: string }> {
+  try {
+    const access = await canManageMigration();
+    if (!access) return { ok: false, error: "You do not have permission to resolve migration cartons." };
+    if (resolutions.length === 0) return { ok: false, error: "Enter at least one carton count." };
+
+    const result = await withRlsTransaction(defaultRlsDeps, async (tx, session) => {
+      const db = tx.db as typeof defaultDb;
+      const [batch] = await db.select({ id: migrationBatches.id, status: migrationBatches.status }).from(migrationBatches).where(eq(migrationBatches.id, batchId)).limit(1);
+      if (!batch || batch.status !== "committed") return { ok: false as const, error: "Only committed migration batches can have cartons resolved." };
+      let created = 0;
+      for (const resolution of resolutions) {
+        if (!/^[0-9a-f-]{36}$/i.test(resolution.lotId) || !Number.isInteger(resolution.cartonCount) || resolution.cartonCount < 1) return { ok: false as const, error: "Carton counts must be positive whole numbers." };
+        const [lot] = await db.select({ id: lots.id, cartonTraceStatus: lots.cartonTraceStatus }).from(lots).where(and(eq(lots.id, resolution.lotId), eq(lots.migrationBatchId, batchId))).limit(1);
+        if (!lot) return { ok: false as const, error: "A migration lot could not be found." };
+        const existing = await db.select({ unitId: inventoryUnits.unitId }).from(inventoryUnits).where(and(eq(inventoryUnits.lotId, lot.id), eq(inventoryUnits.migrationBatchId, batchId))).limit(1);
+        if (existing.length > 0) return { ok: false as const, error: "This lot already has generated carton identities." };
+        const [balance] = await db.select({ locationId: lotLocationBalances.locationId }).from(lotLocationBalances).where(eq(lotLocationBalances.lotId, lot.id)).limit(1);
+        if (!balance) return { ok: false as const, error: "A location balance could not be found for this lot." };
+        await db.insert(inventoryUnits).values(Array.from({ length: resolution.cartonCount }, (_, unitOffset) => {
+          const unitId = randomUUID();
+          return { unitId, cartonId: cartonIdFromUnitId(unitId), unitIndex: unitOffset + 1, wrrItemId: null, migrationBatchId: batchId, lotId: lot.id, locationId: balance.locationId, status: "available" as const };
+        }));
+        await db.update(lots).set({ cartonTraceStatus: "active", updatedAt: new Date() }).where(eq(lots.id, lot.id));
+        created += resolution.cartonCount;
+      }
+      return { ok: true as const, created };
+    });
+    if (result.kind === "unauthenticated") return { ok: false, error: "Your session is no longer authenticated." };
+    if (!result.value.ok) return result.value;
+    revalidatePath("/migration/success");
+    revalidatePath("/inventory");
+    return result.value;
+  } catch (error) {
+    console.error("[data-migration] migration carton resolution failed", error);
+    return { ok: false, error: `The carton resolution could not be saved: ${errorMessage(error)}` };
+  }
 }
 
 function sourceRows(draft: UbotMigrationDraft) {
@@ -464,9 +588,25 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
       const ownerPartyId = partyIds.get(balance.ownerPartyName);
       if (!itemId || !locationId || !ownerPartyId) throw new Error(`Migration mapping disappeared for ${balance.itemCode}/${balance.lotNumber}.`);
       const lotId = randomUUID();
-      await db.insert(lots).values({ id: lotId, lotNumber: balance.lotNumber, itemId, flowType: "vmi", ownerPartyId, migrationBatchId: batchId, status: "available" });
+      const cartonCount = Number.isInteger(balance.boxes) && (balance.boxes ?? 0) > 0 ? balance.boxes! : null;
+      await db.insert(lots).values({ id: lotId, lotNumber: balance.lotNumber, itemId, flowType: "vmi", ownerPartyId, migrationBatchId: batchId, status: "available", cartonTraceStatus: cartonCount ? "active" : "pending" });
       await db.insert(lotLocationBalances).values({ lotId, locationId, qtyReceived: balance.quantity, qtyRemaining: balance.quantity, qtyCommitted: 0, version: 1 });
       await db.insert(inventoryTransactions).values({ transactionNumber: `MIG-${batchId.slice(0, 8)}-${String(index + 1).padStart(5, "0")}`, lotId, itemId, movementType: "inventory_reconciliation", toLocationId: locationId, qty: balance.quantity, flowType: "vmi", performedByUserId: session.userId });
+      if (cartonCount) {
+        await db.insert(inventoryUnits).values(Array.from({ length: cartonCount }, (_, unitOffset) => {
+          const unitId = randomUUID();
+          return {
+            unitId,
+            cartonId: cartonIdFromUnitId(unitId),
+            unitIndex: unitOffset + 1,
+            wrrItemId: null,
+            migrationBatchId: batchId,
+            lotId,
+            locationId,
+            status: "available" as const,
+          };
+        }));
+      }
       committedRows += 1;
     }
     await db.update(migrationBatches).set({ status: "committed", approvedByUserId: session.userId, committedAt: new Date(), updatedAt: new Date() }).where(eq(migrationBatches.id, batchId));

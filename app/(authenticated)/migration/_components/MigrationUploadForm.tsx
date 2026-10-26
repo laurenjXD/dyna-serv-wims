@@ -153,7 +153,7 @@ export function MigrationUploadForm() {
     startTransition(async () => {
       const response = await commitUbotMigration(result.batchId);
       if (response.ok) {
-        router.push(`/migration/success?rows=${response.committedRows}`);
+        router.push(`/migration/success?rows=${response.committedRows}&batch=${encodeURIComponent(response.batchId)}`);
       } else {
         setCommitMessage(response.error);
       }
