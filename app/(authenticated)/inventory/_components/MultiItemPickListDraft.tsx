@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, ChevronRight, FileSpreadsheet, PackagePlus
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { boxesToPieces, piecesToBoxes } from "@/lib/inventory/quantities";
+import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 type StockSource = {
   itemId: string;
@@ -399,7 +400,7 @@ export function MultiItemPickListDraft({
   return (
     <div className="space-y-4">
       {/* Pick List Draft Builder Section */}
-      <section className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4 sm:p-5">
         {/* Header with Integrated Compact DRA Import */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
@@ -468,13 +469,13 @@ export function MultiItemPickListDraft({
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
+        <div className="grid min-w-0 max-w-full gap-4 md:grid-cols-2">
+          <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
             Organization
             <select
               value={organizationId}
               onChange={(event) => handleOrganization(event.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+              className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
             >
               <option value="">Select organization…</option>
               {organizations.map((organization) => (
@@ -504,14 +505,14 @@ export function MultiItemPickListDraft({
               <span className="font-body text-[11px] font-normal text-slate-500">Trading ships from Dyna-Serv to the selected trading customer.</span>
             </div>
           ) : (
-            <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
+            <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
               End Customer / Recipient
               <select
                 value={endCustomerPartyId}
                 onChange={(event) => setEndCustomerPartyId(event.target.value)}
                 disabled={!customerPartyId || flowType !== "vmi"}
                 required={flowType === "vmi"}
-                className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+                className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
               >
                 <option value="">Select end customer...</option>
                 {endCustomers.map((party) => (
@@ -522,7 +523,7 @@ export function MultiItemPickListDraft({
             </label>
           )}
 
-          <label className="grid gap-1 font-label text-xs font-bold text-slate-700">
+          <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
             {flowType === "vmi" ? "VMI Customer / Stock Owner" : flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
             <select
               value={customerPartyId}
@@ -537,7 +538,7 @@ export function MultiItemPickListDraft({
               }}
               required={flowType !== "supplies"}
               disabled={flowType === "supplies"}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+              className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
             >
               <option value="">Select customer…</option>
               {flowType === "supplies" && (
@@ -560,7 +561,7 @@ export function MultiItemPickListDraft({
             </span>
           </label>
 
-          <div className="grid gap-1 font-label text-xs font-bold text-slate-700">
+          <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
             <div className="flex items-center justify-between">
               <span>Inventory Model</span>
               {flowType && organizationId && (
@@ -573,7 +574,7 @@ export function MultiItemPickListDraft({
               value={flowType}
               onChange={(event) => handleFlow(event.target.value as typeof flowType)}
               disabled={!organizationId}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-3 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+              className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
             >
               <option value="">Select inventory model…</option>
               {(["vmi", "trading", "supplies"] as const)
@@ -587,8 +588,63 @@ export function MultiItemPickListDraft({
           </div>
         </div>
 
-        {/* Pick List Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+        {/* Pick List: mobile cards */}
+        <div className="md:hidden">
+          {lines.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-10 text-center">
+              <FileSpreadsheet className="mx-auto h-8 w-8 text-slate-400" />
+              <p className="mt-3 font-heading text-sm font-bold text-slate-700">No pick lines added yet</p>
+              <p className="mt-1 font-body text-sm text-slate-500">Import a DRA document or add an item line below.</p>
+            </div>
+          ) : (
+            <MobileDataCardList>
+              {lineDetails.map(({ line, item, source, effectiveSpq, computedTotalUnits }) => (
+                <MobileDataCard
+                  key={line.id}
+                  title={item?.itemCode || "Select an item"}
+                  subtitle={item?.itemName || "Item line requires selection"}
+                  badge={<button type="button" onClick={() => removeLine(line.id)} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy" aria-label="Remove line"><Trash2 size={18} aria-hidden="true" /></button>}
+                >
+                  <div className="mt-3 grid min-w-0 gap-3">
+                    <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+                      Item Code
+                      <select value={line.itemId} onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10">
+                        <option value="">Select item code…</option>
+                        {catalog.map((candidate) => <option key={candidate.itemId} value={candidate.itemId}>{candidate.itemCode}</option>)}
+                      </select>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+                        Qty (Units)
+                        <input value={computedTotalUnits} onChange={(event) => handleTotalUnitsChange(line.id, event.target.value, effectiveSpq)} type="number" min="1" disabled={!source} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                      </label>
+                      <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+                        Packages
+                        <input value={line.qty} onChange={(event) => handlePackagesChange(line.id, event.target.value, effectiveSpq)} type="number" min="1" max={source ? Math.floor(piecesToBoxes(source.availableQty, effectiveSpq)) : undefined} disabled={!source} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                      </label>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
+                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
+                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{source?.lotNumber || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
+                    </dl>
+                    <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+                      Location
+                      <select value={line.balanceId} disabled={!item} onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400">
+                        <option value="">Select location…</option>
+                        {item?.sources.map((candidate) => <option key={candidate.balanceId} value={candidate.balanceId}>{candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})</option>)}
+                      </select>
+                    </label>
+                  </div>
+                </MobileDataCard>
+              ))}
+            </MobileDataCardList>
+          )}
+        </div>
+
+        {/* Pick List Table: desktop */}
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
           <table className="w-full text-left border-collapse min-w-[1100px]">
             <thead>
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">

@@ -28,3 +28,4 @@ export * from "./Page";
 export * from "./FilterSelect";
 export * from "./FilterDateInput";
 export * from "./FilterSearchInput";
+export * from "./MobileDataCard";
