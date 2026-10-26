@@ -319,7 +319,7 @@ export async function getActiveSupplierParties(
 ): Promise<SupplierPartyOption[]> {
   return listActivePartyOptions(
     db,
-    sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer', 'end_customer', 'internal_warehouse', 'internal_supplies')`,
+    sql`${partyFlowRelationships.relationship}::text IN ('trading_supplier', 'vmi_customer')`,
   );
 }
 

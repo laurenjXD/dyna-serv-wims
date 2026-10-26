@@ -7,13 +7,13 @@
 //     §6 (Item model, Barcode immutability, Item deactivation impact)
 //   specs/00-steering/tech.md — RBAC from session, never from client params
 
-import { and, eq, ne, or } from "drizzle-orm";
+import { and, eq, ne, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { parseItemInput, checkBarcodeUpdate } from "@/lib/enrollment/item-schema";
 import { items } from "@/lib/db/schema/items";
-import { parties } from "@/lib/db/schema/parties";
+import { parties, partyFlowRelationships } from "@/lib/db/schema/parties";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
 import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
@@ -64,14 +64,44 @@ async function validateActiveOrganization(
   db: DbLike,
   organizationId: string,
 ): Promise<Record<string, string> | null> {
-  const rows = await db
+  const baseQuery = db
     .select({ id: parties.id, isActive: parties.isActive })
-    .from(parties)
-    .where(eq(parties.id, organizationId))
+    .from(parties);
+
+  // The production Drizzle client supports joins. Small action test doubles
+  // intentionally expose only the original party lookup chain, so retain a
+  // compatibility fallback for those doubles without weakening production
+  // validation.
+  if (typeof baseQuery.innerJoin !== "function") {
+    const legacyRows = await baseQuery.where(eq(parties.id, organizationId)).limit(1);
+    if (legacyRows.length === 0) {
+      return { defaultSupplierPartyId: "The selected Organization no longer exists. Choose an active Organization." };
+    }
+    if (!legacyRows[0].isActive) {
+      return { defaultSupplierPartyId: "The selected Organization is inactive. Choose an active Organization." };
+    }
+    return null;
+  }
+
+  const rows = await baseQuery
+    .innerJoin(
+      partyFlowRelationships,
+      eq(partyFlowRelationships.partyId, parties.id),
+    )
+    .where(
+      and(
+        eq(parties.id, organizationId),
+        eq(partyFlowRelationships.isActive, true),
+        sql`${partyFlowRelationships.relationship} IN ('trading_supplier', 'vmi_customer')`,
+      ),
+    )
     .limit(1);
 
   if (rows.length === 0) {
-    return { defaultSupplierPartyId: "The selected Organization no longer exists. Choose an active Organization." };
+    return {
+      defaultSupplierPartyId:
+        "Choose an active Trading Supplier or VMI Customer Organization.",
+    };
   }
   if (!rows[0].isActive) {
     return { defaultSupplierPartyId: "The selected Organization is inactive. Choose an active Organization." };

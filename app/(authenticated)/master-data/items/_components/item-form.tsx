@@ -23,11 +23,8 @@ const STANDARD_UOM_OPTIONS = [
 ] as const;
 const CURRENCY_OPTIONS = ["USD", "PHP"] as const;
 
-// per page specs.md §8: Inventory Model is the UI name for the existing
-// flow_type field (design.md 2026-08-14 terminology entry). It lives on
-// item_categories, not items — selecting it here filters which categories
-// are offered below, it does not submit its own form field.
-const INVENTORY_MODEL_OPTIONS = ["vmi", "trading", "supplies"] as const;
+// Inventory Model is inherited from the selected Organization relationship.
+// It is deliberately not an independent user choice on this form.
 const INVENTORY_MODEL_LABELS: Record<string, string> = {
   vmi: "VMI",
   trading: "Trading",
@@ -128,10 +125,11 @@ export function ItemForm({
   const initialSubcategoryId = initialCategory?.parentId
     ? initialCategory.id
     : "";
+  const organizationInventoryModel = supplierParties.find(
+    (party) => party.id === item?.defaultSupplierPartyId,
+  )?.defaultInventoryModel;
   const initialInventoryModel =
-    (initialCategory?.parentId
-      ? localCategories.find((c) => c.id === initialCategory.parentId)?.flowType
-      : initialCategory?.flowType) ?? "";
+    organizationInventoryModel ?? "";
 
   const [inventoryModel, setInventoryModel] = useState(initialInventoryModel);
   const [movementCategory, setMovementCategory] = useState<string>(
@@ -322,10 +320,10 @@ export function ItemForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Owner / Default Supplier Organization */}
+          {/* Material Origin Organization */}
           <div>
             <label htmlFor="defaultSupplierPartyId" className="block font-label text-label text-on-surface">
-              Owner / Default Supplier Organization{" "}
+              Material Origin Organization{" "}
               <span aria-hidden="true" className="text-brand-red">*</span>
             </label>
             <select
@@ -338,10 +336,15 @@ export function ItemForm({
                 const org = supplierParties.find((p) => p.id === partyId);
                 if (org?.defaultInventoryModel) {
                   setInventoryModel(org.defaultInventoryModel);
+                  setParentCategoryId("");
+                  setSubcategoryId("");
                   setAutoAssignedInfo(
                     `Auto-assigned: ${INVENTORY_MODEL_LABELS[org.defaultInventoryModel]} (${org.roles?.join(", ") || "Party Role"})`
                   );
                 } else {
+                  setInventoryModel("");
+                  setParentCategoryId("");
+                  setSubcategoryId("");
                   setAutoAssignedInfo(null);
                 }
               }}
@@ -351,36 +354,28 @@ export function ItemForm({
               <option value="">Select organization…</option>
               {supplierParties.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.code} — {p.name} {p.roles && p.roles.length > 0 ? `(${p.roles.join(", ")})` : ""}
+                  {p.code} — {p.name} ({p.relationship === "trading_supplier" ? "Trading Supplier" : p.relationship === "vmi_customer" ? "VMI Customer" : "Needs relationship review"})
                 </option>
               ))}
             </select>
             {fieldError("defaultSupplierPartyId")}
           </div>
 
-          {/* Inventory Model */}
+          {/* Inherited Inventory Model */}
           <div>
             <label htmlFor="inventoryModel" className="block font-label text-label text-on-surface">
-              Inventory Model
+              Inventory Model (Inherited)
             </label>
             <select
               id="inventoryModel"
               value={inventoryModel}
-              onChange={(e) => {
-                setInventoryModel(e.target.value);
-                setParentCategoryId("");
-                setSubcategoryId("");
-                setAutoAssignedInfo(null);
-              }}
+              disabled
               className="mt-1 block w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
             >
-              <option value="">All Models</option>
-              {INVENTORY_MODEL_OPTIONS.map((m) => (
-                <option key={m} value={m}>
-                  {INVENTORY_MODEL_LABELS[m]}
-                </option>
-              ))}
+              <option value="">Select an Organization first</option>
+              {inventoryModel && <option value={inventoryModel}>{INVENTORY_MODEL_LABELS[inventoryModel]}</option>}
             </select>
+            <input type="hidden" name="inventoryModel" value={inventoryModel} />
             {autoAssignedInfo && (
               <span className="mt-1.5 inline-block text-[11px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                 {autoAssignedInfo}
