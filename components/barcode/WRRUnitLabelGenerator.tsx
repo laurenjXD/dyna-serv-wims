@@ -6,7 +6,7 @@
 //   specs/07-incoming-receiving/design.md §6.2 / §9 (scan reconciliation & duplicate rejection)
 //   specs/00-steering/brand-design-system.md §9 (physical label and print typography)
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
 
@@ -34,6 +34,18 @@ export function WRRUnitLabelGenerator({
 }: WRRUnitLabelGeneratorProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Give the browser a stable, scoped print mode. This prevents the global
+  // application shell and its layout containers from affecting thermal-label
+  // pagination while still allowing the label sheet to render normally.
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    document.body.dataset.qrPrintMode = "true";
+    return () => {
+      delete document.body.dataset.qrPrintMode;
+    };
+  }, [isModalOpen]);
+
   // Generate N unique unit labels per line when modal is opened
   const unitLabels = useMemo<UnitLabelData[]>(() => {
     if (!isModalOpen || expectedQty <= 0) return [];
@@ -55,7 +67,11 @@ export function WRRUnitLabelGenerator({
   }, [isModalOpen, wrrItemId, expectedQty]);
 
   const handlePrint = () => {
-    window.print();
+    // react-qr-code paints SVG nodes during the commit. Waiting two frames
+    // ensures Chromium has painted those nodes before it snapshots print.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
   };
 
   return (
@@ -76,7 +92,8 @@ export function WRRUnitLabelGenerator({
           role="dialog"
           aria-modal="true"
           aria-labelledby="print-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white print:static"
+          data-qr-print-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:static print:block print:bg-white print:p-0"
         >
           {/* Print Media Isolation Rules */}
           <style>{`
@@ -93,22 +110,36 @@ export function WRRUnitLabelGenerator({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
-              body * {
+              body[data-qr-print-mode] * {
                 visibility: hidden !important;
               }
-              #print-unit-labels-sheet,
-              #print-unit-labels-sheet * {
+              body[data-qr-print-mode] [data-qr-print-modal],
+              body[data-qr-print-mode] [data-qr-print-modal] #print-unit-labels-sheet,
+              body[data-qr-print-mode] [data-qr-print-modal] #print-unit-labels-sheet * {
                 visibility: visible !important;
               }
+              body[data-qr-print-mode] [data-qr-print-modal] {
+                position: static !important;
+                display: block !important;
+                width: 2in !important;
+                min-width: 2in !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                background: #FFFFFF !important;
+              }
               #print-unit-labels-sheet {
-                position: absolute !important;
+                position: static !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 2in !important;
+                min-width: 2in !important;
+                height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #FFFFFF !important;
                 display: block !important;
+                overflow: visible !important;
               }
               .unit-thermal-label-card {
                 width: 2in !important;
@@ -130,6 +161,12 @@ export function WRRUnitLabelGenerator({
                 justify-content: space-between !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
+              }
+              .unit-thermal-label-card svg {
+                display: block !important;
+                width: 29mm !important;
+                height: 29mm !important;
+                visibility: visible !important;
               }
               .unit-thermal-label-card:last-child {
                 page-break-after: avoid !important;
