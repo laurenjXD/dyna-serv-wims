@@ -1,4 +1,8 @@
-# Dyna-Serv WIMS — User Manual & Operations Guide
+# Dyna-Serv WIMS — Edge Cases & Troubleshooting Companion Guide
+
+**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
+**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
+**Last reconciled:** 2026-10-27
 
 ## Chapter: Edge Cases, Error Handling & System Exception Guide
 

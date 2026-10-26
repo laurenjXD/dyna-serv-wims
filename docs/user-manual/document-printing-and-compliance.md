@@ -1,4 +1,8 @@
-# Dyna-Serv WIMS — User Manual & Operations Guide
+# Dyna-Serv WIMS — Document Printing & Compliance Companion Guide
+
+**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
+**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
+**Last reconciled:** 2026-10-27
 
 ## Chapter: Warehouse Document Printing, Signatures & Compliance Standards
 
@@ -25,7 +29,7 @@ graph TD
 
 ### 2. Standardized Document Footer & 3-Tier Sign-Off
 
-All official operational documents implement the [`MasterDocumentFooter`](file:///d:/dyna-serv/dyna-serv-wims/components/print/MasterDocumentFooter.tsx) component. This ensures unified formatting, font sizing, and legal sign-off hierarchies across the entire facility.
+All official operational documents implement the [`MasterDocumentFooter`](../../components/print/MasterDocumentFooter.tsx) component. This ensures unified formatting, font sizing, and legal sign-off hierarchies across the entire facility.
 
 #### The Three Default Accountability Roles
 

@@ -1,4 +1,8 @@
-# Dyna-Serv WIMS — User Manual & Operations Guide
+# Dyna-Serv WIMS — Outgoing Picking & Dispatch Companion Guide
+
+**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
+**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
+**Last reconciled:** 2026-10-27
 
 ## Chapter: Outgoing Picking, Logistics & Dispatch Confirmation
 
@@ -32,7 +36,7 @@ sequenceDiagram
 
 1. Navigate to **Master Inventory** $\rightarrow$ **Pick Lists** (`/inventory?tab=pick-lists`).
 2. **Select Destination Organization & Inventory Model**:
-   * For **Trading / VMI**: Selected destination customer or vendor. Quantities must adhere to full SPQ cartons.
+   * For **Trading / VMI**: Selected destination customer or VMI party. Quantities must adhere to full SPQ cartons.
    * For **Supplies**: Internal warehouse organization. Loose piece quantities permitted.
 3. **Delivery Release Advice (DRA) Import (Optional)**:
    * Upload customer DRA (`.xlsx`, `.csv`, `.pdf`).
@@ -59,5 +63,4 @@ sequenceDiagram
 
 ### 4. Related Operating Guides
 * **Troubleshooting & Edge Cases**: See [Chapter 6: Edge Cases, Error Handling & System Exception Guide](./edge-cases-and-troubleshooting.md#5-physical-picking--dispatch-confirmation-edge-cases) for handling provisional item codes, FIFO/FEFO override approvals, premature dispatch blocks, rack shortages during picking, 24-hour commitment expiry, and concurrent dispatch race conditions.
-* **Document Printing & Sign-Offs**: See [Chapter 5: Warehouse Document Printing, Signatures & Compliance Standards](./document-printing-and-compliance.md) for Pick List and Delivery Receipt (DR/AR) print formats, 3-tier signature block accountability, reprint watermarks, and permanent tiered retention.
-
+* **Document Printing & Sign-Offs**: See [Document Printing & Compliance](./document-printing-and-compliance.md) for Pick List and Delivery Receipt (DR/AR) print formats, 3-tier signature block accountability, reprint watermarks, and permanent tiered retention.

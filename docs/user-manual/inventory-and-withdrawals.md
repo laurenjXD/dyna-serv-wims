@@ -1,4 +1,8 @@
-# Dyna-Serv WIMS — User Manual & Operations Guide
+# Dyna-Serv WIMS — Inventory & Withdrawals Companion Guide
+
+**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
+**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
+**Last reconciled:** 2026-10-27
 
 ## Chapter: Master Inventory, Inventory Models & Withdrawal Protocols
 
@@ -55,7 +59,7 @@ graph TD
 | **Min. Order Unit** | $1\text{ box } (1 \times \text{SPQ})$ | $1\text{ box } (1 \times \text{SPQ})$ | $1\text{ piece / unit}$ |
 | **Pricing Nature** | Commercial Selling Price (Contracted) | Reference Consignment Release Price | Non-Commercial / Cost Tracking Only |
 | **Outbound Document** | Priced Delivery Receipt / AR | Priced Delivery Receipt / AR | Internal Material Issue Slip |
-| **DRA Matching** | Required for customer orders | Required for vendor releases | **None required** |
+| **DRA Matching** | Required for customer orders | Required for VMI releases | **None required** |
 
 ---
 
@@ -93,7 +97,7 @@ To withdraw supplies without commercial overhead:
 When inspecting any item from the Master Inventory register via the **View** action:
 
 * **Tab 1: Master Specifications**: Item codes, category/subcategory hierarchy, enrolled UOM, SPQ standard, dimensions, and financial pricing.
-* **Tab 2: Live Stock & Lots**: Real-time lot-by-lot breakdown with storage location bins, expiration dates, and printable lot QR labels.
+* **Tab 2: Live Stock & Lots**: Real-time lot-by-lot breakdown with storage locations, expiration dates, and printable lot QR labels.
 * **Tab 3: Movement History Trail**:
   * **Date Filter Toolbar**: Filter movements for **Today**, **All Time**, or any specific date picker value.
   * **Movement Type Filter**: Filter by `Inbound / Received`, `Outbound / Dispatched`, or `Internal Transfers`.
