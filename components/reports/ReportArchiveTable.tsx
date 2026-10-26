@@ -24,6 +24,7 @@ import type { ReportArchiveItem } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 
 interface ReportArchiveTableProps {
   initialData?: ReportArchiveItem[];
@@ -222,28 +223,30 @@ export function ReportArchiveTable({
             />
           </div>
 
-          <select
+          <FilterSelect
+            label="Category"
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-9 rounded-xl border border-border bg-surface px-3 font-body text-xs text-text-primary focus:border-primary focus:outline-none"
-          >
-            <option value="ALL">All Categories</option>
-            <option value="Financial">Financial</option>
-            <option value="Settlement">Settlement</option>
-            <option value="Operations">Operations</option>
-            <option value="Inventory">Inventory</option>
-          </select>
+            onChange={setSelectedCategory}
+            options={[
+              { value: "ALL", label: "All Categories" },
+              { value: "Financial", label: "Financial" },
+              { value: "Settlement", label: "Settlement" },
+              { value: "Operations", label: "Operations" },
+              { value: "Inventory", label: "Inventory" },
+            ]}
+          />
 
-          <select
+          <FilterSelect
+            label="Format"
             value={selectedFormat}
-            onChange={(e) => setSelectedFormat(e.target.value)}
-            className="h-9 rounded-xl border border-border bg-surface px-3 font-body text-xs text-text-primary focus:border-primary focus:outline-none"
-          >
-            <option value="ALL">All Formats</option>
-            <option value="PDF">PDF Only</option>
-            <option value="CSV">CSV Only</option>
-            <option value="XLSX">XLSX Only</option>
-          </select>
+            onChange={setSelectedFormat}
+            options={[
+              { value: "ALL", label: "All Formats" },
+              { value: "PDF", label: "PDF Only" },
+              { value: "CSV", label: "CSV Only" },
+              { value: "XLSX", label: "XLSX Only" },
+            ]}
+          />
         </div>
       </div>
 

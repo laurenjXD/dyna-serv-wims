@@ -12,6 +12,7 @@ import {
 import type { VmiDailyBalanceRow, VmiCbmLedgerRow } from "@/lib/billing/queries/vmi-ledger";
 import { PeriodCloseModal } from "../vmi/periods/_components/PeriodCloseModal";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { FilterSelect } from "@/components/ui/FilterSelect";
 
 type Option = { id: string; name: string; code: string };
 
@@ -227,22 +228,20 @@ export function VmiDailyBalanceLedgerTable({
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 py-1.5">
-            <span className="font-label text-label-xs uppercase text-text-grey">Activity:</span>
-            <select
+          <FilterSelect
+            label="Activity"
               value={activityFilter}
-              onChange={(e) => {
-                setActivityFilter(e.target.value);
+              onChange={(value) => {
+                setActivityFilter(value);
                 setPageIndex(0);
               }}
-              className="bg-transparent font-body text-body-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Days</option>
-              <option value="has_activity">Active Days (IN/OUT)</option>
-              <option value="in_only">Days with IN</option>
-              <option value="out_only">Days with OUT</option>
-            </select>
-          </div>
+              options={[
+                { value: "all", label: "All Days" },
+                { value: "has_activity", label: "Active Days (IN/OUT)" },
+                { value: "in_only", label: "Days with IN" },
+                { value: "out_only", label: "Days with OUT" },
+              ]}
+          />
 
           {(searchQuery || activityFilter !== "all") && (
             <button

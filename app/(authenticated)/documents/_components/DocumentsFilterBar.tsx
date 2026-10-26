@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, X, Calendar, Filter } from "lucide-react";
+import { Search, X, Filter } from "lucide-react";
 import { useCallback, useTransition } from "react";
-import { FilterSelect } from "@/components/ui/FilterSelect";
+import { FilterDateInput, FilterSelect } from "@/components/ui";
 
 export interface FilterPartyOption {
   id: string;
@@ -108,42 +108,22 @@ export function DocumentsFilterBar({
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <div className="grid grid-cols-2 gap-2 flex-1 sm:flex sm:items-center">
             {/* From date */}
-            <label className="relative inline-flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-border bg-surface-white px-2.5 shadow-2xs focus-within:border-brand-navy focus-within:ring-1 focus-within:ring-brand-navy transition-colors sm:w-[140px] sm:flex-none">
-              <Calendar
-                size={13}
-                className="pointer-events-none shrink-0 text-text-grey"
-                aria-hidden="true"
-              />
-              <span className="shrink-0 font-body text-[11px] font-semibold uppercase leading-4 text-text-grey">
-                From:
-              </span>
-              <input
-                type="date"
-                value={currentFrom}
-                onChange={(e) => updateParam("from", e.target.value)}
-                className="h-8 w-full min-w-0 bg-transparent font-body text-xs sm:text-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-                aria-label="Filter from date"
-              />
-            </label>
+            <FilterDateInput
+              label="From"
+              value={currentFrom}
+              onChange={(e) => updateParam("from", e.target.value)}
+              aria-label="Filter from date"
+              className="sm:w-[280px]"
+            />
 
             {/* To date */}
-            <label className="relative inline-flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-border bg-surface-white px-2.5 shadow-2xs focus-within:border-brand-navy focus-within:ring-1 focus-within:ring-brand-navy transition-colors sm:w-[140px] sm:flex-none">
-              <Calendar
-                size={13}
-                className="pointer-events-none shrink-0 text-text-grey"
-                aria-hidden="true"
-              />
-              <span className="shrink-0 font-body text-[11px] font-semibold uppercase leading-4 text-text-grey">
-                To:
-              </span>
-              <input
-                type="date"
-                value={currentTo}
-                onChange={(e) => updateParam("to", e.target.value)}
-                className="h-8 w-full min-w-0 bg-transparent font-body text-xs sm:text-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
-                aria-label="Filter to date"
-              />
-            </label>
+            <FilterDateInput
+              label="To"
+              value={currentTo}
+              onChange={(e) => updateParam("to", e.target.value)}
+              aria-label="Filter to date"
+              className="sm:w-[280px]"
+            />
           </div>
 
           {/* Reset button: aligned with dates on mobile, and at end on desktop */}

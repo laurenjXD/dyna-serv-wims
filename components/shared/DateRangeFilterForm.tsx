@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { DATE_RANGE_PRESETS, type DateRangePreset } from "@/lib/shell/date-range-filter";
+import { Button, FilterDateInput, FilterSelect } from "@/components/ui";
 
 export function DateRangeFilterForm({
   action,
@@ -26,67 +27,28 @@ export function DateRangeFilterForm({
   );
 
   return (
-    <form action={action} method="get" className="flex flex-wrap items-end gap-3">
-      <div>
-        <label htmlFor="range" className="block font-label text-label text-on-surface">
-          Date Range
-        </label>
-        <select
-          id="range"
-          name="range"
-          value={preset}
-          onChange={(e) => setPreset(e.target.value as DateRangePreset)}
-          className="mt-1 h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-        >
-          {DATE_RANGE_PRESETS.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
+    <form action={action} method="get" className="flex flex-wrap items-center gap-3">
+      <FilterSelect
+        id="range"
+        name="range"
+        label="Range"
+        value={preset}
+        onChange={(value) => setPreset(value as DateRangePreset)}
+        options={DATE_RANGE_PRESETS.map(({ value, label }) => ({ value, label }))}
+      />
 
       {preset === "custom" && (
         <>
-          <div>
-            <label htmlFor="from" className="block font-label text-label text-on-surface">
-              From
-            </label>
-            <input
-              id="from"
-              name="from"
-              type="date"
-              defaultValue={currentFrom}
-              required
-              className="mt-1 h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            />
-          </div>
-          <div>
-            <label htmlFor="to" className="block font-label text-label text-on-surface">
-              To
-            </label>
-            <input
-              id="to"
-              name="to"
-              type="date"
-              defaultValue={currentTo}
-              required
-              className="mt-1 h-11 rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            />
-          </div>
+          <FilterDateInput id="from" name="from" label="From" defaultValue={currentFrom} required />
+          <FilterDateInput id="to" name="to" label="To" defaultValue={currentTo} required />
         </>
       )}
 
-      <button
-        type="submit"
-        className="flex h-11 items-center justify-center rounded bg-primary px-5 font-label text-label text-surface-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-brand-navy"
-      >
-        Apply
-      </button>
+      <Button type="submit" size="lg">Apply</Button>
       {preset !== "all-time" && (
         <a
           href={action}
-          className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-surface px-5 font-label text-label font-bold text-text-primary transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           Clear
         </a>
