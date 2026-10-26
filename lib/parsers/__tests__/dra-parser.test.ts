@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import ExcelJS from "exceljs";
 import { parseDraDocument } from "../dra-parser";
 
@@ -66,5 +68,17 @@ describe("dra-parser", () => {
     const result = await parseDraDocument(Buffer.from("dummy"), "document.docx");
     expect(result.ok).toBe(false);
     expect(result.errors[0]).toContain("Unsupported file format");
+  });
+
+  it("parses the supplied production DRA sample (.xlsx)", async () => {
+    const fixture = resolve(process.cwd(), "test-samples", "DRA (09-15) WRF-RCY-260341_ADGT.xlsx");
+    const result = await parseDraDocument(readFileSync(fixture), "DRA (09-15) WRF-RCY-260341_ADGT.xlsx");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows.length).toBeGreaterThan(0);
+      expect(result.header.draReference).toBeTruthy();
+      expect(result.rows.some((row) => Number(row.requestedQty ?? row.packageCount) > 0)).toBe(true);
+    }
   });
 });
