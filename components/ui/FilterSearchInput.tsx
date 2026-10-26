@@ -21,6 +21,7 @@ export function FilterSearchInput({ onClear, endAdornment, className = "", value
         aria-hidden="true"
       />
       <input
+        data-filter-control="true"
         {...props}
         type="search"
         value={value}

@@ -128,7 +128,7 @@ html[data-theme="dark"] :is(.border-border, .border-outline-variant) {
   border-color: #475569;
 }
 
-html[data-theme="dark"] :is(input, select, textarea) {
+html[data-theme="dark"] :is(input, select, textarea):not([data-filter-control="true"]) {
   background-color: #111c2e;
   color: #f8fafc;
   border-color: #334155;
@@ -293,8 +293,8 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
     @apply bg-background text-text-primary;
   }
 
-  main[data-surface="office"] :is(input, select, textarea),
-  main[data-surface="party"] :is(input, select, textarea) {
+  main[data-surface="office"] :is(input, select, textarea):not([data-filter-control="true"]),
+  main[data-surface="party"] :is(input, select, textarea):not([data-filter-control="true"]) {
     @apply rounded-lg border border-border bg-surface font-body text-body-md text-text-primary shadow-sm outline-none placeholder:text-text-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 

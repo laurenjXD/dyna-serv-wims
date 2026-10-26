@@ -24,6 +24,7 @@ export function FilterSelect({ label, value, options, onChange, className = "", 
       <span className={`shrink-0 font-label text-xs font-bold uppercase tracking-[0.08em] text-text-secondary ${labelClassName}`}>{label}:</span>
       <span className="relative min-w-0 flex-1 overflow-hidden">
         <select
+          data-filter-control="true"
           {...props}
           value={value}
           onChange={(event) => onChange(event.target.value)}

@@ -12,6 +12,7 @@ export function FilterDateInput({ label, className = "", ...props }: FilterDateI
       <span className="shrink-0 font-label text-xs font-bold uppercase tracking-[0.08em] text-text-secondary">{label}:</span>
       <span className="relative min-w-0 flex-1">
         <input
+          data-filter-control="true"
           {...props}
           type="date"
           aria-label={props["aria-label"] ?? label}
