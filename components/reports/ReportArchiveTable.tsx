@@ -23,7 +23,7 @@ import type { ReportArchiveItem } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { FilterSearchInput, FilterSelect } from "@/components/ui";
+import { FilterSearchInput, FilterSelect, MobileDataCard, MobileDataCardList } from "@/components/ui";
 
 interface ReportArchiveTableProps {
   initialData?: ReportArchiveItem[];
@@ -249,7 +249,32 @@ export function ReportArchiveTable({
       </div>
 
       {/* ── TanStack Table Container ────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      <MobileDataCardList className="md:hidden -mx-1">
+        {table.getRowModel().rows.length === 0 ? (
+          <p className="p-4 text-center font-body text-sm text-text-secondary">No archived reports match your query.</p>
+        ) : table.getRowModel().rows.map((row) => {
+          const item = row.original;
+          return (
+            <MobileDataCard
+              key={row.id}
+              title={item.reportName}
+              subtitle={item.generatedBy.name}
+              badge={<Badge size="sm" variant="neutral">{item.format}</Badge>}
+              fields={[
+                { label: "Category", value: item.category },
+                { label: "Period", value: item.dateRangeCovered },
+                { label: "Generated", value: item.generatedAt },
+                { label: "File size", value: item.fileSizeFormatted },
+              ]}
+              actions={<>
+                <button type="button" onClick={() => onPreviewReport(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 font-label text-sm font-bold text-brand-navy">View</button>
+                <button type="button" onClick={() => onDownloadReport(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-navy px-3 font-label text-sm font-bold text-white">Download</button>
+              </>}
+            />
+          );
+        })}
+      </MobileDataCardList>
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface md:block">
         <table className="w-full text-left border-collapse">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
