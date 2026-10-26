@@ -20,7 +20,7 @@ export interface FilterSelectProps
 
 export function FilterSelect({ label, value, options, onChange, className = "", labelClassName = "", ...props }: FilterSelectProps) {
   return (
-    <label className={`group inline-flex h-12 w-full min-w-0 max-w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 sm:w-auto sm:min-w-[220px] ${className}`}>
+    <label data-ui="filter-select" className={`group inline-flex h-12 w-full min-w-0 max-w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 sm:w-auto sm:min-w-[220px] ${className}`}>
       <span className={`shrink-0 font-label text-xs font-bold uppercase tracking-[0.08em] text-text-secondary ${labelClassName}`}>{label}:</span>
       <span className="relative min-w-0 flex-1 overflow-hidden">
         <select
@@ -28,7 +28,7 @@ export function FilterSelect({ label, value, options, onChange, className = "", 
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-label={props["aria-label"] ?? label}
-          className="h-10 w-full min-w-0 appearance-none truncate rounded-xl border-0 bg-transparent px-0 pr-8 font-body text-base font-semibold leading-5 text-text-primary outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-10 w-full min-w-0 appearance-none truncate !rounded-none !border-0 !bg-transparent !px-0 !shadow-none pr-8 font-body text-base font-semibold leading-5 text-text-primary outline-none focus:!border-0 focus:!ring-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>

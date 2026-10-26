@@ -17,7 +17,7 @@ describe("filter controls", () => {
     );
 
     const select = screen.getByRole("combobox", { name: "Organization" });
-    expect(select).toHaveClass("rounded-xl");
+    expect(select.closest("[data-ui='filter-select']")).toHaveClass("h-12", "rounded-xl");
     fireEvent.change(select, { target: { value: "all" } });
     expect(onChange).toHaveBeenCalledWith("all");
   });
@@ -26,7 +26,7 @@ describe("filter controls", () => {
     render(<FilterDateInput label="From" name="from" />);
     const input = screen.getByLabelText("From");
     expect(input).toHaveAttribute("type", "date");
-    expect(input).toHaveClass("rounded-xl");
+    expect(input.closest("[data-ui='filter-date-input']")).toHaveClass("h-12", "rounded-xl");
   });
 
   it("renders the canonical 48px search control", () => {
