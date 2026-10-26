@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, X, Filter } from "@/components/ui/icons";
+import { X, Filter } from "@/components/ui/icons";
 import { useCallback, useTransition } from "react";
-import { FilterDateInput, FilterSelect } from "@/components/ui";
+import { FilterDateInput, FilterSearchInput, FilterSelect } from "@/components/ui";
 
 export interface FilterPartyOption {
   id: string;
@@ -62,36 +62,22 @@ export function DocumentsFilterBar({
   );
 
   return (
-    <div className="mb-4 space-y-2.5 rounded-2xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="mb-4 space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-elevation-1">
+      <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_minmax(220px,auto)_minmax(200px,auto)_minmax(200px,auto)_auto] lg:items-center">
         {/* Search input */}
-        <div className="relative min-w-0 flex-1">
-          <Search
-            size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-grey"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            placeholder="Search document #, reference, lot, organization..."
+        <div className="relative min-w-0">
+          <label htmlFor="document-filter-search" className="sr-only">Search documents</label>
+          <FilterSearchInput
+            id="document-filter-search"
+            placeholder="Search documents, references, lots, or organizations"
             value={currentSearch}
             onChange={(e) => updateParam("q", e.target.value)}
-            className="h-10 w-full min-w-0 rounded-xl border border-border bg-surface-white pl-9 pr-8 font-body text-sm font-medium text-on-surface placeholder:text-text-grey/60 shadow-2xs focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy transition-colors"
+            onClear={() => updateParam("q", null)}
           />
-          {currentSearch && (
-            <button
-              type="button"
-              onClick={() => updateParam("q", null)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface p-0.5 rounded-full hover:bg-slate-100 transition-colors"
-              aria-label="Clear search"
-            >
-              <X size={14} />
-            </button>
-          )}
         </div>
 
         {/* Organization dropdown */}
-        <div className="w-full sm:w-[280px]">
+        <div className="w-full lg:w-auto">
           <FilterSelect
             label="Organization"
             value={currentParty}
@@ -100,20 +86,20 @@ export function DocumentsFilterBar({
               { value: "", label: "All Organizations" },
               ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
             ]}
-            className="w-full"
+            className="w-full lg:min-w-[250px]"
           />
         </div>
 
         {/* Date Range Inputs & Reset Action */}
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <div className="grid grid-cols-2 gap-2 flex-1 sm:flex sm:items-center">
+        <div className="contents">
+          <div className="grid grid-cols-2 gap-3 lg:contents">
             {/* From date */}
             <FilterDateInput
               label="From"
               value={currentFrom}
               onChange={(e) => updateParam("from", e.target.value)}
               aria-label="Filter from date"
-              className="sm:w-[280px]"
+              className="w-full"
             />
 
             {/* To date */}
@@ -122,7 +108,7 @@ export function DocumentsFilterBar({
               value={currentTo}
               onChange={(e) => updateParam("to", e.target.value)}
               aria-label="Filter to date"
-              className="sm:w-[280px]"
+              className="w-full"
             />
           </div>
 
@@ -131,7 +117,7 @@ export function DocumentsFilterBar({
             <button
               type="button"
               onClick={clearAllFilters}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 px-3 font-body text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-2xs cursor-pointer active:scale-95"
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-body text-sm font-semibold text-text-secondary hover:border-primary hover:text-text-primary transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               title="Reset all filters"
             >
               <X size={14} />

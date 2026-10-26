@@ -2,7 +2,7 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { FilterDateInput, FilterSelect } from "../index";
+import { FilterDateInput, FilterSearchInput, FilterSelect } from "../index";
 
 describe("filter controls", () => {
   it("renders a labeled reusable select and reports changes", () => {
@@ -27,5 +27,13 @@ describe("filter controls", () => {
     const input = screen.getByLabelText("From");
     expect(input).toHaveAttribute("type", "date");
     expect(input).toHaveClass("rounded-xl");
+  });
+
+  it("renders the canonical 48px search control", () => {
+    render(<FilterSearchInput aria-label="Search documents" value="abc" onChange={() => {}} onClear={() => {}} />);
+    const input = screen.getByRole("searchbox", { name: "Search documents" });
+    expect(input).toHaveAttribute("type", "search");
+    expect(input).toHaveClass("h-12", "rounded-xl");
+    expect(screen.getByRole("button", { name: "Clear search" })).toBeInTheDocument();
   });
 });

@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import {
-  Search,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/icons";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import type { StockViewRow } from "@/lib/db/queries/inventory";
-import { FilterSelect } from "@/components/ui/FilterSelect";
+import { FilterSearchInput, FilterSelect } from "@/components/ui";
 
 type ApprovalStatus =
   | "pending"
@@ -377,29 +376,14 @@ export function ApprovalsFilterableTable({
       <div className="mb-4 space-y-2.5 rounded-xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
         <div className="flex flex-wrap items-center gap-2">
           {/* Omni Search */}
-          <div className="relative min-w-[200px] flex-1">
-            <Search
-              size={15}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
-              aria-hidden="true"
-            />
-            <input
-              type="text"
+          <div className="min-w-[220px] flex-1">
+            <FilterSearchInput
+              aria-label="Search approvals"
+              placeholder="Search request, item, lot, requester, or reason"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Request #, Item, Lot, Requester, Reason…"
-              className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+              onClear={() => setSearchQuery("")}
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
-                aria-label="Clear search"
-              >
-                <X size={13} />
-              </button>
-            )}
           </div>
 
           {/* Reason Filter Dropdown */}

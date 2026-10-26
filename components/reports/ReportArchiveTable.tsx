@@ -13,7 +13,6 @@ import {
 import {
   FileText,
   Download,
-  Search,
   Share2,
   Archive,
   User,
@@ -24,7 +23,7 @@ import type { ReportArchiveItem } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { FilterSelect } from "@/components/ui/FilterSelect";
+import { FilterSearchInput, FilterSelect } from "@/components/ui";
 
 interface ReportArchiveTableProps {
   initialData?: ReportArchiveItem[];
@@ -212,14 +211,13 @@ export function ReportArchiveTable({
 
         {/* Filters Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search Report or Author..."
+          <div className="min-w-[220px] flex-1">
+            <FilterSearchInput
+              aria-label="Search reports"
+              placeholder="Search report or author"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-full rounded-xl border border-border bg-surface pl-9 pr-3 font-body text-xs text-text-primary placeholder:text-text-secondary focus:border-primary focus:outline-none"
+              onClear={() => setSearchTerm("")}
             />
           </div>
 
