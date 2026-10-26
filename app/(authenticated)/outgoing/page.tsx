@@ -30,6 +30,7 @@ import { PickQueueSection } from "./_components/PickQueueSection";
 import { OutgoingLedgerClientTable } from "./_components/OutgoingLedgerClientTable";
 import { removeDeliveryReceipt, uploadDeliveryReceipt } from "../pick-lists/_actions";
 import { getStorageClient } from "@/lib/supabase/storage";
+import { PageContainer, PageHeader } from "@/components/ui/Page";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -54,17 +55,11 @@ export default async function OutgoingPage({
   const activeTab: TabKey = tab === "ledger" ? "ledger" : "dispatch";
 
   return (
-    <div className="mx-auto max-w-container pb-10">
-      <div>
-        <div>
-          <h1 className="font-heading text-headline-lg font-bold tracking-tight text-on-surface">
-            Outgoing Dispatches
-          </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            Release completed picks for dispatch, upload signed delivery receipts (POD), and review outbound inventory.
-          </p>
-        </div>
-      </div>
+    <PageContainer className="pb-10">
+      <PageHeader
+        title="Outgoing Dispatches"
+        description="Release completed picks for dispatch, upload signed delivery receipts (POD), and review outbound inventory."
+      />
 
       <div className="mt-6 flex gap-1 border-b border-outline-variant/30" role="tablist" aria-label="Outgoing sections">
         <Link
@@ -98,7 +93,7 @@ export default async function OutgoingPage({
       ) : (
         <OutgoingLedgerTab resolver={resolver} receiptStatus={receiptStatus} receiptUpload={receiptUpload} />
       )}
-    </div>
+    </PageContainer>
   );
 }
 

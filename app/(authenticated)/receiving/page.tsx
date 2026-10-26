@@ -26,6 +26,7 @@ import { AutoSubmitSelect } from "./_components/AutoSubmitSelect";
 import { QuickJumpScanner } from "./_components/QuickJumpScanner";
 import { WrrFilterableTable } from "./_components/WrrFilterableTable";
 import { WrrLedgerFilterableTable } from "./_components/WrrLedgerFilterableTable";
+import { PageContainer, PageHeader } from "@/components/ui/Page";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -203,25 +204,17 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
   const canCreate = (await requirePermission(resolver, "receiving.confirm")).kind === "authorized";
 
   return (
-    <div className="mx-auto max-w-container pb-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading font-bold text-headline-lg tracking-tight text-on-surface">
-            Inbound Management
-          </h1>
-          <p className="mt-1 font-body text-body-md text-text-grey">
-            Manage incoming shipments, WRRs, and dock scheduling.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canCreate && (
+    <PageContainer className="pb-10">
+      <PageHeader
+        title="Inbound Management"
+        description="Manage incoming shipments, WRRs, and dock scheduling."
+        actions={canCreate ? (
             <Link href="/receiving/new" className="inline-flex h-12 items-center justify-center gap-2 rounded bg-on-surface px-5 font-label text-body-md font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
               <Plus size={19} aria-hidden="true" />
               Start New WRR
             </Link>
-          )}
-        </div>
-      </div>
+        ) : null}
+      />
 
       {/* Tab switcher — office pattern per brand-design-system.md §3 */}
       <div
@@ -263,7 +256,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
       ) : (
         <LedgerTab />
       )}
-    </div>
+    </PageContainer>
   );
 }
 

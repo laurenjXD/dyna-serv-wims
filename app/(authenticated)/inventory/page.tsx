@@ -40,6 +40,7 @@ import { StockViewFilterableRegister, type GroupedItem } from "./_components/Sto
 import { createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
+import { PageContainer, PageHeader } from "@/components/ui/Page";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -104,7 +105,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-container">
+    <PageContainer>
+      <PageHeader
+        title="Master Inventory"
+        description="Search stock, generate pick lists, and review inspection work."
+      />
       <div
         role="tablist"
         aria-label="Inventory sections"
@@ -178,7 +183,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       ) : (
         <InspectionTabSection />
       )}
-    </div>
+    </PageContainer>
   );
 }
 

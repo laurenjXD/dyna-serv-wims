@@ -64,7 +64,7 @@
  * roles here so every office page has the same visual scale. */
 main[data-surface="office"] h1,
 main[data-surface="party"] h1 {
-  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", sans-serif !important;
   font-size: 24px !important;
   line-height: 32px !important;
   font-weight: 700 !important;
@@ -73,7 +73,7 @@ main[data-surface="party"] h1 {
 
 main[data-surface="office"] h2,
 main[data-surface="party"] h2 {
-  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", sans-serif !important;
   font-size: 24px !important;
   line-height: 32px !important;
   font-weight: 700 !important;
@@ -81,7 +81,7 @@ main[data-surface="party"] h2 {
 
 main[data-surface="office"] h3,
 main[data-surface="party"] h3 {
-  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", sans-serif !important;
   font-size: 20px !important;
   line-height: 28px !important;
   font-weight: 700 !important;
@@ -261,13 +261,31 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
    * legacy monospace styling. Codes and IDs continue to opt into font-mono. */
   [data-surface="office"] :is(.font-body, .font-label):not(.font-mono),
   [data-surface="party"] :is(.font-body, .font-label):not(.font-mono) {
-    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+    font-family: "Glacial Indifference", Inter, "Helvetica Neue", Arial, sans-serif !important;
     letter-spacing: normal !important;
   }
 
   [data-surface="office"] :is(h1, h2, h3, h4, h5, h6),
   [data-surface="party"] :is(h1, h2, h3, h4, h5, h6) {
-    font-family: "Avenir Next", Avenir, Arial, sans-serif !important;
+    font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", Arial, sans-serif !important;
+  }
+
+  /* Every authenticated route is wrapped by PageRoot. Keep page-level
+   * spacing and surface ownership consistent even when a feature page still
+   * contains legacy utility classes internally. */
+  [data-ui="page-root"] {
+    min-height: 100%;
+  }
+
+  [data-ui="page-container"] {
+    width: 100%;
+    max-width: 1280px;
+  }
+
+  [data-ui="mega-card"] {
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
   }
 
   main[data-surface="office"],

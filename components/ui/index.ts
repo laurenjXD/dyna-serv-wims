@@ -24,3 +24,4 @@ export * from "./Tooltip";
 export * from "./Typography";
 export * from "./TablePagination";
 export * from "./UrlTablePagination";
+export * from "./Page";
