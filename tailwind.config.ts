@@ -18,34 +18,34 @@ const config: Config = {
     extend: {
       colors: {
         // Dyna-Serv Brand Guidelines (rev. August 2026)
-        primary: "#2563EB",         // Vibrant Blue
-        "primary-hover": "#1E3A8A", // Deep Blue
-        secondary: "#7C3AED",       // Violet
-        neutral: "#94A3B8",          // Cool Gray
-        background: "#FFF7ED",       // Cream White application canvas
+        primary: "#0A2FAE",         // Dyna Blue
+        "primary-hover": "#08248A", // Deep Blue
+        secondary: "#071A63",       // Blue Ink
+        neutral: "#8CA0E0",         // Muted label / mono text
+        background: "#EEF2FF",      // Blue Tint application canvas
         surface: "#FFFFFF",         // ⬜ Solid White (Level 1)
-        "text-primary": "#0F172A", // Deep Navy body and primary reading text
-        "text-secondary": "#64748B", // Slate secondary copy and helper text
-        heading: "#0F172A",        // Deep Navy heading emphasis
-        border: "#E2E8F0",          // Hairline border
+        "text-primary": "#33414F", // Body and primary reading text
+        "text-secondary": "#66789A", // Secondary copy and helper text
+        heading: "#071A63",        // Blue Ink heading emphasis
+        border: "#DDE4F7",          // Hairline border
         success: "#10B981",         // 🟢 Emerald
         warning: "#F59E0B",         // 🟠 Amber
-        error: "#EF4444",           // Red
+        error: "#D40007",           // Dyna Red
 
         // Legacy compatibility aliases mapped to unified design tokens
-        "brand-navy": "#0F172A",
-        "brand-blue": "#2563EB",
-        "brand-blue-dark": "#1E3A8A",
-        "brand-royal-blue": "#2563EB",
-        "brand-red": "#EF4444",
-        "accent-indigo-50": "#FFF7ED",
-        "accent-indigo-300": "#2563EB",
-        "accent-indigo-600": "#1E3A8A",
-        "text-grey": "#64748B",
+        "brand-navy": "#071A63",
+        "brand-blue": "#0A2FAE",
+        "brand-blue-dark": "#08248A",
+        "brand-royal-blue": "#0A2FAE",
+        "brand-red": "#D40007",
+        "accent-indigo-50": "#EEF2FF",
+        "accent-indigo-300": "#0A2FAE",
+        "accent-indigo-600": "#08248A",
+        "text-grey": "#66789A",
         "surface-white": "#FFFFFF",
-        "surface-light-grey": "#FFF7ED",
-        "on-surface": "#0F172A",
-        "outline-variant": "#E2E8F0",
+        "surface-light-grey": "#EEF2FF",
+        "on-surface": "#33414F",
+        "outline-variant": "#DDE4F7",
         "status-available": "#10B981",
         "status-pending": "#F59E0B",
         "status-held": "#D40007",

@@ -66,7 +66,8 @@ Across all user-facing enrollment forms, tables, headers, and UI screens:
 2. Internal `code` and barcode SHALL be unique.
 3. Form SHALL validate positive packaging and dimensional metrics (`spq`, `volume_cbm`, weight, reorder level).
 4. Conditional fields (`spq_meter`, `boxes_per_pallet`, perishability data) SHALL show only when applicable to the selected Inventory Model and UOM.
-5. Default supplier Organization SHALL be selected only from active Organizations with the Supplier business classification (legacy `vendor` is accepted only during migration). Customer and End-Customer classifications SHALL not appear in this inbound-source selector.
+5. Material Origin Organization SHALL be selected only from active Organizations with either the `trading_supplier` or `vmi_customer` relationship. Trading Supplier selection SHALL inherit the Trading Inventory Model; VMI Customer selection SHALL inherit the VMI Inventory Model. Trading Customer, End-Customer, Internal Supplies, and Dyna-Serv internal organizations SHALL not appear in this selector.
+6. The inherited Inventory Model SHALL be displayed as read-only after the Material Origin Organization is selected. It SHALL be persisted as the Material's default Inventory Model for downstream workflow defaults, while actual lot ownership remains authoritative at receiving: Trading stock is Dyna-Serv-owned and VMI stock is VMI-Customer-owned.
 6. Item deactivation SHALL prevent new operational use while preserving historical records.
 
 ### R3. Location enrollment

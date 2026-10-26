@@ -189,9 +189,13 @@ The following rules are derived from the approved `01-core-data-model` precision
 - **`min_reorder_level`**: non-negative integer, default `0`. NOT NULL in the approved schema.
 - **Perishability**: `is_perishable = true` flags the downstream receiving requirement for manufacture and expiry data capture. Enrollment does not create a lot, a WRR record, or a receiving transaction.
 
-### Default supplier
+### Material Origin Organization and inherited Inventory Model
 
-The default supplier selector queries active authorized `parties` whose `party_roles` include `supplier` (or legacy `vendor` only while migration compatibility is required). It stores the selected party as `default_supplier_party_id` (FK to `parties.id`) on the `items` row. Customer, End-Customer, and Internal Supplies-only parties must not appear in this inbound-source selector. Inactive parties must not appear in the selector. The selector must not accept free-text party identifiers as the primary relation, and it must not create a party inline.
+The Material Origin Organization selector queries active authorized Organizations with an active `party_flow_relationships.relationship` of either `trading_supplier` or `vmi_customer`. It stores the selected source organization and inherited Inventory Model on the Material record. `trading_supplier` maps to `trading`; `vmi_customer` maps to `vmi`. The UI must show the inherited Inventory Model as read-only and must not allow a conflicting manual selection.
+
+Trading Customer, End-Customer, Internal Supplies, and Dyna-Serv internal organizations must not appear in this selector. The selector must not accept free-text organization identifiers or create an Organization inline. The source organization/default model is an enrollment default, not the final physical stock-owner decision: after receiving, Trading lots are Dyna-Serv-owned and VMI lots are owned by the selected VMI Customer.
+
+The current `items.default_supplier_party_id` field is a legacy supplier-only contract and cannot represent this rule. The amendment must add an additive compatibility model for the Material Origin Organization and inherited Inventory Model; existing records must remain readable until migrated.
 
 ### Price boundary
 

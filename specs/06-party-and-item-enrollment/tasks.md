@@ -1,6 +1,6 @@
 # Party & Item Enrollment — Implementation Plan
 
-Status: Approved
+Status: Pending Reapproval
 Updated: 2026-10-22 — Organization role-family correction approved
 
 ## Implementation gate
@@ -251,3 +251,11 @@ The canonical business classifications now have explicit relationship meanings: 
 
 - [x] Product owner approval — Developer approval, 2026-10-22.
 - [x] Second approver approval — Developer approval, 2026-10-22.
+- [ ] Material Origin Organization amendment (2026-10-26): permit only active
+  `trading_supplier` and `vmi_customer` relationships, derive and persist the
+  default Inventory Model, keep it read-only after selection, and preserve
+  Trading=Dyna-Serv ownership versus VMI=VMI-Customer ownership at receipt.
+- [ ] Add the additive compatibility model, server validation, and unit,
+  real-Postgres/RLS, and Playwright coverage for this amendment.
+- [ ] Obtain Product Owner, technical/data-model/RBAC, and second-approver
+  sign-offs before implementation.
