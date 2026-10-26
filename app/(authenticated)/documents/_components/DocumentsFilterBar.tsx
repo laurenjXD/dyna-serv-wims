@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { X, Filter } from "@/components/ui/icons";
+import { X } from "@/components/ui/icons";
 import { useCallback, useTransition } from "react";
 import { FilterDateInput, FilterSearchInput, FilterSelect } from "@/components/ui";
 
@@ -13,13 +13,11 @@ export interface FilterPartyOption {
 
 interface DocumentsFilterBarProps {
   organizations: FilterPartyOption[];
-  statusOptions: { label: string; value: string }[];
   activeTab: string;
 }
 
 export function DocumentsFilterBar({
   organizations,
-  statusOptions,
   activeTab,
 }: DocumentsFilterBarProps) {
   const router = useRouter();
@@ -29,7 +27,6 @@ export function DocumentsFilterBar({
 
   const currentSearch = searchParams.get("q") ?? "";
   const currentParty = searchParams.get("partyId") ?? "";
-  const currentStatus = searchParams.get("status") ?? "";
   const currentFrom = searchParams.get("from") ?? "";
   const currentTo = searchParams.get("to") ?? "";
 
@@ -58,7 +55,7 @@ export function DocumentsFilterBar({
   }, [activeTab, pathname, router]);
 
   const hasActiveFilters = Boolean(
-    currentSearch || currentParty || currentStatus || currentFrom || currentTo,
+    currentSearch || currentParty || currentFrom || currentTo,
   );
 
   return (
@@ -127,42 +124,6 @@ export function DocumentsFilterBar({
         </div>
       </div>
 
-      {/* Status filter pills */}
-      {statusOptions.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-slate-100 pb-0.5 sm:flex-wrap">
-          <span className="shrink-0 mr-1 inline-flex items-center gap-1 font-body text-xs font-bold uppercase tracking-wider text-text-grey">
-            <Filter size={12} className="text-text-grey" /> Status:
-          </span>
-          <button
-            type="button"
-            onClick={() => updateParam("status", null)}
-            className={`h-8 shrink-0 rounded-full px-3 font-body text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              !currentStatus
-                ? "bg-slate-900 text-surface-white font-bold shadow-2xs"
-                : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50 hover:text-on-surface"
-            }`}
-          >
-            All
-          </button>
-          {statusOptions.map((opt) => {
-            const isSelected = currentStatus === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => updateParam("status", isSelected ? null : opt.value)}
-                className={`h-8 shrink-0 rounded-full px-3 font-body text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-brand-navy text-surface-white font-bold shadow-2xs"
-                    : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50 hover:text-on-surface"
-                }`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -388,6 +388,88 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
 }
 
 /*
+ * Interactive data tables become individually labeled cards on handheld
+ * screens. The client enhancer adds each column's accessible label to its
+ * cells; print/document tables opt out with data-document-table.
+ */
+@media (max-width: 639px) {
+  :is(.overflow-x-auto, [class*="overflow-x-auto"]):has(> table[data-mobile-card-table]) {
+    overflow: visible !important;
+  }
+
+  table[data-mobile-card-table] {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+  }
+
+  table[data-mobile-card-table] thead {
+    display: none !important;
+  }
+
+  table[data-mobile-card-table] tbody {
+    display: grid !important;
+    gap: 0.75rem;
+  }
+
+  table[data-mobile-card-table] tr {
+    display: grid !important;
+    min-width: 0 !important;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 0.75rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  table[data-mobile-card-table] td {
+    display: grid !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(6.5rem, 38%) minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: start;
+    overflow-wrap: anywhere;
+    border: 0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 0.65rem 0 !important;
+    text-align: left !important;
+  }
+
+  table[data-mobile-card-table] td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  table[data-mobile-card-table] td::before {
+    content: attr(data-mobile-label);
+    min-width: 0;
+    color: #64748b;
+    font-family: var(--font-glacial, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  table[data-mobile-card-table] td > * {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  table[data-mobile-card-table] td[colspan] {
+    display: block !important;
+  }
+
+  table[data-mobile-card-table] td[colspan]::before {
+    content: none;
+  }
+}
+
+/*
  * Global Print Styles
  * Ensures application shell chrome (header, sidebar, floating bars, tabs)
  * are completely omitted from browser printouts and generated PDFs.

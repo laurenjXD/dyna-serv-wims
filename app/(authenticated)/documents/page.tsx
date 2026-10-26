@@ -120,46 +120,6 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
     code: p.code,
   }));
 
-  // Status options per tab
-  const statusOptionsMap: Record<DocTab, { label: string; value: string }[]> = {
-    wrr: [
-      { label: "Pending Arrival", value: "staged_pending_arrival" },
-      { label: "In Progress", value: "receiving_in_progress" },
-      { label: "Completed", value: "completed" },
-      { label: "Quarantined", value: "quarantined" },
-    ],
-    cipl: [
-      { label: "Pending Arrival", value: "staged_pending_arrival" },
-      { label: "In Progress", value: "receiving_in_progress" },
-      { label: "Received & Matched", value: "completed" },
-      { label: "Quarantined", value: "quarantined" },
-    ],
-    "pick-lists": [
-      { label: "Ready", value: "ready" },
-      { label: "Pending", value: "pending" },
-      { label: "Generating", value: "generating" },
-      { label: "Failed", value: "failed" },
-    ],
-    "acknowledgement-receipts": [
-      { label: "Ready", value: "ready" },
-      { label: "Pending", value: "pending" },
-      { label: "Generating", value: "generating" },
-      { label: "Failed", value: "failed" },
-      { label: "Voided", value: "voided" },
-    ],
-    soa: [
-      { label: "Draft", value: "draft" },
-      { label: "Issued", value: "issued" },
-      { label: "Voided", value: "voided" },
-    ],
-    reports: [
-      { label: "Ready", value: "ready" },
-      { label: "Pending", value: "pending" },
-      { label: "Generating", value: "generating" },
-      { label: "Failed", value: "failed" },
-    ],
-  };
-
   const tabLabelMap: Record<DocTab, string> = {
     wrr: "WRR (Receiving Report)",
     cipl: "Inbound CI/PL & Invoice",
@@ -238,7 +198,6 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       {/* Unified Search & Filters */}
       <DocumentsFilterBar
         organizations={organizationOptions}
-        statusOptions={statusOptionsMap[activeTab] ?? []}
         activeTab={activeTab}
       />
 

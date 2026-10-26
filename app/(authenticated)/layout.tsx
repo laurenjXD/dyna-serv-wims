@@ -18,6 +18,7 @@ import { ScannerSettingsProvider } from "@/components/barcode/ScannerSettingsPro
 import { SessionIdleGuard } from "@/components/global/SessionIdleGuard";
 import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
 import { PageRoot } from "@/components/ui/Page";
+import { MobileTableEnhancer } from "@/components/ui/MobileTableEnhancer";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function AuthenticatedLayout({
   return (
     <UserPreferencesProvider>
       <ScannerSettingsProvider settings={generalSettings.scanner}>
+        <MobileTableEnhancer />
         <SessionIdleGuard
           mobileIdleTimeoutMinutes={securitySettings.sessionConfig.mobileIdleTimeoutMinutes}
           desktopIdleTimeoutMinutes={securitySettings.sessionConfig.desktopIdleTimeoutMinutes}
