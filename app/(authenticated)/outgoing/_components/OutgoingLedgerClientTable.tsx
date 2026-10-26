@@ -16,7 +16,7 @@ import {
   FileSpreadsheet,
   Trash2,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { DataTable } from "@/components/tables/DataTable";
 import type { OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 

@@ -6,7 +6,7 @@ import {
   Info,
   X,
   ArrowRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export type AlertVariant = "error" | "warning" | "success" | "info";
 

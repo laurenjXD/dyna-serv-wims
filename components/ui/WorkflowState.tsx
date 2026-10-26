@@ -1,5 +1,5 @@
 import React from "react";
-import { SearchX } from "lucide-react";
+import { SearchX } from "@/components/ui/icons";
 import { Alert } from "./Alert";
 import { EmptyState } from "./EmptyState";
 import { SkeletonCard } from "./Skeleton";

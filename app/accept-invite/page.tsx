@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { PhoneInputField } from "@/components/global/PhoneInputField";
 
 export default function AcceptInvitePage() {

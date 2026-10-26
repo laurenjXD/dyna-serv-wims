@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, ChevronLeft, Keyboard, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "lucide-react";
+import { Bell, ChevronDown, ChevronLeft, Keyboard, PanelLeftClose, PanelLeftOpen, Settings, Wifi, WifiOff } from "@/components/ui/icons";
 import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";

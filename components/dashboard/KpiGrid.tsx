@@ -15,7 +15,7 @@ import {
   Sparkles,
   Layers,
   ArrowUpRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { DashboardKpiData } from "./types";
 
 interface KpiGridProps {

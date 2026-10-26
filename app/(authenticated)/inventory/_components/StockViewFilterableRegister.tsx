@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { ChevronDown, Package, Layers, ArrowRight, PackagePlus, Building2, Eye } from "lucide-react";
+import { ChevronDown, Package, Layers, ArrowRight, PackagePlus, Building2, Eye } from "@/components/ui/icons";
 import { DataTable } from "@/components/tables/DataTable";
 import { LotQrViewer } from "./LotQrViewer";
 import { OpeningStockImportModal } from "./OpeningStockImportModal";

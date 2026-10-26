@@ -5,7 +5,7 @@ import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 import { changePassword } from "@/app/(authenticated)/profile/actions";
 import { changePasswordSchema } from "@/lib/user-settings/schemas";
 import { createClient } from "@/lib/supabase/client";
-import { KeyRound, ShieldCheck, Smartphone, CheckCircle2, AlertCircle, QrCode, Lock, Check } from "lucide-react";
+import { KeyRound, ShieldCheck, Smartphone, CheckCircle2, AlertCircle, QrCode, Lock, Check } from "@/components/ui/icons";
 
 function ChangePasswordForm() {
   const [newPassword, setNewPassword] = useState("");

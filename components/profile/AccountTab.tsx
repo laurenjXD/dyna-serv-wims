@@ -17,7 +17,7 @@ import {
   Clock,
   MapPin,
   Wifi,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 import { updateProfileDetails, disconnectCurrentDevice } from "@/app/(authenticated)/profile/actions";
 import { EffectivePermissionsModal } from "./EffectivePermissionsModal";

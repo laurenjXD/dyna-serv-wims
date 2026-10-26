@@ -9,7 +9,7 @@ import {
   ArrowUp,
   ArrowDown,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 import { PolicyFormModal } from "../trading/policies/_components/PolicyFormModal";
 import { TablePagination } from "@/components/ui/TablePagination";

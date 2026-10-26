@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, X, Filter } from "lucide-react";
+import { Search, X, Filter } from "@/components/ui/icons";
 import { useCallback, useTransition } from "react";
 import { FilterDateInput, FilterSelect } from "@/components/ui";
 

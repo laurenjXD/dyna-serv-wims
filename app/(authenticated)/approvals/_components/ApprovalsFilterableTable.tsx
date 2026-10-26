@@ -23,7 +23,7 @@ import {
   ChevronRight,
   Trash2,
   Filter,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { ApprovalRequestRow } from "@/lib/db/queries/approvals";
 import type { StockViewRow } from "@/lib/db/queries/inventory";
 import { FilterSelect } from "@/components/ui/FilterSelect";

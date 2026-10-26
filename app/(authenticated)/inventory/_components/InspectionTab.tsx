@@ -32,7 +32,7 @@ import {
   MapPin,
   CheckCheck,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { InspectionAndTransferQueueRow } from "@/lib/db/queries/transfers";
 import { TablePagination } from "@/components/ui/TablePagination";
 

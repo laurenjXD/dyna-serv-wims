@@ -8,7 +8,7 @@
 "use client";
 
 import { useUserPreferences } from "@/lib/user-settings/preferences";
-import { Moon, LayoutGrid } from "lucide-react";
+import { Moon, LayoutGrid } from "@/components/ui/icons";
 
 function ToggleRow({
   icon: Icon,

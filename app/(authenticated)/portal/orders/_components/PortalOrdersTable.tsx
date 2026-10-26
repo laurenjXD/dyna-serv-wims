@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ListChecks, FileText } from "lucide-react";
+import { ListChecks, FileText } from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 type OrderStatus = "allocated" | "picked" | "dispatched";

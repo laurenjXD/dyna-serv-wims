@@ -14,7 +14,7 @@ import {
   Menu,
   X,
   ChevronRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { ComponentType } from "react";
 import {
   ElseIcon,

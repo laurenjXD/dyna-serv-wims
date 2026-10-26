@@ -31,7 +31,7 @@
 //   it submits nothing (no server action exists to call).
 // Offline: explicitly online-only (Tier 2) once implemented — design.md §9.
 
-import { Tag, AlertTriangle, Info } from "lucide-react";
+import { Tag, AlertTriangle, Info } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";

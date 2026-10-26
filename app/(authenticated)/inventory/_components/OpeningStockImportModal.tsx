@@ -11,7 +11,7 @@ import {
   Loader2,
   PackagePlus,
   ArrowRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { parseOpeningStockFile, commitOpeningStockMigration, type ValidatedOpeningStockRow } from "@/lib/actions/inventory-migration";
 import { TablePagination } from "@/components/ui/TablePagination";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { AlertCircle, Barcode, Camera, CheckCircle2, Search, X } from "lucide-react";
+import { AlertCircle, Barcode, Camera, CheckCircle2, Search, X } from "@/components/ui/icons";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 import { verifyBarcodeAction, type ScanVerificationResult } from "@/lib/actions/scanner";
 import { ItemLookupPanel } from "./ItemLookupPanel";

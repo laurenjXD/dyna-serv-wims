@@ -1,5 +1,5 @@
 import React from "react";
-import { Inbox } from "lucide-react";
+import { Inbox } from "@/components/ui/icons";
 import { Button, ButtonProps } from "./Button";
 
 export interface EmptyStateProps {

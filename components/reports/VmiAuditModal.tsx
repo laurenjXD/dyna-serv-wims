@@ -11,7 +11,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   ShieldCheck,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { VmiBillingRow } from "./types";
 
 interface VmiAuditModalProps {

@@ -9,7 +9,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { TrendingUp, PackageX, DollarSign, Activity } from "lucide-react";
+import { TrendingUp, PackageX, DollarSign, Activity } from "@/components/ui/icons";
 import { WaterfallChart, type WaterfallDatum } from "@/components/analytics/WaterfallChart";
 import { ScatterPlot, type ScatterPlotDatum } from "@/components/analytics/ScatterPlot";
 import type { GmroiSummary, AgingInventoryBucketRow } from "@/lib/analytics/queries/trading";

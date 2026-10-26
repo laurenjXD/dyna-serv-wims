@@ -2,7 +2,7 @@
 // Unified 4-Card Master Rate Card Architecture with Dynamic Rules and Version History
 
 import { notFound } from "next/navigation";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getContractDetail } from "@/lib/actions/contracts";

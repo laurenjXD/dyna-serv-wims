@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Eye, Download, Share2, Package, FileText, Paperclip } from "lucide-react";
+import { Eye, Download, Share2, Package, FileText, Paperclip } from "@/components/ui/icons";
 import type { PickListArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";

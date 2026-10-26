@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Search, PlusCircle, Check, ChevronDown, ExternalLink, AlertCircle } from "lucide-react";
+import { Search, PlusCircle, Check, ChevronDown, ExternalLink, AlertCircle } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 
 interface ItemSearchComboboxProps {

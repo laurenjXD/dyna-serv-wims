@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { ChevronDown, AlertCircle } from "lucide-react";
+import { ChevronDown, AlertCircle } from "@/components/ui/icons";
 
 export interface SelectOption {
   value: string | number;

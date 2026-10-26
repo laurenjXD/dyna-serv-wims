@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCw, X, AlertCircle } from "lucide-react";
+import { RotateCw, X, AlertCircle } from "@/components/ui/icons";
 import { requestDocumentReprintAction } from "../_actions";
 
 interface DocumentReprintDialogProps {

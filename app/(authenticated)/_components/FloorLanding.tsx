@@ -17,7 +17,7 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export type SmartWorkItem = {
   id: string;

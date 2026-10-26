@@ -11,7 +11,7 @@ import {
   Printer,
   Package,
   CheckCircle2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { FilterSelect } from "@/components/ui/FilterSelect";
 

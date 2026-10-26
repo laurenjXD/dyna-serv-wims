@@ -49,7 +49,7 @@ import {
   Archive,
   ShieldAlert,
   CircleDot,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 

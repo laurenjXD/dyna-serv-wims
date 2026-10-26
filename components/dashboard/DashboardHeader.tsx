@@ -5,7 +5,7 @@ import {
   Calendar,
   RefreshCw,
   FileDown,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export type DateHorizon = "Today" | "7D" | "30D MTD" | "90D QTD" | "Custom";
 

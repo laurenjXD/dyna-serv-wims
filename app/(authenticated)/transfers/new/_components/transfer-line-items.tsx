@@ -13,7 +13,7 @@
 // server action how many lines to parse.
 
 import { useState } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, X } from "@/components/ui/icons";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 interface LineState {

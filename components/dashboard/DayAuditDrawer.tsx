@@ -14,7 +14,7 @@ import {
   FileSpreadsheet,
   Activity,
   History,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { BinAuditRecord, HeatmapMetricView } from "./types";
 
 interface DayAuditDrawerProps {

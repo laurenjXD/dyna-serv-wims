@@ -20,7 +20,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 
 const SETTINGS_NAV_ITEMS = [
   { id: "general", label: "General", href: "/settings/general" },

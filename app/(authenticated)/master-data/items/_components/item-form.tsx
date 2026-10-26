@@ -11,7 +11,7 @@
 
 import { useActionState, useState, useEffect } from "react";
 import Link from "next/link";
-import { RefreshCw, Plus, Pencil, Check, X } from "lucide-react";
+import { RefreshCw, Plus, Pencil, Check, X } from "@/components/ui/icons";
 import type { ItemFormState } from "../_actions";
 import { createCategoryAction, updateCategoryAction } from "../_actions";
 import type { ItemDetail, CategoryOption, SupplierPartyOption } from "@/lib/db/queries/items";

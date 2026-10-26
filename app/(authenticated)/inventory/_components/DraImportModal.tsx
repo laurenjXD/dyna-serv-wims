@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileSpreadsheet, AlertTriangle, X, Check, CheckCircle2, Sparkles } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertTriangle, X, Check, CheckCircle2, Sparkles } from "@/components/ui/icons";
 import type { DraParseResult } from "@/lib/parsers/dra-parser";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { parseDraDocumentAction } from "../_actions";

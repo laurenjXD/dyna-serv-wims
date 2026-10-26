@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, CalendarDays, MapPin, Package, X } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CalendarDays, MapPin, Package, X } from "@/components/ui/icons";
 import { getItemAuditDetailAction } from "@/app/(authenticated)/inventory/_actions";
 import type { ItemDetail } from "@/lib/db/queries/items";
 import type { ItemMovementRow, StockViewRow } from "@/lib/db/queries/inventory";

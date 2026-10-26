@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { History, FileText, User, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { History, FileText, User, AlertTriangle, CheckCircle, Clock } from "@/components/ui/icons";
 import { DataTable } from "./DataTable";
 
 export type TransactionLedgerRow = {

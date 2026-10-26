@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit3, Check, DollarSign, Truck, FileText, RefreshCw, Zap } from "lucide-react";
+import { Edit3, Check, DollarSign, Truck, FileText, RefreshCw, Zap } from "@/components/ui/icons";
 import { syncLiveBspRateAction } from "@/lib/actions/forex";
 import {
   VEHICLE_TYPES,

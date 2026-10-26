@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "@/components/ui/icons";
 import { approveUbotMigration, cancelMigrationBatch, commitUbotMigration, getMigrationSummary, listMigrationBatches, resolveMigrationException, type MigrationBatchListItem, type MigrationExceptionSummary, type MigrationResult } from "@/lib/actions/data-migration";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { MIGRATION_RESOLUTION_CATEGORIES } from "@/lib/migration/exception-resolution";

@@ -16,7 +16,7 @@ import {
   Truck,
   Clock,
   ShieldCheck,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { DeliverySlaDatum } from "./types";
 
 interface DeliveryPerformanceReportProps {

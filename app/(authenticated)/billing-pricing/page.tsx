@@ -7,7 +7,7 @@
 //     §2 (typography — font-mono for numeric columns per §9)
 
 import Link from "next/link";
-import { BookOpen, FileText, LayoutDashboard, Receipt, Settings } from "lucide-react";
+import { BookOpen, FileText, LayoutDashboard, Receipt, Settings } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";

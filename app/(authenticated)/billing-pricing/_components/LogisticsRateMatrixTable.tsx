@@ -13,7 +13,7 @@ import {
   Power,
   X,
   AlertTriangle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { syncLiveBspRateAction } from "@/lib/actions/forex";
 import {
   VEHICLE_TYPES,

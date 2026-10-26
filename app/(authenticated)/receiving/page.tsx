@@ -16,7 +16,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardList, FileSpreadsheet, Plus, Truck, Warehouse } from "lucide-react";
+import { ClipboardList, FileSpreadsheet, Plus, Truck, Warehouse } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";

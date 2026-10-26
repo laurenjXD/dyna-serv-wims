@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import {
   Warehouse,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { IntervalType, FlowSegment, MovementThroughputDatum, LocationOccupancyDatum } from "./types";
 
 interface ThroughputSectionProps {

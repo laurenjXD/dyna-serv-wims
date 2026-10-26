@@ -11,7 +11,7 @@ import {
   ChevronUp,
   AlertTriangle,
   RotateCw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export interface PreviewDocData {
   id: string;

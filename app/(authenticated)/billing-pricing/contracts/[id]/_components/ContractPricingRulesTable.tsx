@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Sliders, Plus, Search, Filter } from "lucide-react";
+import { Sliders, Plus, Search, Filter } from "@/components/ui/icons";
 import type { ContractDetailResult } from "@/lib/actions/contracts";
 
 export interface PricingRuleRow {

@@ -13,7 +13,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { Warehouse, Gauge, Layers, TrendingUp } from "lucide-react";
+import { Warehouse, Gauge, Layers, TrendingUp } from "@/components/ui/icons";
 import { WarehouseHeatmap } from "@/components/analytics/WarehouseHeatmap";
 import type {
   TdcDatum,

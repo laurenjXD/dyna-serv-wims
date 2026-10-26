@@ -13,7 +13,7 @@ import {
   Layers,
   ArrowRight,
   FileSpreadsheet,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { PreBuiltTemplate, ReportFormat } from "./types";
 
 interface TemplateCardGridProps {

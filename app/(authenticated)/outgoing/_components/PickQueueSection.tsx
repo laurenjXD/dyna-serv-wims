@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, PackageCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, PackageCheck } from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 
 type QueueMode = "pick" | "dispatch";

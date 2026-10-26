@@ -24,7 +24,7 @@ import {
   Lock,
   CheckCircle2,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { MasterInventoryItem, FlowTypeFilter } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 

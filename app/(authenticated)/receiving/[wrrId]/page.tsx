@@ -25,7 +25,7 @@ import { getWrrDocument, getWrrPutawayAllocations } from "@/lib/db/queries/recei
 import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
-import { FlaskConical, ChevronRight } from "lucide-react";
+import { FlaskConical, ChevronRight } from "@/components/ui/icons";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
 import { WrrDetailTabs } from "./_components/WrrDetailTabs";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";

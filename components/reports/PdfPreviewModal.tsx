@@ -8,7 +8,7 @@ import {
   FileText,
   ShieldCheck,
   Share2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";

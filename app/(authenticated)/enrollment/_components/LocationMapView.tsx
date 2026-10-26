@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ExternalLink, MapPinned, Search, X } from "lucide-react";
+import { ExternalLink, MapPinned, Search, X } from "@/components/ui/icons";
 import type { LocationMapRow } from "@/lib/db/queries/locations";
 import {
   WAREHOUSE_MAP_CELLS,

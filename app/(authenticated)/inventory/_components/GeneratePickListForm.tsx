@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { generatePickList, type GeneratePickListState } from "../_actions";
 import { DraImportModal } from "./DraImportModal";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet } from "@/components/ui/icons";
 
 type StockLine = {
   itemId: string;

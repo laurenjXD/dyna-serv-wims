@@ -12,7 +12,7 @@ import {
   Sliders,
   CheckCircle2,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { DynamicRole } from "@/app/(authenticated)/settings/team/actions";
 import { saveDynamicRole, deleteDynamicRole } from "@/app/(authenticated)/settings/team/actions";
 

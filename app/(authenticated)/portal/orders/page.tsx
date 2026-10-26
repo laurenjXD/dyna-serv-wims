@@ -22,7 +22,7 @@
 // AuthorizationContext.partyScopes via lib/portal/resolve-party-scope.ts —
 // never from a client-supplied party_id/flow_type.
 
-import { ListChecks } from "lucide-react";
+import { ListChecks } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";

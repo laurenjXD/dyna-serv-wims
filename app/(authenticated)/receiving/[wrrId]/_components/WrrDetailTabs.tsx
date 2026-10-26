@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Package, MapPin } from "lucide-react";
+import { Package, MapPin } from "@/components/ui/icons";
 import type { WrrPutawayAllocationRow } from "@/lib/db/queries/receiving";
 import { PutawayRoutingChecklist } from "./PutawayRoutingChecklist";
 

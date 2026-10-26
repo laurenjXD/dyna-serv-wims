@@ -11,7 +11,7 @@ import {
   Send,
   Loader2,
   Sparkles,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export interface DispositionOption {
   value: "store_as_is" | "inspect_further" | "flag_for_review";

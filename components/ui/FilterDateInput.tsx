@@ -1,4 +1,4 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays } from "@/components/ui/icons";
 import type { InputHTMLAttributes } from "react";
 
 export interface FilterDateInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "size"> {

@@ -20,7 +20,7 @@ import {
   AlertCircle,
   PieChart,
   Activity,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { WorkflowState } from "@/components/ui/WorkflowState";
 
 export interface OperationsDashboardProps {

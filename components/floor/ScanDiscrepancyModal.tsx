@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, X, Search, PlusCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, X, Search, PlusCircle, RefreshCw } from "@/components/ui/icons";
 
 interface ScanDiscrepancyModalProps {
   isOpen: boolean;

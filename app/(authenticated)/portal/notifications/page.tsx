@@ -32,7 +32,7 @@
 //   Filter/mark-read/mark-all-read actions below are presentational only —
 //   no server action exists yet for notification state mutation.
 
-import { Bell, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
+import { Bell, AlertTriangle, Info, CheckCircle2 } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";

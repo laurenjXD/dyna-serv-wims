@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Building2, ChevronRight } from "lucide-react";
+import { Building2, ChevronRight } from "@/components/ui/icons";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
 
 interface PartySummary {

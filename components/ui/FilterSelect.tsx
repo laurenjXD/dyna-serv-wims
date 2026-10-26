@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/ui/icons";
 import type { SelectHTMLAttributes } from "react";
 
 export interface FilterSelectOption {

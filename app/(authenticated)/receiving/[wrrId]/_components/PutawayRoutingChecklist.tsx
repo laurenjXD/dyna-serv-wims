@@ -9,7 +9,7 @@ import {
   RotateCcw,
   Layers,
   Filter,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { WrrPutawayAllocationRow } from "@/lib/db/queries/receiving";
 
 interface PutawayRoutingChecklistProps {

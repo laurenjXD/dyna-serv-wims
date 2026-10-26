@@ -1,6 +1,6 @@
 "use client";
 
-import { X, GitCommit, FileCode, Check } from "lucide-react";
+import { X, GitCommit, FileCode, Check } from "@/components/ui/icons";
 import type { SystemAuditEvent } from "@/app/(authenticated)/settings/security/actions";
 
 interface AuditDiffModalProps {

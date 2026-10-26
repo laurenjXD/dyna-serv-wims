@@ -2,7 +2,7 @@
 
 import React, { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Package, Building2 } from "lucide-react";
+import { Package, Building2 } from "@/components/ui/icons";
 import { DataTable } from "./DataTable";
 
 export type MasterInventoryRow = {

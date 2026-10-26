@@ -5,7 +5,7 @@
 // brand-design-system.md §3 (floor surface rules — mobile-first, no glassmorphism)
 
 import { useState } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, X } from "@/components/ui/icons";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 interface ReceivingCameraScannerProps {

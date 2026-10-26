@@ -10,7 +10,7 @@ import {
   ArrowUp,
   ArrowDown,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";
 import { VmiContractTermsModal } from "../vmi/contracts/_components/VmiContractTermsModal";
 import { TablePagination } from "@/components/ui/TablePagination";

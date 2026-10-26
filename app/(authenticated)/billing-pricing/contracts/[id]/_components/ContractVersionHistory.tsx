@@ -1,6 +1,6 @@
 "use client";
 
-import { History, CheckCircle2, Clock } from "lucide-react";
+import { History, CheckCircle2, Clock } from "@/components/ui/icons";
 interface ContractVersionHistoryProps {
   activeVersion?: {
     id?: string;

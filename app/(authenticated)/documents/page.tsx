@@ -10,7 +10,7 @@
 // Offline: Tier 2 — online only, never cached.
 
 import Link from "next/link";
-import { FileText, ShieldAlert } from "lucide-react";
+import { FileText, ShieldAlert } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";

@@ -15,7 +15,7 @@ import {
   Check,
   ChevronRight,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 
 const FLOW_LABELS: Record<string, { label: string; style: string }> = {

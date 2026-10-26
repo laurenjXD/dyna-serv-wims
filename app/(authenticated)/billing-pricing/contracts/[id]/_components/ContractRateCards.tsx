@@ -13,7 +13,7 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { PricingRuleRow } from "./ContractPricingRulesTable";
 import { LOGISTICS_RATE_MATRIX } from "@/lib/logistics/rate-matrix";
 

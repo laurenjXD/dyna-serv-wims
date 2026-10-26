@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Package, Plus, Barcode } from "lucide-react";
+import { Package, Plus, Barcode } from "@/components/ui/icons";
 import { DataTable } from "./DataTable";
 import type { ItemListRow } from "@/lib/db/queries/items";
 import { ExportDataButton } from "@/components/shared/ExportDataButton";

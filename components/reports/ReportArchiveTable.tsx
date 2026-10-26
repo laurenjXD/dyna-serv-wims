@@ -19,7 +19,7 @@ import {
   User,
   Clock,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { ReportArchiveItem } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";

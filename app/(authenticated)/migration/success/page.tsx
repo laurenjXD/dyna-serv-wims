@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ClipboardList, PackageCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, PackageCheck } from "@/components/ui/icons";
 
 type MigrationSuccessPageProps = {
   searchParams: Promise<{ rows?: string }>;

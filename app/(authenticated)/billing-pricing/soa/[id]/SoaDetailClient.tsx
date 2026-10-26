@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { ArrowLeft, Printer, Download, ChevronDown, ChevronUp, FileText } from "@/components/ui/icons";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";

@@ -21,7 +21,7 @@ import {
   WifiOff,
   XCircle,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { ShellState } from "@/lib/shell/state";
 
 function messageFor(state: ShellState): string {

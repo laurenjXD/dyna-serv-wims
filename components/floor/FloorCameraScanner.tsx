@@ -6,7 +6,7 @@
 // Used by any floor scan page that needs camera input (receiving, pick).
 
 import { useState } from "react";
-import { Camera, X } from "lucide-react";
+import { Camera, X } from "@/components/ui/icons";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 interface FloorCameraScannerProps {

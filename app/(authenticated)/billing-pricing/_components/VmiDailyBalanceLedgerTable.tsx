@@ -8,7 +8,7 @@ import {
   ArrowUp,
   ArrowDown,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { VmiDailyBalanceRow, VmiCbmLedgerRow } from "@/lib/billing/queries/vmi-ledger";
 import { PeriodCloseModal } from "../vmi/periods/_components/PeriodCloseModal";
 import { TablePagination } from "@/components/ui/TablePagination";

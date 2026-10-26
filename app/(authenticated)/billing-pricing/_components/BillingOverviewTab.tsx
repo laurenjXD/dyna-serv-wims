@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Building2, Package, Layers, Calendar, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Building2, Package, Layers, Calendar, AlertCircle, CheckCircle2, ArrowRight } from "@/components/ui/icons";
 import type { VmiCbmLedgerRow } from "@/lib/billing/queries/vmi-ledger";
 
 interface BillingOverviewTabProps {

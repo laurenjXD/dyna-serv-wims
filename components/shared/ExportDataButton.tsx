@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Download, FileSpreadsheet, FileText, ChevronDown } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, ChevronDown } from "@/components/ui/icons";
 import * as XLSX from "xlsx";
 
 export interface ExportColumnDef<T> {

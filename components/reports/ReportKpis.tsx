@@ -12,7 +12,7 @@ import {
   Warehouse,
   Receipt,
   Archive,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export interface ReportKpisProps {
   kpis?: {

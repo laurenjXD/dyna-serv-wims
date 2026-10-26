@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icons";
 
 export interface CheckboxProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {

@@ -30,7 +30,7 @@ import {
   ChevronRight,
   X,
   PieChart,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { TradingMarginRow, TradingCategoryPerformance } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 

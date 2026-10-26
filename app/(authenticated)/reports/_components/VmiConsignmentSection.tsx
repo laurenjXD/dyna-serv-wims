@@ -19,7 +19,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { ShieldCheck, AlertCircle, Users, Receipt } from "lucide-react";
+import { ShieldCheck, AlertCircle, Users, Receipt } from "@/components/ui/icons";
 import type {
   VendorScorecardRow,
   ConsignmentLiabilityAgingRow,

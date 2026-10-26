@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FileText, Plus, Eye, Search, Filter, Building2, Calendar, DollarSign } from "lucide-react";
+import { FileText, Plus, Eye, Search, Filter, Building2, Calendar, DollarSign } from "@/components/ui/icons";
 import type { VmiBillingPeriodRow } from "@/lib/billing/queries/vmi-ledger";
 import { PeriodCloseModal } from "../vmi/periods/_components/PeriodCloseModal";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";

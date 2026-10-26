@@ -32,7 +32,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 

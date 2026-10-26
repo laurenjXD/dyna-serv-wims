@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package } from "lucide-react";
+import { Package } from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 export type LotStatus = "staged" | "available" | "quarantined" | "depleted" | "expired";

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search } from "@/components/ui/icons";
 
 export type SearchableItemOption = {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Truck, FileText, Users, Plus, Save, Clock } from "lucide-react";
+import { Truck, FileText, Users, Plus, Save, Clock } from "@/components/ui/icons";
 import { logManpowerHoursAction } from "@/lib/actions/vmi-manpower";
 import type { VmiChargeLineRow, VmiManpowerSummary } from "@/lib/billing/queries/vmi-ledger";
 
