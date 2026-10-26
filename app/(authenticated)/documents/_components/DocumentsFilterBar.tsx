@@ -62,13 +62,13 @@ export function DocumentsFilterBar({
   );
 
   return (
-    <div className="mb-4 space-y-2.5 rounded-xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="mb-4 space-y-2.5 rounded-2xl border border-slate-200/80 bg-surface-white p-3 shadow-2xs">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         {/* Search input */}
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 flex-1">
           <Search
             size={15}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-grey"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-grey"
             aria-hidden="true"
           />
           <input
@@ -76,91 +76,104 @@ export function DocumentsFilterBar({
             placeholder="Search document #, reference, lot, organization..."
             value={currentSearch}
             onChange={(e) => updateParam("q", e.target.value)}
-            className="h-10 w-full rounded-lg border border-slate-200 bg-surface-white pl-8 pr-7 font-body text-body-sm text-on-surface placeholder:text-text-grey/60 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
+            className="h-10 w-full min-w-0 rounded-xl border border-border bg-surface-white pl-9 pr-8 font-body text-sm font-medium text-on-surface placeholder:text-text-grey/60 shadow-2xs focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy transition-colors"
           />
           {currentSearch && (
             <button
               type="button"
               onClick={() => updateParam("q", null)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-grey hover:text-on-surface p-0.5 rounded-full hover:bg-slate-100 transition-colors"
               aria-label="Clear search"
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           )}
         </div>
 
         {/* Organization dropdown */}
-        <FilterSelect
-          label="Organization"
-          value={currentParty}
-          onChange={(value) => updateParam("partyId", value)}
-          options={[
-            { value: "", label: "All Organizations" },
-            ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
-          ]}
-          className="sm:w-[320px]"
-        />
-
-        {/* Date Range Inputs */}
-        <div className="flex min-w-0 max-w-full items-center gap-1.5">
-          <div className="relative min-w-0 flex-1 sm:w-[130px] sm:flex-none">
-            <Calendar
-              size={13}
-              className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
-              aria-hidden="true"
-            />
-            <input
-              type="date"
-              value={currentFrom}
-              onChange={(e) => updateParam("from", e.target.value)}
-              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body !text-sm !leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
-              aria-label="Filter from date"
-            />
-          </div>
-          <span className="text-xs text-text-grey font-mono">-</span>
-          <div className="relative min-w-0 flex-1 sm:w-[130px] sm:flex-none">
-            <Calendar
-              size={13}
-              className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-grey"
-              aria-hidden="true"
-            />
-            <input
-              type="date"
-              value={currentTo}
-              onChange={(e) => updateParam("to", e.target.value)}
-              className="h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-surface-white px-2 pl-6 font-body !text-sm !leading-5 text-on-surface focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy"
-              aria-label="Filter to date"
-            />
-          </div>
+        <div className="w-full sm:w-[280px]">
+          <FilterSelect
+            label="Organization"
+            value={currentParty}
+            onChange={(value) => updateParam("partyId", value)}
+            options={[
+              { value: "", label: "All Organizations" },
+              ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
+            ]}
+            className="w-full"
+          />
         </div>
 
-        {/* Clear Filters CTA */}
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 px-2.5 font-body text-body-sm text-text-grey hover:bg-slate-50 hover:text-on-surface focus:outline-none focus:ring-1 focus:ring-brand-navy cursor-pointer transition-colors"
-          >
-            <X size={13} />
-            Reset
-          </button>
-        )}
+        {/* Date Range Inputs & Reset Action */}
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="grid grid-cols-2 gap-2 flex-1 sm:flex sm:items-center">
+            {/* From date */}
+            <label className="relative inline-flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-border bg-surface-white px-2.5 shadow-2xs focus-within:border-brand-navy focus-within:ring-1 focus-within:ring-brand-navy transition-colors sm:w-[140px] sm:flex-none">
+              <Calendar
+                size={13}
+                className="pointer-events-none shrink-0 text-text-grey"
+                aria-hidden="true"
+              />
+              <span className="shrink-0 font-body text-[11px] font-semibold uppercase leading-4 text-text-grey">
+                From:
+              </span>
+              <input
+                type="date"
+                value={currentFrom}
+                onChange={(e) => updateParam("from", e.target.value)}
+                className="h-8 w-full min-w-0 bg-transparent font-body text-xs sm:text-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
+                aria-label="Filter from date"
+              />
+            </label>
+
+            {/* To date */}
+            <label className="relative inline-flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-border bg-surface-white px-2.5 shadow-2xs focus-within:border-brand-navy focus-within:ring-1 focus-within:ring-brand-navy transition-colors sm:w-[140px] sm:flex-none">
+              <Calendar
+                size={13}
+                className="pointer-events-none shrink-0 text-text-grey"
+                aria-hidden="true"
+              />
+              <span className="shrink-0 font-body text-[11px] font-semibold uppercase leading-4 text-text-grey">
+                To:
+              </span>
+              <input
+                type="date"
+                value={currentTo}
+                onChange={(e) => updateParam("to", e.target.value)}
+                className="h-8 w-full min-w-0 bg-transparent font-body text-xs sm:text-sm font-semibold text-on-surface focus:outline-none cursor-pointer"
+                aria-label="Filter to date"
+              />
+            </label>
+          </div>
+
+          {/* Reset button: aligned with dates on mobile, and at end on desktop */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 px-3 font-body text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-colors shadow-2xs cursor-pointer active:scale-95"
+              title="Reset all filters"
+            >
+              <X size={14} />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Status filter pills */}
       {statusOptions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100">
-          <span className="mr-1 inline-flex items-center gap-1 font-body text-sm font-bold uppercase text-text-grey">
-            <Filter size={11} /> STATUS:
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-slate-100 pb-0.5 sm:flex-wrap">
+          <span className="shrink-0 mr-1 inline-flex items-center gap-1 font-body text-xs font-bold uppercase tracking-wider text-text-grey">
+            <Filter size={12} className="text-text-grey" /> Status:
           </span>
           <button
             type="button"
             onClick={() => updateParam("status", null)}
-            className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+            className={`h-8 shrink-0 rounded-full px-3 font-body text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               !currentStatus
-                ? "bg-slate-900 text-surface-white font-bold"
-                : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+                ? "bg-slate-900 text-surface-white font-bold shadow-2xs"
+                : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50 hover:text-on-surface"
             }`}
           >
             All
@@ -172,10 +185,10 @@ export function DocumentsFilterBar({
                 key={opt.value}
                 type="button"
                 onClick={() => updateParam("status", isSelected ? null : opt.value)}
-              className={`h-8 rounded-full px-3 font-body text-sm transition-colors cursor-pointer ${
+                className={`h-8 shrink-0 rounded-full px-3 font-body text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-brand-navy text-surface-white font-bold"
-                    : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50"
+                    ? "bg-brand-navy text-surface-white font-bold shadow-2xs"
+                    : "border border-slate-200 bg-surface-white text-text-grey hover:bg-slate-50 hover:text-on-surface"
                 }`}
               >
                 {opt.label}

@@ -194,15 +194,15 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       <div
         role="tablist"
         aria-label="Document archive sections"
-        className="mb-6 grid grid-cols-2 gap-1 border-b border-outline-variant/30 pb-px sm:grid-cols-3 lg:flex lg:gap-1"
+        className="mb-6 flex w-full items-center gap-1 overflow-x-auto border-b border-slate-200/80 pb-px scrollbar-none sm:gap-2 lg:gap-1"
       >
         {[
-          { key: "wrr", label: "WRRs & Receipts", count: wrrRows.length },
-          { key: "cipl", label: "Inbound CI/PL & Invoices", count: ciplRows.length },
-          { key: "pick-lists", label: "Pick Lists & DRA", count: pickListRows.length },
-          { key: "acknowledgement-receipts", label: "Delivery Receipts (POD / AR)", count: arRows.length },
-          { key: "soa", label: "Statements of Account (SOA)", count: soaRows.length },
-          { key: "reports", label: "Reports & Audit Logs", count: reportRows.length },
+          { key: "wrr", label: "WRRs & Receipts", shortLabel: "WRRs", count: wrrRows.length },
+          { key: "cipl", label: "Inbound CI/PL & Invoices", shortLabel: "CI/PL", count: ciplRows.length },
+          { key: "pick-lists", label: "Pick Lists & DRA", shortLabel: "Pick Lists", count: pickListRows.length },
+          { key: "acknowledgement-receipts", label: "Delivery Receipts (POD / AR)", shortLabel: "Receipts", count: arRows.length },
+          { key: "soa", label: "Statements of Account (SOA)", shortLabel: "SOA", count: soaRows.length },
+          { key: "reports", label: "Reports & Audit Logs", shortLabel: "Reports", count: reportRows.length },
         ].map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -211,27 +211,18 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
               href={`/documents?tab=${tab.key}`}
               role="tab"
               aria-selected={isActive}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-1 whitespace-nowrap border-b-2 px-1.5 text-center font-body text-xs font-bold leading-none tracking-normal transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy sm:px-2 lg:flex-1 lg:px-1 ${
+              className={`flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap border-b-2 px-3 text-center font-body text-xs sm:text-sm font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy lg:flex-1 ${
                 isActive
-                  ? "border-brand-navy text-brand-navy font-extrabold"
-                  : "border-transparent text-text-grey hover:border-slate-300 hover:text-on-surface"
+                  ? "border-brand-navy text-brand-navy font-bold -mb-px"
+                  : "border-transparent text-text-grey hover:border-slate-300 hover:text-on-surface -mb-px"
               }`}
             >
               <span>
-                <span className="sm:hidden">
-                  {{
-                    wrr: "WRRs",
-                    cipl: "CI/PL",
-                    "pick-lists": "Pick Lists",
-                    "acknowledgement-receipts": "Receipts",
-                    soa: "SOA",
-                    reports: "Reports",
-                  }[tab.key]}
-                </span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
                 <span className="hidden sm:inline">{tab.label}</span>
               </span>
               <span
-                className={`shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${
                   isActive
                     ? "bg-brand-navy text-white"
                     : "bg-slate-100 text-slate-600"
