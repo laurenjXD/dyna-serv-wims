@@ -319,7 +319,8 @@ export async function getActiveSupplierParties(
 ): Promise<SupplierPartyOption[]> {
   return listActivePartyOptions(
     db,
-    sql`${partyFlowRelationships.relationship}::text IN ('trading_supplier', 'vmi_customer')`,
+    sql`(${partyRoles.role}::text = 'supplier' OR ${partyFlowRelationships.relationship}::text = 'vmi_customer')`,
+    new Set(["supplier"]),
   );
 }
 
@@ -401,7 +402,7 @@ async function listActivePartyOptions(
         : role === "internal_supplies"
           ? "internal_supplies"
           : undefined;
-    if (allowedRoles && !allowedRoles.has(role)) continue;
+    if (allowedRoles && !allowedRoles.has(role) && relationship !== "vmi_customer") continue;
     const existing = map.get(row.id);
     if (!existing) {
       map.set(row.id, {
