@@ -326,6 +326,8 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 </span>
               )}
             </div>
+            {/* Keep the first desktop row aligned with Organization's helper copy. */}
+            <div aria-hidden="true" className="hidden h-[3.75rem] md:block" />
             <select
               id="flowType"
               name="flowType"
