@@ -46,6 +46,9 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
 
     setIsSaving(false);
     if (res.ok) {
+      // Data-URL previews are intentionally not persisted in Auth metadata;
+      // clear the local preview after saving so the UI matches the server.
+      if (avatarPreview?.startsWith("data:")) setAvatarPreview(null);
       setSaveStatus({ type: "success", message: "Profile details updated successfully." });
     } else {
       setSaveStatus({ type: "error", message: res.error || "Failed to update profile." });

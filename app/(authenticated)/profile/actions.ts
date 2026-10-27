@@ -305,12 +305,24 @@ export async function updateProfileDetails(input: {
     return { ok: false, error: "Not authenticated" };
   }
 
+  // Never persist an image data URL in Auth metadata. Supabase includes
+  // user_metadata in the access token, which is stored in the SSR cookie;
+  // a 50 KB image therefore turns every request into an oversized header.
+  // Avatar storage must use Supabase Storage and keep only a short URL/path
+  // in metadata. Treat an existing data URL as a cleanup request so a user
+  // can recover an account that was previously saved by the old form.
+  const persistedAvatarUrl = input.avatarUrl?.startsWith("data:")
+    ? null
+    : input.avatarUrl && input.avatarUrl.length <= 2048
+      ? input.avatarUrl
+      : null;
+
   const { error: metaError } = await supabase.auth.updateUser({
     data: {
       displayName: input.displayName,
       phone: input.phone,
       employee_id: input.employeeId,
-      avatar_url: input.avatarUrl,
+      avatar_url: persistedAvatarUrl,
     },
   });
 
