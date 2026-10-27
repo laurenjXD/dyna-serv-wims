@@ -122,7 +122,12 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       eq(lots.status, "available"),
       gt(sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}`, 0),
     ))
-    .orderBy(asc(items.code), asc(lots.expiryDate), asc(lots.createdAt))) as StockViewRow[];
+    .orderBy(
+      asc(items.code),
+      asc(lots.expiryDate),
+      asc(lots.createdAt),
+      asc(lotLocationBalances.id),
+    )) as StockViewRow[];
 }
 
 export type InventoryPositionSummary = {
