@@ -22,7 +22,6 @@ export function LocationCountSelector({
 }) {
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
-  const [stockFilter, setStockFilter] = useState<"with-stock" | "empty" | "all">("with-stock");
   const [countState, setCountState] = useState<"ready" | "active" | "all">("ready");
   const [selectedId, setSelectedId] = useState("");
 
@@ -35,15 +34,12 @@ export function LocationCountSelector({
     return locations.filter((location) => {
       const matchesQuery = !normalized || `${location.label ?? ""} ${location.zone}`.toLowerCase().includes(normalized);
       const matchesZone = zone === "all" || location.zone === zone;
-      const matchesStock = stockFilter === "all"
-        || (stockFilter === "with-stock" && location.stockLineCount > 0)
-        || (stockFilter === "empty" && location.stockLineCount === 0);
       const matchesCountState = countState === "all"
         || (countState === "ready" && location.activeSessionCount === 0)
         || (countState === "active" && location.activeSessionCount > 0);
-      return matchesQuery && matchesZone && matchesStock && matchesCountState;
+      return matchesQuery && matchesZone && location.stockLineCount > 0 && matchesCountState;
     });
-  }, [countState, locations, query, stockFilter, zone]);
+  }, [countState, locations, query, zone]);
   const selected = locations.find((location) => location.id === selectedId) ?? null;
 
   useEffect(() => {
@@ -93,18 +89,8 @@ export function LocationCountSelector({
             <option value="all">All locations</option>
           </select>
         </div>
-        <div>
-          <label htmlFor="cycle-count-stock" className="font-label text-label font-semibold text-text-grey">Stock state</label>
-          <select
-            id="cycle-count-stock"
-            value={stockFilter}
-            onChange={(event) => setStockFilter(event.target.value as typeof stockFilter)}
-            className="mt-2 h-12 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-body text-body-sm text-on-surface"
-          >
-            <option value="with-stock">With system stock</option>
-            <option value="empty">Empty locations</option>
-            <option value="all">Any stock state</option>
-          </select>
+        <div className="flex items-end">
+          <p className="w-full rounded-xl bg-surface-low px-3 py-3 font-body text-body-sm text-text-grey">Only locations with stock are shown.</p>
         </div>
       </div>
 
@@ -115,8 +101,12 @@ export function LocationCountSelector({
         <p className="font-body text-body-xs text-text-grey">Ready to count = stock present and no active session</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredLocations.map((location) => {
+      <div className="space-y-5">
+        {[...new Set(filteredLocations.map((location) => location.zone))].map((zoneName) => (
+          <section key={zoneName} aria-labelledby={`count-zone-${zoneName}`}>
+            <h3 id={`count-zone-${zoneName}`} className="mb-2 font-heading text-title-sm font-bold text-brand-navy">Zone {zoneName}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredLocations.filter((location) => location.zone === zoneName).map((location) => {
           const isSelected = selectedId === location.id;
           return (
             <button
@@ -139,12 +129,15 @@ export function LocationCountSelector({
               </p>
             </button>
           );
-          })}
+              })}
+            </div>
+          </section>
+        ))}
       </div>
 
       {filteredLocations.length === 0 && (
         <p className="rounded-xl border border-dashed border-outline-variant p-5 text-center font-body text-body-sm text-text-grey">
-          No locations match these filters. Try another search, choose another zone, or change the count/stock state.
+          No stocked locations match these filters. Try another location code, zone, or count state.
         </p>
       )}
 

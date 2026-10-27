@@ -87,10 +87,12 @@ export async function recordCycleCount(
   lineId: string,
   countedQty: number,
   note?: string,
+  zeroConfirmed = false,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<Result> {
   const perm = await requirePermission(resolver, "cycle_count.count");
   if (perm.kind !== "authorized" || !Number.isInteger(countedQty) || countedQty < 0) return { ok: false, reason: "invalid_count" };
+  if (countedQty === 0 && !zeroConfirmed) return { ok: false, reason: "zero_confirmation_required" };
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
     const [session] = await db.select({ status: cycleCountSessions.status }).from(cycleCountSessions).where(eq(cycleCountSessions.id, sessionId)).limit(1);
@@ -108,9 +110,10 @@ export async function recordCycleCount(
   return result.kind === "unauthenticated" ? { ok: false, reason: "forbidden" } : result.value;
 }
 
-export async function submitCycleCount(resolver: RequestAuthorizationResolver, sessionId: string, rlsDeps: RlsTransactionDeps = defaultRlsDeps): Promise<Result> {
+export async function submitCycleCount(resolver: RequestAuthorizationResolver, sessionId: string, missingLinesConfirmed = false, rlsDeps: RlsTransactionDeps = defaultRlsDeps): Promise<Result> {
   const perm = await requirePermission(resolver, "cycle_count.count");
   if (perm.kind !== "authorized") return { ok: false, reason: "forbidden" };
+  if (!missingLinesConfirmed) return { ok: false, reason: "missing_lines_confirmation_required", sessionId };
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
     const [session] = await db.select({ status: cycleCountSessions.status }).from(cycleCountSessions).where(eq(cycleCountSessions.id, sessionId)).limit(1);

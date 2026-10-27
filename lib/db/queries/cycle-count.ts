@@ -29,6 +29,8 @@ export type CycleCountLineRow = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  itemDescription: string | null;
+  uom: string;
   lotId: string;
   lotNumber: string;
   locationId: string;
@@ -95,6 +97,8 @@ export async function getCycleCountSession(db: DbLike, sessionId: string) {
     itemId: cycleCountLines.itemId,
     itemCode: items.code,
     itemName: items.name,
+    itemDescription: items.description,
+    uom: items.uom,
     lotId: cycleCountLines.lotId,
     lotNumber: lots.lotNumber,
     locationId: cycleCountLines.locationId,
@@ -120,7 +124,9 @@ export async function listCountLocations(db: DbLike) {
     systemQty: sql<number>`coalesce((select sum(${lotLocationBalances.qtyRemaining})::int from ${lotLocationBalances} where ${lotLocationBalances.locationId} = ${locations.id} and ${lotLocationBalances.qtyRemaining} > 0), 0)`,
     activeSessionCount: sql<number>`coalesce((select count(*)::int from ${cycleCountSessions} where ${cycleCountSessions.locationId} = ${locations.id} and ${cycleCountSessions.status} in ('counting', 'submitted', 'rejected')), 0)`,
   })
-    .from(locations).where(eq(locations.isActive, true)).orderBy(asc(locations.label));
+    .from(locations)
+    .where(eq(locations.isActive, true))
+    .orderBy(asc(locations.zone), asc(locations.label));
 }
 
 export async function listCountableBalances(db: DbLike, locationId: string) {

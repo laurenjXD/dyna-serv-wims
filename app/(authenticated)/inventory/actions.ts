@@ -109,11 +109,11 @@ export async function createCycleCountAction(formData: FormData): Promise<void> 
 }
 
 export async function recordCycleCountAction(formData: FormData): Promise<void> {
-  cycleCountRedirect(await recordCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), String(formData.get("lineId") ?? ""), Number(formData.get("countedQty")), String(formData.get("note") ?? "")));
+  cycleCountRedirect(await recordCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), String(formData.get("lineId") ?? ""), Number(formData.get("countedQty")), String(formData.get("note") ?? ""), formData.get("zeroConfirmed") === "yes"));
 }
 
 export async function submitCycleCountAction(formData: FormData): Promise<void> {
-  cycleCountRedirect(await submitCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? "")));
+  cycleCountRedirect(await submitCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), formData.get("missingLinesConfirmed") === "yes"));
 }
 
 export async function approveCycleCountAction(formData: FormData): Promise<void> {
