@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, CheckSquare, Square } from "lucide-react";
+import { CheckCircle2, CheckSquare, Square } from "@/components/ui/icons";
 import type { PickListItemRow } from "@/lib/db/queries/withdrawals";
 import { reportPickListShortage } from "../../../_actions";
 

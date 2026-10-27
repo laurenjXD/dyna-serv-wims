@@ -748,6 +748,32 @@ export async function selectPickUnit(
         return { ok: false as const, errors: ["invalid_status"] };
       }
 
+      // Migration-origin carton labels carry the durable inventory-unit ID.
+      // Resolve and reserve that exact carton instead of falling back to the
+      // shared lot/item QR behavior below.
+      let inventoryUnitId: string | null = null;
+      try {
+        const parsed = JSON.parse(scannedValue) as { type?: string; unit_id?: string };
+        if (parsed.type === "inventory_unit" && typeof parsed.unit_id === "string") inventoryUnitId = parsed.unit_id;
+      } catch {
+        // Ordinary item/lot QR values are handled by the shared path.
+      }
+      if (inventoryUnitId) {
+        const [unit] = (await db
+          .select({ id: inventoryUnits.id, lotId: inventoryUnits.lotId, locationId: inventoryUnits.locationId, status: inventoryUnits.status, pickListItemId: inventoryUnits.pickListItemId })
+          .from(inventoryUnits)
+          .where(eq(inventoryUnits.unitId, inventoryUnitId))
+          .limit(1)) as AnyRecord[];
+        if (!unit) return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
+        if (unit.status !== "available" || unit.pickListItemId) return { ok: false as const, errors: ["box_already_selected"] };
+        const line = lineRows.find((candidate) => candidate.lotId === unit.lotId && candidate.locationId === unit.locationId);
+        if (!line) return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
+        const selectedRows = (await db.select({ id: inventoryUnits.id }).from(inventoryUnits).where(and(eq(inventoryUnits.pickListItemId, line.id), eq(inventoryUnits.status, "selected")))) as AnyRecord[];
+        if (selectedRows.length >= Number(line.numberOfBoxes)) return { ok: false as const, errors: ["line_complete"] };
+        await db.update(inventoryUnits).set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() }).where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
+        return { ok: true as const, selectedCount: selectedRows.length + 1, requiredCount: Number(line.numberOfBoxes) };
+      }
+
       // The scan determines the target line. Like WRR receiving, one shared
       // item or lot QR may be scanned repeatedly. When an item appears on
       // multiple lines, scan the lot QR to target a specific lot; otherwise

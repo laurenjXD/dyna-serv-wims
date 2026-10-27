@@ -11,7 +11,7 @@ import {
   YAxis,
   ReferenceLine,
 } from "recharts";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink } from "@/components/ui/icons";
 import type { DeliveryConformanceTrendDatum } from "@/lib/analytics/queries/conformance";
 
 export interface DeliveryConformanceChartProps {

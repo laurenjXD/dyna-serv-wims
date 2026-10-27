@@ -6,7 +6,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export interface TablePaginationProps {
   // Option 1: 0-indexed TanStack style

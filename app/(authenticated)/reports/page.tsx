@@ -13,7 +13,7 @@
 // Offline: all analytics are Tier 2 — online only, never cached.
 // Aggregate queries MUST read lot_inventory_totals, never raw lot_location_balances.
 
-import { BarChart2 } from "lucide-react";
+import { BarChart2 } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { WarehouseReportsHub } from "@/components/reports/WarehouseReportsHub";

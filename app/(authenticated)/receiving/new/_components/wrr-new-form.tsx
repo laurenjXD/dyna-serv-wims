@@ -21,7 +21,7 @@ import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items"
 import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
-import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search, Upload } from "lucide-react";
+import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search, Upload } from "@/components/ui/icons";
 
 const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
 
@@ -326,6 +326,8 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 </span>
               )}
             </div>
+            {/* Keep the first desktop row aligned with Organization's helper copy. */}
+            <div aria-hidden="true" className="hidden h-[3.75rem] md:block" />
             <select
               id="flowType"
               name="flowType"

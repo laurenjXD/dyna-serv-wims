@@ -53,9 +53,9 @@ const config: Config = {
       },
       fontFamily: {
         // Dyna-Serv Brand Guidelines: Avenir Next / Inter / JetBrains Mono.
-        heading: ["Avenir Next", "Avenir", "sans-serif"],
-        body: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
-        label: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
+        heading: ["Etna Sans Serif", "DM Sans", "Avenir Next", "sans-serif"],
+        body: ["Glacial Indifference", "Inter", "Helvetica Neue", "Arial", "sans-serif"],
+        label: ["Glacial Indifference", "Inter", "Helvetica Neue", "Arial", "sans-serif"],
         mono: ["JetBrains Mono", "SFMono-Regular", "monospace"],
       },
       fontSize: {

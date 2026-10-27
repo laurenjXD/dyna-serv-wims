@@ -37,7 +37,7 @@
 // billing-statement gate below — not something silently faked here.
 
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";

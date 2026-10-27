@@ -8,7 +8,7 @@ import {
   Html5Qrcode,
   Html5QrcodeSupportedFormats,
 } from "html5-qrcode";
-import { RefreshCw, AlertCircle, Camera, Check } from "lucide-react";
+import { RefreshCw, AlertCircle, Camera, Check } from "@/components/ui/icons";
 import { useScannerSettings } from "./ScannerSettingsProvider";
 
 // R11 scoped exception: WAN:<uuid> is the only valid Code 128 payload.

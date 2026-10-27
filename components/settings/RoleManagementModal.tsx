@@ -5,7 +5,9 @@ import {
   X,
   Sliders,
   Info,
-} from "lucide-react";
+  CheckCircle2,
+  AlertCircle,
+} from "@/components/ui/icons";
 import type { DynamicRole } from "@/app/(authenticated)/settings/team/actions";
 
 const MODULE_NAMES = [

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Printer } from "lucide-react";
+import { Printer } from "@/components/ui/icons";
 
 export interface MasterDocumentHeaderProps {
   documentTitle: string;

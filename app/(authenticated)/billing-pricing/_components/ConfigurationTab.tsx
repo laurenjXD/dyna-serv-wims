@@ -2,7 +2,7 @@
 
 import React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FileText, Truck } from "lucide-react";
+import { FileText, Truck } from "@/components/ui/icons";
 import { LogisticsRateMatrixTable } from "./LogisticsRateMatrixTable";
 import { ContractTableClient, type ContractItem } from "../contracts/_components/ContractTableClient";
 import type { VmiContractTermsRow } from "@/lib/db/queries/vmi-contracts";

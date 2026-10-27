@@ -17,6 +17,8 @@ import { getEffectiveGeneralSettings } from "@/app/(authenticated)/settings/gene
 import { ScannerSettingsProvider } from "@/components/barcode/ScannerSettingsProvider";
 import { SessionIdleGuard } from "@/components/global/SessionIdleGuard";
 import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
+import { PageRoot } from "@/components/ui/Page";
+import { MobileTableEnhancer } from "@/components/ui/MobileTableEnhancer";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +39,15 @@ export default async function AuthenticatedLayout({
   return (
     <UserPreferencesProvider>
       <ScannerSettingsProvider settings={generalSettings.scanner}>
+        <MobileTableEnhancer />
         <SessionIdleGuard
           mobileIdleTimeoutMinutes={securitySettings.sessionConfig.mobileIdleTimeoutMinutes}
           desktopIdleTimeoutMinutes={securitySettings.sessionConfig.desktopIdleTimeoutMinutes}
         >
           <AuthenticatedShellBoundary initialResolution={initialResolution}>
-            <ShellChrome>{children}</ShellChrome>
+            <ShellChrome>
+              <PageRoot>{children}</PageRoot>
+            </ShellChrome>
           </AuthenticatedShellBoundary>
         </SessionIdleGuard>
       </ScannerSettingsProvider>

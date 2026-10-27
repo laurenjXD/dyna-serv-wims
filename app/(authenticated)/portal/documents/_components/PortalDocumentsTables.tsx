@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Download, CheckCircle2, Package } from "lucide-react";
+import { Download, CheckCircle2, Package } from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 export type DocStatus = "pending" | "generating" | "ready" | "failed" | "voided";

@@ -32,7 +32,7 @@ import {
   Database,
   Filter,
   SlidersHorizontal,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { ColumnFilter } from "./ColumnFilter";
 import { TablePagination } from "@/components/ui/TablePagination";
 

@@ -5,7 +5,13 @@ import {
   FileText,
   Play,
   Clock,
-} from "lucide-react";
+  CheckCircle2,
+  Share2,
+  Sparkles,
+  Layers,
+  ArrowRight,
+  FileSpreadsheet,
+} from "@/components/ui/icons";
 import type { PreBuiltTemplate, ReportFormat } from "./types";
 
 interface TemplateCardGridProps {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/ui/icons";
 
 export const SOA_STATUSES = ["Draft", "Issued", "Paid", "Archived"] as const;
 export type SoaStatus = (typeof SOA_STATUSES)[number];

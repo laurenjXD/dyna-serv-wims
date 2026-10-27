@@ -25,11 +25,12 @@ import { getWrrDocument, getWrrPutawayAllocations } from "@/lib/db/queries/recei
 import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
-import { FlaskConical, ChevronRight } from "lucide-react";
+import { FlaskConical, ChevronRight } from "@/components/ui/icons";
 import { CiplDocumentLink, type SignedUrlResult } from "./_components/CiplDocumentLink";
 import { WrrDetailTabs } from "./_components/WrrDetailTabs";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
+import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -379,8 +380,34 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   No line items on this WRR.
                 </p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
+            ) : (<>
+              <MobileDataCardList className="md:hidden">
+                {wrr.items.map((item: WrrItemRow) => {
+                  const spq = Number(item.spq) || 1;
+                  const isShortage = item.scannedQty < item.expectedQty && wrr.status === "confirmed";
+                  return (
+                    <MobileDataCard
+                      key={item.id}
+                      title={item.itemCode ?? "Unknown item"}
+                      subtitle={`Lot ${item.lotNumber}`}
+                      badge={<span className="rounded-full bg-surface-light-grey px-2 py-1 font-label text-xs font-bold text-text-secondary">SPQ {spq}</span>}
+                      fields={[
+                        { label: "Customer code", value: item.customerItemCode ?? "—" },
+                        { label: "Mfg. date", value: item.manufactureDate ?? "—" },
+                        { label: "Expiry date", value: item.expiryDate ?? "—" },
+                        { label: "Expected", value: `${item.expectedQty} boxes (${(item.expectedQty * spq).toLocaleString()} ${item.uom || "PCS"})` },
+                        { label: "Received", value: <span className={isShortage ? "font-bold text-status-held" : ""}>{item.scannedQty} boxes ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})</span> },
+                        { label: "Remarks", value: item.remarks ?? "—", className: "col-span-2" },
+                      ]}
+                    >
+                      <div className="mt-3 border-t border-border pt-3">
+                        <WRRUnitLabelGenerator wrrItemId={item.id} wrrNumber={wrr.wrrNumber} itemCode={item.itemCode ?? item.lotNumber} lotNumber={item.lotNumber} expectedQty={item.expectedQty} />
+                      </div>
+                    </MobileDataCard>
+                  );
+                })}
+              </MobileDataCardList>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b border-outline-variant/30 bg-surface-light-grey">
@@ -459,7 +486,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   </tbody>
                 </table>
               </div>
-            )}
+            </>)}
           </div>
         }
       />

@@ -3,7 +3,7 @@
 // Traceability: specs/06-party-and-item-enrollment/design.md §6a, §6a Movement Ledger
 
 import Link from "next/link";
-import { MapPinned } from "lucide-react";
+import { MapPinned } from "@/components/ui/icons";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { createPageResolver } from "@/lib/auth/page-resolver";

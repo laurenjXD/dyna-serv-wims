@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus } from "@/components/ui/icons";
 import { DataTable } from "./DataTable";
 import type { PartyListRow } from "@/lib/db/queries/parties";
 

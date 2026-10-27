@@ -8,7 +8,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Flame,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type {
   DateHorizon,
   VmiBillingRow,

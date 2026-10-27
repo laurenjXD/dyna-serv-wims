@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { FileText, Eye, Download, Share2, Paperclip } from "lucide-react";
+import { FileText, Eye, Download, Share2, Paperclip } from "@/components/ui/icons";
 import type { CiplArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";

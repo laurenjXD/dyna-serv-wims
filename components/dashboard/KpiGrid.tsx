@@ -11,7 +11,8 @@ import {
   Lock,
   ArrowRight,
   Layers,
-} from "lucide-react";
+  ArrowUpRight,
+} from "@/components/ui/icons";
 import type { DashboardKpiData } from "./types";
 
 interface KpiGridProps {

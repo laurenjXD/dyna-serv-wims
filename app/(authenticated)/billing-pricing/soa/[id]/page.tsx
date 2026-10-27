@@ -9,7 +9,7 @@
 //   6. Summary of Charges
 //   7. Detailed Warehousing Charges (Daily CBM Schedule)
 
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/ui/icons";
 import { notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";

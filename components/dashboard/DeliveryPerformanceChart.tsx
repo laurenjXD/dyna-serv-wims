@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { Clock, CheckCheck, ShieldAlert } from "lucide-react";
+import { Clock, CheckCheck, ShieldAlert } from "@/components/ui/icons";
 import type { DeliveryPerformanceDatum, DeliveryPerformanceMiniMetrics } from "./types";
 
 interface DeliveryPerformanceChartProps {

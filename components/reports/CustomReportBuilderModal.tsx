@@ -15,7 +15,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   ResponsiveContainer,
   BarChart,

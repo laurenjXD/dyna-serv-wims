@@ -20,7 +20,7 @@ import {
   Lock,
   Flame,
   Radio,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type {
   SecuritySettingsData,
   ActiveSessionItem,

@@ -4,7 +4,7 @@
 // periods (months/years), inspect aggregated charges, and open the full 7-schedule SOA document.
 
 import Link from "next/link";
-import { FileText, ArrowLeft, Calendar, Building2 } from "lucide-react";
+import { FileText, ArrowLeft, Calendar, Building2, CheckCircle2, ChevronRight } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";

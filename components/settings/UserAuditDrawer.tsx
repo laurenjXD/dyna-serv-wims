@@ -14,7 +14,7 @@ import {
   FileText,
   Clock,
   Wifi,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { TeamMember, UserAuditItem } from "@/app/(authenticated)/settings/team/actions";
 import { getUserAuditTrail, revokeUserSession } from "@/app/(authenticated)/settings/team/actions";
 

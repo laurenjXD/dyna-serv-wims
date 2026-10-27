@@ -10,7 +10,7 @@ import {
   ExternalLink,
   Eye,
   ShieldCheck,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { ReportArchiveRow } from "@/lib/db/queries/documents";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { PdfPreviewModal } from "@/components/reports/PdfPreviewModal";

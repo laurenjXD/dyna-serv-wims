@@ -7,7 +7,7 @@ import {
   Plus,
   ChevronDown,
   Search,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { DateHorizon } from "./types";
 
 interface ReportsHeaderProps {

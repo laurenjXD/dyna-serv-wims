@@ -19,13 +19,14 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { ShieldCheck, AlertCircle, Users, Receipt } from "lucide-react";
+import { ShieldCheck, AlertCircle, Users, Receipt } from "@/components/ui/icons";
 import type {
   VendorScorecardRow,
   ConsignmentLiabilityAgingRow,
   SellThroughComparisonDatum,
   VmiStockoutRiskRow,
 } from "@/lib/analytics/queries/vmi";
+import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 export type VmiConsignmentSectionProps = {
   vendorScorecards: VendorScorecardRow[];
@@ -324,7 +325,21 @@ export function VmiConsignmentSection({
             Unbilled consumed VMI stock grouped by aging since withdrawal date.
           </p>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <MobileDataCardList className="md:hidden -mx-1">
+          {liabilityTable.getRowModel().rows.length === 0 ? (
+            <p className="p-4 text-center font-body text-sm italic text-text-secondary">No active consignment liabilities recorded.</p>
+          ) : liabilityTable.getRowModel().rows.map((row) => {
+            const item = row.original;
+            return <MobileDataCard key={row.id} title={item.vendorName} fields={[
+              { label: "0–30 days", value: `₱${item.current0To30Days.toLocaleString()}` },
+              { label: "31–60 days", value: `₱${item.aging31To60Days.toLocaleString()}` },
+              { label: "61–90 days", value: `₱${item.aging61To90Days.toLocaleString()}` },
+              { label: "90+ days", value: `₱${item.aging90PlusDays.toLocaleString()}` },
+              { label: "Total liability", value: `₱${item.totalUnbilledLiability.toLocaleString()}`, className: "col-span-2" },
+            ]} />;
+          })}
+        </MobileDataCardList>
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               {liabilityTable.getHeaderGroups().map((headerGroup) => (
@@ -386,7 +401,21 @@ export function VmiConsignmentSection({
             Supplier ranking evaluated on quantity conformance and receipt discrepancy frequency.
           </p>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <MobileDataCardList className="md:hidden -mx-1">
+          {scorecardTable.getRowModel().rows.length === 0 ? (
+            <p className="p-4 text-center font-body text-sm italic text-text-secondary">No vendor scorecard data available.</p>
+          ) : scorecardTable.getRowModel().rows.map((row) => {
+            const item = row.original;
+            return <MobileDataCard key={row.id} title={item.vendorName} fields={[
+              { label: "WRR batches", value: item.wrrCount },
+              { label: "Received qty", value: item.totalReceivedQty.toLocaleString() },
+              { label: "Fill rate", value: `${item.fillRatePct}%` },
+              { label: "On-time", value: `${item.onTimeDeliveryPct}%` },
+              { label: "Discrepancies", value: item.discrepancyCount, className: "col-span-2" },
+            ]} />;
+          })}
+        </MobileDataCardList>
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               {scorecardTable.getHeaderGroups().map((headerGroup) => (

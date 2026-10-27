@@ -12,15 +12,16 @@ import {
 } from "@tanstack/react-table";
 import {
   Download,
-  Search,
   Share2,
   Archive,
   User,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { ReportArchiveItem } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { FilterSearchInput, FilterSelect, MobileDataCard, MobileDataCardList } from "@/components/ui";
 
 interface ReportArchiveTableProps {
   initialData?: ReportArchiveItem[];
@@ -208,44 +209,70 @@ export function ReportArchiveTable({
 
         {/* Filters Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search Report or Author..."
+          <div className="min-w-[220px] flex-1">
+            <FilterSearchInput
+              aria-label="Search reports"
+              placeholder="Search report or author"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-full rounded-xl border border-border bg-surface pl-9 pr-3 font-body text-xs text-text-primary placeholder:text-text-secondary focus:border-primary focus:outline-none"
+              onClear={() => setSearchTerm("")}
             />
           </div>
 
-          <select
+          <FilterSelect
+            label="Category"
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-9 rounded-xl border border-border bg-surface px-3 font-body text-xs text-text-primary focus:border-primary focus:outline-none"
-          >
-            <option value="ALL">All Categories</option>
-            <option value="Financial">Financial</option>
-            <option value="Settlement">Settlement</option>
-            <option value="Operations">Operations</option>
-            <option value="Inventory">Inventory</option>
-          </select>
+            onChange={setSelectedCategory}
+            options={[
+              { value: "ALL", label: "All Categories" },
+              { value: "Financial", label: "Financial" },
+              { value: "Settlement", label: "Settlement" },
+              { value: "Operations", label: "Operations" },
+              { value: "Inventory", label: "Inventory" },
+            ]}
+          />
 
-          <select
+          <FilterSelect
+            label="Format"
             value={selectedFormat}
-            onChange={(e) => setSelectedFormat(e.target.value)}
-            className="h-9 rounded-xl border border-border bg-surface px-3 font-body text-xs text-text-primary focus:border-primary focus:outline-none"
-          >
-            <option value="ALL">All Formats</option>
-            <option value="PDF">PDF Only</option>
-            <option value="CSV">CSV Only</option>
-            <option value="XLSX">XLSX Only</option>
-          </select>
+            onChange={setSelectedFormat}
+            options={[
+              { value: "ALL", label: "All Formats" },
+              { value: "PDF", label: "PDF Only" },
+              { value: "CSV", label: "CSV Only" },
+              { value: "XLSX", label: "XLSX Only" },
+            ]}
+          />
         </div>
       </div>
 
       {/* ── TanStack Table Container ────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      <MobileDataCardList className="md:hidden -mx-1">
+        {table.getRowModel().rows.length === 0 ? (
+          <p className="p-4 text-center font-body text-sm text-text-secondary">No archived reports match your query.</p>
+        ) : table.getRowModel().rows.map((row) => {
+          const item = row.original;
+          return (
+            <MobileDataCard
+              key={row.id}
+              title={item.reportName}
+              subtitle={item.generatedBy.name}
+              badge={<Badge size="sm" variant="neutral">{item.format}</Badge>}
+              fields={[
+                { label: "Category", value: item.category },
+                { label: "Period", value: item.dateRangeCovered },
+                { label: "Generated", value: item.generatedAt },
+                { label: "File size", value: item.fileSizeFormatted },
+              ]}
+              actions={<>
+                <button type="button" onClick={() => onPreviewReport(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 font-label text-sm font-bold text-brand-navy">View</button>
+                <button type="button" onClick={() => onDownloadReport(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-navy px-3 font-label text-sm font-bold text-white">Download</button>
+              </>}
+            />
+          );
+        })}
+      </MobileDataCardList>
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface md:block">
         <table className="w-full text-left border-collapse">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (

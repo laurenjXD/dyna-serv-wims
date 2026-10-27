@@ -15,8 +15,9 @@ import {
   Check,
   ChevronRight,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
+import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 const FLOW_LABELS: Record<string, { label: string; style: string }> = {
   vmi: {
@@ -86,8 +87,22 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">No deleted pick lists found.</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
+        ) : (<>
+          <MobileDataCardList className="md:hidden">
+            {rows.map((row: PickListRow) => (
+              <MobileDataCard
+                key={row.id}
+                title={row.pickListNumber}
+                subtitle={row.endCustomerPartyName || row.endCustomerPartyId}
+                badge={<span className="rounded-full bg-surface-light-grey px-2 py-1 font-label text-xs font-bold uppercase text-text-secondary">{row.flowType}</span>}
+                fields={[
+                  { label: "Deleted", value: row.deletedAt ? new Date(row.deletedAt).toLocaleString() : "—" },
+                ]}
+                actions={<Link href={`/pick-lists/${row.id}/print`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant/60 px-4 font-label text-sm font-bold text-on-surface"> <FileText size={15} /> View PDF</Link>}
+              />
+            ))}
+          </MobileDataCardList>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey/60">
@@ -139,7 +154,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
               </tbody>
             </table>
           </div>
-        )}
+        </>)}
       </section>
     );
   }
@@ -283,7 +298,25 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
       ) : (
         /* Data Table / Cards */
         <>
-          <div className="overflow-x-auto">
+          <MobileDataCardList className="md:hidden">
+            {filteredRows.map((row: PickListRow) => {
+              const flowConfig = FLOW_LABELS[row.flowType] ?? { label: row.flowType.toUpperCase(), style: "bg-surface-light-grey text-text-grey border-outline-variant/40" };
+              return (
+                <MobileDataCard
+                  key={row.id}
+                  title={row.pickListNumber}
+                  subtitle={<span className="flex items-center gap-1.5"><Building2 size={15} aria-hidden="true" />{row.endCustomerPartyName || row.endCustomerPartyId}</span>}
+                  badge={<span className={`rounded-full border px-2 py-1 font-label text-xs font-bold uppercase ${flowConfig.style}`}>{flowConfig.label}</span>}
+                  fields={[
+                    { label: "Created", value: row.createdAt ? new Date(row.createdAt).toLocaleString() : "—" },
+                    { label: "Status", value: "Ready to Pick" },
+                  ]}
+                  actions={<><Link href={`/pick-lists/${row.id}/print`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant/60 px-4 font-label text-sm font-bold text-on-surface"><FileText size={15} /> PDF</Link><Link href={`/pick-lists/${row.id}/dispatch`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 font-label text-sm font-bold text-white">Pick &amp; Dispatch <ArrowRight size={15} /></Link></>}
+                />
+              );
+            })}
+          </MobileDataCardList>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-light-grey/60">

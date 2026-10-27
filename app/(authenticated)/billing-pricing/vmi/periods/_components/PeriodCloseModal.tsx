@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { X, CheckCircle, Calculator, FileCheck, AlertCircle } from "lucide-react";
+import { X, CheckCircle, Calculator, FileCheck, AlertCircle } from "@/components/ui/icons";
 import { closeVmiPeriodAction, recordVmiPaymentAction } from "../_actions";
 
 type Option = { id: string; name: string; code: string };

@@ -28,7 +28,7 @@ import {
   CalendarDays,
   SlidersHorizontal,
   Filter,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { GroupedItem } from "./StockViewFilterableRegister";
 import { getItemAuditDetailAction } from "../_actions";
 import type { ItemDetail } from "@/lib/db/queries/items";

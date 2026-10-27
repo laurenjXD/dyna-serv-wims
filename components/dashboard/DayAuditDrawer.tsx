@@ -10,7 +10,8 @@ import {
   Lock,
   CheckCircle2,
   Activity,
-} from "lucide-react";
+  History,
+} from "@/components/ui/icons";
 import type { BinAuditRecord, HeatmapMetricView } from "./types";
 
 interface DayAuditDrawerProps {

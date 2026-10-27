@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 import type { CiplParseResult } from "@/lib/parsers/cipl-parser";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";

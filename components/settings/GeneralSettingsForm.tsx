@@ -23,7 +23,7 @@ import {
   Trash2,
   AlignLeft,
   AlignCenter,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { GeneralSettingsData } from "@/app/(authenticated)/settings/general/actions";
 import { saveGeneralSettings } from "@/app/(authenticated)/settings/general/actions";
 import { PhoneInputField } from "@/components/global/PhoneInputField";

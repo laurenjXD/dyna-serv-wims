@@ -1,6 +1,6 @@
 "use client";
 
-import { X, ShieldCheck, Check, Lock } from "lucide-react";
+import { X, ShieldCheck, Check, Lock } from "@/components/ui/icons";
 import type { PermissionCapability } from "@/app/(authenticated)/profile/actions";
 
 interface EffectivePermissionsModalProps {

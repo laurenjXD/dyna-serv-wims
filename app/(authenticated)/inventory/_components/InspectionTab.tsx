@@ -32,9 +32,10 @@ import {
   MapPin,
   CheckCheck,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { InspectionAndTransferQueueRow } from "@/lib/db/queries/transfers";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 const TYPE_BADGE: Record<
   InspectionAndTransferQueueRow["type"],
@@ -337,7 +338,33 @@ export function InspectionTab({ rows }: { rows: InspectionAndTransferQueueRow[] 
         data-testid="inspection-transfer-queue"
         className="overflow-hidden rounded-xl border border-border bg-surface shadow-card"
       >
-        <div className="overflow-x-auto">
+        <MobileDataCardList className="md:hidden">
+          {pagedRows.map((row) => {
+            const badge = TYPE_BADGE[row.type];
+            const statusCfg = STATUS_CONFIG[row.status] ?? { label: row.status.toUpperCase(), badgeClasses: "bg-surface-light-grey text-text-grey border border-border", dotColor: "bg-text-grey" };
+            const isFailed = row.status === "failed" || row.status === "quarantine" || row.status === "flagged";
+            const isOpen = row.status === "open" || row.status === "pending";
+            const action = row.type === "inspection"
+              ? isFailed
+                ? <button type="button" onClick={() => setActiveModalRow(row)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 font-label text-sm font-bold text-rose-800"><ShieldAlert size={15} /> Resolve / RTV <ChevronRight size={15} /></button>
+                : <Link href={row.href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 font-label text-sm font-bold text-brand-navy">{isOpen ? "Inspect Now" : "View Audit"}<ChevronRight size={15} /></Link>
+              : <Link href={row.href} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 font-label text-sm font-bold text-white">Execute <ChevronRight size={15} /></Link>;
+            return (
+              <MobileDataCard
+                key={row.id}
+                title={<Link href={row.href} className="text-brand-navy underline-offset-2 hover:underline">{row.title}</Link>}
+                badge={<span className={`rounded-full border px-2 py-1 font-label text-xs font-bold uppercase ${badge.classes}`}>{badge.label}</span>}
+                fields={[
+                  { label: "Item / Lot", value: row.itemCode ? `${row.itemCode}${row.lotNumber ? ` · Lot ${row.lotNumber}` : ""}` : "—" },
+                  { label: "Location / Partner", value: row.locationLabel || row.partyName || "Staging bay" },
+                  { label: "Status", value: <span className={`rounded-full border px-2 py-1 font-label text-xs font-bold uppercase ${statusCfg.badgeClasses}`}>{statusCfg.label}</span>, className: "col-span-2" },
+                ]}
+                actions={action}
+              />
+            );
+          })}
+        </MobileDataCardList>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-border bg-surface-light-grey/60">

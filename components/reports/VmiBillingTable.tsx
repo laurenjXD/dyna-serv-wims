@@ -17,10 +17,11 @@ import {
   Clock,
   Receipt,
   Search,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { VmiBillingRow } from "./types";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { Badge } from "@/components/ui/Badge";
+import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 interface VmiBillingTableProps {
   initialData?: VmiBillingRow[];
@@ -265,7 +266,44 @@ export function VmiBillingTable({
       </div>
 
       {/* ── TanStack Table View ─────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      <MobileDataCardList className="md:hidden -mx-1">
+        {table.getRowModel().rows.length === 0 ? (
+          <p className="p-4 text-center font-body text-sm text-text-secondary">No VMI billing clients match your search.</p>
+        ) : table.getRowModel().rows.map((row) => {
+          const item = row.original;
+          return (
+            <MobileDataCard
+              key={row.id}
+              title={item.clientName}
+              subtitle={`${item.clientCode} · ${item.contactPerson}`}
+              badge={<Badge size="sm" variant={item.billingStatus === "Ready to Invoice" ? "success" : item.billingStatus === "Draft Generated" ? "primary" : "neutral"}>{item.billingStatus}</Badge>}
+              fields={[
+                { label: "Allocated CBM", value: `${item.allocatedSpaceCbm} m³` },
+                { label: "Occupied CBM", value: `${item.occupiedCbm} m³` },
+                { label: "Utilization", value: `${item.utilizationPct}%` },
+                { label: "Rate / CBM / day", value: `$${item.contractedRatePerCbmDay}` },
+                { label: "MTD accrued", value: `$${item.mtdAccruedStorage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, className: "col-span-2" },
+              ]}
+              actions={<><button type="button" onClick={() => onAuditDwellTime(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 font-label text-sm font-bold text-brand-navy"><Clock size={15} /> Audit</button><Link href={`/billing-pricing/soa/${item.id || item.clientCode}?partyId=${item.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-navy px-3 font-label text-sm font-bold text-white"><FileText size={15} /> SOA</Link></>}
+            />
+          );
+        })}
+      </MobileDataCardList>
+      {filteredData.length > 0 && (
+        <div className="md:hidden">
+          <TablePagination
+            pageIndex={table.getState().pagination.pageIndex}
+            pageSize={table.getState().pagination.pageSize}
+            pageCount={table.getPageCount()}
+            totalCount={filteredData.length}
+            canPreviousPage={table.getCanPreviousPage()}
+            canNextPage={table.getCanNextPage()}
+            onPageChange={(p) => table.setPageIndex(p)}
+            onPageSizeChange={(newSize) => table.setPageSize(newSize)}
+          />
+        </div>
+      )}
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface md:block">
         <table className="w-full text-left border-collapse">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -29,6 +29,25 @@ if (typeof window !== "undefined" && !Object.prototype.hasOwnProperty.call(windo
   });
 }
 
+// jsdom does not implement matchMedia. Responsive components use it to choose
+// mobile behavior, so provide the browser-shaped API used by those effects.
+if (typeof window !== "undefined" && !window.matchMedia) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 afterEach(() => {
   cleanup();
 });

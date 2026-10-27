@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Filter, FileText, Plus } from "lucide-react";
+import { Search, Filter, FileText, Plus } from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
 
 export interface ContractItem {

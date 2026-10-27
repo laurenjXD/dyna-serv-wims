@@ -8,7 +8,7 @@ import {
   Flame,
   Clock,
   AlertOctagon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { HeatmapCellDatum, HeatmapMetricView, BinAuditRecord } from "./types";
 import { DayAuditDrawer } from "./DayAuditDrawer";
 

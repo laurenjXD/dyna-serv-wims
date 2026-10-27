@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { roleLabel } from "@/lib/user-settings/roles";
 import { InviteUserModal } from "./InviteUserModal";
 import { SuspendUserDialog } from "./SuspendUserDialog";

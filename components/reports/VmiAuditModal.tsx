@@ -5,7 +5,13 @@ import {
   X,
   Clock,
   Download,
-} from "lucide-react";
+  Building2,
+  Calendar,
+  Layers,
+  ArrowDownRight,
+  ArrowUpRight,
+  ShieldCheck,
+} from "@/components/ui/icons";
 import type { VmiBillingRow } from "./types";
 
 interface VmiAuditModalProps {

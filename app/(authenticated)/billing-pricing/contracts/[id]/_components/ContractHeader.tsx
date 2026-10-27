@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Plus, Building, Calendar, DollarSign, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Building, Calendar, DollarSign, Clock } from "@/components/ui/icons";
 import type { ContractDetailResult } from "@/lib/actions/contracts";
 
 interface ContractHeaderProps {

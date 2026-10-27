@@ -10,7 +10,7 @@ import {
   Search,
   Calendar,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 // Extend TanStack Table types with Dyna-Serv filterVariant metadata
 declare module "@tanstack/react-table" {

@@ -167,7 +167,7 @@ import {
   Link2,
   Smile,
   Strikethrough,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 function ContactPartyModal({
   partyId,

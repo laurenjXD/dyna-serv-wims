@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, User, Clock, AlertTriangle } from "lucide-react";
+import { ChevronLeft, User, Clock, AlertTriangle } from "@/components/ui/icons";
 import { eq, and } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";

@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X } from "@/components/ui/icons";
 
 export interface SearchInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {

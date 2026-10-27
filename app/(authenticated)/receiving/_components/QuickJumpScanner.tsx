@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Barcode, Camera, X } from "lucide-react";
+import { Barcode, Camera, X } from "@/components/ui/icons";
 import { MobileQRScanner } from "@/components/barcode/MobileQRScanner";
 
 export function QuickJumpScanner({ action }: { action: (formData: FormData) => void }) {

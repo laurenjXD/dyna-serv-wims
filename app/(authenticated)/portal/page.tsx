@@ -25,7 +25,7 @@
 // scope resolution and fails safe (renders nothing) when no scope exists.
 
 import Link from "next/link";
-import { Package, ListChecks, FileText, Receipt } from "lucide-react";
+import { Package, ListChecks, FileText, Receipt } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { partyScopeMatchesFlow } from "@/lib/rbac/session";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";

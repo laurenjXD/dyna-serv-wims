@@ -129,3 +129,15 @@ distributed physical quantities, `lot_inventory_totals` provides derived lot
 aggregates, and `inventory_commitments` / `inventory_commitment_lines` own
 durable outbound reservation state. No `stock_levels`, `warehouse_id`, or
 feature-specific reservation ledger is permitted.
+-
+#### Material Origin Organization / inherited Inventory Model amendment (2026-10-26)
+
+- [ ] Define the additive Material Origin Organization and inherited Inventory
+  Model compatibility contract, preserving existing item rows and legacy
+  `default_supplier_party_id` reads.
+- [ ] Verify `trading_supplier` maps to `trading` and `vmi_customer` maps to
+  `vmi`.
+- [ ] Verify receiving ownership: Trading maps to Dyna-Serv; VMI maps to the
+  VMI Customer.
+- [ ] Add real-Postgres and RLS verification for amended source selection and
+  stale or mismatched submissions.

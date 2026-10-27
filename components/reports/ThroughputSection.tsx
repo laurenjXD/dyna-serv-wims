@@ -13,8 +13,8 @@ import {
 } from "recharts";
 import {
   Warehouse,
-} from "lucide-react";
-import type { IntervalType, MovementThroughputDatum } from "./types";
+} from "@/components/ui/icons";
+import type { IntervalType, FlowSegment, MovementThroughputDatum, LocationOccupancyDatum } from "./types";
 
 interface ThroughputSectionProps {
   initialData?: MovementThroughputDatum[];

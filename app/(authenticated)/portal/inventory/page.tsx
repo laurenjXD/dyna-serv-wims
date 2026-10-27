@@ -21,7 +21,7 @@
 // never from a client-supplied party_id/flow_type. Task 2's full
 // multi-assignment switcher is not yet built; see that helper's docstring.
 
-import { Download, Package } from "lucide-react";
+import { Download, Package } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";

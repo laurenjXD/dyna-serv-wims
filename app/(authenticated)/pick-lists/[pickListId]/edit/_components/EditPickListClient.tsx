@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Save, ShieldCheck } from "lucide-react";
+import { ChevronLeft, Save, ShieldCheck } from "@/components/ui/icons";
 import { updateQueuedPickListLineItems } from "../../../_actions";
 import { TablePagination } from "@/components/ui/TablePagination";
 

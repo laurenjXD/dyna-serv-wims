@@ -12,7 +12,7 @@ import {
   Boxes,
   Layers,
   ArrowDownUp,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Badge, BadgeSize } from "./Badge";
 
 export type SemanticStatus =

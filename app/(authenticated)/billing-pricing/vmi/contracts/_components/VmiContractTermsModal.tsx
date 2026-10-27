@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useEffect } from "react";
-import { X, Save, AlertCircle } from "lucide-react";
+import { X, Save, AlertCircle } from "@/components/ui/icons";
 import { createVmiContractTermsAction } from "../_actions";
 
 type Option = { id: string; name: string; code: string };

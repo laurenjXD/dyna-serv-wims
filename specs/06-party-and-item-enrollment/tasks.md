@@ -259,3 +259,16 @@ The canonical business classifications now have explicit relationship meanings: 
 
 - [x] Product owner approval — Developer approval, 2026-10-22.
 - [x] Second approver approval — Developer approval, 2026-10-22.
+- [x] Material Origin Organization amendment (2026-10-26): permit only active
+  `trading_supplier` and `vmi_customer` relationships, derive the Inventory
+  Model from the selected relationship and persist the source/category
+  context, keep it read-only after selection, and preserve
+  Trading=Dyna-Serv ownership versus VMI=VMI-Customer ownership at receipt.
+- [x] Add the additive compatibility model and server validation; focused unit
+  coverage and TypeScript verification pass.
+- [ ] Complete real-Postgres/RLS and Playwright coverage for this amendment.
+- [x] Product Owner approval — User, 2026-10-26.
+- [x] Technical/data-model/RBAC review — bounded implementation uses the
+  existing `default_supplier_party_id` source reference and persisted category
+  `flow_type`; no destructive core-schema change is introduced.
+- [x] Second-approver approval — System standing approval, 2026-10-26.

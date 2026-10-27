@@ -64,7 +64,7 @@
  * roles here so every office page has the same visual scale. */
 main[data-surface="office"] h1,
 main[data-surface="party"] h1 {
-  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", sans-serif !important;
   font-size: 24px !important;
   line-height: 32px !important;
   font-weight: 700 !important;
@@ -73,7 +73,7 @@ main[data-surface="party"] h1 {
 
 main[data-surface="office"] h2,
 main[data-surface="party"] h2 {
-  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", sans-serif !important;
   font-size: 24px !important;
   line-height: 32px !important;
   font-weight: 700 !important;
@@ -81,7 +81,7 @@ main[data-surface="party"] h2 {
 
 main[data-surface="office"] h3,
 main[data-surface="party"] h3 {
-  font-family: "Avenir Next", "Avenir", sans-serif !important;
+  font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", sans-serif !important;
   font-size: 20px !important;
   line-height: 28px !important;
   font-weight: 700 !important;
@@ -128,7 +128,7 @@ html[data-theme="dark"] :is(.border-border, .border-outline-variant) {
   border-color: #475569;
 }
 
-html[data-theme="dark"] :is(input, select, textarea) {
+html[data-theme="dark"] :is(input, select, textarea):not([data-filter-control="true"]) {
   background-color: #111c2e;
   color: #f8fafc;
   border-color: #334155;
@@ -261,13 +261,31 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
    * legacy monospace styling. Codes and IDs continue to opt into font-mono. */
   [data-surface="office"] :is(.font-body, .font-label):not(.font-mono),
   [data-surface="party"] :is(.font-body, .font-label):not(.font-mono) {
-    font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+    font-family: "Glacial Indifference", Inter, "Helvetica Neue", Arial, sans-serif !important;
     letter-spacing: normal !important;
   }
 
   [data-surface="office"] :is(h1, h2, h3, h4, h5, h6),
   [data-surface="party"] :is(h1, h2, h3, h4, h5, h6) {
-    font-family: "Avenir Next", Avenir, Arial, sans-serif !important;
+    font-family: "Etna Sans Serif", "DM Sans", "Avenir Next", Arial, sans-serif !important;
+  }
+
+  /* Every authenticated route is wrapped by PageRoot. Keep page-level
+   * spacing and surface ownership consistent even when a feature page still
+   * contains legacy utility classes internally. */
+  [data-ui="page-root"] {
+    min-height: 100%;
+  }
+
+  [data-ui="page-container"] {
+    width: 100%;
+    max-width: 1280px;
+  }
+
+  [data-ui="mega-card"] {
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
   }
 
   main[data-surface="office"],
@@ -275,8 +293,8 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
     @apply bg-background text-text-primary;
   }
 
-  main[data-surface="office"] :is(input, select, textarea),
-  main[data-surface="party"] :is(input, select, textarea) {
+  main[data-surface="office"] :is(input, select, textarea):not([data-filter-control="true"]),
+  main[data-surface="party"] :is(input, select, textarea):not([data-filter-control="true"]) {
     @apply rounded-lg border border-border bg-surface font-body text-body-md text-text-primary shadow-sm outline-none placeholder:text-text-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20;
   }
 
@@ -367,6 +385,88 @@ html:not([data-theme="dark"]) .inspection-page [class~="bg-white/15"] {
 .scrollbar-none {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
+}
+
+/*
+ * Interactive data tables become individually labeled cards on handheld
+ * screens. The client enhancer adds each column's accessible label to its
+ * cells; print/document tables opt out with data-document-table.
+ */
+@media (max-width: 639px) {
+  :is(.overflow-x-auto, [class*="overflow-x-auto"]):has(> table[data-mobile-card-table]) {
+    overflow: visible !important;
+  }
+
+  table[data-mobile-card-table] {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+  }
+
+  table[data-mobile-card-table] thead {
+    display: none !important;
+  }
+
+  table[data-mobile-card-table] tbody {
+    display: grid !important;
+    gap: 0.75rem;
+  }
+
+  table[data-mobile-card-table] tr {
+    display: grid !important;
+    min-width: 0 !important;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 0.75rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  table[data-mobile-card-table] td {
+    display: grid !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(6.5rem, 38%) minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: start;
+    overflow-wrap: anywhere;
+    border: 0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 0.65rem 0 !important;
+    text-align: left !important;
+  }
+
+  table[data-mobile-card-table] td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  table[data-mobile-card-table] td::before {
+    content: attr(data-mobile-label);
+    min-width: 0;
+    color: #64748b;
+    font-family: var(--font-glacial, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  table[data-mobile-card-table] td > * {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  table[data-mobile-card-table] td[colspan] {
+    display: block !important;
+  }
+
+  table[data-mobile-card-table] td[colspan]::before {
+    content: none;
+  }
 }
 
 /*

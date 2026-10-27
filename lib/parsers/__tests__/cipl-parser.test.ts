@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import ExcelJS from "exceljs";
 import { parseCiplDocument } from "../cipl-parser";
 
@@ -31,5 +33,17 @@ describe("cipl-parser", () => {
     const result = await parseCiplDocument(Buffer.from("dummy"), "document.txt");
     expect(result.ok).toBe(false);
     expect(result.errors[0]).toContain("Unsupported file format");
+  });
+
+  it("parses the supplied production CIPL sample (.xls)", async () => {
+    const fixture = resolve(process.cwd(), "test-samples", "CIPL PR260030P_Phil whse (08-05).xls");
+    const result = await parseCiplDocument(readFileSync(fixture), "CIPL PR260030P_Phil whse (08-05).xls");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.rows.length).toBeGreaterThan(0);
+      expect(result.header.ciplReference).toBeTruthy();
+      expect(result.rows.some((row) => Number(row.expectedQty) > 0)).toBe(true);
+    }
   });
 });

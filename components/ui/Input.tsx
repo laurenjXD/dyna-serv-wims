@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useRef } from "react";
-import { X, AlertCircle } from "lucide-react";
+import { X, AlertCircle } from "@/components/ui/icons";
 
 export type InputSize = "sm" | "md" | "lg" | "floor";
 

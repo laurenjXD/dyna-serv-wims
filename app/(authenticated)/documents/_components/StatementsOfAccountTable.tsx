@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Lock, FileText, Download, Share2, Eye } from "lucide-react";
+import { Lock, FileText, Download, Share2, Eye } from "@/components/ui/icons";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";

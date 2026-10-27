@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Save, AlertCircle, Loader2 } from "lucide-react";
+import { Save, AlertCircle, Loader2 } from "@/components/ui/icons";
 
 interface Organization {
   id: string;

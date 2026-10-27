@@ -184,3 +184,13 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
 - Every mutating floor command SHALL have a stable operation identity and
   return the original authoritative result on a safe retry after a lost
   response. It SHALL never apply stock movement twice.
+-
+### Material Origin Organization amendment (2026-10-26)
+
+Material Enrollment may select an active Organization with either the
+`trading_supplier` or `vmi_customer` relationship and derive the Material's
+default Inventory Model from that relationship. This is an enrollment default,
+not the authoritative physical stock-owner field. At receipt, Trading lots are
+owned by Dyna-Serv and VMI lots are owned by the selected VMI Customer. The
+additive compatibility contract and migration path for this default belong to
+the reapproved `06-party-and-item-enrollment` amendment.

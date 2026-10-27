@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart2, RefreshCw } from "lucide-react";
+import { BarChart2, RefreshCw } from "@/components/ui/icons";
 import Link from "next/link";
 
 export default function ReportsError({

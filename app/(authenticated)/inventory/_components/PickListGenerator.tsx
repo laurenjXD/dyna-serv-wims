@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronRight, MapPin, PackageCheck, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ChevronRight, MapPin, PackageCheck, ShieldCheck } from "@/components/ui/icons";
 
 type Pallet = {
   balanceId: string;

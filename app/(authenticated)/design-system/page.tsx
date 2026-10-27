@@ -58,7 +58,7 @@ import {
   AlertOctagon,
   Boxes,
   Info,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   ElseIcon,
   EfeIcon,

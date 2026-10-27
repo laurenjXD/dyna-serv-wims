@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MapPin, MapPinned, Plus, Layers } from "lucide-react";
+import { MapPin, MapPinned, Plus, Layers } from "@/components/ui/icons";
 import { DataTable } from "./DataTable";
 import type { LocationListRow } from "@/lib/db/queries/locations";
 import { ExportDataButton } from "@/components/shared/ExportDataButton";

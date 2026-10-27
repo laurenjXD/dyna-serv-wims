@@ -30,7 +30,7 @@ import { signOutAction } from "@/app/(authenticated)/actions";
 import { AccountTab } from "./AccountTab";
 import { SecurityTab } from "./SecurityTab";
 import { PreferencesTab } from "./PreferencesTab";
-import { User, ShieldAlert, Sliders, LogOut, Lock, KeyRound } from "lucide-react";
+import { User, ShieldAlert, Sliders, LogOut, Lock, KeyRound } from "@/components/ui/icons";
 
 export function ProfileContainer({ profile, mfaRequiredByPolicy = false }: { profile: OwnProfile; mfaRequiredByPolicy?: boolean }) {
   return (
