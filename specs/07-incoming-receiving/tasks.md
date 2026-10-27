@@ -1,7 +1,7 @@
 # Incoming Receiving — Implementation Plan
 
 Status: Approved
-Updated: 2026-10-27 (Product Owner quantity contract amendment: explicit carton quantity plus total-unit expected quantity) — resolves carton-label count ambiguity.
+Updated: 2026-10-27 (Product Owner quantity and inherited Inventory Model amendments) — resolves carton-label and WRR model-selection ambiguity.
 
 ## Implementation gate
 
@@ -43,9 +43,10 @@ Testing: Documentation/schema review; no implementation tests.
 - [x] Define the exact receipt commit invariant: what must be complete before confirmation and what can remain pending for putaway. — Defined in design.md §9: all scan totals, conformance decisions, and disposition values must be valid; putaway is a post-commit handoff, not a commit prerequisite.
 - [x] Define whether non-conformant quantities can be committed to a non-available state or must remain outside the committed receipt. — Defined: `inspect` disposition commits the quantity as a `quarantined` lot at the `inspection` location (non-available); `returned_to_vendor` action in `wrr_inspection_logs` means the line is not committed at all (design.md §7, §8).
 - [ ] Define party/flow and item activation rules at staging, scanning, and commit time.
-- [x] **Added 2026-10-22:** Adopt the flow-specific WRR source-Organization matrix: VMI Customer for VMI, Supplier for Trading, and Internal Supplies for Supplies. Require exact active relationships, conservative Supplies auto-defaulting, stale-form clearing, and server-side repeat validation.
+- [x] **Added 2026-10-22, amended 2026-10-27:** Adopt the flow-specific WRR source-Organization matrix: VMI Customer for VMI, Supplier for Trading, and Internal Supplies for Supplies. The WRR inherits the model from the Organization and provides no override; missing or ambiguous relationships block staging with a recovery state.
 - [x] **Added 2026-10-27:** Correct the quantity grain: store only total base-unit `expected_qty` from the WRR/CIPL, derive complete-carton QR count as `expected_qty / enrolled items.spq`, retain `scanned_qty` as accepted scanned cartons, and use that derived count for QR generation, scan ceilings, putaway allocations, and physical carton rows. Do not add an expected-carton field to the WRR.
 - [x] **Added 2026-10-27:** Resolve quantity edge cases explicitly: missing/unresolved item or SPQ blocks label generation and commit; a non-divisible total blocks until the total/item packaging is corrected; duplicate labels remain idempotent; under-scan is a shortage; over-scan is rejected; mixed/partial packaging requires separate lines or a future approved packaging override.
+- [x] **Added 2026-10-27:** Test and enforce Organization-derived WRR Inventory Model inheritance, including stale/direct payload tampering, inactive organizations, no relationship, and multiple active model relationships.
 - [ ] Record cross-cutting decisions in `specs/00-steering/revision-log.md`.
 
 ### 2. Define authorization, audit, and infrastructure contracts
@@ -214,3 +215,5 @@ Testing: Full applicable matrix below.
 - [x] One-QR line confirmation and per-box Missing placement amendment approval — Second approver: System (standing auto-sign-off), 2026-09-02
 - [x] Explicit carton quantity / total-unit expected quantity amendment approval — Product owner: User, 2026-10-27
 - [x] Explicit carton quantity / total-unit expected quantity amendment approval — Second approver: System (standing auto-sign-off), 2026-10-27
+- [x] Organization-inherited Inventory Model amendment approval — Product owner: User, 2026-10-27
+- [x] Organization-inherited Inventory Model amendment approval — Second approver: System (standing auto-sign-off), 2026-10-27

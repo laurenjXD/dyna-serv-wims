@@ -70,10 +70,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
     return !query || `${party.code} ${party.name}`.toLowerCase().includes(query);
   });
   const selectedVendor = vendorParties.find((party) => party.id === vendorPartyId);
-  const selectedRelationships = selectedVendor?.relationships ?? (selectedVendor?.relationship ? [selectedVendor.relationship] : []);
-  const availableModels = selectedRelationships
-    .map((relationship) => relationship === "vmi_customer" ? "vmi" : relationship === "internal_supplies" ? "supplies" : "trading")
-    .filter((model, index, models): model is "vmi" | "trading" | "supplies" => models.indexOf(model) === index);
+  const inheritedModel = selectedVendor?.defaultInventoryModel ?? "";
 
   return (
     <form action={action} className="mt-6 space-y-6">
@@ -203,6 +200,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
                 onChange={(event) => {
                   setVendorSearch(event.target.value);
                   setVendorPartyId("");
+                  setFlowType("");
                   setIsVendorOpen(true);
                 }}
                 className="h-11 w-full rounded-lg border border-slate-200 bg-surface-white pl-9 pr-9 font-body text-body-md text-on-surface disabled:cursor-not-allowed disabled:bg-surface-light-grey focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
@@ -268,7 +266,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
             )}
           </div>
 
-          {/* Inventory Model — auto-assigned conditionally from party role */}
+          {/* Inventory Model — inherited from the selected Organization */}
           <div>
             <div className="flex items-center justify-between">
               <label
@@ -281,31 +279,18 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
                 </span>
                 <span className="sr-only">(required)</span>
               </label>
-              {selectedVendor?.defaultInventoryModel && flowType === selectedVendor.defaultInventoryModel && (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Auto-assigned from role
-                </span>
-              )}
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Inherited from organization
+              </span>
             </div>
             <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">
-              Choose the model permitted by the organization&apos;s receiving relationship.
+              The Inventory Model is inherited from the organization&apos;s active receiving relationship and cannot be overridden here.
             </p>
-            <div className="relative mt-1">
-              <select
-                id="flowType"
-                name="flowType"
-                required
-                value={flowType}
-                onChange={(e) => setFlowType(e.target.value)}
-                className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-              >
-                <option value="">Select inventory model…</option>
-                {availableModels.includes("vmi") && <option value="vmi">VMI (Consignment)</option>}
-                {availableModels.includes("trading") && <option value="trading">Trading (Owned)</option>}
-                {availableModels.includes("supplies") && <option value="supplies">Supplies</option>}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
+            <div className={`mt-1 flex h-11 items-center justify-between rounded-lg border px-3 font-body text-body-md ${inheritedModel ? "border-emerald-200 bg-emerald-50/60 text-on-surface" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+              <span>{inheritedModel === "vmi" ? "VMI (Consignment)" : inheritedModel === "trading" ? "Trading (Owned)" : inheritedModel === "supplies" ? "Supplies" : "Select an organization with one active receiving model"}</span>
+              {inheritedModel && <span className="font-label text-xs font-bold uppercase tracking-wide text-emerald-700">Auto</span>}
             </div>
+            <input type="hidden" id="flowType" name="flowType" value={inheritedModel} required />
           </div>
 
           {/* Commercial Invoice No — optional */}

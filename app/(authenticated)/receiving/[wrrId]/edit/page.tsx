@@ -6,6 +6,7 @@ import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import { getActiveWrrOrganizations } from "@/lib/db/queries/items";
 import { updateWrrHeader, updateWrrLines } from "@/lib/actions/receiving";
+import { WrrHeaderFields } from "./_components/WrrHeaderFields";
 
 export default async function EditWrrPage({ params }: { params: Promise<{ wrrId: string }> }) {
   const { wrrId } = await params;
@@ -50,8 +51,7 @@ export default async function EditWrrPage({ params }: { params: Promise<{ wrrId:
       <h1 className="font-heading text-headline-md font-extrabold text-on-surface">Edit WRR</h1>
       <p className="mt-1 font-body text-body-md text-text-grey">You can edit a staged WRR before receiving starts. Expected lines are locked after scan labels are used.</p>
     <form action={save} className="mt-6 w-full space-y-4 rounded-xl bg-surface-white p-6 shadow-elevation-1">
-      <label className="block font-label text-label text-text-grey">Organization<select name="vendorPartyId" defaultValue={wrr.vendorPartyId} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface">{vendors.map((vendor) => <option key={`${vendor.id}:${vendor.relationship ?? "legacy"}`} value={vendor.id}>{vendor.code} — {vendor.name} ({vendor.relationship === "vmi_customer" ? "Customer · VMI" : vendor.relationship === "trading_customer" ? "Customer · Trading" : "Supplier · Trading"})</option>)}</select></label>
-      <label className="block font-label text-label text-text-grey">Inventory Model<select name="flowType" defaultValue={wrr.flowType} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface"><option value="vmi">VMI</option><option value="trading">Trading</option><option value="supplies">Supplies</option></select></label>
+      <WrrHeaderFields vendors={vendors} initialVendorPartyId={wrr.vendorPartyId} initialFlowType={wrr.flowType as "vmi" | "trading" | "supplies"} />
       <label className="block font-label text-label text-text-grey">Commercial Invoice No.<input name="commercialInvoiceNo" defaultValue={wrr.commercialInvoiceNo ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label>
       <label className="block font-label text-label text-text-grey">IP Number<input name="ipNumber" defaultValue={wrr.ipNumber ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label>
       <label className="block font-label text-label text-text-grey">MAWB / MBL Number<input name="mawbMblNumber" defaultValue={wrr.mawbMblNumber ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label>

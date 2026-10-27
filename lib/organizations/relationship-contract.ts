@@ -30,6 +30,32 @@ export const OUTBOUND_CUSTOMER_RELATIONSHIP_BY_MODEL: Partial<Record<InventoryMo
   supplies: "internal_supplies",
 };
 
+/**
+ * Resolves the one receiving Inventory Model inherited from an Organization.
+ * A WRR must never let the client choose a model that differs from the
+ * Organization's active receiving relationship. Ambiguous configuration is a
+ * recoverable master-data error, not a reason to guess.
+ */
+export function resolveReceivingInventoryModel(
+  rows: OrganizationRelationshipRow[],
+  organizationId: string,
+): { ok: true; inventoryModel: InventoryModel } | { ok: false; error: string } {
+  const organizationRows = rows.filter((row) => row.id === organizationId);
+  if (organizationRows.length === 0 || organizationRows.every((row) => !row.isActive)) {
+    return { ok: false, error: "organization_inactive_or_not_found" };
+  }
+
+  const activeRelationships = activeOrganizationRelationships(organizationRows);
+  const models = new Set<InventoryModel>();
+  for (const [model, relationship] of Object.entries(RECEIVING_RELATIONSHIP_BY_MODEL) as Array<[InventoryModel, OrganizationRelationship]>) {
+    if (activeRelationships.has(relationship)) models.add(model);
+  }
+
+  if (models.size === 0) return { ok: false, error: "organization_relationship_required" };
+  if (models.size > 1) return { ok: false, error: "organization_inventory_model_ambiguous" };
+  return { ok: true, inventoryModel: [...models][0] };
+}
+
 export function normalizeOrganizationRole(role: string): string {
   return role === "vendor"
     ? "supplier"

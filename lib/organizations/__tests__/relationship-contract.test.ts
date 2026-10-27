@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveReceivingInventoryModel,
   validateOutboundOrganization,
   validateReceivingOrganization,
   validateVmiEndCustomer,
@@ -17,6 +18,20 @@ describe("organization relationship contract", () => {
   it("accepts a supplier only for Trading receiving", () => {
     expect(validateReceivingOrganization([row("supplier")], "org-1", "trading")).toEqual({ ok: true });
     expect(validateReceivingOrganization([row("supplier")], "org-1", "vmi").ok).toBe(false);
+  });
+
+  it("resolves the WRR model from the organization's single active receiving relationship", () => {
+    expect(resolveReceivingInventoryModel([row("customer", "vmi_customer")], "org-1")).toEqual({
+      ok: true,
+      inventoryModel: "vmi",
+    });
+  });
+
+  it("blocks an organization with multiple active receiving models instead of guessing", () => {
+    expect(resolveReceivingInventoryModel([
+      row("customer", "vmi_customer"),
+      row("supplier", "trading_supplier"),
+    ], "org-1")).toEqual({ ok: false, error: "organization_inventory_model_ambiguous" });
   });
 
   it("accepts Internal Supplies as a role-only Supplies relationship", () => {
