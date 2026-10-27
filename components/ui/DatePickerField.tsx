@@ -158,7 +158,7 @@ export function DatePickerField({
         <div
           role="dialog"
           aria-label="Choose date"
-          className="absolute left-0 top-full z-50 mt-1 w-[18rem] rounded-xl border border-slate-200 bg-surface-white p-3 shadow-elevation-4"
+          className="absolute left-0 top-full z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-surface-white p-3 shadow-elevation-4"
         >
           <div className="flex items-center gap-1.5">
             <button
@@ -169,14 +169,14 @@ export function DatePickerField({
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
-            <div className="grid min-w-0 flex-1 grid-cols-[1fr_5.5rem] gap-1.5">
+            <div className="grid min-w-0 flex-1 grid-cols-[minmax(6rem,1fr)_5rem] gap-1.5 sm:grid-cols-[minmax(8rem,1fr)_6.5rem]">
               <label className="relative">
                 <span className="sr-only">Month</span>
                 <select
                   aria-label="Month"
                   value={viewMonthIndex}
                   onChange={(event) => setViewMonth(monthStart(viewYear, Number(event.target.value) + 1))}
-                  className="h-9 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white px-2 pr-7 font-label text-sm font-bold text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                  className="h-9 w-full min-w-0 appearance-none rounded-lg border border-slate-200 bg-surface-white px-2 pr-7 font-label text-sm font-bold text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
                 >
                   {MONTHS.map((month, index) => <option key={month} value={index}>{month}</option>)}
                 </select>
