@@ -5,9 +5,8 @@
 //   MOM Section J — Professional Dyna-Serv document template with logo & internal CBM redaction
 //   specs/07-incoming-receiving/design.md §5.3
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Download, FileSpreadsheet, Printer } from "@/components/ui/icons";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -86,13 +85,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
 
       {/* Screen Toolbar */}
       <div className="print-hide mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4 shadow-elevation-1">
-        <Link
-          href={`/receiving/${wrrId}`}
-          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/40 bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-        >
-          <ChevronLeft size={18} aria-hidden="true" />
-          Back to WRR
-        </Link>
+        <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent className="mb-0" />
         <div className="flex items-center gap-3">
           <PrintButton />
         </div>

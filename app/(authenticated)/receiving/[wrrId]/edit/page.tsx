@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -44,11 +44,12 @@ export default async function EditWrrPage({ params }: { params: Promise<{ wrrId:
     redirect(result.ok ? `/receiving/${wrrId}` : `/receiving/${wrrId}/edit`);
   }
 
-  return <div className="mx-auto max-w-container">
-    <Link href={`/receiving/${wrrId}`} className="inline-flex h-11 items-center font-label text-label text-brand-navy">← Back to {wrr.wrrNumber}</Link>
-    <h1 className="mt-3 font-heading text-headline-md font-extrabold text-on-surface">Edit WRR</h1>
-    <p className="mt-1 font-body text-body-md text-text-grey">You can edit a staged WRR before receiving starts. Expected lines are locked after scan labels are used.</p>
-    <form action={save} className="mt-6 max-w-2xl space-y-4 rounded-xl bg-surface-white p-6 shadow-elevation-1">
+  return <div className="mx-auto w-full max-w-container px-4 sm:px-6">
+    <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent />
+    <div className="mx-auto w-full max-w-5xl">
+      <h1 className="font-heading text-headline-md font-extrabold text-on-surface">Edit WRR</h1>
+      <p className="mt-1 font-body text-body-md text-text-grey">You can edit a staged WRR before receiving starts. Expected lines are locked after scan labels are used.</p>
+    <form action={save} className="mt-6 w-full space-y-4 rounded-xl bg-surface-white p-6 shadow-elevation-1">
       <label className="block font-label text-label text-text-grey">Organization<select name="vendorPartyId" defaultValue={wrr.vendorPartyId} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface">{vendors.map((vendor) => <option key={`${vendor.id}:${vendor.relationship ?? "legacy"}`} value={vendor.id}>{vendor.code} — {vendor.name} ({vendor.relationship === "vmi_customer" ? "Customer · VMI" : vendor.relationship === "trading_customer" ? "Customer · Trading" : "Supplier · Trading"})</option>)}</select></label>
       <label className="block font-label text-label text-text-grey">Inventory Model<select name="flowType" defaultValue={wrr.flowType} className="mt-1 h-11 w-full rounded border border-outline-variant/30 bg-surface-white px-3 font-body text-body-md text-on-surface"><option value="vmi">VMI</option><option value="trading">Trading</option><option value="supplies">Supplies</option></select></label>
       <label className="block font-label text-label text-text-grey">Commercial Invoice No.<input name="commercialInvoiceNo" defaultValue={wrr.commercialInvoiceNo ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label>
@@ -57,5 +58,6 @@ export default async function EditWrrPage({ params }: { params: Promise<{ wrrId:
       <div className="border-t border-outline-variant/30 pt-5"><h2 className="font-heading text-title-md font-bold text-on-surface">Expected Lines</h2><p className="mt-1 font-body text-body-sm text-text-grey">These values remain editable only while the WRR is staged.</p><div className="mt-4 space-y-4">{wrr.items.map((line) => <fieldset key={line.id} className="grid gap-3 rounded-lg border border-outline-variant/30 p-4 sm:grid-cols-2"><legend className="px-1 font-mono text-mono-md text-on-surface">Line {line.lotNumber}</legend><label className="block font-label text-label text-text-grey">Shipping Lot<input name={`line_${line.id}_lotNumber`} defaultValue={line.lotNumber} required className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">Expected Qty<input name={`line_${line.id}_expectedQty`} type="number" min="1" defaultValue={line.expectedQty} required className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">UOM<input name={`line_${line.id}_uom`} defaultValue={line.uom} required className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">Unit CBM<input name={`line_${line.id}_unitCbm`} type="number" min="0.0001" step="0.0001" defaultValue={line.unitCbm} required className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">Supplier Item Code<input name={`line_${line.id}_itemCode`} defaultValue={line.supplierItemCode ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">Customer Item Code<input name={`line_${line.id}_customerItemCode`} defaultValue={line.customerItemCode ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">Manufacturing Date<input name={`line_${line.id}_manufactureDate`} type="date" defaultValue={line.manufactureDate ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey">Expiry Date<input name={`line_${line.id}_expiryDate`} type="date" defaultValue={line.expiryDate ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label><label className="block font-label text-label text-text-grey sm:col-span-2">Remarks<textarea name={`line_${line.id}_remarks`} defaultValue={line.remarks ?? ""} rows={2} className="mt-1 w-full rounded border border-outline-variant/30 px-3 py-2 font-body text-body-md" /></label></fieldset>)}</div></div>
       <button type="submit" className="inline-flex h-11 items-center rounded bg-primary px-5 font-label text-label text-surface-white">Save WRR</button>
     </form>
+    </div>
   </div>;
 }

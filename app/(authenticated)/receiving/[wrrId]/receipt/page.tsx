@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Printer, Truck, ShieldCheck, CheckCircle2 } from "@/components/ui/icons";
+import { ShieldCheck, CheckCircle2 } from "@/components/ui/icons";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -81,13 +81,8 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
       />
 
       {/* Screen-only navigation bar */}
-      <div className="print-hide mb-6 flex items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4 shadow-elevation-1">
-        <Link
-          href={`/receiving/${wrrId}`}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-        >
-          <ChevronLeft size={16} /> Back to Receiving
-        </Link>
+      <div className="print-hide mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4 shadow-elevation-1">
+        <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent className="mb-0" />
         <div className="flex items-center gap-2">
           <PrintButton />
         </div>

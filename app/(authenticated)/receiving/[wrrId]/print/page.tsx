@@ -32,8 +32,8 @@
 // are not included in the WrrDocumentWithItems query result. Extend
 // getWrrDocument to include these fields when the query is updated.
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -128,44 +128,11 @@ export default async function WrrPrintPage({ params }: PageProps) {
 
       <div className="mx-auto w-full max-w-[1400px]">
         {/* Breadcrumb — hidden on print */}
-        <nav
-          aria-label="Breadcrumb"
-          className="mb-4 print:hidden print-hide"
-        >
-          <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
-            <li>
-              <Link
-                href="/receiving"
-                className="inline-flex h-10 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                Receiving Queue
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li>
-              <Link
-                href={`/receiving/${wrrId}`}
-                className="inline-flex h-10 items-center rounded hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy"
-              >
-                {wrr.wrrNumber}
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li aria-current="page" className="font-body text-body-sm text-on-surface">
-              Print
-            </li>
-          </ol>
-        </nav>
+        <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent className="print:hidden print-hide" />
 
         {/* Screen-only print button */}
         <div className="mb-6 flex gap-3 print:hidden print-hide">
           <PrintButton />
-          <Link
-            href={`/receiving/${wrrId}`}
-            className="flex h-11 items-center justify-center rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-            Back to WRR
-          </Link>
         </div>
 
         {/* Printable WRR document (Landscape) */}
