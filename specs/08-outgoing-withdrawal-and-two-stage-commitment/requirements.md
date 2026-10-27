@@ -129,3 +129,12 @@ This section supersedes any earlier generic destination/end-customer wording.
 5. The generation transaction validates the current active Organization-role/relationship, actor scope, stock owner/source, item/lot/location Inventory Model, and version before any commitment or pick-list snapshot is created. Client filtering, import values, deep links, and cached dropdown values are non-authoritative.
 6. The immutable compatibility column `end_customer_party_id` stores the physical recipient snapshot: the End Customer for VMI, the Trading Customer for Trading, and Internal Supplies Organization for Supplies. It must be labelled `Recipient` or a flow-aware term outside VMI; this does not confer the End Customer business role.
 7. Generic/missing legacy relationships remain visible on historical records but are not selectable for new commitments. The operator receives a named Organization-enrollment recovery path. Internal Supplies remains a role classification and must not acquire a `party_flow_relationships` row.
+
+## 15. Approved amendment — VMI owner derives from Organization (2026-10-27)
+
+For VMI pick-list generation, the selected Organization is the VMI Customer
+and stock owner. The UI SHALL not render a second VMI Customer / Stock Owner
+selector. The server SHALL derive `customer_party_id` from the selected
+Organization (`party_id`) and ignore any conflicting client value. The End
+Customer / Recipient selector remains separate because the physical recipient
+may differ from the stock owner.

@@ -223,5 +223,14 @@ Testing: Full applicable matrix below.
 - [x] Server-side commitment normalizes Trading recipient snapshots to `customer_party_id` and validates VMI recipients.
 - [x] Shared queues use neutral `Recipient` wording; print and dispatch surfaces use flow-aware Customer/End Customer wording.
 
+## Approved amendment — derive VMI owner from Organization (2026-10-27)
+
+- [x] Remove the duplicate VMI Customer / Stock Owner selector; the selected Organization is the VMI owner/customer and remains the source for stock validation.
+- [x] Normalize VMI `customer_party_id` server-side from `party_id`, including direct and imported payloads.
+- [x] Keep End Customer / Recipient as the separate downstream destination selector.
+
+Sign-off: Product Owner — approved 2026-10-27.
+Sign-off: Engineering — approved 2026-10-27.
+
 Sign-off: Product Owner — approved 2026-10-22.
 Sign-off: Engineering — approved 2026-10-22.

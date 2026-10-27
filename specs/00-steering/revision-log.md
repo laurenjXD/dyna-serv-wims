@@ -1977,3 +1977,10 @@ Trading Supplier resolves to Trading, and Internal Supplies resolves to
 Supplies. Missing or ambiguous Organization relationships block staging, and
 the server rejects direct payloads that try to submit a different model.
 
+### 2026-10-27 — VMI owner derives from selected Organization
+
+The outbound VMI draft no longer asks the operator to select the VMI Customer /
+Stock Owner twice. The selected Organization is the VMI stock owner/customer;
+the UI displays that relationship as inherited and the commitment server
+normalizes `customer_party_id` from `party_id`. End Customer remains a separate
+physical recipient because it may differ from the owner.

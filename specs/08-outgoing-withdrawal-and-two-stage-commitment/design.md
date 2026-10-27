@@ -266,4 +266,11 @@ The command normalizes the outbound recipient before writing the immutable snaps
 
 The form never renders an irrelevant field. It clears model-incompatible header values and every draft allocation when a controlling value changes, requiring confirmation before discarding draft lines. Only exactly one eligible Internal Supplies Organization can be auto-defaulted; zero choices produce a configuration error and multiple choices require explicit selection.
 
+For VMI, the selected Organization is both the source stock context and the
+VMI Customer / stock owner. The form shows that ownership as a read-only
+inherited value rather than rendering a duplicate selector. The commitment
+transaction derives `customer_party_id` from `party_id` for VMI, so a direct
+or stale client payload cannot substitute another owner. The End Customer /
+Recipient remains an independent required selection.
+
 `createPickList` (or its successor) repeats all checks inside the commitment transaction: active Organization, exact relationship, user/RLS scope, model-compatible item/lot/location/stock context, concurrency version, and current allocation. Failure leaves no commitment, pick list, or document snapshot. Legacy generic customer rows are read-compatible but fail new-write validation with a remediation error. This contract also applies to imported DRA values, stale browser state, URL parameters, and direct action calls.
