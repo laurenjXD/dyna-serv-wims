@@ -1984,3 +1984,13 @@ VMI Customer / Stock Owner separately. The selected Organization is the VMI
 stock owner/customer, and the commitment server normalizes
 `customer_party_id` from `party_id`. End Customer remains a separate physical
 recipient because it may differ from the owner.
+
+### 2026-10-27 — Stock Count & Reconciliation replaces Stock Intake
+
+The Product Owner clarified that the intended feature is physical stock
+verification: compare the system snapshot with warehouse counts, resolve
+shortages/surpluses/unmatched stock, and post an approved audited adjustment.
+The incorrect inbound Stock Intake implementation was removed. Inbound WRR/CIPL
+work remains under Receiving, while opening/legacy balances remain under Data
+Migration. The replacement feature is named Stock Count & Reconciliation and
+will post only approved `inventory_reconciliation` transactions.

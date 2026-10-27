@@ -33,6 +33,7 @@ export const inventoryTransactions = pgTable("inventory_transactions", {
   arReferenceNo: varchar("ar_reference_no", { length: 100 }), // Associated with outgoing Dispatch/Withdrawal
   wrrId: uuid("wrr_id").references(() => wrrDocuments.id),
   pickListId: uuid("pick_list_id").references(() => pickLists.id), // Added 2026-08-07: mirrors wrrId for outgoing/dispatch movements; set only for movement_type = 'pick', pointing to the dispatched pick_lists row
+  cycleCountSessionId: uuid("cycle_count_session_id"),
   performedByUserId: uuid("performed_by_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

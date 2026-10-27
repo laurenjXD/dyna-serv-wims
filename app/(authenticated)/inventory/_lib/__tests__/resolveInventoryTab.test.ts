@@ -50,6 +50,14 @@ describe("resolveInventoryTab (app/(authenticated)/inventory/_lib/resolveInvento
     expect(resolveInventoryTab("pick-lists")).toBe("pick-lists");
   });
 
+  it("resolves 'stock-count' to the Stock Count tab", () => {
+    expect(resolveInventoryTab("stock-count")).toBe("stock-count");
+  });
+
+  it("keeps the retired stock-intake bookmark on the corrected Stock Count tab", () => {
+    expect(resolveInventoryTab("stock-intake")).toBe("stock-count");
+  });
+
   it("defaults to 'stock-view' when tabParam is undefined", () => {
     expect(resolveInventoryTab(undefined)).toBe("stock-view");
   });
