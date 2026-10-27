@@ -14,6 +14,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent } from "react";
+import Image from "next/image";
 import { signInAction } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 
@@ -158,24 +159,52 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-light-grey p-4">
-      <div className="w-full max-w-sm rounded bg-surface-white p-8 shadow-elevation-2">
-        {/* Brand word-mark */}
-        <div className="mb-8 text-center">
-          <span className="font-label text-headline-md font-semibold text-brand-navy">
-            Dyna-Serv WIMS
-          </span>
-        </div>
+    <main className="flex min-h-screen items-center justify-center bg-[#eef3fb] px-4 py-8 sm:px-6">
+      <div className="w-full max-w-md">
+        <section className="rounded-2xl border border-slate-200/80 bg-surface-white p-6 shadow-[0_18px_45px_rgba(15,39,104,0.12)] sm:p-9">
+          <header className="mb-8 text-center">
+            <Image
+              src="/logo-hd.png"
+              alt="Dyna-Serv"
+              width={128}
+              height={128}
+              priority
+              className="mx-auto mb-5 h-20 w-auto object-contain"
+            />
+            <p className="font-label text-xs font-semibold uppercase tracking-[0.18em] text-brand-navy/65">
+              Dyna-Serv WIMS · WIMS Portal
+            </p>
+            <h1 className="mt-2 font-heading text-2xl font-semibold text-brand-navy">
+              Welcome back
+            </h1>
+            <p className="mt-2 font-body text-sm text-slate-500">
+              Sign in to access warehouse operations.
+            </p>
+          </header>
 
-        <h1 className="mb-6 font-heading text-headline-md font-semibold text-brand-navy">
-          Sign in
-        </h1>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+          {error && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 font-body text-sm text-red-700"
+            >
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          {success && (
+            <div
+              role="status"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3 font-body text-sm text-emerald-700"
+            >
+              {success}
+            </div>
+          )}
+
           <div className="flex flex-col gap-1">
             <label
               htmlFor="login-email"
-              className="font-label text-label uppercase tracking-wide text-on-surface"
+              className="font-label text-sm font-semibold text-slate-700"
             >
               Email
             </label>
@@ -186,14 +215,15 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded border border-outline-variant/30 bg-surface-white px-3 py-2 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+              aria-invalid={Boolean(error) || undefined}
+              className="h-12 rounded-lg border border-slate-300 bg-surface-white px-3.5 font-body text-base text-on-surface outline-none transition focus:border-brand-navy focus-visible:ring-2 focus-visible:ring-brand-navy/20"
             />
           </div>
 
           <div className="flex flex-col gap-1">
             <label
               htmlFor="login-password"
-              className="font-label text-label uppercase tracking-wide text-on-surface"
+              className="font-label text-sm font-semibold text-slate-700"
             >
               Password
             </label>
@@ -205,7 +235,8 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded border border-outline-variant/30 bg-surface-white px-3 py-2 pr-11 font-body text-body-md text-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                aria-invalid={Boolean(error) || undefined}
+                className="h-12 w-full rounded-lg border border-slate-300 bg-surface-white px-3.5 pr-12 font-body text-base text-on-surface outline-none transition focus:border-brand-navy focus-visible:ring-2 focus-visible:ring-brand-navy/20"
               />
               <button
                 type="button"
@@ -218,36 +249,20 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Inline error — shown only when auth fails. */}
-          {error && (
-            <p
-              role="alert"
-              className="font-body text-body-md text-status-held"
-            >
-              {error}
-            </p>
-          )}
-
-          {success && (
-            <p
-              role="status"
-              className="font-body text-body-md text-emerald-700"
-            >
-              {success}
-            </p>
-          )}
-
-          {/* Office primary button: brand-navy solid, 44px height min,
-              Epilogue SemiBold label per brand-design-system §9. */}
           <button
             type="submit"
             disabled={pending}
-            className="mt-2 flex h-11 min-h-11 w-full items-center justify-center rounded bg-brand-navy px-4 font-label text-label uppercase tracking-wide text-surface-white hover:bg-brand-royal-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:opacity-60"
+            className="mt-1 flex h-12 min-h-12 w-full items-center justify-center rounded-lg bg-brand-navy px-4 font-label text-sm font-semibold uppercase tracking-[0.08em] text-surface-white transition hover:bg-brand-royal-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
+          <p className="mt-7 text-center font-body text-xs text-slate-500">
+            Authorized personnel only. Contact your administrator if you need access.
+          </p>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
