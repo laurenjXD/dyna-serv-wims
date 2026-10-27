@@ -1068,7 +1068,10 @@ export async function commitWrrLine(
       if (isBatch && !params.presenceAttested) {
         return { ok: false, errors: ["presence_attestation_required"] } satisfies CommitWrrLineResult;
       }
-      if (isBatch && allocatedTotal !== cartonCount) {
+      // A declared shortage is valid when the operator explicitly attests the
+      // physically present cartons. The allocation total may therefore be
+      // lower than the derived carton count, but never higher.
+      if (isBatch && allocatedTotal > cartonCount) {
         return { ok: false, errors: ["allocation_qty_must_equal_derived_carton_count"] } satisfies CommitWrrLineResult;
       }
 

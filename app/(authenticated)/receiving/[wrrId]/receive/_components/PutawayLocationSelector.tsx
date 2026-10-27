@@ -122,7 +122,7 @@ export function PutawayLocationSelector({
 
   const assignedBoxesCount = allocations.reduce((sum, a) => sum + a.qty, 0);
   const missingBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
-  const readyToStore = assignedBoxesCount === safeQuantity && attested;
+  const readyToStore = assignedBoxesCount > 0 && attested;
 
   const selectedIds = allocations.map((allocation) => allocation.locationId);
   const singleLocationId =
@@ -368,7 +368,7 @@ export function PutawayLocationSelector({
       {!readyToStore && (
         <p role="alert" className="rounded-xl border border-status-pending/40 bg-[#FFF9EB] px-4 py-3 font-body text-body-md text-amber-900">
           {assignedBoxesCount < safeQuantity
-            ? `Assign all ${safeQuantity} cartons to locations before storing. ${missingBoxesCount} carton${missingBoxesCount === 1 ? " is" : "s are"} still unassigned.`
+            ? `${missingBoxesCount} declared carton${missingBoxesCount === 1 ? " is" : "s are"} marked Missing. Only the ${assignedBoxesCount} physically present carton${assignedBoxesCount === 1 ? " will" : "s will"} be stored.`
             : "Confirm that the assigned cartons are physically present before storing."}
         </p>
       )}

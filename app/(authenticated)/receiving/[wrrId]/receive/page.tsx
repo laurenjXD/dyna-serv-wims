@@ -86,8 +86,8 @@ function getCommitErrorMessage(reason: string): string {
   if (reason.includes("presence_attestation_required")) {
     return "Confirm that every received box is physically present before storing.";
   }
-  if (reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
-    return "Assign a location to every received box before storing.";
+  if (reason.includes("allocation_qty_must_equal_derived_carton_count") || reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
+    return "The assigned cartons cannot exceed the derived carton count. Mark any missing cartons as Shortage.";
   }
   if (reason.includes("missing_location")) {
     return "Choose a storage location for every declared box before storing.";
