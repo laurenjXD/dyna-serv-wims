@@ -5,19 +5,11 @@ import { Lock, FileText, Download, Share2, Eye } from "@/components/ui/icons";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
-import { SoaStatusSelect } from "@/components/billing/SoaStatusSelect";
 
 interface StatementsOfAccountTableProps {
   rows: StatementOfAccountArchiveRow[];
   canReadFinancial: boolean;
 }
-
-const SOA_STATUS_CLASSES: Record<string, string> = {
-  issued: "bg-status-available/10 text-status-available",
-  settled: "bg-status-available/10 text-status-available",
-  draft: "bg-status-pending/10 text-status-pending",
-  voided: "bg-status-held/10 text-status-held",
-};
 
 export function StatementsOfAccountTable({
   rows,
@@ -100,9 +92,6 @@ export function StatementsOfAccountTable({
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Total (USD / PHP)
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Status
-                </th>
                 <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Actions
                 </th>
@@ -110,7 +99,6 @@ export function StatementsOfAccountTable({
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {pagedRows.map((r) => {
-                const statusClass = SOA_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const totalPhp = r.billingStatementTotalUsd * r.lockedExchangeRatePhp;
 
                 return (
@@ -144,11 +132,6 @@ export function StatementsOfAccountTable({
                       <div className="font-mono text-mono-sm text-text-grey">
                         ≈ ₱{totalPhp.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <SoaStatusSelect
-                        value={r.status}
-                      />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">

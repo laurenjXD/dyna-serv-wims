@@ -281,14 +281,16 @@ export async function listWrrArchiveDocuments(
 ): Promise<WrrArchiveRow[]> {
   const conditions = [];
 
+  // The Documents Center is an archive, not the receiving work queue.
+  // Only finalized WRRs belong here; staged, in-progress, and cancelled
+  // records remain discoverable from Receiving.
+  conditions.push(eq(wrrDocuments.status, "confirmed"));
+
   if (filters.partyId) {
     conditions.push(eq(wrrDocuments.vendorPartyId, filters.partyId));
   }
   if (filters.flowType) {
     conditions.push(eq(wrrDocuments.flowType, filters.flowType as any));
-  }
-  if (filters.status) {
-    conditions.push(eq(wrrDocuments.status, filters.status as any));
   }
   if (filters.from) {
     conditions.push(gte(wrrDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
@@ -372,6 +374,7 @@ export async function listPickListArchiveDocuments(
   const conditions = [
     eq(generatedDocuments.documentType, "pick_list"),
     eq(generatedDocuments.sourceType, "inventory_commitment"),
+    eq(generatedDocuments.status, "ready"),
   ];
 
   if (filters.partyId) {
@@ -379,9 +382,6 @@ export async function listPickListArchiveDocuments(
   }
   if (filters.flowType) {
     conditions.push(eq(pickLists.flowType, filters.flowType as any));
-  }
-  if (filters.status) {
-    conditions.push(eq(generatedDocuments.status, filters.status));
   }
   if (filters.from) {
     conditions.push(gte(generatedDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
@@ -472,6 +472,7 @@ export async function listAcknowledgementReceiptArchiveDocuments(
   const conditions = [
     eq(generatedDocuments.documentType, "acknowledgement_receipt"),
     eq(generatedDocuments.sourceType, "inventory_commitment"),
+    eq(generatedDocuments.status, "ready"),
   ];
 
   if (filters.partyId) {
@@ -479,9 +480,6 @@ export async function listAcknowledgementReceiptArchiveDocuments(
   }
   if (filters.flowType) {
     conditions.push(eq(pickLists.flowType, filters.flowType as any));
-  }
-  if (filters.status) {
-    conditions.push(eq(generatedDocuments.status, filters.status));
   }
   if (filters.from) {
     conditions.push(gte(generatedDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
@@ -574,11 +572,12 @@ export async function listStatementOfAccountArchiveDocuments(
 ): Promise<StatementOfAccountArchiveRow[]> {
   const conditions = [];
 
+  // Draft and voided billing periods are operational records, not archive
+  // documents. Issued is the finalized SOA state.
+  conditions.push(eq(vmiBillingPeriods.status, "issued"));
+
   if (filters.partyId) {
     conditions.push(eq(vmiBillingPeriods.partyId, filters.partyId));
-  }
-  if (filters.status) {
-    conditions.push(eq(vmiBillingPeriods.status, filters.status));
   }
   if (filters.from) {
     conditions.push(gte(vmiBillingPeriods.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
@@ -665,6 +664,7 @@ export async function listCiplArchiveDocuments(
   const conditions = [
     isNotNull(wrrDocuments.ciplFileUrl),
     ne(wrrDocuments.ciplFileUrl, ""),
+    eq(wrrDocuments.status, "confirmed"),
   ];
 
   if (filters.partyId) {
@@ -672,9 +672,6 @@ export async function listCiplArchiveDocuments(
   }
   if (filters.flowType) {
     conditions.push(eq(wrrDocuments.flowType, filters.flowType as any));
-  }
-  if (filters.status) {
-    conditions.push(eq(wrrDocuments.status, filters.status as any));
   }
   if (filters.from) {
     conditions.push(gte(wrrDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
@@ -755,11 +752,8 @@ export async function listGeneratedReportArchiveDocuments(
   filters: DocumentArchiveFilter = {},
 ): Promise<ReportArchiveRow[]> {
   try {
-    const conditions = [];
+    const conditions: any[] = [eq(generatedDocuments.status, "ready")];
 
-    if (filters.status) {
-      conditions.push(eq(generatedDocuments.status, filters.status));
-    }
     if (filters.from) {
       conditions.push(gte(generatedDocuments.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
     }
