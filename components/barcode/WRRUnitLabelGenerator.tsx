@@ -75,6 +75,7 @@ export function WRRUnitLabelGenerator({
   }, [isModalOpen, wrrItemId, cartonCount]);
 
   const totalUnits = cartonCount * Math.max(1, spq);
+  const canGenerateLabels = cartonCount > 0 && Number.isInteger(spq) && spq > 0;
 
   const handlePrint = () => {
     scheduleThermalPrint();
@@ -85,11 +86,12 @@ export function WRRUnitLabelGenerator({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsModalOpen(true)}
-        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        onClick={() => { if (canGenerateLabels) setIsModalOpen(true); }}
+        disabled={!canGenerateLabels}
+        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span aria-hidden="true">&#128424;</span>
-        <span>Print Carton Labels ({cartonCount})</span>
+        <span>{canGenerateLabels ? `Print Carton Labels (${cartonCount})` : "Labels unavailable — resolve item/SPQ"}</span>
       </button>
 
       {/* Modal Preview & Print Sheet */}
