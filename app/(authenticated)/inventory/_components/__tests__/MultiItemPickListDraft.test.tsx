@@ -12,11 +12,13 @@ const stock = [{
   itemId: "item-1",
   itemCode: "ITEM-1",
   itemName: "Test item",
+  supplierItemCode: "SUP-ITEM-1",
   customerItemCode: null,
   organizationId: "party-vmi-owner",
   organizationName: "VMI Owner Organization",
   flowType: "vmi" as const,
   uom: "piece",
+  volumeCbm: "0.125",
   spq: 1,
   balanceId: "balance-1",
   lotId: "lot-1",
@@ -76,5 +78,31 @@ describe("MultiItemPickListDraft organization selection", () => {
       "Lot Number",
       "Mfg Date",
     ]);
+  });
+
+  it("searches pick-list items and shows the enrolled item details", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+
+    expect(screen.getByText("SUP-ITEM-1")).toBeInTheDocument();
+    expect(screen.getByText("SPQ: 1")).toBeInTheDocument();
+    expect(screen.getByText("UOM: piece")).toBeInTheDocument();
+    expect(screen.getByText("CBM: 0.125")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    expect(itemSearch).toHaveValue("SUP-ITEM-1");
   });
 });
