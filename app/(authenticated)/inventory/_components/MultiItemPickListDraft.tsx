@@ -646,20 +646,33 @@ export function MultiItemPickListDraft({
         </div>
 
         {/* Pick List Table: desktop */}
-        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
-          <table className="w-full text-left border-collapse min-w-[1100px]">
+        <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
+          <table aria-label="Pick list lines" className="w-full min-w-[1180px] table-fixed border-collapse text-left">
+            <caption className="sr-only">Pick list lines and selected inventory sources</caption>
+            <colgroup>
+              <col className="w-[100px]" />
+              <col className="w-[78px]" />
+              <col className="w-[112px]" />
+              <col className="w-[175px]" />
+              <col className="w-[125px]" />
+              <col className="w-[190px]" />
+              <col className="w-[135px]" />
+              <col className="w-[112px]" />
+              <col className="w-[230px]" />
+              <col className="w-[52px]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                <th className="py-3 pl-4 pr-2 text-right w-24">Qty (Units)</th>
-                <th className="py-3 px-2 text-right w-20">SPQ</th>
-                <th className="py-3 px-2 text-right w-24">No. of Pkgs</th>
-                <th className="py-3 px-3 min-w-[180px]">Item Code</th>
-                <th className="py-3 px-3 min-w-[130px]">Cust PN</th>
-                <th className="py-3 px-3 min-w-[200px]">Item Description</th>
-                <th className="py-3 px-3 min-w-[130px]">Lot Number</th>
-                <th className="py-3 px-3 min-w-[110px]">Mfg Date</th>
-                <th className="py-3 px-3 min-w-[200px]">Location</th>
-                <th className="py-3 pr-4 pl-2 w-10 text-center"><span className="sr-only">Actions</span></th>
+                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Units)</th>
+                <th scope="col" className="py-3 px-2 text-right">SPQ</th>
+                <th scope="col" className="py-3 px-2 text-right">No. of Pkgs</th>
+                <th scope="col" className="py-3 px-3">Item Code</th>
+                <th scope="col" className="py-3 px-3">Cust PN</th>
+                <th scope="col" className="py-3 px-3">Item Description</th>
+                <th scope="col" className="py-3 px-3">Lot Number</th>
+                <th scope="col" className="py-3 px-3">Mfg Date</th>
+                <th scope="col" className="py-3 px-3">Location</th>
+                <th scope="col" className="py-3 pr-4 pl-2 text-center"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -738,21 +751,21 @@ export function MultiItemPickListDraft({
 
                     {/* CUST PN */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-mono text-xs text-slate-700 block truncate max-w-[130px]" title={item?.customerItemCode ?? undefined}>
+                      <span className="block truncate font-mono text-xs text-slate-700" title={item?.customerItemCode ?? undefined}>
                         {item?.customerItemCode || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
 
                     {/* ITEM DESCRIPTION */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-body text-xs text-slate-800 block truncate max-w-[200px]" title={item?.itemName ?? undefined}>
+                      <span className="block truncate font-body text-xs text-slate-800" title={item?.itemName ?? undefined}>
                         {item?.itemName || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
 
                     {/* LOT NUMBER */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-mono text-xs text-slate-700 block truncate max-w-[130px]" title={source?.lotNumber ?? undefined}>
+                      <span className="block truncate font-mono text-xs text-slate-700" title={source?.lotNumber ?? undefined}>
                         {source?.lotNumber || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
@@ -770,7 +783,8 @@ export function MultiItemPickListDraft({
                         value={line.balanceId}
                         disabled={!item}
                         onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })}
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+                        title={source ? `${source.locationLabel} (${piecesToBoxes(source.availableQty, source.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes${source.priority === 1 ? " · FIFO/FEFO" : " · override req"})` : "Select location"}
+                        className="h-9 min-w-0 w-full max-w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                       >
                         <option value="">Select location…</option>
                         {item?.sources.map((candidate) => (
