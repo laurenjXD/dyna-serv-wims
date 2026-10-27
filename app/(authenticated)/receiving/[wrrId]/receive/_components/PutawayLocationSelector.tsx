@@ -122,6 +122,7 @@ export function PutawayLocationSelector({
 
   const assignedBoxesCount = allocations.reduce((sum, a) => sum + a.qty, 0);
   const missingBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
+  const readyToStore = assignedBoxesCount === safeQuantity && attested;
 
   const selectedIds = allocations.map((allocation) => allocation.locationId);
   const singleLocationId =
@@ -151,6 +152,16 @@ export function PutawayLocationSelector({
     <div className="flex flex-col gap-4">
       <input type="hidden" name="allocations" value={JSON.stringify(allocations)} />
       <input type="hidden" name="unitLocationIds" value={JSON.stringify(locationsBySlot)} />
+      <input
+        type="text"
+        name="allocationReady"
+        value={readyToStore ? "ready" : ""}
+        readOnly
+        required
+        tabIndex={-1}
+        aria-hidden="true"
+        className="sr-only"
+      />
 
       <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -353,6 +364,14 @@ export function PutawayLocationSelector({
           </span>
         </span>
       </label>
+
+      {!readyToStore && (
+        <p role="alert" className="rounded-xl border border-status-pending/40 bg-[#FFF9EB] px-4 py-3 font-body text-body-md text-amber-900">
+          {assignedBoxesCount < safeQuantity
+            ? `Assign all ${safeQuantity} cartons to locations before storing. ${missingBoxesCount} carton${missingBoxesCount === 1 ? " is" : "s are"} still unassigned.`
+            : "Confirm that the assigned cartons are physically present before storing."}
+        </p>
+      )}
     </div>
   );
 }
