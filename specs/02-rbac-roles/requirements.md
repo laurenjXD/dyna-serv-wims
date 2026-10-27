@@ -125,7 +125,9 @@ Party users receive read or action capabilities only for one or more explicitly 
 6. The system SHALL prevent deactivation or revocation that would leave no active user with the required global administrator capability.
 7. The system SHALL NOT automatically promote another account.
 8. Deactivation SHALL preserve the user profile, assignment history, and audit records.
-9. v1 SHALL NOT support user impersonation, custom-role editing, delegation, or break-glass access.
+9. v1 SHALL NOT support user impersonation, delegation, or break-glass access.
+10. Authorized administrators SHALL be able to create persistent custom roles and combine canonical permissions from different modules.
+11. Custom-role grants SHALL be stored in `role_permissions`; effective access SHALL be the additive union of all active assigned roles.
 
 ### FR-8: Security events and auditability
 
@@ -227,7 +229,7 @@ The RBAC design owns canonical capability identifiers. The operational capabilit
 ## 8. Out of scope
 
 - Public self-service registration.
-- Custom role creation or capability editing in v1.
+- User-defined deny rules; access not granted by an active role remains denied.
 - User impersonation, delegation, or break-glass access.
 - Approval workflow state machines; this spec only defines their capability boundary.
 - Offline queue and conflict-resolution mechanics, owned by `03-offline-mode-and-client-storage`.

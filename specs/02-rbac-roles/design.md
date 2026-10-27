@@ -1,5 +1,20 @@
 # RBAC & Roles — Design
 
+## Arbitrary custom roles amendment (2026-10-27)
+
+Custom roles use the existing `roles`, `permissions`, `role_permissions`, and
+`user_roles` tables. A custom role may grant any supported canonical resource,
+action, and scope-kind combination across modules. Saving a role replaces its
+grants transactionally: stale `role_permissions` rows are removed and the
+submitted canonical grants are inserted. System roles remain immutable through
+the runtime administration surface. Effective access is the additive union of
+active assigned roles, with no explicit deny grants.
+
+Role and assignment mutations require administrator authorization, validate
+permission identifiers server-side, and append an audit event. UI permission
+labels are not authorization identifiers; server actions and RLS remain
+authoritative.
+
 Status: Approved
 Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 

@@ -1,5 +1,13 @@
 # RBAC & Roles — Implementation Plan
 
+## Arbitrary custom RBAC amendment (2026-10-27)
+
+- [ ] Add the persistent custom-role mutation contract and migration.
+- [ ] Add server-side permission validation and transactional grant replacement.
+- [ ] Add custom-role create/update/deactivate/delete administration UI.
+- [ ] Add multi-role assignment and effective-permission display.
+- [ ] Add audit, RLS, unit, integration, and E2E coverage for custom roles.
+
 Status: Approved
 Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
