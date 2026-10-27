@@ -418,7 +418,10 @@ export function MultiItemPickListDraft({
     let targetOrgId = organizationId;
     let targetFlow = flowType;
 
-    const requestedOrganization = draHeader.requestingOrganization ?? draHeader.customerOrganization;
+    // Delivery To identifies the recipient, not the stock-owning Organization.
+    // If the DRA has no explicit requester, the operator must choose the stock
+    // Organization in this form rather than inferring it from the recipient.
+    const requestedOrganization = draHeader.requestingOrganization;
     if (!requestedOrganization && !targetOrgId) {
       setImportSummary({
         type: "warning",
@@ -442,33 +445,6 @@ export function MultiItemPickListDraft({
       }
       targetOrgId = organizationMatches[0].id;
       setOrganizationId(targetOrgId);
-    }
-
-    if (!targetOrgId) {
-      for (const draRow of draRows) {
-        if (!draRow.itemCode && !draRow.customerItemCode) continue;
-        const matchRes = matchItemAgainstCatalog(
-          { itemCode: draRow.itemCode, customerItemCode: draRow.customerItemCode },
-          stock.map((s) => ({
-            id: s.itemId,
-            code: s.itemCode,
-            name: s.itemName,
-            customerItemCode: s.customerItemCode,
-            defaultSupplierPartyId: s.organizationId,
-          }))
-        );
-
-        if (matchRes.bestMatch && matchRes.bestMatch.score >= 70) {
-          const matchedStock = stock.find((s) => s.itemId === matchRes.bestMatch!.item.id);
-          if (matchedStock && matchedStock.organizationId) {
-            targetOrgId = matchedStock.organizationId;
-            targetFlow = matchedStock.flowType;
-            setOrganizationId(targetOrgId);
-            setFlowType(targetFlow);
-            break;
-          }
-        }
-      }
     }
 
     if (targetOrgId && !targetFlow) {
@@ -499,34 +475,77 @@ export function MultiItemPickListDraft({
       setCustomerPartyId(targetOrgId);
     }
 
+    // The sample DRA has a Delivery To organization. Use it only to suggest
+    // the recipient/customer; it never changes the stock Organization.
+    const recipientName = draHeader.recipientOrganization?.trim().toLowerCase();
+    if (recipientName) {
+      if (targetFlow === "vmi") {
+        const recipientMatches = endCustomers.filter((customer) =>
+          customer.name.trim().toLowerCase() === recipientName || customer.code.trim().toLowerCase() === recipientName,
+        );
+        if (recipientMatches.length === 1) setEndCustomerPartyId(recipientMatches[0].id);
+      } else if (targetFlow === "trading") {
+        const recipientMatches = visibleCustomers.filter((customer) =>
+          customer.name.trim().toLowerCase() === recipientName || customer.code.trim().toLowerCase() === recipientName,
+        );
+        if (recipientMatches.length === 1) setCustomerPartyId(recipientMatches[0].id);
+      }
+    }
+
     const availableStock = stock.filter((s) => s.organizationId === targetOrgId && s.flowType === targetFlow);
 
     const newDraftLines: DraftLine[] = [];
     let mappedCount = 0;
     let totalBoxesAllocated = 0;
-    const missingItems: string[] = [];
+    const reviewItems: string[] = [];
 
     for (const draRow of draRows) {
-      const requestedBoxes = Number(draRow.packageCount || draRow.requestedQty);
-      if (!Number.isInteger(requestedBoxes) || requestedBoxes <= 0) continue;
+      const documentQty = draRow.requestedQty == null ? null : Number(draRow.requestedQty);
+      const documentBoxes = draRow.packageCount == null ? null : Number(draRow.packageCount);
+      const documentSpq = draRow.spq == null ? null : Number(draRow.spq);
+      const rowLabel = draRow.customerItemCode || draRow.itemCode || draRow.itemDescription || "Unknown Item";
+      if (documentBoxes !== null && (!Number.isInteger(documentBoxes) || documentBoxes <= 0)) {
+        reviewItems.push(`${rowLabel} (invalid number of boxes)`);
+        continue;
+      }
+      if (documentQty !== null && (!Number.isInteger(documentQty) || documentQty <= 0)) {
+        reviewItems.push(`${rowLabel} (invalid quantity)`);
+        continue;
+      }
 
       const matchRes = matchItemAgainstCatalog(
-        { itemCode: draRow.itemCode, customerItemCode: draRow.customerItemCode },
+        {
+          itemCode: draRow.itemCode,
+          customerItemCode: draRow.customerItemCode,
+          description: draRow.itemDescription,
+        },
         availableStock.map((s) => ({
           id: s.itemId,
           code: s.itemCode,
           name: s.itemName,
           customerItemCode: s.customerItemCode,
+          supplierItemCode: s.supplierItemCode,
+          dsgcItemNumber: s.dsgcItemNumber,
         }))
       );
 
-      const matchedItemId = matchRes.bestMatch && matchRes.bestMatch.score >= 65 ? matchRes.bestMatch.item.id : null;
+      const bestScore = matchRes.bestMatch?.score ?? 0;
+      const topCandidates = matchRes.bestMatch
+        ? matchRes.candidates.filter((candidate) => candidate.score === matchRes.bestMatch?.score)
+        : [];
+      const descriptionOnlyMatch = matchRes.bestMatch?.matchedField === "name";
+      if (!matchRes.bestMatch || bestScore < 65 || topCandidates.length > 1 || descriptionOnlyMatch) {
+        reviewItems.push(`${rowLabel} (select the enrolled item manually${descriptionOnlyMatch ? "; description is not a unique identifier" : ""})`);
+        continue;
+      }
+
+      const matchedItemId = matchRes.bestMatch.item.id;
       const candidateSources = matchedItemId
         ? availableStock.filter((s) => s.itemId === matchedItemId).sort((a, b) => a.priority - b.priority)
         : [];
 
       if (candidateSources.length === 0) {
-        missingItems.push(draRow.customerItemCode || draRow.itemCode || "Unknown Item");
+        reviewItems.push(`${rowLabel} (no available stock for the selected Organization/model)`);
         continue;
       }
 
@@ -535,36 +554,44 @@ export function MultiItemPickListDraft({
         0,
       );
       const spq = candidateSources[0].spq;
-      const allocatedBoxes = Math.min(requestedBoxes, availableBoxes);
-      if (allocatedBoxes > 0) {
-        newDraftLines.push({
-          id: crypto.randomUUID(),
-          itemId: candidateSources[0].itemId,
-          totalUnits: String(allocatedBoxes * spq),
-        });
-        totalBoxesAllocated += allocatedBoxes;
-        mappedCount++;
+      const spqMismatch = documentSpq !== null && documentSpq !== spq;
+      const quantityBoxMismatch = documentQty !== null && documentBoxes !== null && documentQty !== documentBoxes * spq;
+      const requestedBoxes = documentBoxes ?? (
+        documentQty !== null && documentQty % spq === 0 ? documentQty / spq : null
+      );
+      if (spqMismatch || quantityBoxMismatch || requestedBoxes === null || !Number.isInteger(requestedBoxes) || requestedBoxes <= 0) {
+        reviewItems.push(`${rowLabel} (QTY, SPQ, and number of boxes do not agree with enrolled SPQ ${spq})`);
+        continue;
       }
 
-      if (allocatedBoxes < requestedBoxes) {
-        missingItems.push(`${draRow.itemCode} (shortage of ${requestedBoxes - allocatedBoxes} boxes)`);
+      if (availableBoxes < requestedBoxes) {
+        reviewItems.push(`${rowLabel} (shortage of ${requestedBoxes - availableBoxes} boxes)`);
+        continue;
       }
+
+      newDraftLines.push({
+        id: crypto.randomUUID(),
+        itemId: candidateSources[0].itemId,
+        totalUnits: String(requestedBoxes * spq),
+      });
+      totalBoxesAllocated += requestedBoxes;
+      mappedCount++;
     }
 
     if (newDraftLines.length > 0) {
       setLines(newDraftLines);
       let summaryMsg = `Successfully mapped ${mappedCount} line(s) (${totalBoxesAllocated} boxes total) into Pick List draft.`;
-      if (missingItems.length > 0) {
-        summaryMsg += ` Items with shortages/unmatched: ${missingItems.join(", ")}.`;
+      if (reviewItems.length > 0) {
+        summaryMsg += ` Rows requiring review: ${reviewItems.join(", ")}.`;
       }
       setImportSummary({
-        type: missingItems.length > 0 ? "warning" : "success",
+        type: reviewItems.length > 0 ? "warning" : "success",
         message: summaryMsg,
       });
     } else {
       setImportSummary({
         type: "error",
-        message: `Could not match any items in the DRA document against available stock for this organization. Unmatched: ${missingItems.join(", ")}`,
+        message: `No DRA lines were ready to import. Review manually: ${reviewItems.join(", ") || "select the Organization, model, and enrolled item codes first."}`,
       });
     }
   }

@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 export interface ParsedDraRow {
   itemCode?: string;
   customerItemCode?: string;
+  itemDescription?: string;
   requestedQty?: number;
   packageCount?: number;
   spq?: number;
@@ -206,6 +207,14 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
         ) {
           if (candidateColMap["itemCode"] === undefined) candidateColMap["itemCode"] = c;
         } else if (
+          val.includes("item description") ||
+          val === "description" ||
+          val === "desc" ||
+          val.includes("product description") ||
+          val.includes("material description")
+        ) {
+          if (candidateColMap["itemDescription"] === undefined) candidateColMap["itemDescription"] = c;
+        } else if (
           val.includes("no. of packages") ||
           val.includes("total packages") ||
           val.includes("package count") ||
@@ -317,6 +326,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
 
       const itemCodeRaw = colMap["itemCode"] !== undefined ? row[colMap["itemCode"]] : undefined;
       const custItemCodeRaw = colMap["customerItemCode"] !== undefined ? row[colMap["customerItemCode"]] : undefined;
+      const itemDescriptionRaw = colMap["itemDescription"] !== undefined ? row[colMap["itemDescription"]] : undefined;
       const qtyRaw = colMap["requestedQty"] !== undefined ? row[colMap["requestedQty"]] : undefined;
       const packageCountRaw = colMap["noOfPackages"] !== undefined ? row[colMap["noOfPackages"]] : undefined;
       const spqRaw = colMap["spq"] !== undefined ? row[colMap["spq"]] : undefined;
@@ -343,6 +353,7 @@ async function parseDraExcel(buffer: Buffer, fileName: string): Promise<DraParse
         result.rows.push({
           itemCode: itemCodeRaw ? String(itemCodeRaw).trim() : undefined,
           customerItemCode: custItemCodeRaw ? String(custItemCodeRaw).trim() : undefined,
+          itemDescription: itemDescriptionRaw ? String(itemDescriptionRaw).trim() : undefined,
           requestedQty: requestedQty && !isNaN(requestedQty) ? requestedQty : undefined,
           packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           spq: spq && !isNaN(spq) ? spq : undefined,

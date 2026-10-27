@@ -79,6 +79,12 @@ describe("dra-parser", () => {
       expect(result.rows.length).toBeGreaterThan(0);
       expect(result.header.draReference).toBeTruthy();
       expect(result.rows.some((row) => Number(row.requestedQty ?? row.packageCount) > 0)).toBe(true);
+      expect(result.rows.find((row) => row.customerItemCode === "82011RU304M")).toMatchObject({
+        itemDescription: "TUBE ASSY M_ADI-0098-23RT 14-16 ARWUP_D",
+        requestedQty: 10000,
+        packageCount: 5,
+        spq: 2000,
+      });
     }
   });
 });
