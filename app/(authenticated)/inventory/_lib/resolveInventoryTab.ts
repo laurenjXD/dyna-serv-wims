@@ -14,10 +14,11 @@
 //     graceful-redirect philosophy — old `?tab=daily-inspection` bookmarks
 //     must keep resolving to the same (renamed) tab.
 
-export type TabKey = "stock-view" | "pick-lists" | "inspection";
+export type TabKey = "stock-view" | "pick-lists" | "inspection" | "stock-count";
 
 export function resolveInventoryTab(tabParam?: string): TabKey {
   if (tabParam === "pick-lists") return "pick-lists";
   if (tabParam === "inspection" || tabParam === "daily-inspection") return "inspection";
+  if (tabParam === "stock-count" || tabParam === "stock-intake") return "stock-count";
   return "stock-view";
 }

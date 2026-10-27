@@ -37,10 +37,12 @@ import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { ToPickQueue } from "./_components/ToPickQueue";
 import { LotQrViewer } from "./_components/LotQrViewer";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
-import { createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
+import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, submitCycleCountAction, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
+import { StockCountTab } from "./_components/StockCountTab";
+import { getCycleCountSession, listCountLocations, listCycleCountSessions } from "@/lib/db/queries/cycle-count";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
@@ -52,16 +54,17 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "stock-view", label: "Stock View" },
   { key: "pick-lists", label: "Pick Lists" },
   { key: "inspection", label: "Inspection" },
+  { key: "stock-count", label: "Stock Count" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; count?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, pickListView, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
+  const { tab: tabParam, q, count: countId, pickListView, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -104,7 +107,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
   // Gate: pick_list.read required for all tabs on this hub.
   const permResult = await requirePermission(resolver, "pick_list.read");
-  if (permResult.kind !== "authorized") {
+  const countPermission = await requirePermission(resolver, "cycle_count.view");
+  if (activeTab === "stock-count" && countPermission.kind !== "authorized") {
+    notFound();
+  }
+  if (activeTab !== "stock-count" && permResult.kind !== "authorized") {
     notFound();
   }
 
@@ -127,7 +134,9 @@ export default async function InventoryPage({ searchParams }: PageProps) {
                 ? "/inventory"
                 : tab.key === "pick-lists"
                   ? "/inventory?tab=pick-lists"
-                  : "/inventory?tab=inspection";
+                  : tab.key === "inspection"
+                    ? "/inventory?tab=inspection"
+                    : "/inventory?tab=stock-count";
             return (
               <Link
                 key={tab.key}
@@ -184,11 +193,22 @@ export default async function InventoryPage({ searchParams }: PageProps) {
           pickedPickListId={pickListPicked}
           view={pickListView === "deleted" ? "deleted" : "open"}
         />
+      ) : activeTab === "stock-count" ? (
+        <StockCountTabSection countId={countId} />
       ) : (
         <InspectionTabSection />
       )}
     </PageContainer>
   );
+}
+
+async function StockCountTabSection({ countId }: { countId?: string }) {
+  const [locations, sessions, active] = await Promise.all([
+    listCountLocations(db),
+    listCycleCountSessions(db),
+    countId ? getCycleCountSession(db, countId) : Promise.resolve(null),
+  ]);
+  return <StockCountTab locations={locations} sessions={sessions} active={active} createAction={createCycleCountAction} recordAction={recordCycleCountAction} submitAction={submitCycleCountAction} approveAction={approveCycleCountAction} rejectAction={rejectCycleCountAction} postAction={postCycleCountAction} />;
 }
 
 // ─── Stock View tab (default) ─────────────────────────────────────────────────
