@@ -103,15 +103,17 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
     limit: 50,
   };
 
-  // Parallel loading of organization options & active tab data
+  // Load every permitted archive category so tab badges remain accurate even
+  // before the operator opens that tab. The active tab still controls which
+  // rows are rendered below.
   const [partiesResult, wrrRows, ciplRows, pickListRows, arRows, soaRows, reportRows] = await Promise.all([
     listParties(db, { limit: 100 }),
-    activeTab === "wrr" ? listWrrArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "cipl" ? listCiplArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "pick-lists" ? listPickListArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "acknowledgement-receipts" ? listAcknowledgementReceiptArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "soa" && canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "reports" ? listGeneratedReportArchiveDocuments(db, filters) : Promise.resolve([]),
+    listWrrArchiveDocuments(db, filters),
+    listCiplArchiveDocuments(db, filters),
+    listPickListArchiveDocuments(db, filters),
+    listAcknowledgementReceiptArchiveDocuments(db, filters),
+    canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
+    listGeneratedReportArchiveDocuments(db, filters),
   ]);
 
   const organizationOptions: FilterPartyOption[] = partiesResult.rows.map((p) => ({
