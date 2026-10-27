@@ -13,6 +13,7 @@
 // server action how many lines to parse. The disposition is submitted as `store`.
 
 import { useCallback, useEffect, useState } from "react";
+import { ChevronDown } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 import { filterReceivingItemOptions } from "@/lib/receiving/item-selection";
 import { DatePickerField } from "@/components/ui/DatePickerField";
@@ -62,6 +63,12 @@ const EMPTY_LINE: LineState = {
   disposition: "store",
 };
 
+const STANDARD_UOM_OPTIONS = [
+  { value: "piece", label: "PIECE" },
+  { value: "roll", label: "ROLL" },
+  { value: "meter", label: "METER" },
+] as const;
+
 // Item Code label is conditional on the WRR's Inventory Model (2026-08-19
 // user request): Trading lines are identified by DSGC Item Number; VMI (and
 // unset/Supplies) lines keep the original Supplier Item Code framing —
@@ -99,7 +106,7 @@ export function WrrLineItems({
           lotNumber: imp.lotNumber || "",
           expectedQty: imp.expectedQty || "",
           unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
-          uom: imp.uom || (item ? item.uom : "BOX"),
+          uom: (imp.uom || (item ? item.uom : "BOX")).toLowerCase(),
           itemCode: item
             ? flowType === "trading"
               ? (item.dsgcItemNumber ?? item.code)
@@ -148,7 +155,7 @@ export function WrrLineItems({
         itemCode: codeFor(item),
         itemDescription: item.description?.trim() || item.name,
         customerItemCode: item.customerItemCode ?? "",
-        uom: item.uom,
+        uom: item.uom.toLowerCase(),
         unitCbm: item.volumeCbm,
       };
     }));
@@ -165,7 +172,7 @@ export function WrrLineItems({
       itemCode: codeFor(item),
       itemDescription: item.description?.trim() || item.name,
       customerItemCode: item.customerItemCode ?? "",
-      uom: item.uom,
+      uom: item.uom.toLowerCase(),
       unitCbm: item.volumeCbm,
       expiryDate: item.isPerishable ? line.expiryDate : "",
     } : line));
@@ -420,19 +427,29 @@ export function WrrLineItems({
                 <label htmlFor={`line-${index}-uom`} className="block font-label text-label text-text-grey">
                   UOM <span aria-hidden="true" className="text-brand-red">*</span>
                 </label>
-                <input
-                  id={`line-${index}-uom`}
-                  name={`line_${index}_uom`}
-                  type="text"
-                  required
-                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
-                  value={line.uom}
-                  onChange={(e) => updateLine(index, "uom", e.target.value)}
-                  placeholder="e.g. PIECE, BOX, CTN"
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy uppercase ${
-                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
-                  }`}
-                />
+                <div className="relative mt-1">
+                  <select
+                    id={`line-${index}-uom`}
+                    name={`line_${index}_uom`}
+                    required
+                    disabled={isImported}
+                    value={line.uom}
+                    onChange={(e) => updateLine(index, "uom", e.target.value)}
+                    className={`h-11 w-full appearance-none rounded-lg border border-slate-200 px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20 ${
+                      isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"
+                    }`}
+                  >
+                    {!line.uom && <option value="">Select UOM…</option>}
+                    {line.uom && !STANDARD_UOM_OPTIONS.some((option) => option.value === line.uom) && (
+                      <option value={line.uom}>{line.uom.toUpperCase()} (current)</option>
+                    )}
+                    {STANDARD_UOM_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  {isImported && <input type="hidden" name={`line_${index}_uom`} value={line.uom} />}
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
+                </div>
                 <p className="mt-1 font-body text-[11px] text-text-grey">
                   Standard unit of measure
                 </p>
