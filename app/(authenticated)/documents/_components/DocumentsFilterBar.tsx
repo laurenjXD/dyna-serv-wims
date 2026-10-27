@@ -14,11 +14,15 @@ export interface FilterPartyOption {
 interface DocumentsFilterBarProps {
   organizations: FilterPartyOption[];
   activeTab: string;
+  organizationLabel: string;
+  showOrganizationFilter: boolean;
 }
 
 export function DocumentsFilterBar({
   organizations,
   activeTab,
+  organizationLabel,
+  showOrganizationFilter,
 }: DocumentsFilterBarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,19 +77,23 @@ export function DocumentsFilterBar({
           />
         </div>
 
-        {/* Organization dropdown */}
-        <div className="w-full lg:w-auto">
-          <FilterSelect
-            label="Organization"
-            value={currentParty}
-            onChange={(value) => updateParam("partyId", value)}
-            options={[
-              { value: "", label: "All Organizations" },
-              ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
-            ]}
-            className="w-full lg:min-w-[250px]"
-          />
-        </div>
+        {/* Organization dropdown — only where the active document type has
+            a meaningful organization relationship and the user is not
+            already restricted to one organization by RBAC. */}
+        {showOrganizationFilter && (
+          <div className="w-full lg:w-auto">
+            <FilterSelect
+              label={organizationLabel}
+              value={currentParty}
+              onChange={(value) => updateParam("partyId", value)}
+              options={[
+                { value: "", label: "All Organizations" },
+                ...organizations.map((org) => ({ value: org.id, label: `${org.name} (${org.code})` })),
+              ]}
+              className="w-full lg:min-w-[250px]"
+            />
+          </div>
+        )}
 
         {/* Date Range Inputs & Reset Action */}
         <div className="contents">
