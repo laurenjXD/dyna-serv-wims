@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Official browser-generated PDFs use one text size everywhere. */
+@media print {
+  html body,
+  html body * {
+    font-size: 12pt !important;
+  }
+}
+
 /*
  * Dyna-Serv surface primitives.
  * The brand guide permits 6px, 10px, 12px, and pill radii. These compatibility

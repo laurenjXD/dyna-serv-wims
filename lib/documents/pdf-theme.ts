@@ -5,6 +5,9 @@ export const PDF_PAGE = {
   landscape: { width: 841.89, height: 595.28 },
 } as const;
 
+/** Every generated PDF uses one canonical text size. */
+export const PDF_FONT_SIZE = 12;
+
 export const PDF_THEME = {
   margin: 28,
   ink: rgb(0.07, 0.1, 0.16),

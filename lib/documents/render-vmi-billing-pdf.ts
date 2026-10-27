@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { PDFDocument, StandardFonts, type PDFImage, type PDFFont, type PDFPage } from "pdf-lib";
 import type { VmiDocumentType } from "./vmi-artifacts";
-import { PDF_PAGE, PDF_THEME } from "./pdf-theme";
+import { PDF_FONT_SIZE, PDF_PAGE, PDF_THEME } from "./pdf-theme";
 import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "./document-template";
 
 export type VmiPdfPeriod = {
@@ -38,7 +38,7 @@ const RIGHT = WIDTH - 42;
 
 function money(value: number): string { return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 function line(page: PDFPage, y: number): void { page.drawLine({ start: { x: LEFT, y }, end: { x: RIGHT, y }, thickness: 0.5, color: PDF_THEME.grid }); }
-function text(page: PDFPage, content: string, x: number, y: number, font: PDFFont, size = 9, bold = false): void { page.drawText(content, { x, y, font, size, color: bold ? PDF_THEME.accentNavy : PDF_THEME.ink }); }
+function text(page: PDFPage, content: string, x: number, y: number, font: PDFFont, _size = PDF_FONT_SIZE, bold = false): void { page.drawText(content, { x, y, font, size: PDF_FONT_SIZE, color: bold ? PDF_THEME.accentNavy : PDF_THEME.ink }); }
 
 async function embedDynaServLogo(pdf: PDFDocument, template: DocumentTemplate): Promise<PDFImage> {
   const logoPath = template.logoUrl?.startsWith("/") ? template.logoUrl.slice(1) : "logo-hd.png";
@@ -50,19 +50,19 @@ function header(page: PDFPage, title: string, period: VmiPdfPeriod, regular: PDF
   const logoSize = 32;
   page.drawImage(logo, { x: LEFT, y: 744 - logoSize, width: logoSize, height: logoSize });
   const textLeft = LEFT + logoSize + 10;
-  text(page, template.companyName, textLeft, 755, bold, 11, true);
-  text(page, template.subtitle, textLeft, 741, regular, 8);
+  text(page, template.companyName, textLeft, 755, bold, PDF_FONT_SIZE, true);
+  text(page, template.subtitle, textLeft, 741, regular, PDF_FONT_SIZE);
   text(page, title.toUpperCase(), LEFT, 698, bold, 12, true);
-  text(page, `${period.partyName} (${period.partyCode})`, LEFT, 679, regular, 10);
-  text(page, `Reference: ${period.periodNumber}`, LEFT, 664, regular, 9);
-  text(page, `Billing period: ${period.periodStartDate} to ${period.periodEndDate}`, LEFT, 650, regular, 9);
+  text(page, `${period.partyName} (${period.partyCode})`, LEFT, 679, regular, PDF_FONT_SIZE);
+  text(page, `Reference: ${period.periodNumber}`, LEFT, 664, regular, PDF_FONT_SIZE);
+  text(page, `Billing period: ${period.periodStartDate} to ${period.periodEndDate}`, LEFT, 650, regular, PDF_FONT_SIZE);
   line(page, 637);
   return 615;
 }
 
 function row(page: PDFPage, y: number, label: string, value: string, regular: PDFFont, bold: PDFFont, strong = false): number {
-  text(page, label, LEFT, y, strong ? bold : regular, 10, strong);
-  text(page, value, RIGHT - bold.widthOfTextAtSize(value, 10), y, strong ? bold : regular, 10, strong);
+  text(page, label, LEFT, y, strong ? bold : regular, PDF_FONT_SIZE, strong);
+  text(page, value, RIGHT - bold.widthOfTextAtSize(value, PDF_FONT_SIZE), y, strong ? bold : regular, PDF_FONT_SIZE, strong);
   return y - 22;
 }
 
@@ -93,42 +93,42 @@ export async function renderVmiBillingPdf(type: VmiDocumentType, data: VmiPdfDat
     line(page, y + 8);
     y = row(page, y - 12, "Closing balance", money(data.period.soaClosingBalanceUsd), regular, bold, true);
     y -= 14;
-    text(page, `Locked FX rate: 1 USD = PHP ${data.period.lockedExchangeRatePhp.toFixed(4)}`, LEFT, y, regular, 9);
+    text(page, `Locked FX rate: 1 USD = PHP ${data.period.lockedExchangeRatePhp.toFixed(4)}`, LEFT, y, regular, PDF_FONT_SIZE);
     y -= 28;
-    text(page, "Payment history", LEFT, y, bold, 11, true); y -= 18;
+    text(page, "Payment history", LEFT, y, bold, PDF_FONT_SIZE, true); y -= 18;
     for (const payment of data.payments) {
       if (y < 65) {
         page = pdf.addPage([WIDTH, HEIGHT]);
         y = header(page, "Statement of Account (continued)", data.period, regular, bold, logo, template);
-        text(page, "Payment history (continued)", LEFT, y, bold, 11, true);
+        text(page, "Payment history (continued)", LEFT, y, bold, PDF_FONT_SIZE, true);
         y -= 18;
       }
-      text(page, `${payment.date} · ${payment.type}${payment.notes ? ` · ${payment.notes}` : ""}`, LEFT, y, regular, 9);
+      text(page, `${payment.date} · ${payment.type}${payment.notes ? ` · ${payment.notes}` : ""}`, LEFT, y, regular, PDF_FONT_SIZE);
       const amount = money(payment.amountUsd);
-      text(page, amount, RIGHT - bold.widthOfTextAtSize(amount, 9), y, bold, 9);
+      text(page, amount, RIGHT - bold.widthOfTextAtSize(amount, PDF_FONT_SIZE), y, bold, PDF_FONT_SIZE);
       y -= 16;
     }
-    if (data.payments.length === 0) text(page, "No payments recorded for this period.", LEFT, y, regular, 9);
+    if (data.payments.length === 0) text(page, "No payments recorded for this period.", LEFT, y, regular, PDF_FONT_SIZE);
   } else if (type === "vmi_letter_of_authority") {
-    text(page, "Active permit details for the billing period", LEFT, y, regular, 10); y -= 28;
-    if (data.permits.length === 0) text(page, "No active permit records were found.", LEFT, y, regular, 10);
+    text(page, "Active permit details for the billing period", LEFT, y, regular, PDF_FONT_SIZE); y -= 28;
+    if (data.permits.length === 0) text(page, "No active permit records were found.", LEFT, y, regular, PDF_FONT_SIZE);
     for (const permit of data.permits) {
-      text(page, permit.permitNumber, LEFT, y, bold, 10, true); y -= 15;
-      text(page, `Scope: ${permit.itemScope}`, LEFT, y, regular, 9); y -= 14;
-      text(page, `Validity: ${permit.validFrom} to ${permit.validTo} · Monthly fee: ${money(permit.monthlyFeeUsd)}`, LEFT, y, regular, 9); y -= 24;
+      text(page, permit.permitNumber, LEFT, y, bold, PDF_FONT_SIZE, true); y -= 15;
+      text(page, `Scope: ${permit.itemScope}`, LEFT, y, regular, PDF_FONT_SIZE); y -= 14;
+      text(page, `Validity: ${permit.validFrom} to ${permit.validTo} · Monthly fee: ${money(permit.monthlyFeeUsd)}`, LEFT, y, regular, PDF_FONT_SIZE); y -= 24;
     }
   } else {
     const headings = ["Date", "Beginning", "In", "Out", "Ending", "Rate", "Amount"];
     const x = [LEFT, 110, 185, 245, 305, 380, 455];
-    headings.forEach((heading, index) => text(page, heading, x[index], y, bold, 8, true)); y -= 12; line(page, y + 5);
+    headings.forEach((heading, index) => text(page, heading, x[index], y, bold, PDF_FONT_SIZE, true)); y -= 12; line(page, y + 5);
     for (const daily of data.dailyRows) {
       if (y < 65) { page = pdf.addPage([WIDTH, HEIGHT]); y = header(page, "Warehousing Charges (continued)", data.period, regular, bold, logo, template); }
       const values = [daily.date, daily.beginningCbm.toFixed(2), daily.inboundCbm.toFixed(2), daily.outboundCbm.toFixed(2), daily.endingCbm.toFixed(2), `$${daily.rateUsd.toFixed(4)}`, money(daily.amountUsd)];
-      values.forEach((value, index) => text(page, value, x[index], y, regular, 8)); y -= 15;
+      values.forEach((value, index) => text(page, value, x[index], y, regular, PDF_FONT_SIZE)); y -= 15;
     }
-    line(page, y + 5); text(page, "Storage charge total", LEFT, y - 12, bold, 10, true); const total = money(data.period.storageChargeUsd); text(page, total, RIGHT - bold.widthOfTextAtSize(total, 10), y - 12, bold, 10);
+    line(page, y + 5); text(page, "Storage charge total", LEFT, y - 12, bold, PDF_FONT_SIZE, true); const total = money(data.period.storageChargeUsd); text(page, total, RIGHT - bold.widthOfTextAtSize(total, PDF_FONT_SIZE), y - 12, bold, PDF_FONT_SIZE);
   }
 
-  text(page, `Generated draft preview · ${data.period.periodNumber}`, LEFT, 30, regular, 8);
+  text(page, `Generated draft preview · ${data.period.periodNumber}`, LEFT, 30, regular, PDF_FONT_SIZE);
   return pdf.save();
 }
