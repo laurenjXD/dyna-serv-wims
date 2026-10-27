@@ -10,6 +10,12 @@
   }
 }
 
+/* The Settings document-template preview mirrors the generated PDF contract. */
+[data-pdf-template-preview],
+[data-pdf-template-preview] * {
+  font-size: 12pt !important;
+}
+
 /*
  * Dyna-Serv surface primitives.
  * The brand guide permits 6px, 10px, 12px, and pill radii. These compatibility
