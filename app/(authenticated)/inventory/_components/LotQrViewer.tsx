@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export function LotQrViewer({
   lotId,
@@ -26,10 +27,7 @@ export function LotQrViewer({
   }, [open]);
 
   const handlePrint = () => {
-    // Let the QR SVG finish painting before Chromium snapshots the page.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
-    });
+    scheduleThermalPrint();
   };
 
   return (
@@ -51,7 +49,7 @@ export function LotQrViewer({
         >
           <style>{`
             @page {
-              size: 2in 2in;
+              size: 50mm 50mm;
               margin: 0;
             }
             @media print {
@@ -63,6 +61,10 @@ export function LotQrViewer({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
+              body[data-lot-qr-print-mode] {
+                width: 50mm !important;
+                min-width: 50mm !important;
+              }
               body[data-lot-qr-print-mode] * {
                 visibility: hidden !important;
               }
@@ -72,10 +74,12 @@ export function LotQrViewer({
                 visibility: visible !important;
               }
               body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
-                position: static !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
@@ -85,10 +89,10 @@ export function LotQrViewer({
                 position: static !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 2in !important;
-                height: 2in !important;
-                max-width: 2in !important;
-                max-height: 2in !important;
+                width: 50mm !important;
+                height: 50mm !important;
+                max-width: 50mm !important;
+                max-height: 50mm !important;
                 margin: 0 !important;
                 padding: 1.5mm !important;
                 border: none !important;

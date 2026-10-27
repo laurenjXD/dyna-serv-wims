@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Printer, X } from "@/components/ui/icons";
 import type { MigratedLotQrLabel } from "@/lib/actions/data-migration";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] }) {
   const [open, setOpen] = useState(false);
@@ -19,9 +20,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
   if (labels.length === 0) return null;
 
   const handlePrint = () => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
-    });
+    scheduleThermalPrint();
   };
 
   return (
@@ -44,7 +43,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
           className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/60 p-4 print:static print:block print:bg-white print:p-0"
         >
           <style>{`
-            @page { size: 2in 2in; margin: 0; }
+            @page { size: 50mm 50mm; margin: 0; }
             @media print {
               html, body {
                 margin: 0 !important;
@@ -53,6 +52,10 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
+              body[data-bulk-lot-qr-print-mode] {
+                width: 50mm !important;
+                min-width: 50mm !important;
+              }
               body[data-bulk-lot-qr-print-mode] * { visibility: hidden !important; }
               body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal],
               body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] #bulk-lot-qr-sheet,
@@ -60,25 +63,27 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 visibility: visible !important;
               }
               body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] {
-                position: static !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 height: auto !important;
                 overflow: visible !important;
                 background: #fff !important;
               }
               #bulk-lot-qr-sheet {
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
               }
               .bulk-lot-qr-card {
                 display: flex !important;
-                width: 2in !important;
-                height: 2in !important;
+                width: 50mm !important;
+                height: 50mm !important;
                 box-sizing: border-box !important;
                 margin: 0 !important;
                 padding: 1.5mm !important;
@@ -90,11 +95,11 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 overflow: hidden !important;
               }
               .bulk-lot-qr-card:last-child { page-break-after: avoid !important; break-after: avoid !important; }
-              .bulk-lot-qr-card svg { display: block !important; width: 30mm !important; height: 30mm !important; }
+              .bulk-lot-qr-card svg { display: block !important; width: 30mm !important; height: 30mm !important; visibility: visible !important; }
             }
           `}</style>
 
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[2in] print:p-0 print:shadow-none">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[50mm] print:p-0 print:shadow-none">
             <div className="flex items-center justify-between gap-4 border-b border-outline-variant pb-4 print:hidden">
               <div>
                 <h2 id="bulk-lot-qr-title" className="font-heading text-title-lg font-bold text-on-surface">

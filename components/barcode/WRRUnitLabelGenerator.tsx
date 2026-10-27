@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export interface WRRUnitLabelGeneratorProps {
   wrrItemId: string;
@@ -67,11 +68,7 @@ export function WRRUnitLabelGenerator({
   }, [isModalOpen, wrrItemId, expectedQty]);
 
   const handlePrint = () => {
-    // react-qr-code paints SVG nodes during the commit. Waiting two frames
-    // ensures Chromium has painted those nodes before it snapshots print.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
-    });
+    scheduleThermalPrint();
   };
 
   return (
@@ -98,7 +95,7 @@ export function WRRUnitLabelGenerator({
           {/* Print Media Isolation Rules */}
           <style>{`
             @page {
-              size: 2in 2in;
+              size: 50mm 50mm;
               margin: 0;
             }
             @media print {
@@ -110,6 +107,10 @@ export function WRRUnitLabelGenerator({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
+              body[data-qr-print-mode] {
+                width: 50mm !important;
+                min-width: 50mm !important;
+              }
               body[data-qr-print-mode] * {
                 visibility: hidden !important;
               }
@@ -119,10 +120,12 @@ export function WRRUnitLabelGenerator({
                 visibility: visible !important;
               }
               body[data-qr-print-mode] [data-qr-print-modal] {
-                position: static !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
@@ -132,8 +135,8 @@ export function WRRUnitLabelGenerator({
                 position: static !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -142,10 +145,10 @@ export function WRRUnitLabelGenerator({
                 overflow: visible !important;
               }
               .unit-thermal-label-card {
-                width: 2in !important;
-                height: 2in !important;
-                max-width: 2in !important;
-                max-height: 2in !important;
+                width: 50mm !important;
+                height: 50mm !important;
+                max-width: 50mm !important;
+                max-height: 50mm !important;
                 margin: 0 !important;
                 padding: 1.5mm !important;
                 box-sizing: border-box !important;
@@ -222,7 +225,7 @@ export function WRRUnitLabelGenerator({
             <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
               <div
                 id="print-unit-labels-sheet"
-                className="grid grid-cols-2 gap-4 print:block print:w-[2in]"
+                className="grid grid-cols-2 gap-4 print:block print:w-[50mm]"
               >
                 {unitLabels.map((unit) => (
                   <div

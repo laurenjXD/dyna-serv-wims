@@ -5,6 +5,7 @@
 // Rendered in browser; Admin clicks "Print Label" to invoke print driver (design.md §2.1).
 
 import QRCode from "react-qr-code";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 interface LabelPrinterProps {
   /** UUID of the lot — encoded directly into the QR code as the payload value. */
@@ -31,7 +32,7 @@ export function LabelPrinter({
     >
       <style>{`
         @page {
-          size: 2in 2in;
+          size: 50mm 50mm;
           margin: 0;
         }
         @media print {
@@ -54,10 +55,10 @@ export function LabelPrinter({
             position: fixed !important;
             left: 0 !important;
             top: 0 !important;
-            width: 2in !important;
-            height: 2in !important;
-            max-width: 2in !important;
-            max-height: 2in !important;
+            width: 50mm !important;
+            height: 50mm !important;
+            max-width: 50mm !important;
+            max-height: 50mm !important;
             margin: 0 !important;
             padding: 1.5mm !important;
             border: none !important;
@@ -75,6 +76,14 @@ export function LabelPrinter({
           }
           .thermal-screen-only {
             display: none !important;
+          }
+          [data-print-label] svg {
+            display: block !important;
+            width: 30mm !important;
+            height: 30mm !important;
+            min-width: 30mm !important;
+            min-height: 30mm !important;
+            visibility: visible !important;
           }
         }
       `}</style>
@@ -121,7 +130,7 @@ export function LabelPrinter({
       {/* Print action CTA */}
       <button
         type="button"
-        onClick={() => window.print()}
+        onClick={scheduleThermalPrint}
         className="thermal-screen-only mt-2 h-12 w-full bg-primary text-surface-white font-label text-body-md font-bold rounded-lg shadow-sm active:scale-[0.97] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         Print 2&quot; × 2&quot; Label
