@@ -37,7 +37,7 @@ import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { ToPickQueue } from "./_components/ToPickQueue";
 import { LotQrViewer } from "./_components/LotQrViewer";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
-import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, submitCycleCountAction, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
+import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
@@ -208,7 +208,7 @@ async function StockCountTabSection({ countId, error }: { countId?: string; erro
     listCycleCountSessions(db),
     countId ? getCycleCountSession(db, countId) : Promise.resolve(null),
   ]);
-  return <StockCountTab locations={locations} sessions={sessions} active={active} error={error} createAction={createCycleCountAction} recordAction={recordCycleCountAction} submitAction={submitCycleCountAction} approveAction={approveCycleCountAction} rejectAction={rejectCycleCountAction} postAction={postCycleCountAction} />;
+  return <StockCountTab locations={locations} sessions={sessions} active={active} error={error} createAction={createCycleCountAction} recordAction={recordCycleCountAction} submitAction={submitCycleCountAction} approveAction={approveCycleCountAction} rejectAction={rejectCycleCountAction} recountAction={requestCycleCountRecountAction} postAction={postCycleCountAction} />;
 }
 
 // ─── Stock View tab (default) ─────────────────────────────────────────────────
