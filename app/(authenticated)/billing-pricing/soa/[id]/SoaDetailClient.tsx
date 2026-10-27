@@ -125,11 +125,11 @@ function AppendixSection({
 
 function AppendixTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
   return (
-    <table data-document-table className="w-full text-left border-collapse font-mono text-[10px] leading-4 print:text-[12pt]">
+    <table data-document-table className="w-full text-left border-collapse font-mono text-[10px] leading-4 print:text-[9pt]">
       <thead>
         <tr className="bg-slate-100 border-b border-slate-300 print:bg-slate-100">
           {headers.map((h) => (
-            <th key={h} className="py-1.5 px-3 uppercase tracking-[0.08em] text-slate-700 font-bold whitespace-nowrap text-[9px] print:text-[12pt] print:py-1 print:px-1.5">
+            <th key={h} className="py-1.5 px-3 uppercase tracking-[0.08em] text-slate-700 font-bold whitespace-nowrap text-[9px] print:text-[9pt] print:py-1 print:px-1.5">
               {h}
             </th>
           ))}
@@ -202,7 +202,7 @@ export function SoaDetailClient({
             color: #000 !important;
             color-scheme: light !important;
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-            font-size: 12pt !important;
+            font-size: 9pt !important;
             line-height: 1.3 !important;
             width: 100% !important;
             margin: 0 !important;
@@ -266,18 +266,18 @@ export function SoaDetailClient({
             border: 1px solid #475569 !important;
             padding: 2.5px 4px !important;
             font-weight: 700 !important;
-            font-size: 12pt !important;
+            font-size: 9pt !important;
           }
           td {
             border: 1px solid #cbd5e1 !important;
             padding: 2px 4px !important;
             color: #000 !important;
-            font-size: 12pt !important;
+            font-size: 9pt !important;
           }
           .soa-main-header { background: #1e293b !important; }
-          .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 12pt !important; padding: 4px 6px !important; }
-          .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 12pt !important; }
-          .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 12pt !important; }
+          .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 9pt !important; padding: 4px 6px !important; }
+          .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 9pt !important; }
+          .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 9pt !important; }
           .soa-document-meta td:last-child {
             border-right: 1px solid #cbd5e1 !important;
           }
