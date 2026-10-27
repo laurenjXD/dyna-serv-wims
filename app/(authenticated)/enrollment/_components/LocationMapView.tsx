@@ -318,7 +318,7 @@ export function LocationMapView({
                               textAnchor="end"
                               className="fill-slate-500 text-[8px] font-mono font-semibold"
                             >
-                              {layout.reversePositions ? positionIndex + 1 : layout.positions - positionIndex}
+                              {layout.positions - positionIndex}
                             </text>
                           ))}
                           {Array.from({ length: layout.levels }, (_, levelIndex) => (

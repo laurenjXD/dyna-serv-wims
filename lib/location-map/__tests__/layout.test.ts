@@ -45,9 +45,9 @@ describe("warehouse map layout", () => {
     expect(WAREHOUSE_RACK_LAYOUT.map((layout) => layout.rack)).toEqual([
       "A", "F", "G", "H", "I", "B", "C", "D", "E",
     ]);
-    expect(WAREHOUSE_RACK_LAYOUT[0]).toMatchObject({ levels: 4, positions: 30, reversePositions: true, verticalPositions: true });
+    expect(WAREHOUSE_RACK_LAYOUT[0]).toMatchObject({ levels: 4, positions: 30, verticalPositions: true });
     expect(WAREHOUSE_RACK_LAYOUT[1]).toMatchObject({ levels: 4, positions: 14, verticalPositions: true });
-    expect(WAREHOUSE_RACK_LAYOUT[4]).toMatchObject({ levels: 2, positions: 12, reversePositions: true, verticalPositions: true });
+    expect(WAREHOUSE_RACK_LAYOUT[4]).toMatchObject({ levels: 2, positions: 12, verticalPositions: true });
     expect(WAREHOUSE_RACK_LAYOUT.every((layout) => layout.verticalPositions)).toBe(true);
   });
 
@@ -60,11 +60,11 @@ describe("warehouse map layout", () => {
 
   it("keeps the PDF display orientation linked to canonical level-position labels", () => {
     const rackA = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A");
-    expect(rackA[0]).toMatchObject({ label: "A4-01", level: "4", position: "01" });
-    expect(rackA.at(-1)).toMatchObject({ label: "A1-30", level: "1", position: "30" });
+    expect(rackA[0]).toMatchObject({ label: "A4-30", level: "4", position: "30" });
+    expect(rackA.at(-1)).toMatchObject({ label: "A1-01", level: "1", position: "01" });
   });
 
-  it("keeps level one at the bottom of a rack", () => {
+  it("keeps position one at the bottom of every vertical rack", () => {
     const cells = buildWarehouseMapCells([{
       rack: "A",
       levels: 3,
@@ -81,6 +81,14 @@ describe("warehouse map layout", () => {
       "A1-01",
     ]);
     expect(cells.find((cell) => cell.label === "A1-01")?.y).toBe(20);
+
+    for (const layout of WAREHOUSE_RACK_LAYOUT) {
+      const rackCells = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === layout.rack);
+      const topRow = Math.min(...rackCells.map((cell) => cell.y));
+      const bottomRow = Math.max(...rackCells.map((cell) => cell.y));
+      expect(rackCells.filter((cell) => cell.y === topRow).every((cell) => cell.position === String(layout.positions).padStart(2, "0"))).toBe(true);
+      expect(rackCells.filter((cell) => cell.y === bottomRow).every((cell) => cell.position === "01")).toBe(true);
+    }
   });
 
   it("reverses the physical position order without changing canonical labels", () => {

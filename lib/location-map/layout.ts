@@ -1,4 +1,4 @@
-export const WAREHOUSE_MAP_LAYOUT_VERSION = "v7-pdf-footprint-canonical-labels";
+export const WAREHOUSE_MAP_LAYOUT_VERSION = "v8-pdf-footprint-floor-up-positions";
 export const WAREHOUSE_MAP_SOURCE = "DSGC PALLET POSITION.pdf / confirmed RACK A-I footprint";
 
 export type RackLayout = {
@@ -9,6 +9,11 @@ export type RackLayout = {
   y: number;
   width: number;
   height: number;
+  /**
+   * Reverse the position sequence for horizontal layouts. Vertical rack
+   * layouts always use the warehouse convention: position 1 at the bottom
+   * and the highest position at the top.
+   */
   reversePositions?: boolean;
   /** Display the physical position run vertically while keeping labels canonical. */
   verticalPositions?: boolean;
@@ -39,18 +44,18 @@ export type WarehouseMapCell = {
  */
 export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
   // Keep the first rack title below the warehouse subtitle with a clear gap.
-  { rack: "A", levels: 4, positions: 30, x: 84, y: 150, width: 168, height: 600, reversePositions: true, verticalPositions: true },
+  { rack: "A", levels: 4, positions: 30, x: 84, y: 150, width: 168, height: 600, verticalPositions: true },
   { rack: "F", levels: 4, positions: 14, x: 332, y: 150, width: 180, height: 270, verticalPositions: true },
-  { rack: "G", levels: 4, positions: 14, x: 580, y: 150, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "G", levels: 4, positions: 14, x: 580, y: 150, width: 180, height: 270, verticalPositions: true },
   { rack: "H", levels: 2, positions: 12, x: 828, y: 150, width: 128, height: 270, verticalPositions: true },
-  { rack: "I", levels: 2, positions: 12, x: 1024, y: 150, width: 128, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "I", levels: 2, positions: 12, x: 1024, y: 150, width: 128, height: 270, verticalPositions: true },
   { rack: "B", levels: 4, positions: 12, x: 332, y: 510, width: 180, height: 270, verticalPositions: true },
-  { rack: "C", levels: 4, positions: 12, x: 580, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "C", levels: 4, positions: 12, x: 580, y: 510, width: 180, height: 270, verticalPositions: true },
   { rack: "D", levels: 4, positions: 12, x: 828, y: 510, width: 180, height: 270, verticalPositions: true },
   // Keep enough gutter before E's vertical POS labels so D's final level
   // header does not visually merge with them in the horizontally scrollable
   // map view.
-  { rack: "E", levels: 4, positions: 12, x: 1048, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "E", levels: 4, positions: 12, x: 1048, y: 510, width: 180, height: 270, verticalPositions: true },
 ];
 
 // Form/storage-entry limits. These are broader than the visible PDF footprint
@@ -83,7 +88,10 @@ export function buildWarehouseMapCells(
     return Array.from({ length: layout.verticalPositions ? layout.positions : layout.levels }, (_, rowIndex) => {
       const rowLevel = layout.verticalPositions ? undefined : layout.levels - rowIndex;
       const rowPosition = layout.verticalPositions
-        ? (layout.reversePositions ? rowIndex + 1 : layout.positions - rowIndex)
+        // Physical rack positions are numbered from the floor upward. Keep
+        // this invariant for every vertical rack, regardless of how the rack
+        // is mirrored in the source drawing.
+        ? layout.positions - rowIndex
         : undefined;
       return Array.from({ length: layout.verticalPositions ? layout.levels : layout.positions }, (_, columnIndex) => {
         const level = layout.verticalPositions ? layout.levels - columnIndex : rowLevel!;

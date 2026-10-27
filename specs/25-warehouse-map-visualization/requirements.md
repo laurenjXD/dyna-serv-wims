@@ -1,7 +1,7 @@
 # Warehouse Map Visualization — Requirements
 
 Status: Approved
-Updated: 2026-10-23 — Final PDF rack footprint and label-spacing amendment approved
+Updated: 2026-10-27 — Position numbering orientation amendment approved
 Depends on: `specs/01-core-data-model/`, `specs/05-ui-shell-and-navigation/`, `specs/06-party-and-item-enrollment/`, and `specs/24-data-migration-and-seeding/`
 
 ## Purpose
@@ -43,6 +43,14 @@ Map text SHALL have deliberate spacing between the warehouse title, rack
 titles, level/position headers, and cell labels. Labels MUST remain readable
 and must not overlap one another at the desktop map width or in focused-rack
 view.
+
+#### Floor-up position numbering amendment — 2026-10-27 (Approved)
+
+For every vertical rack rendering, physical position `01` SHALL be the bottom
+cell and positions SHALL increase upward to the highest position. This rule is
+uniform across racks A through I; the source drawing's mirrored rack columns
+MUST NOT change the user-facing bottom-up position sequence. Canonical
+level-position labels remain unchanged.
 
 ### R3. Locations view
 
