@@ -29,4 +29,5 @@ export * from "./billing_ledger";
 export * from "./inventory_units";
 export * from "./migrations";
 export * from "./system_settings";
+export * from "./receiving_discrepancies";
 export * from "./compliance_applications";

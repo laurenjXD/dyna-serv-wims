@@ -42,6 +42,7 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
 import { inspectionCases } from "@/lib/db/schema/transfers";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { receivingDiscrepancies } from "@/lib/db/schema/receiving_discrepancies";
 import { deriveWrrUnitId } from "@/lib/barcode/wrr-unit";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
@@ -1137,6 +1138,23 @@ export async function commitWrrLine(
         .returning({ id: wrrItems.id });
 
       if (claimed.length === 1) {
+        if (allocatedTotal < cartonCount) {
+          await tx.insert(receivingDiscrepancies).values({
+            wrrId: doc.id,
+            wrrItemId: line.id,
+            expectedCartons: cartonCount,
+            receivedCartons: allocatedTotal,
+            missingCartons: cartonCount - allocatedTotal,
+          }).onConflictDoUpdate({
+            target: receivingDiscrepancies.wrrItemId,
+            set: {
+              expectedCartons: cartonCount,
+              receivedCartons: allocatedTotal,
+              missingCartons: cartonCount - allocatedTotal,
+              updatedAt: new Date(),
+            },
+          });
+        }
         const hasStorageLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "storage");
         const hasInspectionLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "inspection");
 
