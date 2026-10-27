@@ -103,11 +103,9 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
     ? [...new Set(authorizationContext?.partyScopes.map((scope) => scope.partyId) ?? [])]
     : [];
   const organizationFilterVisible = activeTab !== "reports" && scopedOrganizationIds.length !== 1;
-  const organizationFilterLabel = activeTab === "wrr" || activeTab === "cipl"
-    ? "Supplier / VMI Customer Organization"
-    : activeTab === "pick-lists" || activeTab === "acknowledgement-receipts"
-    ? "Trading Customer / End Customer Organization"
-    : "Billing Organization";
+  // Keep the tab-specific role scoping below, but use one clear label for the
+  // shared organization filter across document tabs.
+  const organizationFilterLabel = "Organization";
   const allowedPartyRoles = activeTab === "wrr" || activeTab === "cipl"
     ? new Set(["supplier", "customer"])
     : activeTab === "pick-lists" || activeTab === "acknowledgement-receipts"
