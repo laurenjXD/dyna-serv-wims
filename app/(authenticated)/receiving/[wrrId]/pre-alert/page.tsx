@@ -15,6 +15,7 @@ import { WrrBarcode } from "../print/_components/WrrBarcode";
 import { PrintButton } from "../print/_components/PrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
+import { boxesToPieces } from "@/lib/inventory/quantities";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI (Vendor Managed Inventory)",
@@ -40,7 +41,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
     notFound();
   }
 
-  const totalExpectedUnits = wrr.items.reduce((sum, item) => sum + item.expectedQty, 0);
+  const totalExpectedUnits = wrr.items.reduce((sum, item) => sum + boxesToPieces(item.expectedQty, item.spq), 0);
   const template = await getDocumentTemplate(db);
 
   return (
@@ -182,7 +183,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Lot Number</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Mfg Date</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Expiry Date</th>
-                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider">Expected Qty</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider">Expected Qty (Units)</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">UOM</th>
                   <th className="border border-slate-300 px-2 py-1.5 uppercase font-bold tracking-wider">Remarks</th>
                 </tr>
@@ -200,7 +201,8 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.manufactureDate ?? "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.expiryDate ?? "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
-                      {item.expectedQty.toLocaleString()}
+                      {boxesToPieces(item.expectedQty, item.spq).toLocaleString()}
+                      <span className="block text-[9px] font-normal text-slate-500">({item.expectedQty} cartons)</span>
                     </td>
                     <td className="border border-slate-300 px-2 py-1.5 uppercase text-slate-600">{item.uom || "PCS"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-500">{item.remarks ?? "—"}</td>
@@ -210,7 +212,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
               <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
                 <tr>
                   <td colSpan={6} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
-                    Total Expected Quantity:
+                    Total Expected Quantity (Units):
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-brand-navy">
                     {totalExpectedUnits.toLocaleString()}

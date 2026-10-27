@@ -31,6 +31,7 @@ import { WrrDetailTabs } from "./_components/WrrDetailTabs";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { DetailCard, DetailPageHeader, DetailSectionHeading } from "@/components/global/DetailPage";
 import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
+import { boxesToPieces } from "@/lib/inventory/quantities";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -91,10 +92,16 @@ export default async function WrrDetailPage({ params }: PageProps) {
   // across a hoisted `function` declaration's body.
   const ciplFileUrl = wrr.ciplFileUrl;
   const shortageItems = wrr.items.filter((item) => item.scannedQty < item.expectedQty);
-  const totalExpectedBoxes = wrr.items.reduce((sum, item) => sum + item.expectedQty, 0);
-  const totalReceivedBoxes = wrr.items.reduce((sum, item) => sum + item.scannedQty, 0);
-  const totalMissingBoxes = shortageItems.reduce(
+  const totalExpectedCartons = wrr.items.reduce((sum, item) => sum + item.expectedQty, 0);
+  const totalReceivedCartons = wrr.items.reduce((sum, item) => sum + item.scannedQty, 0);
+  const totalExpectedUnits = wrr.items.reduce((sum, item) => sum + boxesToPieces(item.expectedQty, item.spq), 0);
+  const totalReceivedUnits = wrr.items.reduce((sum, item) => sum + boxesToPieces(item.scannedQty, item.spq), 0);
+  const totalMissingCartons = shortageItems.reduce(
     (sum, item) => sum + Math.max(0, item.expectedQty - item.scannedQty),
+    0,
+  );
+  const totalMissingUnits = shortageItems.reduce(
+    (sum, item) => sum + boxesToPieces(Math.max(0, item.expectedQty - item.scannedQty), item.spq),
     0,
   );
   const inspectionAllocations = putawayAllocations.filter(
@@ -105,7 +112,8 @@ export default async function WrrDetailPage({ params }: PageProps) {
       a.locationLabel?.toLowerCase().includes("qa") ||
       a.locationLabel?.toLowerCase().includes("hold"),
   );
-  const totalInspectionBoxes = inspectionAllocations.reduce((sum, a) => sum + a.qty, 0);
+  const totalInspectionCartons = inspectionAllocations.reduce((sum, a) => sum + a.qty, 0);
+  const totalInspectionUnits = inspectionAllocations.reduce((sum, a) => sum + boxesToPieces(a.qty, a.spq), 0);
 
   // ─── Inline server action: startReceiving ──────────────────────────────────
   async function handleStartReceiving(): Promise<void> {
@@ -271,7 +279,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
       </div>
 
       {/* Inbound Inspection Alert Banner */}
-      {totalInspectionBoxes > 0 && (
+      {totalInspectionCartons > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 to-[#FFFDF5] p-5 shadow-elevation-1">
           <div className="flex items-start gap-3.5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-800">
@@ -287,7 +295,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                 </span>
               </div>
               <p className="mt-1 font-body text-body-sm text-amber-900">
-                <strong>{totalInspectionBoxes} box{totalInspectionBoxes === 1 ? "" : "es"}</strong> in this shipment {totalInspectionBoxes === 1 ? "was" : "were"} assigned to QA Holding / Inspection Bays. Stock is locked until floor inspection and verification are completed.
+                <strong>{totalInspectionUnits.toLocaleString()} units ({totalInspectionCartons} carton{totalInspectionCartons === 1 ? "" : "s"})</strong> in this shipment {totalInspectionCartons === 1 ? "was" : "were"} assigned to QA Holding / Inspection Bays. Stock is locked until floor inspection and verification are completed.
               </p>
             </div>
           </div>
@@ -315,10 +323,10 @@ export default async function WrrDetailPage({ params }: PageProps) {
               </h3>
               <p className="mt-1 font-body text-body-md text-text-grey">
                 This shipment was finalized with fewer units than declared on the Pre-Alert / CIPL.
-                Total expected: <strong className="font-mono text-on-surface">{totalExpectedBoxes} Boxes</strong> |
-                Total received & posted to inventory: <strong className="font-mono text-on-surface">{totalReceivedBoxes} Boxes</strong> |
+                Total expected: <strong className="font-mono text-on-surface">{totalExpectedUnits.toLocaleString()} units ({totalExpectedCartons} cartons)</strong> |
+                Total received & posted to inventory: <strong className="font-mono text-on-surface">{totalReceivedUnits.toLocaleString()} units ({totalReceivedCartons} cartons)</strong> |
                 <span className="font-mono font-bold text-status-held">
-                  {totalMissingBoxes} Boxes missing
+                  {totalMissingUnits.toLocaleString()} units ({totalMissingCartons} cartons) missing
                 </span>.
               </p>
               <div className="mt-4 overflow-x-auto rounded-lg border border-status-held/20 bg-surface-white">
@@ -333,7 +341,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   </thead>
                   <tbody className="divide-y divide-status-held/10">
                     {shortageItems.map((item) => {
-                      const missingBoxes = Math.max(0, item.expectedQty - item.scannedQty);
+                      const missingCartons = Math.max(0, item.expectedQty - item.scannedQty);
                       const spq = Number(item.spq) || 1;
                       return (
                         <tr key={item.id}>
@@ -342,13 +350,13 @@ export default async function WrrDetailPage({ params }: PageProps) {
                             <span className="block text-text-grey">Lot {item.lotNumber}</span>
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-body-sm text-on-surface">
-                            {item.expectedQty} boxes ({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                            {boxesToPieces(item.expectedQty, spq).toLocaleString()} {item.uom || "PCS"} ({item.expectedQty} cartons)
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-body-sm text-status-available">
-                            {item.scannedQty} boxes ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                            {boxesToPieces(item.scannedQty, spq).toLocaleString()} {item.uom || "PCS"} ({item.scannedQty} cartons)
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-body-sm font-bold text-status-held">
-                            {missingBoxes} boxes ({(missingBoxes * spq).toLocaleString()} {item.uom || "PCS"})
+                            {boxesToPieces(missingCartons, spq).toLocaleString()} {item.uom || "PCS"} ({missingCartons} cartons)
                           </td>
                         </tr>
                       );
@@ -395,13 +403,13 @@ export default async function WrrDetailPage({ params }: PageProps) {
                         { label: "Customer code", value: item.customerItemCode ?? "—" },
                         { label: "Mfg. date", value: item.manufactureDate ?? "—" },
                         { label: "Expiry date", value: item.expiryDate ?? "—" },
-                        { label: "Expected", value: `${item.expectedQty} boxes (${(item.expectedQty * spq).toLocaleString()} ${item.uom || "PCS"})` },
-                        { label: "Received", value: <span className={isShortage ? "font-bold text-status-held" : ""}>{item.scannedQty} boxes ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})</span> },
+                        { label: "Expected", value: `${boxesToPieces(item.expectedQty, spq).toLocaleString()} ${item.uom || "PCS"} (${item.expectedQty} cartons)` },
+                        { label: "Received", value: <span className={isShortage ? "font-bold text-status-held" : ""}>{boxesToPieces(item.scannedQty, spq).toLocaleString()} {item.uom || "PCS"} ({item.scannedQty} cartons)</span> },
                         { label: "Remarks", value: item.remarks ?? "—", className: "col-span-2" },
                       ]}
                     >
                       <div className="mt-3 border-t border-border pt-3">
-                        <WRRUnitLabelGenerator wrrItemId={item.id} wrrNumber={wrr.wrrNumber} itemCode={item.itemCode ?? item.lotNumber} lotNumber={item.lotNumber} expectedQty={item.expectedQty} />
+                        <WRRUnitLabelGenerator wrrItemId={item.id} wrrNumber={wrr.wrrNumber} itemCode={item.itemCode ?? item.lotNumber} lotNumber={item.lotNumber} cartonCount={item.expectedQty} spq={spq} uom={item.uom || "units"} />
                       </div>
                     </MobileDataCard>
                   );
@@ -424,11 +432,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
                         Mfg. Date
                       </th>
                       <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">Expiry Date</th>
-                      <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Expected Qty
+                        <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
+                        Expected Qty (Units)
                       </th>
                       <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                        Received Qty
+                        Received Qty (Units)
                       </th>
                       <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                         Remarks
@@ -452,22 +460,22 @@ export default async function WrrDetailPage({ params }: PageProps) {
                             <span className="block font-mono font-bold text-brand-navy">Dyna-Serv: {item.itemCode ?? "—"}</span>
                             <span className="mt-0.5 block text-text-grey text-body-sm">Supplier: {item.supplierItemCode ?? "—"}</span>
                             <span className="mt-1 inline-block rounded bg-surface-light-grey px-1.5 py-0.5 font-label text-label-xs font-bold text-text-grey">
-                              SPQ: {spq} {item.uom || "PCS"}/Box
+                              SPQ: {spq} {item.uom || "PCS"}/Carton
                             </span>
                           </td>
                           <td className="px-4 py-3 font-mono text-mono-md text-on-surface">{item.customerItemCode ?? "—"}</td>
                           <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.manufactureDate ?? "—"}</td>
                           <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.expiryDate ?? "—"}</td>
                           <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
-                            <span className="font-mono font-bold block">{item.expectedQty} Boxes</span>
-                            <span className="text-text-grey font-mono text-body-xs">({(item.expectedQty * spq).toLocaleString()} {item.uom || "PCS"})</span>
+                            <span className="font-mono font-bold block">{boxesToPieces(item.expectedQty, spq).toLocaleString()} {item.uom || "PCS"}</span>
+                            <span className="text-text-grey font-mono text-body-xs">({item.expectedQty} cartons)</span>
                           </td>
                           <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
                             <span className={`font-mono font-bold block ${isShortage ? "text-status-held" : ""}`}>
-                              {item.scannedQty} Boxes
+                              {boxesToPieces(item.scannedQty, spq).toLocaleString()} {item.uom || "PCS"}
                             </span>
                             <span className="text-text-grey font-mono text-body-xs">
-                              ({(item.scannedQty * spq).toLocaleString()} {item.uom || "PCS"})
+                              ({item.scannedQty} cartons)
                             </span>
                           </td>
                           <td className="max-w-56 px-4 py-3 font-body text-body-md text-text-grey">{item.remarks ?? "—"}</td>
@@ -477,7 +485,9 @@ export default async function WrrDetailPage({ params }: PageProps) {
                               wrrNumber={wrr.wrrNumber}
                               itemCode={item.itemCode ?? item.lotNumber}
                               lotNumber={item.lotNumber}
-                              expectedQty={item.expectedQty}
+                              cartonCount={item.expectedQty}
+                              spq={spq}
+                              uom={item.uom || "units"}
                             />
                           </td>
                         </tr>

@@ -17,7 +17,11 @@ export interface WRRUnitLabelGeneratorProps {
   wrrNumber: string;
   itemCode: string;
   lotNumber: string;
-  expectedQty: number;
+  /** Physical carton/box count. One durable QR label is generated per carton. */
+  cartonCount: number;
+  /** Base units contained in one carton, taken from the enrolled item's SPQ. */
+  spq: number;
+  uom: string;
 }
 
 interface UnitLabelData {
@@ -32,7 +36,9 @@ export function WRRUnitLabelGenerator({
   wrrNumber,
   itemCode,
   lotNumber,
-  expectedQty,
+  cartonCount,
+  spq,
+  uom,
 }: WRRUnitLabelGeneratorProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -48,12 +54,12 @@ export function WRRUnitLabelGenerator({
     };
   }, [isModalOpen]);
 
-  // Generate N unique unit labels per line when modal is opened
+  // Generate one unique physical-carton label per expected carton.
   const unitLabels = useMemo<UnitLabelData[]>(() => {
-    if (!isModalOpen || expectedQty <= 0) return [];
+    if (!isModalOpen || cartonCount <= 0) return [];
 
     const labels: UnitLabelData[] = [];
-    for (let i = 1; i <= expectedQty; i++) {
+    for (let i = 1; i <= cartonCount; i++) {
       const unitPayload = createWrrUnitPayload(wrrItemId, i);
       const unitId = unitPayload.unit_id;
       const payload = JSON.stringify(unitPayload);
@@ -66,7 +72,9 @@ export function WRRUnitLabelGenerator({
       });
     }
     return labels;
-  }, [isModalOpen, wrrItemId, expectedQty]);
+  }, [isModalOpen, wrrItemId, cartonCount]);
+
+  const totalUnits = cartonCount * Math.max(1, spq);
 
   const handlePrint = () => {
     scheduleThermalPrint();
@@ -81,7 +89,7 @@ export function WRRUnitLabelGenerator({
         className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         <span aria-hidden="true">&#128424;</span>
-        <span>Print Unit Labels ({expectedQty})</span>
+        <span>Print Carton Labels ({cartonCount})</span>
       </button>
 
       {/* Modal Preview & Print Sheet */}
@@ -214,7 +222,7 @@ export function WRRUnitLabelGenerator({
                     id="print-modal-title"
                     className="font-heading font-semibold text-headline-md text-brand-navy"
                   >
-                    Unit Labels ({expectedQty} {expectedQty === 1 ? "label" : "labels"})
+                    Carton Labels ({cartonCount} {cartonCount === 1 ? "label" : "labels"})
                   </h2>
                   <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy">
                     2&quot; × 2&quot; Thermal Roll · HD
@@ -225,7 +233,7 @@ export function WRRUnitLabelGenerator({
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Formatted for 2&quot; × 2&quot; (50mm × 50mm) continuous thermal label rolls. High-definition 1-bit monochrome output.
+                  {cartonCount.toLocaleString()} cartons × SPQ {Math.max(1, spq).toLocaleString()} = {totalUnits.toLocaleString()} {uom || "units"}. One unique QR is generated per carton.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -235,7 +243,7 @@ export function WRRUnitLabelGenerator({
                   className="flex h-12 items-center justify-center gap-2 rounded bg-primary px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   <span aria-hidden="true">&#128424;</span>
-                  <span>Print 2&quot; × 2&quot; Labels</span>
+                  <span>Print 2&quot; × 2&quot; Carton Labels</span>
                 </button>
                 <button
                   type="button"
@@ -265,7 +273,7 @@ export function WRRUnitLabelGenerator({
                       <div className="flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider">
                         <span>DYNA-SERV</span>
                         <span className="font-bold">
-                          CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex}/{expectedQty})
+                          CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex}/{cartonCount})
                         </span>
                       </div>
                       <p className="font-mono text-[9.5px] font-bold text-black text-left mt-0.5 truncate tracking-tight">
