@@ -529,15 +529,7 @@ export function MultiItemPickListDraft({
             </label>
           )}
 
-          {flowType === "vmi" ? (
-            <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-              VMI Customer / Stock Owner
-              <div className="flex h-11 min-w-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-body text-sm text-slate-700">
-                {organizations.find((organization) => organization.id === organizationId)?.name ?? "Selected Organization"}
-              </div>
-              <span className="font-body text-[11px] font-normal text-slate-500">Inherited from Organization; the selected Organization owns the VMI stock.</span>
-            </div>
-          ) : (
+          {flowType === "vmi" ? null : (
             <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
               {flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
               <select
