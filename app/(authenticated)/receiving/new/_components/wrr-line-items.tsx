@@ -362,17 +362,17 @@ export function WrrLineItems({
               {/* Col 1: Expected Qty */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
-                    Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
+                    <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
+                    Expected Qty (Cartons) <span aria-hidden="true" className="text-brand-red">*</span>
                   </label>
                   {(() => {
                     const selItem = itemOptions.find((i) => i.id === line.itemId);
                     if (!selItem) return null;
-                    const qtyNum = Number(line.expectedQty);
-                    const cartons = qtyNum > 0 && selItem.spq ? (qtyNum / selItem.spq).toFixed(1).replace(/\.0$/, "") : null;
+                    const cartons = Number(line.expectedQty);
+                    const totalUnits = cartons > 0 ? cartons * selItem.spq : null;
                     return (
                       <span className="font-mono text-[11px] font-bold text-brand-navy bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                        SPQ: {selItem.spq} {cartons ? `(${cartons} ctn)` : ""}
+                        SPQ: {selItem.spq}/ctn {totalUnits ? `· ${cartons} ctn · ${totalUnits} units` : ""}
                       </span>
                     );
                   })()}
@@ -393,14 +393,14 @@ export function WrrLineItems({
                   }`}
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Total units = SPQ &times; packages/cartons
+                  Total units = cartons &times; SPQ
                 </p>
               </div>
 
               {/* Col 2: Unit CBM */}
               <div>
                 <label htmlFor={`line-${index}-unitCbm`} className="block font-label text-label text-text-grey">
-                  Unit CBM <span aria-hidden="true" className="text-brand-red">*</span>
+                  Unit CBM (Per Carton) <span aria-hidden="true" className="text-brand-red">*</span>
                 </label>
                 <input
                   id={`line-${index}-unitCbm`}
@@ -418,7 +418,7 @@ export function WrrLineItems({
                   }`}
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Cubic meter volume per unit
+                  Cubic meter volume per carton
                 </p>
               </div>
 
