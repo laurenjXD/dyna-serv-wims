@@ -89,23 +89,6 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
         </div>
       </div>
 
-      {/* Breakdown Legend Grid */}
-      <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-        {data.map((zone) => (
-          <div
-            key={zone.name}
-            className="flex items-center justify-between rounded-lg bg-slate-50/80 px-2.5 py-1.5 border border-slate-200/60"
-          >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: zone.color }}></span>
-              <span className="font-medium text-slate-800 truncate text-[11px]">{zone.name}</span>
-            </div>
-            <span className="font-mono font-bold text-brand-navy text-[11px] shrink-0">
-              {zone.value}%
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
