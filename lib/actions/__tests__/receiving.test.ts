@@ -370,6 +370,7 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       isActive: true,
       isPerishable: false,
       spq: 1,
+      uom: "piece",
     }]);
 
     const result = await createWrr(
@@ -385,6 +386,7 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     }
     // Header and line records are staged together.
     expect(db.insert).toHaveBeenCalledTimes(2);
+    expect((db._inserted[1] as AnyRecord[])[0].uom).toBe("piece");
   });
 
   it("(AC: itemCode resolves to catalog itemId) resolves line.itemId from the items catalog when the caller supplies itemCode but not itemId, so the line is not permanently unlinked from an already-enrolled item", async () => {
@@ -398,6 +400,7 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       isActive: true,
       isPerishable: false,
       spq: 1,
+      uom: "piece",
     }]);
 
     const result = await createWrr(
@@ -432,6 +435,7 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       isActive: true,
       isPerishable: false,
       spq: 1,
+      uom: "piece",
     }]);
 
     const result = await createWrr(
