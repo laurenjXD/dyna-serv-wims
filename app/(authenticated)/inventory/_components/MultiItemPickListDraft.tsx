@@ -498,6 +498,7 @@ export function MultiItemPickListDraft({
     let mappedCount = 0;
     let totalBoxesAllocated = 0;
     const reviewItems: string[] = [];
+    const importRequests = new Map<string, { itemId: string; spq: number; requestedBoxes: number; labels: string[] }>();
 
     for (const draRow of draRows) {
       const documentQty = draRow.requestedQty == null ? null : Number(draRow.requestedQty);
@@ -549,10 +550,6 @@ export function MultiItemPickListDraft({
         continue;
       }
 
-      const availableBoxes = candidateSources.reduce(
-        (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
-        0,
-      );
       const spq = candidateSources[0].spq;
       const spqMismatch = documentSpq !== null && documentSpq !== spq;
       const quantityBoxMismatch = documentQty !== null && documentBoxes !== null && documentQty !== documentBoxes * spq;
@@ -564,17 +561,41 @@ export function MultiItemPickListDraft({
         continue;
       }
 
-      if (availableBoxes < requestedBoxes) {
-        reviewItems.push(`${rowLabel} (shortage of ${requestedBoxes - availableBoxes} boxes)`);
+      const existingRequest = importRequests.get(matchedItemId);
+      if (existingRequest) {
+        existingRequest.requestedBoxes += requestedBoxes;
+        existingRequest.labels.push(rowLabel);
+      } else {
+        importRequests.set(matchedItemId, {
+          itemId: matchedItemId,
+          spq,
+          requestedBoxes,
+          labels: [rowLabel],
+        });
+      }
+    }
+
+    // Validate duplicate DRA rows together. PO/business-unit columns are not
+    // part of the pick-list identity, so repeated item rows become one total
+    // demand line before FIFO/FEFO source allocation.
+    for (const request of importRequests.values()) {
+      const candidateSources = availableStock
+        .filter((source) => source.itemId === request.itemId)
+        .sort((a, b) => a.priority - b.priority);
+      const availableBoxes = candidateSources.reduce(
+        (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
+        0,
+      );
+      if (availableBoxes < request.requestedBoxes) {
+        reviewItems.push(`${request.labels.join(" + ")} (shortage of ${request.requestedBoxes - availableBoxes} boxes)`);
         continue;
       }
-
       newDraftLines.push({
         id: crypto.randomUUID(),
-        itemId: candidateSources[0].itemId,
-        totalUnits: String(requestedBoxes * spq),
+        itemId: request.itemId,
+        totalUnits: String(request.requestedBoxes * request.spq),
       });
-      totalBoxesAllocated += requestedBoxes;
+      totalBoxesAllocated += request.requestedBoxes;
       mappedCount++;
     }
 
