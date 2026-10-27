@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export interface WRRUnitLabelGeneratorProps {
   wrrItemId: string;
@@ -68,11 +69,7 @@ export function WRRUnitLabelGenerator({
   }, [isModalOpen, wrrItemId, expectedQty]);
 
   const handlePrint = () => {
-    // react-qr-code paints SVG nodes during the commit. Waiting two frames
-    // ensures Chromium has painted those nodes before it snapshots print.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
-    });
+    scheduleThermalPrint();
   };
 
   return (
@@ -99,11 +96,13 @@ export function WRRUnitLabelGenerator({
           {/* Print Media Isolation Rules */}
           <style>{`
             @page {
-              size: 2in 2in;
+              size: 50mm 50mm;
               margin: 0;
             }
             @media print {
               html, body {
+                width: 50mm !important;
+                min-width: 50mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #FFFFFF !important;
@@ -117,8 +116,8 @@ export function WRRUnitLabelGenerator({
               body[data-qr-print-mode] [data-qr-print-modal] {
                 position: static !important;
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 margin: 0 auto !important;
                 height: auto !important;
                 min-height: 0 !important;
@@ -129,8 +128,8 @@ export function WRRUnitLabelGenerator({
                 position: static !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 height: auto !important;
                 margin: 0 auto !important;
                 padding: 0 !important;
@@ -139,12 +138,12 @@ export function WRRUnitLabelGenerator({
                 overflow: visible !important;
               }
               .unit-thermal-label-card {
-                width: 2in !important;
-                height: 2in !important;
-                max-width: 2in !important;
-                max-height: 2in !important;
+                width: 50mm !important;
+                height: 50mm !important;
+                max-width: 50mm !important;
+                max-height: 50mm !important;
                 margin: 0 auto !important;
-                padding: 1.5mm !important;
+                padding: 2mm !important;
                 box-sizing: border-box !important;
                 border: none !important;
                 border-radius: 0 !important;
@@ -155,14 +154,17 @@ export function WRRUnitLabelGenerator({
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: space-between !important;
+                justify-content: center !important;
+                gap: 1mm !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
               .unit-thermal-label-card svg {
                 display: block !important;
-                width: 29mm !important;
-                height: 29mm !important;
+                width: 40mm !important;
+                height: 40mm !important;
+                max-width: 40mm !important;
+                max-height: 40mm !important;
               }
               .unit-thermal-label-card:last-child {
                 page-break-after: avoid !important;
@@ -218,7 +220,7 @@ export function WRRUnitLabelGenerator({
             <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
               <div
                 id="print-unit-labels-sheet"
-                className="grid grid-cols-2 gap-4 print:block print:w-[2in]"
+                className="grid grid-cols-2 gap-4 print:block print:w-[50mm]"
               >
                 {unitLabels.map((unit) => (
                   <div
@@ -248,7 +250,7 @@ export function WRRUnitLabelGenerator({
                         fgColor="#000000"
                         bgColor="#FFFFFF"
                         shapeRendering="crispEdges"
-                        style={{ height: "auto", maxWidth: "29mm", width: "100%" }}
+                        style={{ height: "auto", maxWidth: "40mm", width: "100%" }}
                         viewBox={`0 0 256 256`}
                       />
                     </div>

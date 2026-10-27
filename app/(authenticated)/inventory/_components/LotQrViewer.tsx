@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export function LotQrViewer({
   lotId,
@@ -27,10 +28,7 @@ export function LotQrViewer({
   }, [open]);
 
   const handlePrint = () => {
-    // Let the QR SVG finish painting before Chromium snapshots the page.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
-    });
+    scheduleThermalPrint();
   };
 
   return (
@@ -52,11 +50,15 @@ export function LotQrViewer({
         >
           <style>{`
             @page {
-              size: 2in 2in;
+              size: 50mm 50mm;
               margin: 0;
             }
             @media print {
               html, body {
+                width: 50mm !important;
+                min-width: 50mm !important;
+                height: 50mm !important;
+                min-height: 50mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #FFFFFF !important;
@@ -68,13 +70,14 @@ export function LotQrViewer({
                 display: none !important;
               }
               body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
-                position: static !important;
+                position: fixed !important;
+                inset: 0 !important;
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
-                margin: 0 auto !important;
-                height: auto !important;
-                min-height: 0 !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
+                height: 50mm !important;
+                min-height: 50mm !important;
+                margin: auto !important;
                 overflow: visible !important;
                 background: #FFFFFF !important;
               }
@@ -82,12 +85,12 @@ export function LotQrViewer({
                 position: static !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 2in !important;
-                height: 2in !important;
-                max-width: 2in !important;
-                max-height: 2in !important;
-                margin: 0 auto !important;
-                padding: 1.5mm !important;
+                width: 50mm !important;
+                height: 50mm !important;
+                max-width: 50mm !important;
+                max-height: 50mm !important;
+                margin: 0 !important;
+                padding: 2mm !important;
                 border: none !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
@@ -97,14 +100,17 @@ export function LotQrViewer({
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: space-between !important;
+                justify-content: center !important;
+                gap: 1mm !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
               #lot-qr-print-card svg {
                 display: block !important;
-                width: 30mm !important;
-                height: 30mm !important;
+                width: 40mm !important;
+                height: 40mm !important;
+                max-width: 40mm !important;
+                max-height: 40mm !important;
               }
               .print-hide {
                 display: none !important;
@@ -156,7 +162,7 @@ export function LotQrViewer({
                   fgColor="#000000"
                   bgColor="#FFFFFF"
                   shapeRendering="crispEdges"
-                  style={{ height: "auto", maxWidth: "30mm", width: "100%" }}
+                  style={{ height: "auto", maxWidth: "40mm", width: "100%" }}
                   viewBox="0 0 256 256"
                 />
               </div>

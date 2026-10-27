@@ -4,7 +4,9 @@
 // Floor surface component — `bg-surface-white`, solid, no glassmorphism.
 // Rendered in browser; Admin clicks "Print Label" to invoke print driver (design.md §2.1).
 
+import { useEffect } from "react";
 import QRCode from "react-qr-code";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 interface LabelPrinterProps {
   /** UUID of the lot — encoded directly into the QR code as the payload value. */
@@ -23,6 +25,13 @@ export function LabelPrinter({
   itemCode,
   locationLabel,
 }: LabelPrinterProps) {
+  useEffect(() => {
+    document.body.dataset.thermalLabelPrintMode = "true";
+    return () => {
+      delete document.body.dataset.thermalLabelPrintMode;
+    };
+  }, []);
+
   return (
     // brand-design-system.md §6: floor cards use solid surface-white, shadow-elevation-2.
     <div
@@ -31,11 +40,15 @@ export function LabelPrinter({
     >
       <style>{`
         @page {
-          size: 2in 2in;
+          size: 50mm 50mm;
           margin: 0;
         }
         @media print {
           html, body {
+            width: 50mm !important;
+            min-width: 50mm !important;
+            height: 50mm !important;
+            min-height: 50mm !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #FFFFFF !important;
@@ -43,7 +56,7 @@ export function LabelPrinter({
             print-color-adjust: exact !important;
             text-rendering: geometricPrecision !important;
           }
-          body * {
+          body[data-thermal-label-print-mode] * {
             visibility: hidden !important;
           }
           [data-print-label],
@@ -52,14 +65,13 @@ export function LabelPrinter({
           }
           [data-print-label] {
             position: fixed !important;
-            left: 50% !important;
-            top: 0 !important;
-            width: 2in !important;
-            height: 2in !important;
-            max-width: 2in !important;
-            max-height: 2in !important;
-            margin: 0 0 0 -1in !important;
-            padding: 1.5mm !important;
+            inset: 0 !important;
+            width: 50mm !important;
+            height: 50mm !important;
+            max-width: 50mm !important;
+            max-height: 50mm !important;
+            margin: auto !important;
+            padding: 2mm !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
@@ -69,9 +81,28 @@ export function LabelPrinter({
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            justify-content: space-between !important;
+            justify-content: center !important;
+            gap: 1mm !important;
             image-rendering: pixelated !important;
             image-rendering: crisp-edges !important;
+          }
+          [data-print-label] [data-thermal-qr] {
+            display: flex !important;
+            flex: 0 0 40mm !important;
+            width: 40mm !important;
+            height: 40mm !important;
+            max-width: 40mm !important;
+            max-height: 40mm !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+          }
+          [data-print-label] [data-thermal-qr] svg {
+            display: block !important;
+            width: 40mm !important;
+            height: 40mm !important;
+            max-width: 40mm !important;
+            max-height: 40mm !important;
           }
           .thermal-screen-only {
             display: none !important;
@@ -96,7 +127,7 @@ export function LabelPrinter({
       </div>
 
       {/* High-Definition QR Code (Pure 1-bit B&W, crispEdges, Level M error correction) */}
-      <div className="my-0.5 p-1 bg-white flex items-center justify-center">
+      <div data-thermal-qr className="my-0.5 p-1 bg-white flex items-center justify-center">
         <QRCode
           value={lotId}
           size={115}
@@ -104,7 +135,7 @@ export function LabelPrinter({
           fgColor="#000000"
           bgColor="#FFFFFF"
           shapeRendering="crispEdges"
-          style={{ height: "auto", maxWidth: "30mm", width: "100%" }}
+          style={{ height: "auto", maxWidth: "40mm", width: "100%" }}
           viewBox="0 0 256 256"
         />
       </div>
@@ -121,7 +152,7 @@ export function LabelPrinter({
       {/* Print action CTA */}
       <button
         type="button"
-        onClick={() => window.print()}
+        onClick={scheduleThermalPrint}
         className="thermal-screen-only mt-2 h-12 w-full bg-primary text-surface-white font-label text-body-md font-bold rounded-lg shadow-sm active:scale-[0.97] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         Print 2&quot; × 2&quot; Label
