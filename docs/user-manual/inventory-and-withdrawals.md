@@ -103,3 +103,19 @@ When inspecting any item from the Master Inventory register via the **View** act
   * **Movement Type Filter**: Filter by `Inbound / Received`, `Outbound / Dispatched`, or `Internal Transfers`.
   * **Daily Trail View**: Groups transactions day-by-day with daily KPI summaries (`Received: +X bx`, `Dispatched: -Y bx`, `Net: ±Z bx`).
   * **Accountability Audit**: Every transaction displays the exact transaction ID, source/destination locations, reference documents (WRR #, Pick List #, CI #), and the **Person in Charge (Audit Snapshot)**.
+
+---
+
+### 5. Stock Count & Reconciliation
+
+Stock Count is the physical verification workflow for existing inventory. It is separate from inbound Receiving and opening-stock Migration.
+
+1. Select **Stock Count** in Master Inventory.
+2. Search by location label or structural fields and use the zone/state filters.
+3. Review the selected location's line count, system quantity, and active-session state.
+4. Start a count and enter the physical result. Zero is a valid result.
+5. Submit the count and review the immutable snapshot/variance.
+6. Explain positive variances and request a recount when required.
+7. Wait for supervisor review. Only an approved reconciliation posts to canonical inventory and the audit ledger.
+
+The system quantity is never edited directly. A recount preserves the earlier event history and replaces only the pending count result.

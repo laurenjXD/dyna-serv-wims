@@ -1994,3 +1994,38 @@ The incorrect inbound Stock Intake implementation was removed. Inbound WRR/CIPL
 work remains under Receiving, while opening/legacy balances remain under Data
 Migration. The replacement feature is named Stock Count & Reconciliation and
 will post only approved `inventory_reconciliation` transactions.
+
+### 2026-10-27 — Same-day receiving, QR, document, and stock-control release register
+
+The following implementation decisions and fixes were delivered and are now part
+of the system documentation and user manual:
+
+- Receiving uses a staged scan loop. A valid carton/unit QR resolves the active
+  line and derived carton work; Store/Hold is a server-confirmed line commit,
+  and the operator returns to the first screen for the next line.
+- Receiving blocks incomplete allocation totals, exposes Start Receiving failure
+  reasons, supports explicit missing/shortage and inspection/hold outcomes, and
+  keeps shortage resolution in the supervisor OS&D path.
+- WRR model is inherited from the selected Organization; VMI ownership is
+  derived from that Organization; UOM/SPQ is inherited from item enrollment;
+  carton count is derived from total base units/SPQ; redundant owner and manual
+  CIPL attachment inputs were removed.
+- QR labels use stable lot/unit/carton identities, valid-SPQ gating, centered
+  2×2 output, and browser render handling. Omni Scanner resolves internal UUID
+  or carton identifiers to the related item/lot/carton record.
+- Pick-list fields follow the operator flow; item selection is searchable; FIFO
+  carton allocation is derived; DRA mappings are validated and duplicate demand
+  is consolidated.
+- Documents Center loads tab counts on initial render, shows finalized archive
+  artifacts, uses embedded previews, and applies organization filters according
+  to document family and RBAC scope. The full company name and neutral Welcome
+  login branding are used.
+- Stock Count & Reconciliation adds searchable/filterable location selection,
+  location overview, snapshot-based count, variance/recount evidence, visible
+  start errors, supervisor review, and approved audited posting.
+- Official document previews and PDFs share one 11pt Helvetica-family contract.
+
+The authoritative implementation references are commits `a12508d` through
+`64947af` on the 2026-10-27 release line; this register summarizes the
+user-visible and operationally material changes rather than replacing commit
+history.

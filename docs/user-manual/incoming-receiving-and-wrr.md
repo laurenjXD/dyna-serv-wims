@@ -77,6 +77,7 @@ Floor receiving is optimized for handheld mobile scanners, tablets, and forklift
 
 5. **Independent Line-by-Line Progression**:
    * Each line commits atomically. A shortage on Line 1 never blocks Line 2 or subsequent lines from being scanned and stored.
+   * After the server confirms Store/Hold, the operator returns to the first receiving screen and starts the next line. A failed start or incomplete allocation remains on screen with the reason and recovery action.
 
 ---
 

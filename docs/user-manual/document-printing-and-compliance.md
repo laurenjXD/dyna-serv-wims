@@ -95,3 +95,16 @@ All generated warehouse documents (`generated_documents` table and stored PDF ar
    * Archived off-platform to secure cold object storage with SHA-256 hash verification.
    * Supabase hot copy is pruned only after successful checksum verification.
    * **Documents are permanently retained and never deleted.**
+
+---
+
+### 6. Uniform preview and PDF typography
+
+All official warehouse-document previews and generated PDFs use the shared document contract:
+
+- Font size: **11pt for all document text**.
+- Font family: one Helvetica-family system stack (`Helvetica Neue`, Helvetica, Arial, sans-serif).
+- No separate heading, body, or monospace typeface is used in the document surface.
+- The same rule applies before printing in the live preview, so the preview is a reliable representation of the PDF typography.
+
+If an old preview remains visible after deployment, hard-refresh the page (`Ctrl+F5`) and reopen the document. This does not change operational data or document identity.

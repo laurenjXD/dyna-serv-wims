@@ -76,6 +76,21 @@ Never ignore an error modal or attempt repeated random scanning without consulti
 
 ---
 
+#### Scenario 2.9: Start Receiving Does Not Open
+* **What Happened**: Selecting **Start Receiving** leaves the operator on the WRR detail or shows a failure message.
+* **Why It Failed**: The WRR is not eligible, the session/permission is stale, or the server could not create the receiving state.
+* **Next Action**: Read the displayed reason, refresh the WRR, verify the record is eligible and the account has the receiving grant, then retry once. Do not simulate a successful scan outside the active line.
+
+#### Scenario 2.10: Allocation Total Does Not Match Derived Cartons
+* **What Happened**: Store fails with an allocation/derived-carton mismatch.
+* **Why It Failed**: One or more present cartons were not assigned, or a missing/shortage outcome was not explicitly recorded.
+* **Next Action**: Review each carton allocation, mark missing cartons as shortage/unassigned, route damaged cartons to Inspection Bay/Hold, and retry only when the allocation total matches the derived physical result.
+
+#### Scenario 2.11: Stock Count Cannot Start
+* **What Happened**: **Start Count** does not create a count session.
+* **Why It Failed**: The location is inactive, already has an active session, the snapshot is stale, or the account lacks the count capability.
+* **Next Action**: Use the location search/filter overview to choose an active location, open the existing session if appropriate, refresh stale data, or ask a supervisor/administrator to resolve the session or grant. Never edit the system quantity directly.
+
 ### 3. Storage, Transfer & Quarantine Edge Cases
 
 #### Scenario 3.1: Quarantined Lot Selected for Pick List

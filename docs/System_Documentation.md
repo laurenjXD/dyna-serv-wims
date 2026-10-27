@@ -2,7 +2,7 @@
 
 **Document type:** Technical and administrative reference  
 **System:** Dyna-Serv Warehouse Inventory Management System (WIMS)  
-**Version:** 1.1  
+**Version:** 1.2
 **Evidence baseline:** Repository inspection, approved specifications, source code, database migrations, and automated tests inspected 2026-10-27  
 **Audience:** Developers, system administrators, IT personnel, technical evaluators, maintainers, and project stakeholders
 
@@ -203,6 +203,14 @@ The billing-pricing surface contains VMI contract terms, permits, daily balances
 
 The Documents Center archives WRRs/receipts, inbound CI/PL/invoices, pick lists/DRA, delivery receipts, SOA, reports, and audit logs. It supports search, organization/date filtering, previews, downloads, reprints where permitted, and permanent artifact retention policy. Status controls are tab-specific only where the underlying table requires them; the global status-pill row was removed to avoid implying one status vocabulary across all document classes.
 
+#### Stock Count & Reconciliation
+
+Master Inventory includes a separate physical stock-count workflow. It is not inbound Stock Intake and does not replace Receiving or Data Migration. A user selects a location through a searchable, zone-filterable selector that shows system-line count, system quantity, active-count state, and location context. Starting a count creates a server-backed snapshot. The count surface records physical quantities, calculates variances, supports recount/reason capture, and keeps the system snapshot immutable. Supervisor approval is required before an approved reconciliation transaction can post the variance to inventory. Positive variances require an explanation; zero counts are valid. Start failures expose the server reason and recovery action instead of silently leaving the user on the selector.
+
+#### Authentication and document presentation
+
+The internal sign-in surface is branded **Dyna-Serv Global Corporation** and uses a neutral **Welcome** greeting appropriate for both first-time and returning users. Official document previews and generated PDFs now use one shared 11pt Helvetica-family typography contract. The contract applies to live previews and print output, replacing document-specific heading and monospace font overrides.
+
 #### Master data and enrollment
 
 Party enrollment maintains organizations and roles. Item enrollment maintains the shared item catalog and classification hierarchy. Location enrollment supports single and bulk generation with zones/racks/levels/positions and capacity. Material-origin organization options are constrained to the approved supplier/VMI-customer relationships and inherit the organization’s inventory model where the form contract requires it.
@@ -280,6 +288,7 @@ erDiagram
 | Receiving | `wrr_documents`, `wrr_items`, `wrr_item_unit_scans`, inspections | Expected inbound lines, scan reconciliation and observations |
 | Outgoing | `pick_lists`, `pick_list_items`, commitments, acknowledgement receipts | Two-stage commitment, pricing, selection, dispatch evidence |
 | Documents | documents, generated documents, CIPL attachments | Archive, generated artifacts, source files |
+| Stock count | cycle-count sessions, lines, events, approvals and reconciliation transactions | Snapshot, physical count, variance, review, approval and audited posting |
 | Approvals | approval requests and policy tables | Supervisor/authorized approval state machine |
 | Billing | VMI contracts/terms/periods/charges, trading pricing, ledgers | Financial configuration and period outputs |
 | Migration | `migration_batches`, `migration_source_rows`, `migration_exceptions` | Immutable source evidence, review, approval and provenance |
@@ -323,6 +332,7 @@ The names below are the canonical Drizzle schema/table names. `id` is the normal
 | `notifications` | recipient, type, dedupe/status | User-facing operational notification | `lib/db/schema/notifications.ts` |
 | RBAC tables | profiles, roles, permissions, role mappings, scopes, security events | Identity capabilities and party scope | `lib/db/schema/rbac.ts` |
 | `system_settings` | `key`, `value`, updater | Administrative configuration | `lib/db/schema/system_settings.ts` |
+| Cycle-count tables | session, line, event, approval and reconciliation identifiers | Physical count snapshot, recount history, variance review and approved posting | `lib/db/schema/cycle_count.ts`, migration `0068` |
 
 ### 4.2.2 Constraints and lifecycle ownership
 
@@ -451,6 +461,10 @@ The source workbook remains evidence. `Location Matrix` supplies opening balance
 
 Reporting reads canonical movement, balance, document, audit, and billing data. VMI daily balances and period charges depend on inventory/location activity and contract terms. Trading margin depends on frozen document pricing and relevant movement/commitment records. Reports must label empty, pending, stale, and unavailable data rather than showing a fabricated zero.
 
+### 6.5 Stock Count & Reconciliation
+
+Stock Count is separate from inbound Receiving and opening-stock Migration. A warehouse user searches and filters locations, reviews the location overview, and starts a server-backed snapshot. Physical quantities are entered against that immutable snapshot. The system calculates the variance, preserves recount events, requires an explanation for positive variance, and prevents direct editing of canonical system quantity. A supervisor reviews and approves the result before an idempotent `inventory_reconciliation` transaction posts the approved change.
+
 ## 7. QR, scanning, and print architecture
 
 ### 7.1 QR identities
@@ -464,11 +478,17 @@ Reporting reads canonical movement, balance, document, audit, and billing data. 
 
 QR values must be stable on reprint. Reprinting must not create a new identity for an existing lot or unit.
 
-### 7.2 Print isolation
+### 7.2 QR lookup and print verification
+
+QR content may be a stable lot UUID, inventory-unit UUID, carton ID, or structured payload rather than a human-readable item code. The Dashboard Omni Scanner resolves those identities through the server and fills the lookup context with the related item, lot, carton, location, or organization record. The visible alphanumeric value is therefore an identifier, not proof that scanning failed. Unknown or out-of-scope identifiers remain rejected with a recovery message.
+
+Thermal and sheet output use centered, bounded label pages. The 2×2-inch label path waits for QR rendering before the browser print snapshot and supports Safari/Chromium print handling. Blank preview pages indicate a rendering or printer configuration problem and must be corrected before saving.
+
+### 7.3 Print isolation
 
 Lot, WRR, and bulk-carton print surfaces use scoped print mode, bounded 2×2-inch thermal pages, print-only label content, and a browser render delay so QR SVG nodes are painted before Chromium snapshots the page. A bulk print job can have many physical pages while requiring one user action; that is expected for one label per lot/carton.
 
-### 7.3 Mobile scanning
+### 7.4 Mobile scanning
 
 The mobile floor contract is scan first, manual search fallback. Desktop administrative views use search and do not rely on camera scanning. Camera permission denial, unsupported device, invalid payload, duplicate payload, wrong workflow, and network interruption must expose a manual/recovery path where the workflow permits it.
 
@@ -632,6 +652,7 @@ The final signed release still requires deployed UAT screenshots and printer-dri
 - [x] Receiving, inventory, dispatch, migration, billing, reports, documents, QR and portal workflows
 - [x] Error handling, rollback, concurrency, and recovery
 - [x] Testing strategy, verification evidence, and known limitations
+- [x] 2026-10-27 receiving, QR, pick-list, document archive, login, stock-count, and document-typography release updates
 - [x] Diagrams, tables, glossary, appendices, and revision history
 - [ ] Deployed-environment screenshots and printer-driver validation — requires UAT environment evidence
 
@@ -639,5 +660,6 @@ The final signed release still requires deployed UAT screenshots and printer-dri
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2 | 2026-10-27 | Recorded same-day receiving, QR/label, pick-list, document archive, login, Stock Count & Reconciliation, and uniform 11pt preview/PDF changes |
 | 1.1 | 2026-10-27 | Added module implementation contracts, cross-module contracts, database dictionary, endpoint contract notes, and UAT visual capture manifest |
 | 1.0 | 2026-10-27 | Initial repository-based system documentation |

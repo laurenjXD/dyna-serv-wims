@@ -2,7 +2,7 @@
 
 **Document type:** Operational user guide  
 **System:** Dyna-Serv Warehouse Inventory Management System (WIMS)  
-**Version:** 1.1  
+**Version:** 1.3
 **Evidence baseline:** Application routes, components, approved specifications, and verified source behavior inspected 2026-10-27  
 **Audience:** Administrators, supervisors, warehouse staff, organization users, and trained operational users
 
@@ -28,7 +28,8 @@
 16. [Errors and troubleshooting](#16-errors-and-troubleshooting)  
 17. [FAQ, glossary, and quick reference](#17-faq-glossary-and-quick-reference)  
 18. [User Manual appendices](#18-user-manual-appendices)  
-19. [Coverage checklist and revision history](#19-coverage-checklist-and-revision-history)
+19. [2026-10-27 implemented release register](#19-2026-10-27-implemented-release-register)
+20. [Coverage checklist and revision history](#20-coverage-checklist-and-revision-history)
 
 **Visual references:** the page/component catalog, form-field reference, QR decision table, exception matrix, and Appendix A screenshot manifest are the operational visual-reference index. Final annotated screenshots remain UAT evidence and are not fabricated from source inspection.
 
@@ -59,7 +60,7 @@ WIMS helps the warehouse know what stock exists, who owns it, where it is, what 
 
 ### 1.3 Sign in and sign out
 
-1. Open the WIMS application URL.
+1. Open the **Dyna-Serv Global Corporation** WIMS application URL.
 2. Enter the credentials supplied by your administrator.
 3. Complete the authentication step.
 4. Confirm that the dashboard and expected navigation are visible.
@@ -344,14 +345,14 @@ Expected result: imported values are visible in editable WRR lines and unresolve
 
 ### 5.3 Receive and scan on the floor
 
-1. Open the WRR detail and choose the receiving/floor action.
+1. Open the WRR detail and choose **Start Receiving**.
 2. Start camera scanning on mobile, or use the provided manual entry fallback.
-3. Scan the item, lot, carton, or approved QR.
+3. Scan one valid carton/unit QR from the active line. The system resolves the line and shows the remaining expected carton work.
 4. Read the feedback: what happened, why it succeeded/failed, and the next action.
-5. Continue until the line is eligible for its disposition.
-6. Record inspection observations when required.
-7. Assign locations using the putaway selector.
-8. Confirm **Store** or **Hold** only after reviewing quantities and location capacity.
+5. Choose the disposition and assign each present carton to a storage or inspection location. A shortage remains explicitly unassigned rather than being forced into a location.
+6. Review the derived carton count, location allocations, and any shortage/inspection reason.
+7. Confirm **Store** or **Hold** only after the allocation total matches the physically present/declared result.
+8. After the server confirms the line, return to the first receiving screen to scan the next WRR line.
 
 Common rejection reasons include unknown item, wrong WRR, wrong flow type, duplicate label, over-quantity, fully scanned line, and insufficient/invalid location capacity.
 
@@ -385,7 +386,20 @@ Open **Inventory** to view stock, pick lists, and inspection work. Use **Stock V
 
 The inventory lot QR is one QR per lot and identifies aggregate lot information. A carton QR is a separate unique identity for one physical carton when exact units exist.
 
-### 6.2 Generate a pick list from inventory
+### 6.2 Stock Count & Reconciliation
+
+1. Open **Inventory → Stock Count**.
+2. Search for a location by label, rack, zone, level, or position. Use the zone and state filters to narrow the list.
+3. Review the location overview: system stock-line count, system quantity, active count state, and any existing count session.
+4. Choose **Start Count**. If the action fails, read the displayed reason and correct the location/session issue before retrying.
+5. Count the physical stock and enter the observed quantity. A zero count is valid.
+6. Submit the count and review the immutable system snapshot and calculated variance.
+7. Add the required explanation for a positive variance or any discrepancy, then request a recount when the physical result needs verification.
+8. A supervisor reviews the evidence and approves or rejects the reconciliation. Only an approved post changes the inventory balance and creates the audit-linked reconciliation transaction.
+
+Do not use Stock Count to receive a shipment, import opening stock, or silently correct inventory. Use Receiving for inbound WRRs and Migration for opening/legacy balances.
+
+### 6.3 Generate a pick list from inventory
 
 1. Open Inventory and choose the pick-list work area.
 2. Select organization/inventory model and recipient fields.
@@ -394,7 +408,7 @@ The inventory lot QR is one QR per lot and identifies aggregate lot information.
 5. Save or generate the pick list.
 6. Open the resulting queue and proceed to physical picking.
 
-### 6.3 Enroll an item
+### 6.4 Enroll an item
 
 1. Open **Enrollment** or **Master Data → Items**.
 2. Choose **New Item**.
@@ -404,7 +418,7 @@ The inventory lot QR is one QR per lot and identifies aggregate lot information.
 6. Complete item code, description, packaging, dimensions, UOM, CBM and classification fields.
 7. Save and review the resulting catalog record.
 
-### 6.4 Manage locations
+### 6.5 Manage locations
 
 1. Open **Master Data → Locations**.
 2. Create one location or open the bulk generator.
@@ -412,7 +426,7 @@ The inventory lot QR is one QR per lot and identifies aggregate lot information.
 4. Review generated labels/locations for duplicates and naming mistakes.
 5. Save/deactivate only when the operational impact is understood.
 
-### 6.5 Inventory balance and traceability rules
+### 6.6 Inventory balance and traceability rules
 
 For a standard packed item, the operational relationship is:
 
@@ -535,10 +549,13 @@ Do not manually change an issued/closed period to hide a discrepancy. Use the pr
 1. Open **Documents Center**.
 2. Select the document family tab: WRRs/receipts, inbound CI/PL/invoices, pick lists/DRA, delivery receipts, SOA, or reports/audit logs.
 3. Search by document/reference/lot/organization as supported.
-4. Apply date and organization filters.
-5. Open a preview to verify the correct record.
-6. Download or reprint only when the action is permitted.
-7. Confirm the generated artifact remains linked to its source record.
+4. Apply only the filters relevant to the active family. WRRs use supplier and VMI-customer organization context; pick lists and delivery receipts use trading-customer/end-customer context; SOA uses its billing organization context; reports/audit logs use the authorized reporting scope. RBAC still limits the result set.
+5. The archive shows finalized records only. In-progress, pending-arrival, or cancelled operational records are not treated as completed archive artifacts.
+6. Open a preview to verify the correct record.
+7. Download or reprint only when the action is permitted.
+8. Confirm the generated artifact remains linked to its source record.
+
+All official document previews and generated PDFs use one uniform 11pt Helvetica-family font. If the browser preview looks stale, refresh the page with `Ctrl+F5` before saving or printing.
 
 The archive is the authoritative document location. Do not assume every tab uses the same status values; the active document family determines its filters and actions.
 
@@ -573,6 +590,8 @@ Use the migration success page after commit. **Print all lot QRs** creates one p
 4. Aim at the QR until the success/error feedback appears.
 5. Read the next-action instruction.
 6. If the camera cannot be used, select the manual fallback and enter the item/lot/carton value.
+
+The scanned QR may contain an internal UUID or carton identifier instead of the visible item code. That is expected. Omni Scanner resolves the identifier to the related record; a random-looking alphanumeric value is not itself the item description. If it resolves to nothing, verify the workflow, organization scope, and label type.
 
 ### 12.5 Invalid or duplicate scan
 
@@ -821,7 +840,20 @@ For each training/UAT tutorial, record: scenario ID, role, device/browser, start
 | Scanning | `MobileQRScanner`, `CameraScanBridge`, `ScanFeedbackProvider`, `FloorCameraScanner` | Camera first on mobile, manual fallback where supported |
 | Documents/print | `DocumentPreviewModal`, `DocumentReprintDialog`, `MasterDocumentHeader/Footer`, label generators | Preview/download/reprint is tied to the source record and audit rules |
 
-## 19. Coverage checklist and revision history
+## 19. 2026-10-27 implemented release register
+
+The following changes are part of the current documented release:
+
+- **Receiving:** staged scan loop, line-level recognition from a valid carton QR, explicit Start Receiving recovery errors, protection against incomplete allocations, shortage/OS&D handling, inspection/hold routing, and looping back to the first screen after a confirmed line store.
+- **Receiving data rules:** WRR inventory model is inherited from the selected Organization; VMI ownership is derived from that Organization; item UOM/SPQ is inherited from enrollment; carton count is derived from total base-unit quantity divided by SPQ; redundant VMI-owner input is removed; manual CIPL attachment is no longer part of WRR creation.
+- **QR and labels:** stable lot/carton/unit identifiers, Omni Scanner resolution of carton QR values, 2×2 label sizing and centering, Safari/Chromium print handling, valid-SPQ gating, and blank-page troubleshooting.
+- **Pick lists/DRA:** input fields follow the operational flow, item selection is searchable, FIFO carton allocations are derived, DRA item/box mappings are validated, and duplicate item demand is consolidated.
+- **Documents:** initial tab counts load without opening each tab; the archive presents finalized artifacts; previews are embedded safely; organization filters are family-specific and RBAC-scoped; the shared preview/PDF typography contract is uniform 11pt.
+- **Identity and access:** the login page uses the full company name, **Dyna-Serv Global Corporation**, and a neutral **Welcome** greeting.
+- **Inventory controls:** Stock Count & Reconciliation provides searchable/filterable location selection, a location overview, snapshot-based count entry, variance/recount handling, supervisor review, approved posting, and visible start-error recovery.
+- **UI cleanup:** the dashboard zone breakdown was removed, and the receiving/pick-list/document surfaces use clearer mobile and print hierarchy.
+
+## 20. Coverage checklist and revision history
 
 ### User Manual coverage
 
@@ -840,6 +872,7 @@ For each training/UAT tutorial, record: scenario ID, role, device/browser, start
 
 | Version | Date | Change |
 |---|---|---|
+| 1.3 | 2026-10-27 | Documented the complete same-day receiving, QR/label, pick-list, archive, login, stock-count, and uniform 11pt preview/PDF changes |
 | 1.2 | 2026-10-27 | Expanded role guides, complete page/subpage catalog, field reference, visual capture manifest, technical cross-references, and training evidence template |
 | 1.1 | 2026-10-27 | Unified the six detailed companion guides, added QR/carton traceability rules, material-origin organization rules, and the operational exception matrix |
 | 1.0 | 2026-10-27 | Initial repository-based user manual |
