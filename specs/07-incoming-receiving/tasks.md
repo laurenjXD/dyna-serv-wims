@@ -69,6 +69,7 @@ Testing: Unit validation; Playwright office flows; real-Postgres integration for
 - [ ] Build WRR create/edit form for CIPL reference, attachment, party, flow, regulatory references, and expected lines.
 - [ ] Resolve party/item/category references from authorized server queries; reject stale/inactive/unauthorized references.
 - [ ] Implement the approved source-Organization selector/validator matrix; block generic legacy relationships from new WRRs while keeping historical records readable.
+- [x] **Added 2026-10-27:** Scope expected-line material recommendations to active items assigned to the selected source Organization and repeat the assignment check server-side; unassigned materials recover through Material Enrollment rather than WRR-side auto-assignment.
 - [ ] Validate quantities, UOM, packaging/CBM references, WRR `lot_number`, and required line fields on client and server.
 - [ ] Persist staged WRRs and lines without creating lots or receiving ledger transactions.
 - [ ] Implement staged-list/detail/search/filter views with capability/scope-safe results.

@@ -59,6 +59,7 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 3. The server SHALL derive and re-check the inherited model transactionally and SHALL reject any direct action payload whose submitted model differs from the selected Organization's resolved model.
 4. Changing source Organization SHALL clear incompatible dependent values and expected lines after an explicit discard confirmation; the displayed Inventory Model SHALL update from the newly selected Organization.
 5. The server SHALL repeat active status, role/relationship, actor scope, item/Inventory Model, and stale-version validation before persisting a WRR. Legacy `vendor_party_id` remains a compatibility storage field only; it must not dictate user-facing terminology.
+6. Expected-line item recommendations SHALL contain only active materials assigned to the selected source Organization. An unassigned or differently assigned material SHALL be excluded from the picker and rejected if submitted by a tampered client; the recovery action is to assign it in Material Enrollment.
 
 ### R2. Supplier advance-notice intake
 

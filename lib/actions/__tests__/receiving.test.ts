@@ -364,7 +364,13 @@ describe("createWrr — invalid input (R1.3, design.md §5.1)", () => {
 
 describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
   it("(AC: staged header and lines are written atomically, wrrId returned) returns { ok: true, wrrId } and writes the WRR plus its expected lines", async () => {
-    const db = makeReceivingDb([]);
+    const db = makeReceivingDb([], [{
+      id: "item-master-uuid-1",
+      defaultSupplierPartyId: "party-uuid-vendor",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+    }]);
 
     const result = await createWrr(
       authorizedConfirmResolver(),
@@ -386,7 +392,13 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     // wrr/wrr_items rows — passing the match as the second arg makes it the
     // row returned for any select() call in this test (createWrr issues only
     // one: the catalog lookup).
-    const db = makeReceivingDb([], [{ id: "resolved-item-uuid" }]);
+    const db = makeReceivingDb([], [{
+      id: "resolved-item-uuid",
+      defaultSupplierPartyId: "party-uuid-vendor",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+    }]);
 
     const result = await createWrr(
       authorizedConfirmResolver(),
@@ -411,6 +423,28 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     // Second insert() call is the wrr_items batch (first is wrr_documents).
     const insertedLines = db._inserted[1] as AnyRecord[];
     expect(insertedLines[0].itemId).toBe("resolved-item-uuid");
+  });
+
+  it("rejects a selected item that is not assigned to the WRR organization", async () => {
+    const db = makeReceivingDb([], [{
+      id: "item-master-uuid-1",
+      defaultSupplierPartyId: "party-uuid-other",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+    }]);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      validCreateWrrInput(),
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringMatching(/not assigned to this organization/i)],
+    });
+    expect(db.insert).not.toHaveBeenCalled();
   });
 });
 

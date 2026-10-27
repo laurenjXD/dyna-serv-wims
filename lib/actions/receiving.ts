@@ -284,44 +284,73 @@ export async function createWrr(
         return { ok: false, errors: [resolvedModel.ok ? "inventory_model_must_match_organization" : resolvedModel.error] } satisfies CreateWrrActionResult;
       }
 
-      const selectedItemIds = data.lines
-        .map((line) => line.itemId)
-        .filter((id): id is string => Boolean(id));
-      if (selectedItemIds.length > 0) {
-        const catalogRows = await db
-          .select({ id: itemCatalog.id, isPerishable: itemCatalog.isPerishable })
-          .from(itemCatalog)
-          .where(or(...selectedItemIds.map((id) => eq(itemCatalog.id, id))));
-        const perishableById = new Map(
-          catalogRows.map((row: { id: string; isPerishable: boolean }) => [row.id as string, Boolean(row.isPerishable)]),
-        );
-        if (data.lines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
-          return { ok: false, errors: ["Expiry date is required for every perishable item."] } satisfies CreateWrrActionResult;
+      const assignmentErrors: string[] = [];
+      const resolvedLines = [];
+      for (const line of data.lines) {
+        if (line.itemId || !line.itemCode) {
+          resolvedLines.push(line);
+          continue;
         }
+
+        const catalogMatches = await db
+          .select({ id: itemCatalog.id, defaultSupplierPartyId: itemCatalog.defaultSupplierPartyId })
+          .from(itemCatalog)
+          .where(or(
+            eq(itemCatalog.code, line.itemCode),
+            eq(itemCatalog.supplierItemCode, line.itemCode),
+            eq(itemCatalog.dsgcItemNumber, line.itemCode),
+            eq(itemCatalog.barcode, line.itemCode),
+          ))
+          .limit(1);
+        const match = catalogMatches[0] as { id: string; defaultSupplierPartyId: string | null } | undefined;
+        if (match && match.defaultSupplierPartyId !== data.vendorPartyId) {
+          assignmentErrors.push("The selected item is not assigned to this organization. Assign the material in Master Data before staging the WRR.");
+          resolvedLines.push(line);
+          continue;
+        }
+        resolvedLines.push(match ? { ...line, itemId: match.id } : line);
+      }
+      if (assignmentErrors.length > 0) {
+        return { ok: false, errors: assignmentErrors } satisfies CreateWrrActionResult;
       }
 
-      const resolvedLines = await Promise.all(
-        data.lines.map(async (line) => {
-          if (line.itemId || !line.itemCode) return line;
-          const catalogMatches = await db
-            .select({ id: itemCatalog.id })
-            .from(itemCatalog)
-            .where(or(
-              eq(itemCatalog.code, line.itemCode),
-              eq(itemCatalog.supplierItemCode, line.itemCode),
-              eq(itemCatalog.dsgcItemNumber, line.itemCode),
-              eq(itemCatalog.barcode, line.itemCode),
-            ))
-            .limit(1);
-          return catalogMatches.length === 1 ? { ...line, itemId: catalogMatches[0].id as string } : line;
-        }),
-      );
       const resolvedItemIds = resolvedLines.map((line) => line.itemId).filter((id): id is string => Boolean(id));
       if (resolvedItemIds.length > 0) {
-        const catalogRows = await db
-          .select({ id: itemCatalog.id, isPerishable: itemCatalog.isPerishable, spq: itemCatalog.spq })
+        const catalogRows = (await db
+          .select({
+            id: itemCatalog.id,
+            defaultSupplierPartyId: itemCatalog.defaultSupplierPartyId,
+            isActive: itemCatalog.isActive,
+            isPerishable: itemCatalog.isPerishable,
+            spq: itemCatalog.spq,
+          })
           .from(itemCatalog)
-          .where(or(...resolvedItemIds.map((id) => eq(itemCatalog.id, id))));
+          .where(or(...resolvedItemIds.map((id) => eq(itemCatalog.id, id))))) as Array<{
+            id: string;
+            defaultSupplierPartyId: string | null;
+            isActive: boolean;
+            isPerishable: boolean;
+            spq: number;
+          }>;
+        const catalogById = new Map(catalogRows.map((row: {
+          id: string;
+          defaultSupplierPartyId: string | null;
+          isActive: boolean;
+          isPerishable: boolean;
+          spq: number;
+        }) => [row.id, row] as const));
+        for (const itemId of resolvedItemIds) {
+          const catalogItem = catalogById.get(itemId);
+          if (!catalogItem) {
+            return { ok: false, errors: ["The selected item could not be found. Choose an enrolled material and try again."] } satisfies CreateWrrActionResult;
+          }
+          if (catalogItem.isActive === false) {
+            return { ok: false, errors: ["The selected item is inactive. Choose an active material in Master Data."] } satisfies CreateWrrActionResult;
+          }
+          if (catalogItem.defaultSupplierPartyId !== data.vendorPartyId) {
+            return { ok: false, errors: ["The selected item is not assigned to this organization. Assign the material in Master Data before staging the WRR."] } satisfies CreateWrrActionResult;
+          }
+        }
         const perishableById = new Map(catalogRows.map((row: { id: string; isPerishable: boolean }) => [row.id, Boolean(row.isPerishable)]));
         if (resolvedLines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
           return { ok: false, errors: ["Expiry date is required for every perishable item."] } satisfies CreateWrrActionResult;
