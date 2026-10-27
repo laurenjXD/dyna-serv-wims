@@ -7,6 +7,7 @@
 //   specs/00-steering/brand-design-system.md §9 (physical label and print typography)
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
 
@@ -87,7 +88,7 @@ export function WRRUnitLabelGenerator({
       </button>
 
       {/* Modal Preview & Print Sheet */}
-      {isModalOpen && (
+      {isModalOpen && typeof document !== "undefined" && createPortal((
         <div
           role="dialog"
           aria-modal="true"
@@ -110,7 +111,7 @@ export function WRRUnitLabelGenerator({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
-              body[data-qr-print-mode] * {
+              body[data-qr-print-mode] > * {
                 visibility: hidden !important;
               }
               body[data-qr-print-mode] [data-qr-print-modal],
@@ -273,7 +274,7 @@ export function WRRUnitLabelGenerator({
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
