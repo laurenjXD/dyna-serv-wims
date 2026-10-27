@@ -178,11 +178,11 @@ export default async function ReceiveFloorPage({
   // Compute progress counts from items safely.
   const totalLines = Array.isArray(wrr.items) ? wrr.items.length : 0;
   const fullyScannedLines = (wrr.items ?? []).filter(
-    (item: WrrItemRow) => (Number(item.scannedQty) || 0) >= (Number(item.expectedQty) || 0) && (Number(item.expectedQty) || 0) > 0
+    (item: WrrItemRow) => (Number(item.scannedQty) || 0) >= (Number(item.cartonQty) || 0) && (Number(item.cartonQty) || 0) > 0
   ).length;
   const allLinesScanned = totalLines > 0 && fullyScannedLines === totalLines;
   const hasShortage = (wrr.items ?? []).some(
-    (item: WrrItemRow) => item.scannedQty < item.expectedQty,
+    (item: WrrItemRow) => item.scannedQty < item.cartonQty,
   );
   const hasUncommittedReceivedLines = (wrr.items ?? []).some(
     (item: WrrItemRow) => item.committedAt === null && item.scannedQty > 0,
@@ -509,7 +509,7 @@ export default async function ReceiveFloorPage({
           {wrr.items.map((item: WrrItemRow) => {
             const itemSpq = Number(item.spq) || 1;
             const itemUom = (!item.uom || item.uom.toLowerCase() === "pallet" || item.uom.toLowerCase() === "plt") ? "PCS" : item.uom.toUpperCase();
-            const fullyScanned = item.scannedQty >= item.expectedQty;
+            const fullyScanned = item.scannedQty >= item.cartonQty;
             const isCommitted = item.committedAt !== null;
             const readyToCommit = item.scannedQty >= 1 && !isCommitted;
             const isPrimaryReady = primaryReadyLine !== null && item.id === primaryReadyLine.id;
@@ -539,9 +539,9 @@ export default async function ReceiveFloorPage({
 
                     {/* Qty progress in both Boxes and Total Pieces */}
                     <p className="mt-1.5 font-body text-body-md text-on-surface">
-                      <strong>{item.scannedQty} / {item.expectedQty} Boxes</strong>
+                      <strong>{item.scannedQty} / {item.cartonQty} Cartons</strong>
                       {itemSpq > 1 && (
-                        <>{" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {(item.expectedQty * itemSpq).toLocaleString()} {itemUom})</span></>
+                        <> {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {Number(item.expectedQty).toLocaleString()} {itemUom})</span></>
                       )}
                     </p>
 
@@ -661,7 +661,7 @@ export default async function ReceiveFloorPage({
                       Item verified
                     </p>
                     <p className="mt-1 font-body text-body-md text-text-grey">
-                      Assign locations for declared boxes (Expected: {primaryReadyLine.expectedQty} Boxes{primaryLineSpq > 1 ? ` / ${((Number(primaryReadyLine.expectedQty) || 0) * primaryLineSpq).toLocaleString()} ${primaryLineUom}` : ""}). Mark boxes that did not arrive as Missing.
+                      Assign locations for declared cartons (Expected: {primaryReadyLine.cartonQty} cartons / {Number(primaryReadyLine.expectedQty).toLocaleString()} {primaryLineUom}). Mark cartons that did not arrive as Missing.
                     </p>
                   </div>
                 </div>
@@ -670,7 +670,7 @@ export default async function ReceiveFloorPage({
                   candidates={primaryStoreCandidates}
                   inspectionCandidates={inspectionLocations}
                   contents={primaryStoreContents}
-                  quantity={primaryReadyLine.expectedQty}
+                  quantity={primaryReadyLine.cartonQty}
                   unitCbm={Number(primaryReadyLine.unitCbm) || 0}
                   spq={primaryLineSpq}
                   uom={primaryLineUom}

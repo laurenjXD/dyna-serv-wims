@@ -36,6 +36,8 @@ export type WrrLine = {
   itemId: string | null;
   itemBarcode: string | null;
   lotNumber: string;
+  /** Required on persisted WRR lines; optional only for legacy pure-test callers. */
+  cartonQty?: number;
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect" | null | undefined;
@@ -84,9 +86,10 @@ export function validateLineCommit(
   }
 
   // R3.5 / §5.2: under-scanned lines block confirmation
-  if (line.scannedQty < line.expectedQty) {
+  const cartonQty = line.cartonQty ?? line.expectedQty;
+  if (line.scannedQty < cartonQty) {
     errors.push(
-      `Line ${line.id} (lot: ${line.lotNumber}) is under-scanned (scanned ${line.scannedQty} of ${line.expectedQty})`
+      `Line ${line.id} (lot: ${line.lotNumber}) is under-scanned (scanned ${line.scannedQty} of ${cartonQty} cartons)`
     );
   }
 

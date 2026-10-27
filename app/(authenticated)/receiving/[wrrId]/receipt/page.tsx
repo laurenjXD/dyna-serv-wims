@@ -33,10 +33,9 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
 
   const items = wrr.items || [];
   const receiptNumber = `IGR-${(wrr.wrrNumber || "00000").replace(/^WRR-/, "")}`;
-  const totalCartons = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0), 0);
+  const totalCartons = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.cartonQty) || 0), 0);
   const totalPieces = items.reduce((sum, item) => {
-    const cartonCount = Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0;
-    return sum + boxesToPieces(cartonCount, item.spq);
+    return sum + (Number(item.scannedQty) > 0 ? boxesToPieces(Number(item.scannedQty), item.spq) : Number(item.expectedQty) || 0);
   }, 0);
   const template = await getDocumentTemplate(db);
 
@@ -189,8 +188,8 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
             <tbody className="divide-y divide-slate-200">
               {wrr.items.map((item: WrrItemRow) => {
                 const spq = Number(item.spq) || 1;
-                const cartonCount = item.scannedQty > 0 ? item.scannedQty : item.expectedQty;
-                const totalUnits = boxesToPieces(cartonCount, spq);
+                const cartonCount = item.scannedQty > 0 ? item.scannedQty : item.cartonQty;
+                const totalUnits = item.scannedQty > 0 ? boxesToPieces(cartonCount, spq) : item.expectedQty;
 
                 return (
                   <tr key={item.id} className="hover:bg-slate-50">

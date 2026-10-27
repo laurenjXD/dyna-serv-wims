@@ -4,10 +4,10 @@
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §5.1 — Expected line fields
-//   specs/07-incoming-receiving/design.md §5.2 — Scan-line state: expectedQty > 0 invariant
+//   specs/07-incoming-receiving/design.md §5.2 — cartonQty/expectedQty quantity grain
 //   specs/07-incoming-receiving/design.md §7.1 — disposition defaults to 'store'
 //   specs/07-incoming-receiving/requirements.md R1.2 — vendorPartyId, flowType, commercialInvoiceNo
-//   specs/07-incoming-receiving/requirements.md R1.3 — line fields: item, lot_number, expected_qty, UOM, unit_cbm, disposition
+//   specs/07-incoming-receiving/requirements.md R1.3 — line fields: item, lot_number, carton_qty, expected_qty, UOM, unit_cbm, disposition
 //   specs/07-incoming-receiving/requirements.md R5.1 — disposition must be 'store' or 'inspect'
 //   specs/07-incoming-receiving/requirements.md R1.4 (amended 2026-08-10) — a store-disposition
 //     line SHALL NOT be required to carry a putawayLocationId at WRR creation or staging time;
@@ -18,6 +18,7 @@ const UUID_PATTERN =
 
 export type CreateWrrLine = {
   lotNumber: string;
+  cartonQty: number;
   expectedQty: number;
   unitCbm: number;
   uom: string;
@@ -162,7 +163,13 @@ function validateLine(
     errors.push(`Line[${index}]: lotNumber is required and must be a non-empty string`);
   }
 
-  // expectedQty: must be a positive whole unit count
+  // cartonQty: physical carton count, the scan and label grain
+  const cartonQty = line["cartonQty"];
+  if (typeof cartonQty !== "number" || !Number.isInteger(cartonQty) || cartonQty <= 0) {
+    errors.push(`Line[${index}]: cartonQty must be a whole number greater than 0`);
+  }
+
+  // expectedQty: total base-unit count, not carton count
   const expectedQty = line["expectedQty"];
   if (typeof expectedQty !== "number" || !Number.isInteger(expectedQty) || expectedQty <= 0) {
     errors.push(`Line[${index}]: expectedQty must be a whole number greater than 0`);
@@ -236,6 +243,7 @@ function validateLine(
     errors: [],
     line: {
       lotNumber: (line["lotNumber"] as string).trim(),
+      cartonQty: cartonQty as number,
       expectedQty: expectedQty as number,
       unitCbm: unitCbm as number,
       uom: (uom as string).trim(),

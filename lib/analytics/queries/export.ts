@@ -50,7 +50,7 @@ export async function getReceivingHistoryExport(range: DateRange, cursor: Export
   assertDateRange(range);
   const rows = await executor.execute<{ id: string }>(sql`
     SELECT wi.id, wd.wrr_number, wd.created_at, wd.confirmed_at, wd.flow_type, wd.status AS wrr_status,
-      wd.vendor_party_id, wi.lot_number, wi.item_code, wi.customer_item_code, wi.expected_qty, wi.scanned_qty,
+      wd.vendor_party_id, wi.lot_number, wi.item_code, wi.customer_item_code, wi.carton_qty, wi.expected_qty, wi.scanned_qty,
       wil.conformance_status, wil.non_conformance_reason, wil.action_taken
     FROM wrr_items wi
     JOIN wrr_documents wd ON wd.id = wi.wrr_id

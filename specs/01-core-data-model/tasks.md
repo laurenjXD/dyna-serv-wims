@@ -12,6 +12,14 @@ Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 - [x] Product owner approval — User, 2026-10-23.
 - [x] Technical/data-model/RBAC review and second approval — System standing approval, 2026-10-23.
 
+### WRR quantity grain amendment — 2026-10-27 (Approved)
+
+- [x] Add `wrr_items.carton_qty` as the explicit physical carton count declared by the CIPL/WRR.
+- [x] Define `wrr_items.expected_qty` as total base units, server-derived/validated as `carton_qty × items.spq`.
+- [x] Keep `wrr_items.scanned_qty` as accepted physical carton scans and use carton grain for putaway allocations and `inventory_units`.
+- [x] Product owner approval — User, 2026-10-27.
+- [x] Second approver approval — System standing approval, 2026-10-27.
+
 - [x] **1. Drizzle ORM Schema Definitions** — **implemented and fully verified 2026-08-07**
   - [x] Define PostgreSQL enums in `lib/db/schema/enums.ts` (`partyRoleEnum` with vendor/supplier/customer/end_customer/internal_warehouse, `flowTypeEnum`, `locationTypeEnum`, `lotStatusEnum`, `wrrStatusEnum`, `movementTypeEnum`, `pickListStatusEnum`, `conformanceStatusEnum`, `nonConformanceReasonEnum`, `commitmentStatusEnum`)
   - [x] Define `parties` and `party_roles` tables in `lib/db/schema/parties.ts` (Req 2.1, Design 1.2)

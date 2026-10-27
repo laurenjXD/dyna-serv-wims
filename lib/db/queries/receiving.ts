@@ -66,6 +66,7 @@ export type WrrItemRow = {
   id: string;
   wrrId: string;
   lotNumber: string;
+  cartonQty: number;
   expectedQty: number;
   scannedQty: number;
   disposition: string;
@@ -120,6 +121,7 @@ type RawJoinRow = {
   itemRowId: string | null;
   itemWrrId: string | null;
   itemLotNumber: string | null;
+  itemCartonQty: number | null;
   itemExpectedQty: number | null;
   itemScannedQty: number | null;
   itemDisposition: string | null;
@@ -278,6 +280,7 @@ export async function getWrrDocument(
       itemRowId: wrrItems.id,
       itemWrrId: wrrItems.wrrId,
       itemLotNumber: wrrItems.lotNumber,
+      itemCartonQty: wrrItems.cartonQty,
       itemExpectedQty: wrrItems.expectedQty,
       itemScannedQty: wrrItems.scannedQty,
       itemDisposition: wrrItems.disposition,
@@ -315,6 +318,7 @@ export async function getWrrDocument(
       id: row.itemRowId!,
       wrrId: row.itemWrrId!,
       lotNumber: row.itemLotNumber ?? "",
+      cartonQty: Number(row.itemCartonQty ?? 0),
       expectedQty: Number(row.itemExpectedQty ?? 0),
       scannedQty: Number(row.itemScannedQty ?? 0),
       disposition: row.itemDisposition ?? "store",

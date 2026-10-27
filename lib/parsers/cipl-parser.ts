@@ -8,6 +8,8 @@ export interface ParsedCiplRow {
   mfgDate?: string;
   expiryDate?: string;
   expectedQty?: number;
+  /** Explicit physical carton count from the packing list. */
+  cartonQty?: number;
   packageCount?: number;
   spq?: number;
   cbm?: number;
@@ -446,6 +448,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           mfgDate,
           expiryDate,
           expectedQty: expectedQty && !isNaN(expectedQty) ? expectedQty : undefined,
+          cartonQty: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           spq: spq && !isNaN(spq) ? spq : undefined,
           cbm: cbm && !isNaN(cbm) ? cbm : undefined,

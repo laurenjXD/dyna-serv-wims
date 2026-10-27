@@ -1939,3 +1939,18 @@ The real-Postgres integration tier now covers 4 files and 23 tests, including
 approval reviewer boundaries and administrator-versus-supervisor enrollment and
 settings mutations. The disposable database was removed after verification.
 
+## WRR quantity grain corrected for carton labels and total units (2026-10-27)
+
+The Product Owner clarified that `wrr_items.expected_qty` is the total base-unit
+quantity already calculated as `SPQ × cartons`; it is not the physical carton
+count. The receiving contract now adds `wrr_items.carton_qty` as the explicit
+CIPL/WRR carton count. `scanned_qty`, putaway allocations, and durable
+`inventory_units` remain at carton grain, while inventory balances,
+transactions, receipts, and expected-quantity displays use base units.
+
+The migration preserves existing carton-grain `expected_qty` values as
+`carton_qty` and converts resolved lines using the enrolled item SPQ. New WRR
+creation validates the total-unit relationship, and QR generation uses
+`carton_qty`, so a line of 100 cartons at SPQ 8 produces 800 expected units and
+100 carton labels.
+

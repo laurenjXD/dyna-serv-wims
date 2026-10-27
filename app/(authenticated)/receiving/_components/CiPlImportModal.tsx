@@ -14,6 +14,7 @@ export interface ImportedCiplLine {
   lotNumber: string;
   mfgDate: string;
   expiryDate: string;
+  cartonQty: string;
   expectedQty: string;
   unitCbm?: string;
   uom: string;
@@ -56,6 +57,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
       lotNumber: string;
       mfgDate: string;
       expiryDate: string;
+      cartonQty: string;
       expectedQty: string;
       unitCbm: string;
       uom: string;
@@ -116,6 +118,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
         lotNumber: row.lotNumber || "",
         mfgDate: row.mfgDate || "",
         expiryDate: row.expiryDate || "",
+        cartonQty: row.cartonQty ? String(row.cartonQty) : row.packageCount ? String(row.packageCount) : "",
         expectedQty: row.expectedQty ? String(row.expectedQty) : "",
         unitCbm: row.cbm ? String(row.cbm) : (matchedItem ? matchedItem.volumeCbm : "0.001"),
         uom: row.uom || (matchedItem ? matchedItem.uom : "BOX"),
@@ -150,12 +153,19 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
           customerItemCode: copy[index].customerItemCode || (item ? item.customerItemCode ?? "" : ""),
           unitCbm: item ? item.volumeCbm : copy[index].unitCbm,
           uom: copy[index].uom || (item ? item.uom : "BOX"),
+          expectedQty: item && Number(copy[index].cartonQty) > 0 ? String(Number(copy[index].cartonQty) * item.spq) : copy[index].expectedQty,
           matchConfidence: value ? "high" : "none",
           matchScore: value ? 100 : 0,
           matchReason: value ? "Manually selected by operator" : "Unmapped",
         };
       } else {
         copy[index] = { ...copy[index], [field]: value };
+        if (field === "cartonQty") {
+          const item = itemOptions.find((candidate) => candidate.id === copy[index].itemId);
+          if (item && Number(value) > 0) {
+            copy[index].expectedQty = String(Number(value) * item.spq);
+          }
+        }
       }
       return copy;
     });
@@ -178,6 +188,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
         lotNumber: r.lotNumber,
         mfgDate: r.mfgDate,
         expiryDate: r.expiryDate,
+        cartonQty: r.cartonQty,
         expectedQty: r.expectedQty,
         unitCbm: r.unitCbm,
         uom: r.uom,
@@ -307,6 +318,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                         <th className="p-2.5 min-w-[110px]">Shipping Lot</th>
                         <th className="p-2.5 min-w-[100px]">MFD</th>
                         <th className="p-2.5 min-w-[80px]">Unit CBM</th>
+                        <th className="p-2.5 min-w-[85px] text-right">Cartons</th>
                         <th className="p-2.5 min-w-[85px] text-right">Expected Qty</th>
                         <th className="p-2.5 min-w-[65px]">UOM</th>
                         <th className="p-2.5 min-w-[90px]">Disposition</th>
@@ -428,9 +440,18 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                             <td className="p-2.5 text-right">
                               <input
                                 type="number"
-                                value={row.expectedQty}
-                                onChange={(e) => handleRowChange(idx, "expectedQty", e.target.value)}
+                                min="1"
+                                value={row.cartonQty}
+                                onChange={(e) => handleRowChange(idx, "cartonQty", e.target.value)}
                                 className="w-20 rounded border border-outline-variant/50 px-2 py-1 font-mono text-body-xs text-right"
+                              />
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <input
+                                type="number"
+                                value={row.expectedQty}
+                                readOnly
+                                className="w-20 rounded border border-outline-variant/50 bg-slate-100 px-2 py-1 font-mono text-body-xs text-right"
                               />
                             </td>
                             <td className="p-2.5">

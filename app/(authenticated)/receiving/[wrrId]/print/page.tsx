@@ -276,8 +276,8 @@ export default async function WrrPrintPage({ params }: PageProps) {
                           <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.manufactureDate ?? "—"}</td>
                           <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.expiryDate ?? "—"}</td>
                           <td className="border border-slate-300 px-2 py-1.5 text-right">
-                            <span className="font-bold block text-slate-900">{boxesToPieces(item.expectedQty, spq).toLocaleString()} {item.uom || "PCS"}</span>
-                            <span className="text-slate-500 text-[10px]">({item.expectedQty} cartons)</span>
+                            <span className="font-bold block text-slate-900">{item.expectedQty.toLocaleString()} {item.uom || "PCS"}</span>
+                            <span className="text-slate-500 text-[10px]">({item.cartonQty} cartons)</span>
                           </td>
                           <td className="border border-slate-300 px-2 py-1.5 text-right text-slate-600 client-export-hide-cbm">
                             {item.unitCbm.toFixed(4)}
@@ -303,16 +303,16 @@ export default async function WrrPrintPage({ params }: PageProps) {
                         Total Receiving Quantities:
                       </td>
                       <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
-                        {wrr.items.reduce((sum, item) => sum + boxesToPieces(item.expectedQty, item.spq), 0).toLocaleString()} units
+                        {wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} units
                       </td>
                       <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy client-export-hide-cbm">
-                        {wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.expectedQty), 0).toFixed(4)}
+                        {wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.cartonQty), 0).toFixed(4)}
                       </td>
                       <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
                         {wrr.items.reduce((sum, item) => sum + boxesToPieces(item.scannedQty, item.spq), 0).toLocaleString()} units
                       </td>
                       <td className="border border-slate-300 px-2 py-1.5 text-[10px] uppercase text-slate-600">
-                        {wrr.items.reduce((sum, item) => sum + item.scannedQty, 0) >= wrr.items.reduce((sum, item) => sum + item.expectedQty, 0) ? "Verified Complete" : "Pending / Short"}
+                        {wrr.items.reduce((sum, item) => sum + item.scannedQty, 0) >= wrr.items.reduce((sum, item) => sum + item.cartonQty, 0) ? "Verified Complete" : "Pending / Short"}
                       </td>
                     </tr>
                   </tfoot>
@@ -329,11 +329,11 @@ export default async function WrrPrintPage({ params }: PageProps) {
                 <dl className="space-y-1">
                   <div className="flex justify-between">
                     <dt className="text-text-grey">Total Expected Cartons:</dt>
-                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} cartons</dd>
+                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.cartonQty, 0).toLocaleString()} cartons</dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-text-grey">Total Expected Pieces:</dt>
-                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + boxesToPieces(item.expectedQty, item.spq), 0).toLocaleString()} units</dd>
+                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + item.expectedQty, 0).toLocaleString()} units</dd>
                   </div>
                   <div className="flex justify-between border-t border-outline-variant/20 pt-1">
                     <dt className="text-text-grey">Total Actual Received Cartons:</dt>
@@ -345,7 +345,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
                   </div>
                   <div className="flex justify-between border-t border-outline-variant/20 pt-1 client-export-hide-cbm">
                     <dt className="text-text-grey">Total Shipment CBM:</dt>
-                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.expectedQty), 0).toFixed(4)} m³</dd>
+                    <dd className="font-mono font-bold text-on-surface">{wrr.items.reduce((sum, item) => sum + (item.unitCbm * item.cartonQty), 0).toFixed(4)} m³</dd>
                   </div>
                 </dl>
               </div>

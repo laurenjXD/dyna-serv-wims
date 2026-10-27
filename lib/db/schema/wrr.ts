@@ -39,8 +39,9 @@ export const wrrItems = pgTable("wrr_items", {
   manufactureDate: date("manufacture_date"), // Supplier-declared date, copied to lots on receipt
   expiryDate: date("expiry_date"), // Required for perishable items; copied to lots on receipt
   remarks: text("remarks"), // CIPL/receiving note; never an inventory adjustment
-  expectedQty: integer("expected_qty").notNull(),
-  scannedQty: integer("scanned_qty").default(0).notNull(),
+  cartonQty: integer("carton_qty").notNull(), // Explicit physical carton count from the CIPL/WRR
+  expectedQty: integer("expected_qty").notNull(), // Total base units: cartonQty × item.spq
+  scannedQty: integer("scanned_qty").default(0).notNull(), // Accepted physical carton scans
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),
   disposition: text("disposition").default("store").notNull(), // 'store' | 'inspect'; CHECK constraint in migration 0012

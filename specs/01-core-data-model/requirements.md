@@ -187,6 +187,15 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
 -
 ### Material Origin Organization amendment (2026-10-26)
 
+### WRR quantity grain amendment (2026-10-27)
+
+For every `wrr_items` line, `carton_qty` is the explicit physical carton count
+declared by the CIPL/WRR. `expected_qty` is the total base-unit quantity and
+must equal `carton_qty × items.spq` whenever the item is enrolled. `scanned_qty`
+is the accepted physical carton scan count. Inventory balances and transaction
+quantities are posted as base units; physical carton identities and QR labels
+remain one per carton.
+
 Material Enrollment may select an active Organization with either the
 `trading_supplier` or `vmi_customer` relationship and derive the Material's
 default Inventory Model from that relationship. This is an enrollment default,

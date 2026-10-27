@@ -231,6 +231,7 @@ function validCreateWrrInput() {
     lines: [
       {
         lotNumber: "LOT-001",
+        cartonQty: 10,
         expectedQty: 10,
         unitCbm: 0.5,
         uom: "CTN",
@@ -396,6 +397,7 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
         lines: [
           {
             lotNumber: "LOT-001",
+            cartonQty: 10,
             expectedQty: 10,
             unitCbm: 0.5,
             uom: "CTN",

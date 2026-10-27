@@ -354,8 +354,8 @@ describe.skipIf(!hasLiveDb)(
       const lineIds: string[] = [];
       for (const line of lines) {
         const [row] = await sql`
-          INSERT INTO wrr_items (wrr_id, item_id, lot_number, expected_qty, scanned_qty, unit_cbm, uom, disposition)
-          VALUES (${wrrId}, ${itemId}, ${line.lotNumber}, ${line.expectedQty}, ${line.scannedQty}, 0.5, 'CTN', ${line.disposition})
+          INSERT INTO wrr_items (wrr_id, item_id, lot_number, carton_qty, expected_qty, scanned_qty, unit_cbm, uom, disposition)
+          VALUES (${wrrId}, ${itemId}, ${line.lotNumber}, ${line.expectedQty}, ${line.expectedQty}, ${line.scannedQty}, 0.5, 'CTN', ${line.disposition})
           RETURNING id
         `;
         lineIds.push(row.id as string);
