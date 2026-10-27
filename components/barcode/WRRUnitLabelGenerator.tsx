@@ -111,13 +111,8 @@ export function WRRUnitLabelGenerator({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
-              body[data-qr-print-mode] > * {
-                visibility: hidden !important;
-              }
-              body[data-qr-print-mode] [data-qr-print-modal],
-              body[data-qr-print-mode] [data-qr-print-modal] #print-unit-labels-sheet,
-              body[data-qr-print-mode] [data-qr-print-modal] #print-unit-labels-sheet * {
-                visibility: visible !important;
+              body[data-qr-print-mode] > *:not([data-qr-print-modal]) {
+                display: none !important;
               }
               body[data-qr-print-mode] [data-qr-print-modal] {
                 position: static !important;
@@ -168,7 +163,6 @@ export function WRRUnitLabelGenerator({
                 display: block !important;
                 width: 29mm !important;
                 height: 29mm !important;
-                visibility: visible !important;
               }
               .unit-thermal-label-card:last-child {
                 page-break-after: avoid !important;
