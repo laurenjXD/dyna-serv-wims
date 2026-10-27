@@ -363,7 +363,7 @@ export function WrrLineItems({
               <div>
                 <div className="flex items-center justify-between">
                     <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
-                    Expected Qty (Cartons) <span aria-hidden="true" className="text-brand-red">*</span>
+                    Carton Qty (Expected) <span aria-hidden="true" className="text-brand-red">*</span>
                   </label>
                   {(() => {
                     const selItem = itemOptions.find((i) => i.id === line.itemId);
@@ -372,7 +372,7 @@ export function WrrLineItems({
                     const totalUnits = cartons > 0 ? cartons * selItem.spq : null;
                     return (
                       <span className="font-mono text-[11px] font-bold text-brand-navy bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                        SPQ: {selItem.spq}/ctn {totalUnits ? `· ${cartons} ctn · ${totalUnits} units` : ""}
+                        SPQ: {selItem.spq}/carton {totalUnits ? `· ${cartons} cartons · ${totalUnits} units` : ""}
                       </span>
                     );
                   })()}
@@ -393,7 +393,7 @@ export function WrrLineItems({
                   }`}
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Total units = cartons &times; SPQ
+                  Total units = carton qty &times; SPQ
                 </p>
               </div>
 
