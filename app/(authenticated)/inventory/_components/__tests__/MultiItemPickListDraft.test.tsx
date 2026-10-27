@@ -47,6 +47,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(organizationSelect, { target: { value: "party-vmi-owner" } });
 
     expect(screen.getByRole("option", { name: "VMI (Consignment)" })).toBeInTheDocument();
+    expect(screen.queryByText("VMI Customer / Stock Owner")).not.toBeInTheDocument();
   });
 
   it("places required entry columns before inherited and reference columns", () => {
