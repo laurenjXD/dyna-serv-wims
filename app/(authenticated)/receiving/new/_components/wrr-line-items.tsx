@@ -107,7 +107,9 @@ export function WrrLineItems({
           lotNumber: imp.lotNumber || "",
           expectedQty: imp.expectedQty || "",
           unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
-          uom: (imp.uom || (item ? item.uom : "BOX")).toLowerCase(),
+          // Once an enrolled item is known, its UOM is authoritative. The
+          // imported CIPL value is only a fallback for unresolved items.
+          uom: item ? item.uom.toLowerCase() : (imp.uom || "BOX").toLowerCase(),
           itemCode: item
             ? flowType === "trading"
               ? (item.dsgcItemNumber ?? item.code)
@@ -145,9 +147,9 @@ export function WrrLineItems({
 
   // Keep item-derived values aligned when the operator changes the inventory
   // model (the display code can change between supplier and DSGC fields) or
-  // when the catalog finishes loading after the form has mounted.
+  // when the catalog finishes loading after the form has mounted. This also
+  // repairs imported lines once their enrolled item is available.
   useEffect(() => {
-    if (importedLines && importedLines.length > 0) return;
     setLines((prev) => prev.map((line) => {
       const item = itemOptions.find((candidate) => candidate.id === line.itemId);
       if (!item) return line;
@@ -434,11 +436,11 @@ export function WrrLineItems({
                     id={`line-${index}-uom`}
                     name={`line_${index}_uom`}
                     required
-                    disabled={isImported}
+                    disabled={Boolean(line.itemId) || isImported}
                     value={line.uom}
                     onChange={(e) => updateLine(index, "uom", e.target.value)}
                     className={`h-11 w-full appearance-none rounded-lg border border-slate-200 px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20 ${
-                      isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"
+                      line.itemId || isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"
                     }`}
                   >
                     {!line.uom && <option value="">Select UOM…</option>}
@@ -449,11 +451,11 @@ export function WrrLineItems({
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
-                  {isImported && <input type="hidden" name={`line_${index}_uom`} value={line.uom} />}
+                  {(line.itemId || isImported) && <input type="hidden" name={`line_${index}_uom`} value={line.uom} />}
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
                 </div>
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Standard unit of measure
+                  {line.itemId ? "Inherited from enrolled item" : "Standard unit of measure"}
                 </p>
               </div>
             </div>

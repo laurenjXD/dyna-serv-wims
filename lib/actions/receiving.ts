@@ -62,6 +62,10 @@ import { resolveReceivingInventoryModel, validateReceivingOrganization } from "@
 // makes the underlying Postgres RLS policies the real, DB-level backstop.
 const defaultRlsDeps: RlsTransactionDeps = { getAuthenticatedSession, pool: rlsPool };
 
+function canonicalItemUom(uom: string): string {
+  return uom.toLowerCase() === "pallet" ? "piece" : uom.toLowerCase();
+}
+
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
 // that PostgresJsDatabase, which has no index signature, is assignable here.
@@ -315,6 +319,7 @@ export async function createWrr(
       }
 
       const resolvedItemIds = resolvedLines.map((line) => line.itemId).filter((id): id is string => Boolean(id));
+      let persistedLines = resolvedLines;
       if (resolvedItemIds.length > 0) {
         const catalogRows = (await db
           .select({
@@ -323,6 +328,7 @@ export async function createWrr(
             isActive: itemCatalog.isActive,
             isPerishable: itemCatalog.isPerishable,
             spq: itemCatalog.spq,
+            uom: itemCatalog.uom,
           })
           .from(itemCatalog)
           .where(or(...resolvedItemIds.map((id) => eq(itemCatalog.id, id))))) as Array<{
@@ -331,6 +337,7 @@ export async function createWrr(
             isActive: boolean;
             isPerishable: boolean;
             spq: number;
+            uom: string;
           }>;
         const catalogById = new Map(catalogRows.map((row: {
           id: string;
@@ -338,6 +345,7 @@ export async function createWrr(
           isActive: boolean;
           isPerishable: boolean;
           spq: number;
+          uom: string;
         }) => [row.id, row] as const));
         for (const itemId of resolvedItemIds) {
           const catalogItem = catalogById.get(itemId);
@@ -351,12 +359,16 @@ export async function createWrr(
             return { ok: false, errors: ["The selected item is not assigned to this organization. Assign the material in Master Data before staging the WRR."] } satisfies CreateWrrActionResult;
           }
         }
+        persistedLines = resolvedLines.map((line) => {
+          const catalogItem = line.itemId ? catalogById.get(line.itemId) : undefined;
+          return catalogItem ? { ...line, uom: canonicalItemUom(catalogItem.uom) } : line;
+        });
         const perishableById = new Map(catalogRows.map((row: { id: string; isPerishable: boolean }) => [row.id, Boolean(row.isPerishable)]));
-        if (resolvedLines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
+        if (persistedLines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
           return { ok: false, errors: ["Expiry date is required for every perishable item."] } satisfies CreateWrrActionResult;
         }
         const spqById = new Map<string, number>(catalogRows.map((row: { id: string; spq: number }) => [row.id, positiveInteger(row.spq)] as [string, number]));
-        const quantityMismatch = resolvedLines.find((line) => {
+        const quantityMismatch = persistedLines.find((line) => {
           const spq = line.itemId ? spqById.get(line.itemId) : undefined;
           return spq !== undefined && exactCartonCount(line.expectedQty, spq) === null;
         });
@@ -395,7 +407,7 @@ export async function createWrr(
       // (scan-matcher.ts requires a non-null itemId to accept a match).
       // Skip the lookup when the caller already supplied itemId directly.
       await db.insert(wrrItems).values(
-        resolvedLines.map((line) => ({
+        persistedLines.map((line) => ({
           wrrId: inserted.id,
           itemId: line.itemId ?? null,
           itemCode: line.itemCode ?? null,
@@ -565,7 +577,7 @@ export async function updateWrrLines(
       return { ok: false, errors: ["Expected lines can only be edited while the WRR is staged."] } satisfies UpdateWrrResult;
     }
     const existingLines = await database
-      .select({ id: wrrItems.id, itemId: wrrItems.itemId, spq: itemCatalog.spq })
+      .select({ id: wrrItems.id, itemId: wrrItems.itemId, spq: itemCatalog.spq, enrolledUom: itemCatalog.uom })
       .from(wrrItems)
       .leftJoin(itemCatalog, eq(itemCatalog.id, wrrItems.itemId))
       .where(and(
@@ -573,7 +585,7 @@ export async function updateWrrLines(
         or(...lines.map((line) => eq(wrrItems.id, line.id))),
       ));
     const existingById = new Map(
-      (existingLines as Array<{ id: string; itemId: string | null; spq: number | null }>).map((line) => [line.id, line] as const),
+      (existingLines as Array<{ id: string; itemId: string | null; spq: number | null; enrolledUom: string | null }>).map((line) => [line.id, line] as const),
     );
     if (existingById.size !== lines.length) {
       return { ok: false, errors: ["One or more expected lines no longer belong to this WRR."] } satisfies UpdateWrrResult;
@@ -586,8 +598,10 @@ export async function updateWrrLines(
       }
     }
     for (const line of lines) {
+      const existing = existingById.get(line.id);
       const changed = await database.update(wrrItems).set({
-        lotNumber: line.lotNumber.trim(), expectedQty: line.expectedQty, unitCbm: String(line.unitCbm), uom: line.uom.trim(),
+        lotNumber: line.lotNumber.trim(), expectedQty: line.expectedQty, unitCbm: String(line.unitCbm),
+        uom: existing?.enrolledUom ? canonicalItemUom(existing.enrolledUom) : line.uom.trim(),
         itemCode: line.itemCode?.trim() || null, customerItemCode: line.customerItemCode?.trim() || null,
         manufactureDate: line.manufactureDate || null, expiryDate: line.expiryDate || null, remarks: line.remarks?.trim() || null,
       }).where(and(eq(wrrItems.id, line.id), eq(wrrItems.wrrId, wrrId))).returning({ id: wrrItems.id });
