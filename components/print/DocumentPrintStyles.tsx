@@ -25,7 +25,7 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
           body {
             background: #ffffff !important;
             color: #000000 !important;
-            font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;

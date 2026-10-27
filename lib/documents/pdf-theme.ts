@@ -1,4 +1,5 @@
 import { rgb } from "pdf-lib";
+import { DOCUMENT_FONT_SIZE } from "./document-contract";
 
 export const PDF_PAGE = {
   portrait: { width: 612, height: 792 },
@@ -6,7 +7,7 @@ export const PDF_PAGE = {
 } as const;
 
 /** Every generated PDF uses one canonical text size. */
-export const PDF_FONT_SIZE = 12;
+export const PDF_FONT_SIZE = DOCUMENT_FONT_SIZE;
 
 export const PDF_THEME = {
   margin: 28,
