@@ -1994,3 +1994,12 @@ The incorrect inbound Stock Intake implementation was removed. Inbound WRR/CIPL
 work remains under Receiving, while opening/legacy balances remain under Data
 Migration. The replacement feature is named Stock Count & Reconciliation and
 will post only approved `inventory_reconciliation` transactions.
+
+### 2026-10-27 — Warehouse map position numbering standardized
+
+The Product Owner clarified that every vertical rack must follow the physical
+floor-up convention: position `01` is at the bottom and higher positions rise
+upward. Rack-specific mirrored source geometry no longer changes the displayed
+position order. The map layout version was advanced to
+`v8-pdf-footprint-floor-up-positions`, with the canonical level-position labels
+otherwise unchanged.

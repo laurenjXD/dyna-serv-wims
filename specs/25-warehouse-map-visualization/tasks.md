@@ -1,7 +1,7 @@
 # Warehouse Map Visualization — Tasks
 
 Status: Approved
-Updated: 2026-10-23 — Final PDF rack footprint and label-spacing amendment approved
+Updated: 2026-10-27 — Position numbering orientation amendment approved
 
 The map component, route behavior, server query, and layout configuration are
 approved for implementation under the requirements and design documents.
@@ -13,6 +13,8 @@ approved for implementation under the requirements and design documents.
 - [x] Fix SVG spacing so warehouse title, rack titles, headers, and cell labels do not overlap in desktop or focused-rack view.
 - [x] Product/Operations Lead approval — User, 2026-10-23.
 - [x] Technical approval and map verification — System standing approval, 2026-10-23.
+- [x] Standardize every vertical rack so position 01 is at the floor and
+      higher positions rise upward — User, 2026-10-27.
 
 ## Task Group A — Contract and layout fixture
 

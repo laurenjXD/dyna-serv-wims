@@ -1,7 +1,7 @@
 # Warehouse Map Visualization — Design
 
 Status: Approved
-Updated: 2026-10-23 — Final PDF rack footprint and label-spacing amendment approved
+Updated: 2026-10-27 — Position numbering orientation amendment approved
 Depends on: `specs/25-warehouse-map-visualization/requirements.md`
 
 ## 1. Design intent
@@ -66,6 +66,11 @@ SVG text placement uses reserved bands for the warehouse title, each rack
 title, headers, and cell labels. The layout must add enough gap around each
 band that text never overlaps, and focused-rack rendering must preserve the
 same spacing rules.
+
+All vertical rack position runs use the physical warehouse convention: `01`
+is at the bottom and the highest position is at the top. Mirrored source
+geometry may affect the drawing footprint, but never the displayed position
+numbering.
 
 The v1 configuration MUST NOT invent CBM capacity, ownership, or allocation
 status from the workbook. Capacity comes from canonical locations; the
