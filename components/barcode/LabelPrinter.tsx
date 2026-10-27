@@ -53,14 +53,14 @@ export function LabelPrinter({
           }
           [data-print-label] {
             position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
+            inset: 0 !important;
+            margin: auto !important;
             width: 50mm !important;
             height: 50mm !important;
             max-width: 50mm !important;
             max-height: 50mm !important;
             margin: 0 !important;
-            padding: 1.5mm !important;
+            padding: 2mm !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
@@ -70,7 +70,8 @@ export function LabelPrinter({
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            justify-content: space-between !important;
+            justify-content: center !important;
+            gap: 1.5mm !important;
             image-rendering: pixelated !important;
             image-rendering: crisp-edges !important;
           }
@@ -79,10 +80,10 @@ export function LabelPrinter({
           }
           [data-print-label] svg {
             display: block !important;
-            width: 30mm !important;
-            height: 30mm !important;
-            min-width: 30mm !important;
-            min-height: 30mm !important;
+            width: 34mm !important;
+            height: 34mm !important;
+            min-width: 34mm !important;
+            min-height: 34mm !important;
             visibility: visible !important;
           }
         }

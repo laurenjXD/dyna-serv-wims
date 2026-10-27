@@ -64,8 +64,9 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
               }
               body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] {
                 position: absolute !important;
-                left: 0 !important;
+                left: 50% !important;
                 top: 0 !important;
+                transform: translateX(-50%) !important;
                 display: block !important;
                 width: 50mm !important;
                 min-width: 50mm !important;
@@ -86,16 +87,18 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 height: 50mm !important;
                 box-sizing: border-box !important;
                 margin: 0 !important;
-                padding: 1.5mm !important;
+                padding: 2mm !important;
                 border: none !important;
                 border-radius: 0 !important;
                 background: #fff !important;
                 page-break-after: always !important;
                 break-after: page !important;
                 overflow: hidden !important;
+                justify-content: center !important;
+                gap: 1.5mm !important;
               }
               .bulk-lot-qr-card:last-child { page-break-after: avoid !important; break-after: avoid !important; }
-              .bulk-lot-qr-card svg { display: block !important; width: 30mm !important; height: 30mm !important; visibility: visible !important; }
+              .bulk-lot-qr-card svg { display: block !important; width: 34mm !important; height: 34mm !important; visibility: visible !important; }
             }
           `}</style>
 

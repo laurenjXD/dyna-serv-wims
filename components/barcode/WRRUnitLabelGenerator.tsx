@@ -121,8 +121,9 @@ export function WRRUnitLabelGenerator({
               }
               body[data-qr-print-mode] [data-qr-print-modal] {
                 position: absolute !important;
-                left: 0 !important;
+                left: 50% !important;
                 top: 0 !important;
+                transform: translateX(-50%) !important;
                 display: block !important;
                 width: 50mm !important;
                 min-width: 50mm !important;
@@ -150,7 +151,7 @@ export function WRRUnitLabelGenerator({
                 max-width: 50mm !important;
                 max-height: 50mm !important;
                 margin: 0 !important;
-                padding: 1.5mm !important;
+                padding: 2mm !important;
                 box-sizing: border-box !important;
                 border: none !important;
                 border-radius: 0 !important;
@@ -161,14 +162,15 @@ export function WRRUnitLabelGenerator({
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: space-between !important;
+                justify-content: center !important;
+                gap: 1.5mm !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
               .unit-thermal-label-card svg {
                 display: block !important;
-                width: 29mm !important;
-                height: 29mm !important;
+                width: 34mm !important;
+                height: 34mm !important;
                 visibility: visible !important;
               }
               .unit-thermal-label-card:last-child {

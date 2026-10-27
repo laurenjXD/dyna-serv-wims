@@ -64,6 +64,8 @@ export function LotQrViewer({
               body[data-lot-qr-print-mode] {
                 width: 50mm !important;
                 min-width: 50mm !important;
+                height: 50mm !important;
+                min-height: 50mm !important;
               }
               body[data-lot-qr-print-mode] * {
                 visibility: hidden !important;
@@ -74,9 +76,9 @@ export function LotQrViewer({
                 visibility: visible !important;
               }
               body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
+                position: fixed !important;
+                inset: 0 !important;
+                margin: auto !important;
                 display: block !important;
                 width: 50mm !important;
                 min-width: 50mm !important;
@@ -94,7 +96,7 @@ export function LotQrViewer({
                 max-width: 50mm !important;
                 max-height: 50mm !important;
                 margin: 0 !important;
-                padding: 1.5mm !important;
+                padding: 2mm !important;
                 border: none !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
@@ -104,14 +106,15 @@ export function LotQrViewer({
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: space-between !important;
+                justify-content: center !important;
+                gap: 1.5mm !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
               #lot-qr-print-card svg {
                 display: block !important;
-                width: 30mm !important;
-                height: 30mm !important;
+                width: 34mm !important;
+                height: 34mm !important;
                 visibility: visible !important;
               }
               .print-hide {
