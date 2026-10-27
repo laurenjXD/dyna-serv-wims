@@ -90,6 +90,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       primary: "The available stock changed before the reservation completed.",
       next: "Refresh the inventory and choose a new allocation.",
     },
+    quantity_must_match_spq: {
+      primary: "The requested quantity must make complete boxes.",
+      next: "Enter a total quantity that divides evenly by the enrolled SPQ.",
+    },
     stale_record: {
       primary: "This record changed in another session.",
       next: "Refresh the page and try again.",

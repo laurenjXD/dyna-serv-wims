@@ -208,7 +208,8 @@ export async function requestFifoOverride(
           eq(lots.status, "available"),
           eq(lots.flowType, data.flowType),
           sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
-        ))) as AnyRecord[];
+        ))
+        .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
 
       const selected = rows.find((row) =>
         row.lotId === requested.lotId && row.locationId === requested.locationId,
@@ -218,6 +219,9 @@ export async function requestFifoOverride(
       }
       const available = selected.qtyRemaining - selected.qtyCommitted;
       if (requested.qty > available) throw new Error("unable_to_reserve_stock");
+      if (requested.qty % positiveInteger(selected.spq) !== 0) {
+        throw new Error("quantity_must_match_spq");
+      }
 
       const standard = allocate(rows.map((row) => ({
         lotId: row.lotId,
@@ -427,7 +431,7 @@ export async function commitWithdrawal(
           eq(lots.flowType, data.flowType),
           sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
         ))
-        .orderBy(asc(lots.expiryDate), asc(lots.createdAt))) as AnyRecord[];
+        .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
 
       const item = rows[0];
       if (!item || stockOrganizationId(item) !== data.partyId) {
@@ -439,6 +443,9 @@ export async function commitWithdrawal(
           : !item.supplierItemCode;
       if (itemCodeIsProvisional) {
         throw new Error("provisional_item_code");
+      }
+      if (requestedQty % positiveInteger(item.spq) !== 0) {
+        throw new Error("quantity_must_match_spq");
       }
 
       if (data.approvalRequestId) {
@@ -575,7 +582,7 @@ export async function commitWithdrawal(
           spq: line.spq,
           // Authoritative qty is base-unit pieces. The document also freezes
           // the physical box count required at dispatch.
-          numberOfBoxes: Math.ceil(line.qty / positiveInteger(line.spq)),
+          numberOfBoxes: line.qty / positiveInteger(line.spq),
           ...(data.flowType === "vmi" ? { unitPrice: line.sellingPrice ?? null } : {}),
         })
         .returning();

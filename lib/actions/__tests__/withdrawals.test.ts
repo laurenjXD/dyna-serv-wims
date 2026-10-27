@@ -918,6 +918,7 @@ describe("commitWithdrawal — FIFO across 2+ non-perishable lots (Bug 1, design
       lotNumber: "LOT-OLD",
       qtyRemaining: 5,
       isPerishable: false,
+      spq: 1,
       realReceivedAt: new Date("2026-01-01T00:00:00Z"),
     });
     const newer = fidelityLotRow({
@@ -926,6 +927,7 @@ describe("commitWithdrawal — FIFO across 2+ non-perishable lots (Bug 1, design
       lotNumber: "LOT-NEW",
       qtyRemaining: 15,
       isPerishable: false,
+      spq: 1,
       realReceivedAt: new Date("2026-02-01T00:00:00Z"),
     });
     // Deliberately returned newest-first — a correct implementation must
@@ -958,6 +960,7 @@ describe("commitWithdrawal — FEFO across 2+ perishable lots (Bug 1, design.md 
       lotNumber: "LOT-EARLY",
       qtyRemaining: 5,
       isPerishable: true,
+      spq: 1,
       realExpiryDate: "2026-09-01",
     });
     const lateExpiry = fidelityLotRow({
@@ -966,6 +969,7 @@ describe("commitWithdrawal — FEFO across 2+ perishable lots (Bug 1, design.md 
       lotNumber: "LOT-LATE",
       qtyRemaining: 15,
       isPerishable: true,
+      spq: 1,
       realExpiryDate: "2027-01-01",
     });
     // Deliberately returned with the LATER-expiring lot first — design.md §5
