@@ -81,6 +81,7 @@ function PickListItemSearch({
   const [inputValue, setInputValue] = useState("");
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
   const selectedItem = catalog.find((item) => item.itemId === selectedItemId);
 
@@ -90,7 +91,10 @@ function PickListItemSearch({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
+      const target = event.target as Node;
+      const clickedInput = dropdownRef.current?.contains(target);
+      const clickedListbox = listboxRef.current?.contains(target);
+      if (!clickedInput && !clickedListbox) setIsOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -191,7 +195,7 @@ function PickListItemSearch({
               Available Item Recommendations ({filteredItems.length})
             </p>
           </div>
-          <div id={listboxId} role="listbox" className="max-h-64 overflow-y-auto divide-y divide-slate-100 p-1">
+          <div ref={listboxRef} id={listboxId} role="listbox" className="max-h-64 overflow-y-auto divide-y divide-slate-100 p-1">
             {filteredItems.length > 0 ? filteredItems.map((item) => {
               const formattedCode = itemCodeFor(item, flowType);
               const isSelected = item.itemId === selectedItemId;
