@@ -51,6 +51,13 @@ describe("warehouse map layout", () => {
     expect(WAREHOUSE_RACK_LAYOUT.every((layout) => layout.verticalPositions)).toBe(true);
   });
 
+  it("keeps the D/E header gutter wide enough for separate labels", () => {
+    const rackD = WAREHOUSE_RACK_LAYOUT.find((layout) => layout.rack === "D")!;
+    const rackE = WAREHOUSE_RACK_LAYOUT.find((layout) => layout.rack === "E")!;
+
+    expect(rackE.x - (rackD.x + rackD.width)).toBeGreaterThanOrEqual(32);
+  });
+
   it("keeps the PDF display orientation linked to canonical level-position labels", () => {
     const rackA = WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === "A");
     expect(rackA[0]).toMatchObject({ label: "A4-01", level: "4", position: "01" });

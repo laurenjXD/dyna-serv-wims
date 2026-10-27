@@ -47,7 +47,10 @@ export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
   { rack: "B", levels: 4, positions: 12, x: 332, y: 510, width: 180, height: 270, verticalPositions: true },
   { rack: "C", levels: 4, positions: 12, x: 580, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
   { rack: "D", levels: 4, positions: 12, x: 828, y: 510, width: 180, height: 270, verticalPositions: true },
-  { rack: "E", levels: 4, positions: 12, x: 1024, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  // Keep enough gutter before E's vertical POS labels so D's final level
+  // header does not visually merge with them in the horizontally scrollable
+  // map view.
+  { rack: "E", levels: 4, positions: 12, x: 1048, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
 ];
 
 // Form/storage-entry limits. These are broader than the visible PDF footprint
@@ -64,7 +67,7 @@ export const WAREHOUSE_RACK_LIMITS = {
   I: { levels: 4, positions: 15 },
 } as const;
 
-export const WAREHOUSE_MAP_VIEWBOX = { width: 1200, height: 820 } as const;
+export const WAREHOUSE_MAP_VIEWBOX = { width: 1240, height: 820 } as const;
 
 export function canonicalLocationLabel(rack: string, level: number, position: number): string {
   return `${rack}${level}-${String(position).padStart(2, "0")}`;
