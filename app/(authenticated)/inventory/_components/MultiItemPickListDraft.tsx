@@ -625,12 +625,6 @@ export function MultiItemPickListDraft({
                         <input value={line.qty} onChange={(event) => handlePackagesChange(line.id, event.target.value, effectiveSpq)} type="number" min="1" max={source ? Math.floor(piecesToBoxes(source.availableQty, effectiveSpq)) : undefined} disabled={!source} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                     </div>
-                    <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
-                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
-                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
-                      <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{source?.lotNumber || "—"}</dd></div>
-                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
-                    </dl>
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                       Location
                       <select value={line.balanceId} disabled={!item} onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400">
@@ -638,6 +632,12 @@ export function MultiItemPickListDraft({
                         {item?.sources.map((candidate) => <option key={candidate.balanceId} value={candidate.balanceId}>{candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})</option>)}
                       </select>
                     </label>
+                    <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
+                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
+                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{source?.lotNumber || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
+                    </dl>
                   </div>
                 </MobileDataCard>
               ))}
@@ -650,28 +650,28 @@ export function MultiItemPickListDraft({
           <table aria-label="Pick list lines" className="w-full min-w-[1180px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
-              <col className="w-[100px]" />
-              <col className="w-[78px]" />
-              <col className="w-[112px]" />
               <col className="w-[175px]" />
+              <col className="w-[100px]" />
+              <col className="w-[112px]" />
+              <col className="w-[230px]" />
+              <col className="w-[78px]" />
               <col className="w-[125px]" />
               <col className="w-[190px]" />
               <col className="w-[135px]" />
               <col className="w-[112px]" />
-              <col className="w-[230px]" />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Units)</th>
-                <th scope="col" className="py-3 px-2 text-right">SPQ</th>
-                <th scope="col" className="py-3 px-2 text-right">No. of Pkgs</th>
                 <th scope="col" className="py-3 px-3">Item Code</th>
+                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Units)</th>
+                <th scope="col" className="py-3 px-2 text-right">No. of Pkgs</th>
+                <th scope="col" className="py-3 px-3">Location</th>
+                <th scope="col" className="py-3 px-2 text-right">SPQ</th>
                 <th scope="col" className="py-3 px-3">Cust PN</th>
                 <th scope="col" className="py-3 px-3">Item Description</th>
                 <th scope="col" className="py-3 px-3">Lot Number</th>
                 <th scope="col" className="py-3 px-3">Mfg Date</th>
-                <th scope="col" className="py-3 px-3">Location</th>
                 <th scope="col" className="py-3 pr-4 pl-2 text-center"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -691,6 +691,22 @@ export function MultiItemPickListDraft({
               ) : (
                 lineDetails.map(({ line, item, source, effectiveSpq, computedTotalUnits }) => (
                   <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
+                    {/* ITEM CODE */}
+                    <td className="py-2.5 px-3 align-middle">
+                      <select
+                        value={line.itemId}
+                        onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })}
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+                      >
+                        <option value="">Select item code…</option>
+                        {catalog.map((candidate) => (
+                          <option key={candidate.itemId} value={candidate.itemId}>
+                            {candidate.itemCode}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
                     {/* Qty (Total Units input) */}
                     <td className="py-2.5 pl-4 pr-2 align-middle">
                       <input
@@ -702,19 +718,6 @@ export function MultiItemPickListDraft({
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
                         title="Total Units (Pieces)"
-                      />
-                    </td>
-
-                    {/* SPQ (Standard Packaging Quantity input) */}
-                    <td className="py-2.5 px-2 align-middle">
-                      <input
-                        value={item ? String(item.spq) : ""}
-                        type="number"
-                        min="1"
-                        disabled
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
-                        placeholder="1"
-                        title="Standard Packaging Quantity (SPQ)"
                       />
                     </td>
 
@@ -733,20 +736,35 @@ export function MultiItemPickListDraft({
                       />
                     </td>
 
-                    {/* ITEM CODE */}
+                    {/* LOCATION */}
                     <td className="py-2.5 px-3 align-middle">
                       <select
-                        value={line.itemId}
-                        onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })}
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+                        value={line.balanceId}
+                        disabled={!item}
+                        onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })}
+                        title={source ? `${source.locationLabel} (${piecesToBoxes(source.availableQty, source.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes${source.priority === 1 ? " · FIFO/FEFO" : " · override req"})` : "Select location"}
+                        className="h-9 min-w-0 w-full max-w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                       >
-                        <option value="">Select item code…</option>
-                        {catalog.map((candidate) => (
-                          <option key={candidate.itemId} value={candidate.itemId}>
-                            {candidate.itemCode}
+                        <option value="">Select location…</option>
+                        {item?.sources.map((candidate) => (
+                          <option key={candidate.balanceId} value={candidate.balanceId}>
+                            {candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
                           </option>
                         ))}
                       </select>
+                    </td>
+
+                    {/* SPQ (Standard Packaging Quantity, inherited from item enrollment) */}
+                    <td className="py-2.5 px-2 align-middle">
+                      <input
+                        value={item ? String(item.spq) : ""}
+                        type="number"
+                        min="1"
+                        disabled
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+                        placeholder="1"
+                        title="Standard Packaging Quantity (SPQ)"
+                      />
                     </td>
 
                     {/* CUST PN */}
@@ -775,24 +793,6 @@ export function MultiItemPickListDraft({
                       <span className="font-mono text-xs text-slate-600 block">
                         {source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : <span className="text-slate-400">—</span>}
                       </span>
-                    </td>
-
-                    {/* LOCATION */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <select
-                        value={line.balanceId}
-                        disabled={!item}
-                        onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })}
-                        title={source ? `${source.locationLabel} (${piecesToBoxes(source.availableQty, source.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes${source.priority === 1 ? " · FIFO/FEFO" : " · override req"})` : "Select location"}
-                        className="h-9 min-w-0 w-full max-w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
-                      >
-                        <option value="">Select location…</option>
-                        {item?.sources.map((candidate) => (
-                          <option key={candidate.balanceId} value={candidate.balanceId}>
-                            {candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
-                          </option>
-                        ))}
-                      </select>
                     </td>
 
                     {/* Action */}
