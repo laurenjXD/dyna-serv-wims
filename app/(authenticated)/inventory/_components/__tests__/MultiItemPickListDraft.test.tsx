@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
 
@@ -45,5 +45,35 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(organizationSelect, { target: { value: "party-vmi-owner" } });
 
     expect(screen.getByRole("option", { name: "VMI (Consignment)" })).toBeInTheDocument();
+  });
+
+  it("places required entry columns before inherited and reference columns", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+
+    const headers = within(screen.getByRole("table", { name: "Pick list lines" }))
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent?.replace(/\s+/g, " ").trim());
+
+    expect(headers.slice(0, 9)).toEqual([
+      "Item Code",
+      "Qty (Units)",
+      "No. of Pkgs",
+      "Location",
+      "SPQ",
+      "Cust PN",
+      "Item Description",
+      "Lot Number",
+      "Mfg Date",
+    ]);
   });
 });

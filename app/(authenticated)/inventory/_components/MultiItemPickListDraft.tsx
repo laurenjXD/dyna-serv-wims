@@ -123,7 +123,8 @@ export function MultiItemPickListDraft({
   };
 
   const request = useMemo(() => {
-    if (!organizationId || !customerPartyId || !flowType || lineDetails.length === 0) return "";
+    const effectiveCustomerPartyId = flowType === "vmi" ? organizationId : customerPartyId;
+    if (!organizationId || !effectiveCustomerPartyId || !flowType || lineDetails.length === 0) return "";
     if (flowType === "vmi" && !endCustomerPartyId) return "";
     const recipientPartyId = flowType === "supplies"
       ? organizationId
@@ -145,7 +146,7 @@ export function MultiItemPickListDraft({
     if (prepared.some((line) => !line.valid)) return "";
     return JSON.stringify({
       partyId: organizationId,
-      customerPartyId,
+      customerPartyId: effectiveCustomerPartyId,
       endCustomerPartyId: recipientPartyId,
       flowType,
       lines: prepared.map(({ valid: _valid, ...line }) => line),
@@ -160,7 +161,8 @@ export function MultiItemPickListDraft({
 
   const overrideRequest = useMemo(() => {
     const alternate = alternateLines[0];
-    if (!canRequestOverride || !organizationId || !customerPartyId || !flowType || !alternate?.source) return "";
+    const effectiveCustomerPartyId = flowType === "vmi" ? organizationId : customerPartyId;
+    if (!canRequestOverride || !organizationId || !effectiveCustomerPartyId || !flowType || !alternate?.source) return "";
     if (flowType === "vmi" && !endCustomerPartyId) return "";
     const qty = Number(alternate.line.qty);
     if (
@@ -173,7 +175,7 @@ export function MultiItemPickListDraft({
       : flowType === "trading" ? customerPartyId : endCustomerPartyId;
     return JSON.stringify({
       partyId: organizationId,
-      customerPartyId,
+      customerPartyId: effectiveCustomerPartyId,
       endCustomerPartyId: recipientPartyId,
       flowType,
       lines: [{ itemId: alternate.line.itemId, lotId: alternate.source.lotId, locationId: alternate.source.locationId, qty: boxesToPieces(qty, alternate.item?.spq ?? 1) }],
@@ -197,7 +199,7 @@ export function MultiItemPickListDraft({
     );
     if (availableFlows.length > 0) {
       setFlowType(availableFlows[0]);
-      setCustomerPartyId(availableFlows[0] === "supplies" ? value : "");
+      setCustomerPartyId(availableFlows[0] === "vmi" || availableFlows[0] === "supplies" ? value : "");
       setEndCustomerPartyId(availableFlows[0] === "supplies" ? value : "");
     } else {
       setFlowType("");
@@ -208,7 +210,7 @@ export function MultiItemPickListDraft({
   const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => {
     setFlowType(value);
     resetDraft();
-    if (value === "supplies") {
+    if (value === "vmi" || value === "supplies") {
       setCustomerPartyId(organizationId);
       setEndCustomerPartyId(organizationId);
     } else {
@@ -321,6 +323,10 @@ export function MultiItemPickListDraft({
         message: "Please select Organization and Inventory Model first, or upload a DRA matching active stock.",
       });
       return;
+    }
+
+    if (targetFlow === "vmi" || targetFlow === "supplies") {
+      setCustomerPartyId(targetOrgId);
     }
 
     const availableStock = stock.filter((s) => s.organizationId === targetOrgId && s.flowType === targetFlow);
@@ -523,43 +529,39 @@ export function MultiItemPickListDraft({
             </label>
           )}
 
-          <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-            {flowType === "vmi" ? "VMI Customer / Stock Owner" : flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
-            <select
-              value={customerPartyId}
-              onChange={(event) => {
-                const nextCustomerId = event.target.value;
-                setCustomerPartyId(nextCustomerId);
-                setEndCustomerPartyId(
-                  flowType === "trading"
-                    ? nextCustomerId
-                    : endCustomers.some((party) => party.id === nextCustomerId) ? nextCustomerId : "",
-                );
-              }}
-              required={flowType !== "supplies"}
-              disabled={flowType === "supplies"}
-              className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
-            >
-              <option value="">Select customer…</option>
-              {flowType === "supplies" && (
-                <option value={organizationId}>
-                  {organizations.find((organization) => organization.id === organizationId)?.name ?? "Internal Supplies Organization"}
-                </option>
-              )}
-              {visibleCustomers.map((customer) => (
-                <option key={`${customer.id}:${customer.relationship}`} value={customer.id}>
-                  {customer.name} — {customer.relationship === "vmi_customer" ? "Customer · VMI" : customer.relationship === "trading_customer" ? "Customer · Trading" : "Customer"}
-                </option>
-              ))}
-            </select>
-            <span className="font-body text-[11px] font-normal text-slate-500">
-              {flowType === "vmi"
-                ? "The VMI customer owns the selected stock; choose the downstream recipient above."
-                : flowType === "supplies"
+          {flowType === "vmi" ? null : (
+            <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+              {flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
+              <select
+                value={customerPartyId}
+                onChange={(event) => {
+                  const nextCustomerId = event.target.value;
+                  setCustomerPartyId(nextCustomerId);
+                  setEndCustomerPartyId(flowType === "trading" ? nextCustomerId : organizationId);
+                }}
+                required={flowType !== "supplies"}
+                disabled={flowType === "supplies"}
+                className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="">Select customer…</option>
+                {flowType === "supplies" && (
+                  <option value={organizationId}>
+                    {organizations.find((organization) => organization.id === organizationId)?.name ?? "Internal Supplies Organization"}
+                  </option>
+                )}
+                {visibleCustomers.map((customer) => (
+                  <option key={`${customer.id}:${customer.relationship}`} value={customer.id}>
+                    {customer.name} — {customer.relationship === "trading_customer" ? "Customer · Trading" : "Customer"}
+                  </option>
+                ))}
+              </select>
+              <span className="font-body text-[11px] font-normal text-slate-500">
+                {flowType === "supplies"
                   ? "The Internal Supplies Organization is the consuming recipient."
                   : "The trading customer is both the bill-to and delivery recipient."}
-            </span>
-          </label>
+              </span>
+            </label>
+          )}
 
           <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
             <div className="flex items-center justify-between">
@@ -623,12 +625,6 @@ export function MultiItemPickListDraft({
                         <input value={line.qty} onChange={(event) => handlePackagesChange(line.id, event.target.value, effectiveSpq)} type="number" min="1" max={source ? Math.floor(piecesToBoxes(source.availableQty, effectiveSpq)) : undefined} disabled={!source} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                     </div>
-                    <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
-                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
-                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
-                      <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{source?.lotNumber || "—"}</dd></div>
-                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
-                    </dl>
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                       Location
                       <select value={line.balanceId} disabled={!item} onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400">
@@ -636,6 +632,12 @@ export function MultiItemPickListDraft({
                         {item?.sources.map((candidate) => <option key={candidate.balanceId} value={candidate.balanceId}>{candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})</option>)}
                       </select>
                     </label>
+                    <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
+                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
+                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{source?.lotNumber || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
+                    </dl>
                   </div>
                 </MobileDataCard>
               ))}
@@ -644,20 +646,33 @@ export function MultiItemPickListDraft({
         </div>
 
         {/* Pick List Table: desktop */}
-        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
-          <table className="w-full text-left border-collapse min-w-[1100px]">
+        <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
+          <table aria-label="Pick list lines" className="w-full min-w-[1180px] table-fixed border-collapse text-left">
+            <caption className="sr-only">Pick list lines and selected inventory sources</caption>
+            <colgroup>
+              <col className="w-[175px]" />
+              <col className="w-[100px]" />
+              <col className="w-[112px]" />
+              <col className="w-[230px]" />
+              <col className="w-[78px]" />
+              <col className="w-[125px]" />
+              <col className="w-[190px]" />
+              <col className="w-[135px]" />
+              <col className="w-[112px]" />
+              <col className="w-[52px]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                <th className="py-3 pl-4 pr-2 text-right w-24">Qty (Units)</th>
-                <th className="py-3 px-2 text-right w-20">SPQ</th>
-                <th className="py-3 px-2 text-right w-24">No. of Pkgs</th>
-                <th className="py-3 px-3 min-w-[180px]">Item Code</th>
-                <th className="py-3 px-3 min-w-[130px]">Cust PN</th>
-                <th className="py-3 px-3 min-w-[200px]">Item Description</th>
-                <th className="py-3 px-3 min-w-[130px]">Lot Number</th>
-                <th className="py-3 px-3 min-w-[110px]">Mfg Date</th>
-                <th className="py-3 px-3 min-w-[200px]">Location</th>
-                <th className="py-3 pr-4 pl-2 w-10 text-center"><span className="sr-only">Actions</span></th>
+                <th scope="col" className="py-3 px-3">Item Code</th>
+                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Units)</th>
+                <th scope="col" className="py-3 px-2 text-right">No. of Pkgs</th>
+                <th scope="col" className="py-3 px-3">Location</th>
+                <th scope="col" className="py-3 px-2 text-right">SPQ</th>
+                <th scope="col" className="py-3 px-3">Cust PN</th>
+                <th scope="col" className="py-3 px-3">Item Description</th>
+                <th scope="col" className="py-3 px-3">Lot Number</th>
+                <th scope="col" className="py-3 px-3">Mfg Date</th>
+                <th scope="col" className="py-3 pr-4 pl-2 text-center"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -676,6 +691,22 @@ export function MultiItemPickListDraft({
               ) : (
                 lineDetails.map(({ line, item, source, effectiveSpq, computedTotalUnits }) => (
                   <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
+                    {/* ITEM CODE */}
+                    <td className="py-2.5 px-3 align-middle">
+                      <select
+                        value={line.itemId}
+                        onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })}
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+                      >
+                        <option value="">Select item code…</option>
+                        {catalog.map((candidate) => (
+                          <option key={candidate.itemId} value={candidate.itemId}>
+                            {candidate.itemCode}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
                     {/* Qty (Total Units input) */}
                     <td className="py-2.5 pl-4 pr-2 align-middle">
                       <input
@@ -687,19 +718,6 @@ export function MultiItemPickListDraft({
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
                         title="Total Units (Pieces)"
-                      />
-                    </td>
-
-                    {/* SPQ (Standard Packaging Quantity input) */}
-                    <td className="py-2.5 px-2 align-middle">
-                      <input
-                        value={item ? String(item.spq) : ""}
-                        type="number"
-                        min="1"
-                        disabled
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
-                        placeholder="1"
-                        title="Standard Packaging Quantity (SPQ)"
                       />
                     </td>
 
@@ -718,39 +736,54 @@ export function MultiItemPickListDraft({
                       />
                     </td>
 
-                    {/* ITEM CODE */}
+                    {/* LOCATION */}
                     <td className="py-2.5 px-3 align-middle">
                       <select
-                        value={line.itemId}
-                        onChange={(event) => updateLine(line.id, { itemId: event.target.value, balanceId: "", qty: "" })}
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+                        value={line.balanceId}
+                        disabled={!item}
+                        onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })}
+                        title={source ? `${source.locationLabel} (${piecesToBoxes(source.availableQty, source.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes${source.priority === 1 ? " · FIFO/FEFO" : " · override req"})` : "Select location"}
+                        className="h-9 min-w-0 w-full max-w-full truncate rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                       >
-                        <option value="">Select item code…</option>
-                        {catalog.map((candidate) => (
-                          <option key={candidate.itemId} value={candidate.itemId}>
-                            {candidate.itemCode}
+                        <option value="">Select location…</option>
+                        {item?.sources.map((candidate) => (
+                          <option key={candidate.balanceId} value={candidate.balanceId}>
+                            {candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
                           </option>
                         ))}
                       </select>
                     </td>
 
+                    {/* SPQ (Standard Packaging Quantity, inherited from item enrollment) */}
+                    <td className="py-2.5 px-2 align-middle">
+                      <input
+                        value={item ? String(item.spq) : ""}
+                        type="number"
+                        min="1"
+                        disabled
+                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+                        placeholder="1"
+                        title="Standard Packaging Quantity (SPQ)"
+                      />
+                    </td>
+
                     {/* CUST PN */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-mono text-xs text-slate-700 block truncate max-w-[130px]" title={item?.customerItemCode ?? undefined}>
+                      <span className="block truncate font-mono text-xs text-slate-700" title={item?.customerItemCode ?? undefined}>
                         {item?.customerItemCode || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
 
                     {/* ITEM DESCRIPTION */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-body text-xs text-slate-800 block truncate max-w-[200px]" title={item?.itemName ?? undefined}>
+                      <span className="block truncate font-body text-xs text-slate-800" title={item?.itemName ?? undefined}>
                         {item?.itemName || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
 
                     {/* LOT NUMBER */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-mono text-xs text-slate-700 block truncate max-w-[130px]" title={source?.lotNumber ?? undefined}>
+                      <span className="block truncate font-mono text-xs text-slate-700" title={source?.lotNumber ?? undefined}>
                         {source?.lotNumber || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
@@ -760,23 +793,6 @@ export function MultiItemPickListDraft({
                       <span className="font-mono text-xs text-slate-600 block">
                         {source?.manufactureDate ? new Date(source.manufactureDate).toLocaleDateString() : <span className="text-slate-400">—</span>}
                       </span>
-                    </td>
-
-                    {/* LOCATION */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <select
-                        value={line.balanceId}
-                        disabled={!item}
-                        onChange={(event) => updateLine(line.id, { balanceId: event.target.value, qty: "" })}
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
-                      >
-                        <option value="">Select location…</option>
-                        {item?.sources.map((candidate) => (
-                          <option key={candidate.balanceId} value={candidate.balanceId}>
-                            {candidate.locationLabel} ({piecesToBoxes(candidate.availableQty, candidate.spq).toLocaleString(undefined, { maximumFractionDigits: 2 })} boxes{candidate.priority === 1 ? " · FIFO/FEFO" : " · override req"})
-                          </option>
-                        ))}
-                      </select>
                     </td>
 
                     {/* Action */}
