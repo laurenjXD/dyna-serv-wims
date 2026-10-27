@@ -172,10 +172,10 @@ export default function LoginPage() {
               className="mx-auto mb-5 h-20 w-auto object-contain"
             />
             <p className="font-label text-xs font-semibold uppercase tracking-[0.18em] text-brand-navy/65">
-              Dyna-Serv WIMS · WIMS Portal
+              DYNA-SERV GLOBAL CORPORATION
             </p>
             <h1 className="mt-2 font-heading text-2xl font-semibold text-brand-navy">
-              Welcome back
+              Welcome
             </h1>
             <p className="mt-2 font-body text-sm text-slate-500">
               Sign in to access warehouse operations.
