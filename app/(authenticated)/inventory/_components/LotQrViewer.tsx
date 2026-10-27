@@ -71,13 +71,15 @@ export function LotQrViewer({
               }
               body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
                 position: fixed !important;
-                inset: 0 !important;
+                left: 50% !important;
+                top: 50% !important;
                 display: block !important;
                 width: 50mm !important;
                 min-width: 50mm !important;
                 height: 50mm !important;
                 min-height: 50mm !important;
-                margin: auto !important;
+                margin: 0 !important;
+                transform: translate(-50%, -50%) !important;
                 overflow: visible !important;
                 background: #FFFFFF !important;
               }

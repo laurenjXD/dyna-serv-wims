@@ -65,12 +65,14 @@ export function LabelPrinter({
           }
           [data-print-label] {
             position: fixed !important;
-            inset: 0 !important;
+            left: 50% !important;
+            top: 50% !important;
             width: 50mm !important;
             height: 50mm !important;
             max-width: 50mm !important;
             max-height: 50mm !important;
-            margin: auto !important;
+            margin: 0 !important;
+            transform: translate(-50%, -50%) !important;
             padding: 2mm !important;
             border: none !important;
             border-radius: 0 !important;
