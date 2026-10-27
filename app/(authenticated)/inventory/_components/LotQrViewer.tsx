@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 
 export function LotQrViewer({
@@ -41,7 +42,7 @@ export function LotQrViewer({
       >
         View QR
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && createPortal((
         <div
           role="dialog"
           aria-modal="true"
@@ -63,19 +64,15 @@ export function LotQrViewer({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
-              body[data-lot-qr-print-mode] * {
-                visibility: hidden !important;
-              }
-              body[data-lot-qr-print-mode] [data-lot-qr-print-modal],
-              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] #lot-qr-print-card,
-              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] #lot-qr-print-card * {
-                visibility: visible !important;
+              body[data-lot-qr-print-mode] > *:not([data-lot-qr-print-modal]) {
+                display: none !important;
               }
               body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
                 position: static !important;
                 display: block !important;
                 width: 2in !important;
                 min-width: 2in !important;
+                margin: 0 auto !important;
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
@@ -89,7 +86,7 @@ export function LotQrViewer({
                 height: 2in !important;
                 max-width: 2in !important;
                 max-height: 2in !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
                 padding: 1.5mm !important;
                 border: none !important;
                 border-radius: 0 !important;
@@ -108,7 +105,6 @@ export function LotQrViewer({
                 display: block !important;
                 width: 30mm !important;
                 height: 30mm !important;
-                visibility: visible !important;
               }
               .print-hide {
                 display: none !important;
@@ -197,7 +193,7 @@ export function LotQrViewer({
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }

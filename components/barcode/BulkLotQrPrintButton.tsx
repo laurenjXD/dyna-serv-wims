@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 import { Printer, X } from "@/components/ui/icons";
 import type { MigratedLotQrLabel } from "@/lib/actions/data-migration";
@@ -35,7 +36,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
         Print all lot QRs ({labels.length})
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal((
         <div
           role="dialog"
           aria-modal="true"
@@ -53,17 +54,15 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
-              body[data-bulk-lot-qr-print-mode] * { visibility: hidden !important; }
-              body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal],
-              body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] #bulk-lot-qr-sheet,
-              body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] #bulk-lot-qr-sheet * {
-                visibility: visible !important;
+              body[data-bulk-lot-qr-print-mode] > *:not([data-bulk-lot-qr-print-modal]) {
+                display: none !important;
               }
               body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] {
                 position: static !important;
                 display: block !important;
                 width: 2in !important;
                 min-width: 2in !important;
+                margin: 0 auto !important;
                 height: auto !important;
                 overflow: visible !important;
                 background: #fff !important;
@@ -72,7 +71,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 display: block !important;
                 width: 2in !important;
                 min-width: 2in !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
                 padding: 0 !important;
               }
               .bulk-lot-qr-card {
@@ -80,7 +79,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 width: 2in !important;
                 height: 2in !important;
                 box-sizing: border-box !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
                 padding: 1.5mm !important;
                 border: none !important;
                 border-radius: 0 !important;
@@ -135,7 +134,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
