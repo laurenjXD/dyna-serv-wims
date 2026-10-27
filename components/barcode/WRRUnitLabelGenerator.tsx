@@ -143,7 +143,7 @@ export function WRRUnitLabelGenerator({
                 max-width: 50mm !important;
                 max-height: 50mm !important;
                 margin: 0 auto !important;
-                padding: 2mm !important;
+                padding: 1mm !important;
                 box-sizing: border-box !important;
                 border: none !important;
                 border-radius: 0 !important;
@@ -154,17 +154,49 @@ export function WRRUnitLabelGenerator({
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important;
-                gap: 1mm !important;
+                justify-content: space-between !important;
+                gap: 0 !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
-              .unit-thermal-label-card svg {
+              .unit-thermal-label-header {
+                flex: 0 0 6mm !important;
+                width: 100% !important;
+                height: 6mm !important;
+                max-height: 6mm !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
+              }
+              .unit-thermal-label-qr {
+                flex: 0 0 36mm !important;
+                width: 36mm !important;
+                height: 36mm !important;
+                max-width: 36mm !important;
+                max-height: 36mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+              }
+              .unit-thermal-label-qr svg {
                 display: block !important;
-                width: 40mm !important;
-                height: 40mm !important;
-                max-width: 40mm !important;
-                max-height: 40mm !important;
+                width: 36mm !important;
+                height: 36mm !important;
+                max-width: 36mm !important;
+                max-height: 36mm !important;
+              }
+              .unit-thermal-label-footer {
+                flex: 0 0 6mm !important;
+                width: 100% !important;
+                height: 6mm !important;
+                max-height: 6mm !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
+                line-height: 1 !important;
+                padding-top: 0.5mm !important;
               }
               .unit-thermal-label-card:last-child {
                 page-break-after: avoid !important;
@@ -173,7 +205,7 @@ export function WRRUnitLabelGenerator({
             }
           `}</style>
 
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[50mm] print:p-0 print:shadow-none">
             {/* Header — Screen only */}
             <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
               <div>
@@ -217,7 +249,7 @@ export function WRRUnitLabelGenerator({
             </div>
 
             {/* Printable Sheet Grid (Screen: responsive preview grid; Print: 2x2 sequential pages) */}
-            <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
+            <div className="mt-4 flex-1 overflow-y-auto print:mt-0 print:flex-none print:overflow-visible">
               <div
                 id="print-unit-labels-sheet"
                 className="grid grid-cols-2 gap-4 print:block print:w-[50mm]"
@@ -229,7 +261,7 @@ export function WRRUnitLabelGenerator({
                     className="unit-thermal-label-card flex flex-col items-center justify-between rounded-xl border border-outline-variant/60 bg-surface-white p-3 text-center shadow-xs print:border-none print:shadow-none min-h-[210px] print:min-h-0"
                   >
                     {/* Header info */}
-                    <div className="w-full text-black pb-0.5 border-b border-black">
+                    <div className="unit-thermal-label-header w-full text-black pb-0.5 border-b border-black">
                       <div className="flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider">
                         <span>DYNA-SERV</span>
                         <span className="font-bold">
@@ -242,7 +274,7 @@ export function WRRUnitLabelGenerator({
                     </div>
 
                     {/* High-Definition QR Code */}
-                    <div className="my-1 p-1 bg-white flex items-center justify-center">
+                    <div className="unit-thermal-label-qr my-1 p-1 bg-white flex items-center justify-center">
                       <QRCode
                         value={unit.payload}
                         size={110}
@@ -256,7 +288,7 @@ export function WRRUnitLabelGenerator({
                     </div>
 
                     {/* Footer info */}
-                    <div className="w-full text-center border-t border-black pt-0.5 font-mono text-black leading-tight">
+                    <div className="unit-thermal-label-footer w-full text-center border-t border-black pt-0.5 font-mono text-black leading-tight">
                       <p className="text-[10px] font-black tracking-tight truncate">
                         Lot: {lotNumber}
                       </p>

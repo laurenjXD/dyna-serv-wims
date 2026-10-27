@@ -73,7 +73,7 @@ export function LabelPrinter({
             max-height: 50mm !important;
             margin: 0 !important;
             transform: translate(-50%, -50%) !important;
-            padding: 2mm !important;
+            padding: 1mm !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
@@ -84,27 +84,46 @@ export function LabelPrinter({
             flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 1mm !important;
+            gap: 0 !important;
             image-rendering: pixelated !important;
             image-rendering: crisp-edges !important;
           }
+          [data-print-label] [data-thermal-header] {
+            flex: 0 0 5mm !important;
+            width: 100% !important;
+            height: 5mm !important;
+            max-height: 5mm !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+          }
           [data-print-label] [data-thermal-qr] {
             display: flex !important;
-            flex: 0 0 40mm !important;
-            width: 40mm !important;
-            height: 40mm !important;
-            max-width: 40mm !important;
-            max-height: 40mm !important;
+            flex: 0 0 36mm !important;
+            width: 36mm !important;
+            height: 36mm !important;
+            max-width: 36mm !important;
+            max-height: 36mm !important;
             align-items: center !important;
             justify-content: center !important;
             padding: 0 !important;
+            margin: 0 !important;
           }
           [data-print-label] [data-thermal-qr] svg {
             display: block !important;
-            width: 40mm !important;
-            height: 40mm !important;
-            max-width: 40mm !important;
-            max-height: 40mm !important;
+            width: 36mm !important;
+            height: 36mm !important;
+            max-width: 36mm !important;
+            max-height: 36mm !important;
+          }
+          [data-print-label] [data-thermal-footer] {
+            flex: 0 0 7mm !important;
+            width: 100% !important;
+            height: 7mm !important;
+            max-height: 7mm !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            line-height: 1 !important;
+            padding-top: 0.5mm !important;
           }
           .thermal-screen-only {
             display: none !important;
@@ -123,7 +142,7 @@ export function LabelPrinter({
       </div>
 
       {/* 2x2 Label Top Header */}
-      <div className="w-full flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider text-black pb-0.5 border-b border-black">
+      <div data-thermal-header className="w-full flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider text-black pb-0.5 border-b border-black">
         <span>DYNA-SERV</span>
         <span>WIMS LOT</span>
       </div>
@@ -143,7 +162,7 @@ export function LabelPrinter({
       </div>
 
       {/* High-Contrast Human-readable metadata */}
-      <div className="font-mono text-black text-center leading-tight w-full pt-0.5 border-t border-black">
+      <div data-thermal-footer className="font-mono text-black text-center leading-tight w-full pt-0.5 border-t border-black">
         <div className="font-black text-[11px] tracking-tight truncate">{lotNumber}</div>
         <div className="text-[9.5px] font-bold tracking-tight truncate">{itemCode}</div>
         {locationLabel && (
