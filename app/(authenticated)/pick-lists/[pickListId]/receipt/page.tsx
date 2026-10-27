@@ -46,7 +46,7 @@ export default async function DeliveryReceiptPage({
   const template = await getDocumentTemplate(db);
 
   return (
-    <main className="min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
+    <main data-document-root className="min-h-screen bg-[#EEF2F8] p-4 text-[#111827] print:bg-white print:p-0">
       <DocumentPrintStyles orientation="landscape" />
       <style
         dangerouslySetInnerHTML={{

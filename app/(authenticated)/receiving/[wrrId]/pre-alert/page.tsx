@@ -44,7 +44,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
   const template = await getDocumentTemplate(db);
 
   return (
-    <div className="mx-auto max-w-5xl bg-surface-white px-4 py-8 print:max-w-none print:p-0">
+      <div data-document-root className="mx-auto max-w-5xl bg-surface-white px-4 py-8 print:max-w-none print:p-0">
       <DocumentPrintStyles orientation="portrait" />
       {/* Print media styling */}
       <style

@@ -185,7 +185,7 @@ export function SoaDetailClient({
   const grandTotal = chargeLines.reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
+      <div data-document-root className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
       <DocumentPrintStyles orientation="portrait" />
 
       {/* ── Print stylesheet ─────────────────────────────────────────────── */}

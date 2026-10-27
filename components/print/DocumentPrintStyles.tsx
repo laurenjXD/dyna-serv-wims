@@ -1,3 +1,5 @@
+import { DOCUMENT_FONT_FAMILY, DOCUMENT_FONT_SIZE } from "@/lib/documents/document-contract";
+
 type DocumentPrintStylesProps = {
   orientation?: "portrait" | "landscape";
 };
@@ -7,6 +9,15 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
   return (
     <style data-document-print-styles dangerouslySetInnerHTML={{
       __html: `
+        /* Official document typography applies to the live preview as well as print. */
+        [data-document-root],
+        [data-document-root] :where(h1, h2, h3, h4, h5, h6, p, span, strong, em, label, dt, dd, li, td, th, caption, button) {
+          font-family: ${DOCUMENT_FONT_FAMILY} !important;
+          font-size: ${DOCUMENT_FONT_SIZE}pt !important;
+        }
+        [data-document-root] * {
+          font-family: ${DOCUMENT_FONT_FAMILY} !important;
+        }
         @page {
           size: ${orientation};
           margin: 10mm 12mm 12mm 12mm;
@@ -25,7 +36,7 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
           body {
             background: #ffffff !important;
             color: #000000 !important;
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+            font-family: ${DOCUMENT_FONT_FAMILY} !important;
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
@@ -37,14 +48,6 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
             max-width: none !important;
             width: 100% !important;
             background: #ffffff !important;
-          }
-          [data-document-header] h1,
-          [data-document-header] h2,
-          [data-document-header] p.font-heading {
-            font-family: "Avenir Next", Avenir, Arial, sans-serif !important;
-          }
-          [data-document-header] .font-mono {
-            font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace !important;
           }
           thead {
             display: table-header-group !important;

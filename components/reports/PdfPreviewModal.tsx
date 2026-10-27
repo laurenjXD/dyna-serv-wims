@@ -254,6 +254,7 @@ export function PdfPreviewModal({
           <div
             id="printable-report-sheet"
             style={{ transform: `scale(${zoomLevel / 100})` }}
+            data-document-root
             className="w-full max-w-4xl rounded-2xl border border-outline-variant/30 bg-surface-white p-8 sm:p-10 shadow-elevation-3 text-on-surface transition-transform duration-150 origin-top"
           >
             {/* Master Document Uniform Header */}
