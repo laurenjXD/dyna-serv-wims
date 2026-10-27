@@ -54,10 +54,10 @@ The Receiving page (`/receiving`) features 4 primary sub-tabs:
 
 ### R1b. Inventory Model-specific source Organization (approved 2026-10-22)
 
-1. The WRR/CIPL form SHALL identify the source **Organization first**. The system SHALL then derive the Inventory Model when that Organization has exactly one valid relationship, or require the operator to choose among that Organization's valid relationships when it has more than one.
-2. The valid source relationships are **VMI Customer** for VMI, **Supplier** for Trading, and **Internal Supplies** for Supplies. The Organization field SHALL contain only active, authorized Organizations; the subsequent relationship/Inventory Model field SHALL contain only that Organization's valid choices.
-3. For Supplies, the form MAY auto-select only when exactly one eligible Internal Supplies Organization exists. Zero eligible choices blocks staging with an enrollment/configuration recovery state; multiple choices require an explicit restricted-list selection.
-4. Changing source Organization or Inventory Model SHALL clear incompatible dependent values and expected lines after an explicit discard confirmation.
+1. The WRR/CIPL form SHALL identify the source **Organization first** and SHALL inherit the Inventory Model from that Organization's single active receiving relationship. The operator SHALL NOT be offered a free-choice Inventory Model control.
+2. The valid source relationships are **VMI Customer** for VMI, **Supplier** for Trading, and **Internal Supplies** for Supplies. The Organization field SHALL contain only active, authorized Organizations; an Organization with no valid relationship or multiple active receiving models SHALL be blocked with a master-data recovery state.
+3. The server SHALL derive and re-check the inherited model transactionally and SHALL reject any direct action payload whose submitted model differs from the selected Organization's resolved model.
+4. Changing source Organization SHALL clear incompatible dependent values and expected lines after an explicit discard confirmation; the displayed Inventory Model SHALL update from the newly selected Organization.
 5. The server SHALL repeat active status, role/relationship, actor scope, item/Inventory Model, and stale-version validation before persisting a WRR. Legacy `vendor_party_id` remains a compatibility storage field only; it must not dictate user-facing terminology.
 
 ### R2. Supplier advance-notice intake

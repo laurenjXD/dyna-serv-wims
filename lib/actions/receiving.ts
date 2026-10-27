@@ -53,7 +53,7 @@ import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
 import { randomUUID } from "node:crypto";
 import { boxesToPieces, exactCartonCount, positiveInteger } from "@/lib/inventory/quantities";
-import { validateReceivingOrganization } from "@/lib/organizations/relationship-contract";
+import { resolveReceivingInventoryModel, validateReceivingOrganization } from "@/lib/organizations/relationship-contract";
 
 // Every action below binds its DB work to the caller's RLS-claimed
 // transaction (specs/02-rbac-roles/design.md §6.3) rather than an
@@ -270,6 +270,19 @@ export async function createWrr(
       if (!organizationValidation.ok) {
         return { ok: false, errors: [organizationValidation.error] } satisfies CreateWrrActionResult;
       }
+      const resolvedModel = resolveReceivingInventoryModel(
+        organizationRows as Array<{
+          id: string;
+          isActive: boolean;
+          role: string;
+          relationship: string | null;
+          relationshipIsActive: boolean | null;
+        }>,
+        data.vendorPartyId,
+      );
+      if (!resolvedModel.ok || resolvedModel.inventoryModel !== data.flowType) {
+        return { ok: false, errors: [resolvedModel.ok ? "inventory_model_must_match_organization" : resolvedModel.error] } satisfies CreateWrrActionResult;
+      }
 
       const selectedItemIds = data.lines
         .map((line) => line.itemId)
@@ -467,6 +480,19 @@ export async function updateWrrHeader(
     );
     if (!organizationValidation.ok) {
       return { ok: false, errors: [organizationValidation.error] } satisfies UpdateWrrResult;
+    }
+    const resolvedModel = resolveReceivingInventoryModel(
+      organizationRows as Array<{
+        id: string;
+        isActive: boolean;
+        role: string;
+        relationship: string | null;
+        relationshipIsActive: boolean | null;
+      }>,
+      input.vendorPartyId,
+    );
+    if (!resolvedModel.ok || resolvedModel.inventoryModel !== input.flowType) {
+      return { ok: false, errors: [resolvedModel.ok ? "inventory_model_must_match_organization" : resolvedModel.error] } satisfies UpdateWrrResult;
     }
     const updated = await db.update(wrrDocuments).set({
       vendorPartyId: input.vendorPartyId,

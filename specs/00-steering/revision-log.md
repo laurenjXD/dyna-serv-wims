@@ -1968,3 +1968,12 @@ is handled as a shortage, over-scan is rejected, duplicate/reprinted labels
 remain deterministic and idempotent, and mixed or partial packaging requires
 separate WRR lines or a separately approved packaging override.
 
+## WRR inherits Inventory Model from Organization (2026-10-27)
+
+The Product Owner clarified that the WRR Inventory Model must be inherited from
+the selected Organization's active receiving relationship. The WRR form no
+longer exposes a free-choice model selector. VMI Customer resolves to VMI,
+Trading Supplier resolves to Trading, and Internal Supplies resolves to
+Supplies. Missing or ambiguous Organization relationships block staging, and
+the server rejects direct payloads that try to submit a different model.
+
