@@ -27,6 +27,7 @@ export function StockCountTab({
   locations,
   sessions,
   active,
+  error,
   createAction,
   recordAction,
   submitAction,
@@ -37,6 +38,7 @@ export function StockCountTab({
   locations: Array<{ id: string; label: string | null; zone: string }>;
   sessions: CycleCountSessionRow[];
   active: ActiveCount | null;
+  error?: string;
   createAction: FormAction;
   recordAction: FormAction;
   submitAction: FormAction;
@@ -46,11 +48,28 @@ export function StockCountTab({
 }) {
   return (
     <div className="mt-6 space-y-6">
+      {error && (
+        <div role="alert" className="rounded-2xl border border-status-held/30 bg-status-held/10 p-4 text-status-held">
+          <p className="font-label text-label font-bold">Count could not be started</p>
+          <p className="mt-1 font-body text-body-sm">
+            {error === "no_stock_at_location"
+              ? "This location has no system stock to count. Choose a location with stock, or confirm that the location is intentionally empty before creating an empty-location count."
+              : error === "forbidden"
+              ? "Your account does not have permission to start a stock count. Ask a supervisor or administrator to grant cycle-count creation access."
+              : error === "location_not_found"
+              ? "That location is no longer active. Refresh the page and choose another location."
+              : `The count could not be started (${error.replaceAll("_", " ")}). Refresh and try again.`}
+          </p>
+        </div>
+      )}
       <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-1 sm:p-6">
         <p className="font-label text-label font-semibold uppercase tracking-[0.08em] text-brand-navy">Physical inventory control</p>
         <h2 className="mt-2 font-heading text-title-md font-bold text-on-surface">Stock Count &amp; Reconciliation</h2>
         <p className="mt-2 max-w-3xl font-body text-body-sm text-text-grey">
           Compare the system snapshot with the physical warehouse count. Variances require review and are posted as audited reconciliation transactions; the system quantity is never edited directly.
+        </p>
+        <p className="mt-2 font-body text-body-sm font-semibold text-brand-navy">
+          Select a location with recorded stock, start the count, then enter the physical quantity for each item and lot.
         </p>
 
         <form action={createAction} className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
