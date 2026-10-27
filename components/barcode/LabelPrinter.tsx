@@ -52,13 +52,13 @@ export function LabelPrinter({
           }
           [data-print-label] {
             position: fixed !important;
-            left: 0 !important;
+            left: 50% !important;
             top: 0 !important;
             width: 2in !important;
             height: 2in !important;
             max-width: 2in !important;
             max-height: 2in !important;
-            margin: 0 !important;
+            margin: 0 0 0 -1in !important;
             padding: 1.5mm !important;
             border: none !important;
             border-radius: 0 !important;

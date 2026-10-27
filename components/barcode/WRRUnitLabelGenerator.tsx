@@ -123,6 +123,7 @@ export function WRRUnitLabelGenerator({
                 display: block !important;
                 width: 2in !important;
                 min-width: 2in !important;
+                margin: 0 auto !important;
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
@@ -135,7 +136,7 @@ export function WRRUnitLabelGenerator({
                 width: 2in !important;
                 min-width: 2in !important;
                 height: auto !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
                 padding: 0 !important;
                 background: #FFFFFF !important;
                 display: block !important;
@@ -146,7 +147,7 @@ export function WRRUnitLabelGenerator({
                 height: 2in !important;
                 max-width: 2in !important;
                 max-height: 2in !important;
-                margin: 0 !important;
+                margin: 0 auto !important;
                 padding: 1.5mm !important;
                 box-sizing: border-box !important;
                 border: none !important;
