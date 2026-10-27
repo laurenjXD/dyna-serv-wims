@@ -66,10 +66,20 @@ const DISPOSITION_CLASSES: Record<string, string> = {
 
 interface PageProps {
   params: Promise<{ wrrId: string }>;
+  searchParams?: Promise<{ startError?: string }>;
 }
 
-export default async function WrrDetailPage({ params }: PageProps) {
+const START_RECEIVING_ERRORS: Record<string, string> = {
+  forbidden: "Your account is not authorized to start receiving.",
+  network_restricted: "Receiving is restricted to the configured warehouse Wi‑Fi network.",
+  not_found: "This WRR could not be found.",
+  invalid_status: "This WRR is no longer waiting to start receiving.",
+  stale_record: "The WRR changed before receiving could start. Refresh and try again.",
+};
+
+export default async function WrrDetailPage({ params, searchParams }: PageProps) {
   const { wrrId } = await params;
+  const startError = (await searchParams)?.startError;
   const resolver = await createPageResolver();
 
   // Gate: receiving.view — read-only detail/review surface visible to any staff
@@ -119,7 +129,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
   async function handleStartReceiving(): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
-    await startReceiving(actionResolver, wrrId);
+    const result = await startReceiving(actionResolver, wrrId);
+    if (!result.ok) {
+      const errorCode = result.errors[0] ?? "unknown";
+      redirect(`/receiving/${wrrId}?startError=${encodeURIComponent(errorCode)}`);
+    }
     // Revalidate by redirecting back to this page so the updated status renders.
     redirect(`/receiving/${wrrId}`);
   }
@@ -227,6 +241,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Actions
         </h2>
+        {startError && (
+          <div role="alert" className="mt-4 rounded-lg border border-status-held/30 bg-status-held/10 px-4 py-3 font-body text-body-sm text-status-held">
+            {START_RECEIVING_ERRORS[startError] ?? "Receiving could not be started. Refresh and try again."}
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-3">
           {wrr.status === "staged_pending_arrival" && (
             <>
