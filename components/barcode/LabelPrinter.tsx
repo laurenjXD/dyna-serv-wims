@@ -5,7 +5,6 @@
 // Rendered in browser; Admin clicks "Print Label" to invoke print driver (design.md §2.1).
 
 import QRCode from "react-qr-code";
-import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 interface LabelPrinterProps {
   /** UUID of the lot — encoded directly into the QR code as the payload value. */
@@ -32,7 +31,7 @@ export function LabelPrinter({
     >
       <style>{`
         @page {
-          size: 50mm 50mm;
+          size: 2in 2in;
           margin: 0;
         }
         @media print {
@@ -53,14 +52,14 @@ export function LabelPrinter({
           }
           [data-print-label] {
             position: fixed !important;
-            inset: 0 !important;
-            margin: auto !important;
-            width: 50mm !important;
-            height: 50mm !important;
-            max-width: 50mm !important;
-            max-height: 50mm !important;
-            margin: 0 !important;
-            padding: 2mm !important;
+            left: 50% !important;
+            top: 0 !important;
+            width: 2in !important;
+            height: 2in !important;
+            max-width: 2in !important;
+            max-height: 2in !important;
+            margin: 0 0 0 -1in !important;
+            padding: 1.5mm !important;
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
@@ -70,21 +69,12 @@ export function LabelPrinter({
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            justify-content: center !important;
-            gap: 1.5mm !important;
+            justify-content: space-between !important;
             image-rendering: pixelated !important;
             image-rendering: crisp-edges !important;
           }
           .thermal-screen-only {
             display: none !important;
-          }
-          [data-print-label] svg {
-            display: block !important;
-            width: 34mm !important;
-            height: 34mm !important;
-            min-width: 34mm !important;
-            min-height: 34mm !important;
-            visibility: visible !important;
           }
         }
       `}</style>
@@ -131,7 +121,7 @@ export function LabelPrinter({
       {/* Print action CTA */}
       <button
         type="button"
-        onClick={scheduleThermalPrint}
+        onClick={() => window.print()}
         className="thermal-screen-only mt-2 h-12 w-full bg-primary text-surface-white font-label text-body-md font-bold rounded-lg shadow-sm active:scale-[0.97] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy"
       >
         Print 2&quot; × 2&quot; Label

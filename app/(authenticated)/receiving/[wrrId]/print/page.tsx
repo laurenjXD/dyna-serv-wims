@@ -189,7 +189,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
             showPrintButton={false}
           />
 
-          <div className="flex justify-end mb-3 print:hidden">
+          <div className="flex justify-end mb-3">
             <WrrBarcode wrrNumber={wrr.wrrNumber} />
           </div>
 

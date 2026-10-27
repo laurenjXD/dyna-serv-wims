@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
-import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export function LotQrViewer({
   lotId,
@@ -27,7 +27,10 @@ export function LotQrViewer({
   }, [open]);
 
   const handlePrint = () => {
-    scheduleThermalPrint();
+    // Let the QR SVG finish painting before Chromium snapshots the page.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
   };
 
   return (
@@ -39,7 +42,7 @@ export function LotQrViewer({
       >
         View QR
       </button>
-      {open && (
+      {open && typeof document !== "undefined" && createPortal((
         <div
           role="dialog"
           aria-modal="true"
@@ -49,7 +52,7 @@ export function LotQrViewer({
         >
           <style>{`
             @page {
-              size: 50mm 50mm;
+              size: 2in 2in;
               margin: 0;
             }
             @media print {
@@ -61,27 +64,15 @@ export function LotQrViewer({
                 print-color-adjust: exact !important;
                 text-rendering: geometricPrecision !important;
               }
-              body[data-lot-qr-print-mode] {
-                width: 50mm !important;
-                min-width: 50mm !important;
-                height: 50mm !important;
-                min-height: 50mm !important;
-              }
-              body[data-lot-qr-print-mode] * {
-                visibility: hidden !important;
-              }
-              body[data-lot-qr-print-mode] [data-lot-qr-print-modal],
-              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] #lot-qr-print-card,
-              body[data-lot-qr-print-mode] [data-lot-qr-print-modal] #lot-qr-print-card * {
-                visibility: visible !important;
+              body[data-lot-qr-print-mode] > *:not([data-lot-qr-print-modal]) {
+                display: none !important;
               }
               body[data-lot-qr-print-mode] [data-lot-qr-print-modal] {
-                position: fixed !important;
-                inset: 0 !important;
-                margin: auto !important;
+                position: static !important;
                 display: block !important;
-                width: 50mm !important;
-                min-width: 50mm !important;
+                width: 2in !important;
+                min-width: 2in !important;
+                margin: 0 auto !important;
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
@@ -91,12 +82,12 @@ export function LotQrViewer({
                 position: static !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 50mm !important;
-                height: 50mm !important;
-                max-width: 50mm !important;
-                max-height: 50mm !important;
-                margin: 0 !important;
-                padding: 2mm !important;
+                width: 2in !important;
+                height: 2in !important;
+                max-width: 2in !important;
+                max-height: 2in !important;
+                margin: 0 auto !important;
+                padding: 1.5mm !important;
                 border: none !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
@@ -106,16 +97,14 @@ export function LotQrViewer({
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important;
-                gap: 1.5mm !important;
+                justify-content: space-between !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
               #lot-qr-print-card svg {
                 display: block !important;
-                width: 34mm !important;
-                height: 34mm !important;
-                visibility: visible !important;
+                width: 30mm !important;
+                height: 30mm !important;
               }
               .print-hide {
                 display: none !important;
@@ -204,7 +193,7 @@ export function LotQrViewer({
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }

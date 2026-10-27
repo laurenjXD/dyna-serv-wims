@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 import { Printer, X } from "@/components/ui/icons";
 import type { MigratedLotQrLabel } from "@/lib/actions/data-migration";
-import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] }) {
   const [open, setOpen] = useState(false);
@@ -20,7 +20,9 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
   if (labels.length === 0) return null;
 
   const handlePrint = () => {
-    scheduleThermalPrint();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
   };
 
   return (
@@ -34,7 +36,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
         Print all lot QRs ({labels.length})
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal((
         <div
           role="dialog"
           aria-modal="true"
@@ -43,7 +45,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
           className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/60 p-4 print:static print:block print:bg-white print:p-0"
         >
           <style>{`
-            @page { size: 50mm 50mm; margin: 0; }
+            @page { size: 2in 2in; margin: 0; }
             @media print {
               html, body {
                 margin: 0 !important;
@@ -52,57 +54,46 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
-              body[data-bulk-lot-qr-print-mode] {
-                width: 50mm !important;
-                min-width: 50mm !important;
-              }
-              body[data-bulk-lot-qr-print-mode] * { visibility: hidden !important; }
-              body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal],
-              body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] #bulk-lot-qr-sheet,
-              body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] #bulk-lot-qr-sheet * {
-                visibility: visible !important;
+              body[data-bulk-lot-qr-print-mode] > *:not([data-bulk-lot-qr-print-modal]) {
+                display: none !important;
               }
               body[data-bulk-lot-qr-print-mode] [data-bulk-lot-qr-print-modal] {
-                position: absolute !important;
-                left: 50% !important;
-                top: 0 !important;
-                transform: translateX(-50%) !important;
+                position: static !important;
                 display: block !important;
-                width: 50mm !important;
-                min-width: 50mm !important;
+                width: 2in !important;
+                min-width: 2in !important;
+                margin: 0 auto !important;
                 height: auto !important;
                 overflow: visible !important;
                 background: #fff !important;
               }
               #bulk-lot-qr-sheet {
                 display: block !important;
-                width: 50mm !important;
-                min-width: 50mm !important;
-                margin: 0 !important;
+                width: 2in !important;
+                min-width: 2in !important;
+                margin: 0 auto !important;
                 padding: 0 !important;
               }
               .bulk-lot-qr-card {
                 display: flex !important;
-                width: 50mm !important;
-                height: 50mm !important;
+                width: 2in !important;
+                height: 2in !important;
                 box-sizing: border-box !important;
-                margin: 0 !important;
-                padding: 2mm !important;
+                margin: 0 auto !important;
+                padding: 1.5mm !important;
                 border: none !important;
                 border-radius: 0 !important;
                 background: #fff !important;
                 page-break-after: always !important;
                 break-after: page !important;
                 overflow: hidden !important;
-                justify-content: center !important;
-                gap: 1.5mm !important;
               }
               .bulk-lot-qr-card:last-child { page-break-after: avoid !important; break-after: avoid !important; }
-              .bulk-lot-qr-card svg { display: block !important; width: 34mm !important; height: 34mm !important; visibility: visible !important; }
+              .bulk-lot-qr-card svg { display: block !important; width: 30mm !important; height: 30mm !important; }
             }
           `}</style>
 
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[50mm] print:p-0 print:shadow-none">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[2in] print:p-0 print:shadow-none">
             <div className="flex items-center justify-between gap-4 border-b border-outline-variant pb-4 print:hidden">
               <div>
                 <h2 id="bulk-lot-qr-title" className="font-heading text-title-lg font-bold text-on-surface">
@@ -143,7 +134,7 @@ export function BulkLotQrPrintButton({ labels }: { labels: MigratedLotQrLabel[] 
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
