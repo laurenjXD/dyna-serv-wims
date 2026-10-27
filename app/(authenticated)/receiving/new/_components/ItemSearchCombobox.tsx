@@ -146,9 +146,9 @@ export function ItemSearchCombobox({
                             (Cust: {item.customerItemCode})
                           </span>
                         )}
-                        {item.defaultSupplierPartyId === null && (
-                          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                            Unassigned
+                        {item.defaultSupplierPartyId === vendorPartyId && (
+                          <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                            Assigned
                           </span>
                         )}
                       </div>
@@ -173,10 +173,12 @@ export function ItemSearchCombobox({
               <div className="p-4 text-center">
                 <AlertCircle className="mx-auto h-8 w-8 text-status-held/70" />
                 <p className="mt-2 font-body text-body-sm font-semibold text-on-surface">
-                  Item Not Found
+                  No assigned item found
                 </p>
                 <p className="mt-0.5 font-body text-body-xs text-text-grey">
-                  No enrolled item matches &quot;{inputValue}&quot; for this organization.
+                  {availableItems.length === 0
+                    ? "Assign the material to this organization in Master Data before staging the WRR."
+                    : `No assigned item matches "${inputValue}" for this organization.`}
                 </p>
               </div>
             )}

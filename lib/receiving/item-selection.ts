@@ -1,9 +1,9 @@
 import type { WrrItemOption } from "@/lib/db/queries/items";
 
 /**
- * An item may be enrolled before its default supplier is known. Keep those
- * catalog items selectable for receiving; the WRR organization still records
- * who supplied this particular shipment.
+ * WRR lines must use a material enrolled to the selected source Organization.
+ * An unassigned catalog item is not a valid receiving-line candidate because
+ * it has no Organization relationship from which to inherit the WRR context.
  */
 export function filterReceivingItemOptions(
   itemOptions: WrrItemOption[],
@@ -11,7 +11,5 @@ export function filterReceivingItemOptions(
 ): WrrItemOption[] {
   if (!vendorPartyId) return [];
 
-  return itemOptions.filter(
-    (item) => item.defaultSupplierPartyId === vendorPartyId || item.defaultSupplierPartyId === null,
-  );
+  return itemOptions.filter((item) => item.defaultSupplierPartyId === vendorPartyId);
 }

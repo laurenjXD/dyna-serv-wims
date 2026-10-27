@@ -147,6 +147,14 @@ never the column's historical vendor meaning.
 
 Changing source Organization invalidates all dependent draft state. If expected lines exist, the operator must explicitly discard them; the UI then clears them and refetches candidates. A server transaction re-resolves the Organization and inherited model and verifies role/scope/item compatibility immediately before writing. Missing, ambiguous, or generic legacy relationships are remediated in Organization enrollment and are not valid new-write fallbacks.
 
+The expected-line item picker is organization-scoped: it presents only active
+materials whose Material Origin Organization is the selected source
+Organization. Unassigned materials and materials assigned to another
+Organization are not valid WRR-line candidates. The server repeats this
+assignment check for submitted item IDs and never auto-assigns a master-data
+item as a side effect of WRR staging; the recovery path is to assign the
+material in `06` and then reload the WRR form.
+
 All fields confirmed from the approved `01-core-data-model` schema, plus the `disposition` field to be added via `01` amendment:
 
 | Field | Column | Notes |

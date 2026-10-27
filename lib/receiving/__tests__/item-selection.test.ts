@@ -18,14 +18,14 @@ const item = (id: string, defaultSupplierPartyId: string | null): WrrItemOption 
 });
 
 describe("filterReceivingItemOptions", () => {
-  it("keeps items assigned to the selected organization and unassigned catalog items", () => {
+  it("keeps only items assigned to the selected organization", () => {
     const result = filterReceivingItemOptions([
       item("assigned", "vendor-1"),
       item("other-vendor", "vendor-2"),
       item("unassigned", null),
     ], "vendor-1");
 
-    expect(result.map((entry) => entry.id)).toEqual(["assigned", "unassigned"]);
+    expect(result.map((entry) => entry.id)).toEqual(["assigned"]);
   });
 
   it("returns no items until an organization is selected", () => {

@@ -91,10 +91,10 @@ export type WrrItemOption = {
 };
 
 /**
- * Lists active catalog items with the owning/supplying organization relation.
- * The client filters this small office-form projection after the operator
- * chooses the Organization; the server action still resolves the item
- * ID independently before staging the WRR.
+ * Lists active, organization-assigned catalog items with the owning/supplying
+ * organization relation. The client filters this small office-form projection
+ * after the operator chooses the Organization; the server action still
+ * resolves and re-checks the item assignment independently before staging.
  */
 export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOption[]> {
   try {
@@ -114,7 +114,7 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
         isPerishable: items.isPerishable,
       })
       .from(items)
-      .where(eq(items.isActive, true))
+      .where(and(eq(items.isActive, true), isNotNull(items.defaultSupplierPartyId)))
       .orderBy(items.code)) as WrrItemOption[];
 
     return rows.map((r) => ({
