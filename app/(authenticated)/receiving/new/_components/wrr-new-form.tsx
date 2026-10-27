@@ -227,7 +227,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               </span>
               <span className="sr-only">(required)</span>
             </label>
-            <p className="mt-1 font-body text-xs text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
+            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
             <div className="relative mt-1" ref={vendorSearchRef}>
               <input type="hidden" name="vendorPartyId" value={vendorPartyId} />
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-grey" />
@@ -326,21 +326,25 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 </span>
               )}
             </div>
-            {/* Keep the first desktop row aligned with Organization's helper copy. */}
-            <div aria-hidden="true" className="hidden h-[3.75rem] md:block" />
-            <select
-              id="flowType"
-              name="flowType"
-              required
-              value={flowType}
-              onChange={(e) => setFlowType(e.target.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">Select inventory model…</option>
-              {availableModels.includes("vmi") && <option value="vmi">VMI (Consignment)</option>}
-              {availableModels.includes("trading") && <option value="trading">Trading (Owned)</option>}
-              {availableModels.includes("supplies") && <option value="supplies">Supplies</option>}
-            </select>
+            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">
+              Choose the model permitted by the organization&apos;s receiving relationship.
+            </p>
+            <div className="relative mt-1">
+              <select
+                id="flowType"
+                name="flowType"
+                required
+                value={flowType}
+                onChange={(e) => setFlowType(e.target.value)}
+                className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+              >
+                <option value="">Select inventory model…</option>
+                {availableModels.includes("vmi") && <option value="vmi">VMI (Consignment)</option>}
+                {availableModels.includes("trading") && <option value="trading">Trading (Owned)</option>}
+                {availableModels.includes("supplies") && <option value="supplies">Supplies</option>}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
+            </div>
           </div>
 
           {/* Commercial Invoice No — optional */}
