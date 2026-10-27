@@ -62,6 +62,10 @@ import { validateReceivingOrganization } from "@/lib/organizations/relationship-
 // makes the underlying Postgres RLS policies the real, DB-level backstop.
 const defaultRlsDeps: RlsTransactionDeps = { getAuthenticatedSession, pool: rlsPool };
 
+// Explicitly opt-in for local/UAT simulation. Production keeps the warehouse
+// Wi-Fi restriction unless this test-only switch is intentionally configured.
+const receivingSimulationMode = process.env.RECEIVING_SIMULATION_MODE === "true";
+
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
 // that PostgresJsDatabase, which has no index signature, is assignable here.
@@ -723,8 +727,10 @@ export async function recordScan(
   if (perm.kind !== "authorized") {
     return { ok: false, reason: "forbidden" };
   }
-  const network = await verifyFloorNetworkAccess();
-  if (!network.allowed) return { ok: false, reason: "network_restricted" };
+  if (!receivingSimulationMode) {
+    const network = await verifyFloorNetworkAccess();
+    if (!network.allowed) return { ok: false, reason: "network_restricted" };
+  }
   const userId = perm.context.userId;
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
@@ -979,9 +985,10 @@ export async function commitWrrLine(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
-
-  const network = await verifyFloorNetworkAccess();
-  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
+  if (!receivingSimulationMode) {
+    const network = await verifyFloorNetworkAccess();
+    if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
+  }
 
   const userId = perm.context.userId;
 
