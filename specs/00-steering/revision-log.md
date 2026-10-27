@@ -1939,7 +1939,7 @@ The real-Postgres integration tier now covers 4 files and 23 tests, including
 approval reviewer boundaries and administrator-versus-supervisor enrollment and
 settings mutations. The disposable database was removed after verification.
 
-## WRR quantity grain corrected for carton labels and total units (2026-10-27)
+## WRR quantity grain corrected for carton labels and total units — superseded (2026-10-27)
 
 The Product Owner clarified that `wrr_items.expected_qty` is the total base-unit
 quantity already calculated as `SPQ × cartons`; it is not the physical carton
@@ -1948,9 +1948,23 @@ CIPL/WRR carton count. `scanned_qty`, putaway allocations, and durable
 `inventory_units` remain at carton grain, while inventory balances,
 transactions, receipts, and expected-quantity displays use base units.
 
-The migration preserves existing carton-grain `expected_qty` values as
-`carton_qty` and converts resolved lines using the enrolled item SPQ. New WRR
-creation validates the total-unit relationship, and QR generation uses
-`carton_qty`, so a line of 100 cartons at SPQ 8 produces 800 expected units and
-100 carton labels.
+This was the intermediate proposal and is superseded by the later same-day
+decision below. It is retained only as decision history.
+
+## WRR carton count is derived, not persisted (2026-10-27)
+
+The Product Owner clarified the quantity contract again: WRR/CIPL stores only
+the authoritative total base-unit quantity. Material Enrollment already stores
+the item's SPQ, so the number of carton QR labels is derived as
+`expected_qty / enrolled_item.spq`; no expected-carton field, manual actual
+carton field, or manual label-status field is added to the WRR. `scanned_qty`
+remains the accepted physical carton scan count.
+
+The implementation keeps migration `0066` as the upgrade step that converts
+legacy carton-grain expected quantities to base units, then migration `0067`
+removes the now-redundant persisted `carton_qty` column. Missing enrollment/SPQ
+or a non-divisible total blocks label generation and receipt commit. Under-scan
+is handled as a shortage, over-scan is rejected, duplicate/reprinted labels
+remain deterministic and idempotent, and mixed or partial packaging requires
+separate WRR lines or a separately approved packaging override.
 

@@ -155,9 +155,8 @@ All fields confirmed from the approved `01-core-data-model` schema, plus the `di
 | Customer part number | `wrr_items.customer_item_code` | From CIPL. |
 | Lot number | `wrr_items.lot_number` | **Single canonical business lot identifier.** `NOT NULL`. Copied verbatim to `lots.lot_number` at commit. There is no vendor lot number field; this is the only lot identifier on the line. |
 | Manufacture date | `wrr_items.manufacture_date` | Optional supplier-declared date. Copied to `lots.manufacture_date` at commit. |
-| Carton quantity | `wrr_items.carton_qty` | Explicit physical carton count declared by the CIPL/WRR. This is the number of carton QRs to generate and the physical scan/putaway ceiling. |
-| Expected quantity | `wrr_items.expected_qty` | Total base units in the line, derived and server-validated as `carton_qty × items.spq`; it is not the carton count. |
-| Scanned quantity | `wrr_items.scanned_qty` | Running accepted physical carton scan total; default 0. It is compared with `carton_qty`, not `expected_qty`. |
+| Expected quantity | `wrr_items.expected_qty` | Authoritative total base units in the line. Complete-carton QR count is derived as `expected_qty / items.spq`; no expected-carton field is persisted. |
+| Scanned quantity | `wrr_items.scanned_qty` | Running accepted physical carton scan total; default 0. It is compared with the derived complete-carton count. |
 | Unit CBM | `wrr_items.unit_cbm` | Per-carton CBM for putaway calculations. |
 | UOM | `wrr_items.uom` | Unit of measure. |
 | Remarks | `wrr_items.remarks` | Optional CIPL/receiving note. It is evidence only and cannot adjust quantity. |
@@ -166,13 +165,14 @@ All fields confirmed from the approved `01-core-data-model` schema, plus the `di
 
 ### 5.2 Scan-line state and discrepancy
 
-Each `wrr_items` row tracks scanned physical cartons against `carton_qty`; `expected_qty` remains the total base-unit projection. Discrepancy states:
+Each `wrr_items` row tracks scanned physical cartons against the derived count `expected_qty / enrolled_item.spq`. The division must be exact before labels can be generated or the line committed. Discrepancy states:
 
 | State | Condition | Confirmable? |
 | --- | --- | --- |
-| Matched | `scanned_qty = carton_qty` and `expected_qty = carton_qty × items.spq` | Yes |
-| Under-scanned | `scanned_qty < carton_qty` | No — resolve by scanning more or approving a shortage discrepancy |
-| Over-scanned | `scanned_qty > carton_qty` | Rejected at scan time; not silently accepted |
+| Matched | `scanned_qty = expected_qty / items.spq` and the division is exact | Yes |
+| Under-scanned | `scanned_qty < expected_qty / items.spq` | No — resolve by scanning more or approving a shortage discrepancy |
+| Over-scanned | `scanned_qty > expected_qty / items.spq` | Rejected at scan time; not silently accepted |
+| Invalid packaging | Item/SPQ is unresolved, or `expected_qty % items.spq <> 0` | No — resolve enrollment, total units, or an approved packaging exception |
 | Exception/unresolved | Rejected scan, unknown item, or pending inspection decision | No |
 
 `wrr_inspection_logs` records physical conformance observations per line during the scan phase. Its `action_taken` field (`'accepted_with_variance'`, `'quarantined'`, `'returned_to_vendor'`) captures the immediate physical resolution outcome. This is distinct from the `disposition` field, which is set before confirmation and determines where the committed lot is posted.
@@ -269,7 +269,7 @@ Instead, the matcher adds one more check to the resolution sequence in §6: once
 
 **History**: 2026-08-10 established "scan first, then a suggested location" scoped to the whole line — scan every unit, get one location suggestion for the whole remaining quantity, one "Store" tap commits the entire line to a single lot/single location. 2026-08-20 narrowed this to a per-individual-physical-unit loop (implemented and real-Postgres-verified 2026-08-21). A separate branch (`fix-it-felix`) then proposed reverting to a batch/whole-line model with explicit multi-location placement, merged 2026-08-24 as a genuine unresolved contradiction (former §9.0). **Product Owner decision, 2026-08-24: the batch model is authoritative; the per-unit loop is retired.** `commitStoreUnit` and the per-unit idempotency-key machinery have been deleted from the codebase; `commitWrrLine` (`lib/actions/receiving.ts`) is the one commit function for both dispositions.
 
-Under the batch model, a `store`-disposition line needs only **one** accepted carton/pallet scan to become eligible for placement — not every carton individually re-scanned. Once eligible, staff place the line's full `carton_qty` in one step: assign every location, then submit one "Store" command that commits the whole line — lot creation, every `lot_location_balances` row, every `inventory_units` row, and every `inventory_transactions` row — atomically. Each posted inventory quantity is the assigned carton quantity multiplied by the enrolled item's SPQ.
+Under the batch model, a `store`-disposition line needs only **one** accepted carton/pallet scan to become eligible for placement — not every carton individually re-scanned. Once eligible, staff place the line's full derived carton count in one step: assign every location, then submit one "Store" command that commits the whole line — lot creation, every `lot_location_balances` row, every `inventory_units` row, and every `inventory_transactions` row — atomically. Each posted inventory quantity is the assigned carton quantity multiplied by the enrolled item's SPQ.
 
 Sequence for a `store`-disposition line:
 
@@ -283,7 +283,7 @@ scan one carton/pallet barcode from the line
      available remaining CBM capacity for at least one more carton of this
      line's item (§6.2a) using the §10 location/capacity suggestion
      interface
-   → staff assigns the line's full carton_qty across one or more
+   → staff assigns the line's full derived carton count across one or more
      candidates — a single-location quick action ("put all N cartons in
      [location]") or an explicit per-box/per-location split (§6.2b)
    → if more than one location is used (or the UI's multi-slot assignment
@@ -485,11 +485,11 @@ Evidence uses private Supabase Storage and inherits WRR/party scope. Automated e
 
 ### Line commit command — the current, authoritative sequence
 
-Each line's commit receives the WRR ID, the specific `wrr_items.id`, the resolved disposition (`store`/`inspect`), and the line's placement — either a single `location_id` (the whole line to one place) or a batch placement (`allocations`: explicit per-location carton quantities, or `unit_location_ids`: one location per physical carton, index-aligned with the line's `carton_qty`, which the server derives into per-location `allocations` by grouping) plus a presence attestation whenever more than one physical carton's placement is being asserted in the same commit. Within one transaction, for that line alone, it:
+Each line's commit receives the WRR ID, the specific `wrr_items.id`, the resolved disposition (`store`/`inspect`), and the line's placement — either a single `location_id` (the whole line to one place) or a batch placement (`allocations`: explicit per-location carton quantities, or `unit_location_ids`: one location per physical carton, index-aligned with the line's derived carton count, which the server derives into per-location `allocations` by grouping) plus a presence attestation whenever more than one physical carton's placement is being asserted in the same commit. Within one transaction, for that line alone, it:
 
 1. verifies the line is still in a commit-eligible state (`wrr_documents.status = 'receiving_in_progress'`, this line not already committed — the idempotency check described below);
 2. verifies the line's active item/party references, flow partition, and required lot metadata (a resolved `itemId`, a set disposition);
-3. resolves the requested placement — a single `location_id`, or a batch placement derived from `allocations`/`unit_location_ids`. A batch placement requires the presence attestation. Either shape's assigned total SHALL equal the line's `carton_qty` exactly, or the commit is rejected before anything is posted;
+3. resolves the requested placement — a single `location_id`, or a batch placement derived from `allocations`/`unit_location_ids`. A batch placement requires the presence attestation. Either shape's assigned total SHALL equal the line's derived complete-carton count exactly, or the commit is rejected before anything is posted;
 4. verifies every assigned location's active/type state (`storage` for `store`, `inspection` for `inspect`) and current available remaining CBM capacity for its assigned quantity — capacity is re-checked at commit time, not assumed from the suggestion shown a moment earlier;
 5. creates the `lots` row: `lot_number` copied from `wrr_items.lot_number` (the single canonical identifier), `wrr_item_id` set, `status = 'available'` for `store` or `status = 'quarantined'` for `inspect`;
 6. for `store`-disposition placements, inserts one `wrr_item_putaway_allocations` row per assigned location (`lib/db/schema/wrr.ts`, migration `0032_wrr_item_putaway_allocations.sql`) — a staged/audit record of the placement, not itself a stock table;

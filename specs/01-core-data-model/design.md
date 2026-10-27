@@ -403,8 +403,7 @@ export const wrrItems = pgTable("wrr_items", {
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
   manufactureDate: date("manufacture_date"), // Supplier-declared manufacturing date, copied to lots at receipt
   remarks: text("remarks"), // Receiving/CIPL line remarks; never an inventory adjustment
-  cartonQty: integer("carton_qty").notNull(), // Explicit physical carton count declared by the CIPL/WRR
-  expectedQty: integer("expected_qty").notNull(), // Total base units; carton_qty × items.spq
+  expectedQty: integer("expected_qty").notNull(), // Total base units; complete-carton QR count is derived as expected_qty / items.spq
   scannedQty: integer("scanned_qty").default(0).notNull(), // Accepted physical carton scans
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),

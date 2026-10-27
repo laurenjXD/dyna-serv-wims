@@ -8,8 +8,7 @@ export interface ParsedCiplRow {
   mfgDate?: string;
   expiryDate?: string;
   expectedQty?: number;
-  /** Explicit physical carton count from the packing list. */
-  cartonQty?: number;
+  /** Source package count, retained only as import metadata; WRR stores total units. */
   packageCount?: number;
   spq?: number;
   cbm?: number;
@@ -398,11 +397,12 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       const spq = spqRaw !== undefined && spqRaw !== null && spqRaw !== "" ? Number(spqRaw) : undefined;
       const cbm = cbmRaw !== undefined && cbmRaw !== null && cbmRaw !== "" ? Number(cbmRaw) : undefined;
 
-      // Compute Qty if missing: Qty = SPQ × Package Count
+      // Compute total units when both the source package count and SPQ are known.
+      // A package count without SPQ is not a reliable unit quantity, so leave the
+      // field unresolved for operator review instead of silently treating cartons
+      // as units.
       if ((!expectedQty || isNaN(expectedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
         expectedQty = packageCount * spq;
-      } else if ((!expectedQty || isNaN(expectedQty)) && packageCount && !isNaN(packageCount)) {
-        expectedQty = packageCount;
       }
 
       const lotNumber = colMap["lotNumber"] !== undefined && row[colMap["lotNumber"]] ? String(row[colMap["lotNumber"]]).trim() : undefined;
@@ -448,7 +448,6 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           mfgDate,
           expiryDate,
           expectedQty: expectedQty && !isNaN(expectedQty) ? expectedQty : undefined,
-          cartonQty: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
           spq: spq && !isNaN(spq) ? spq : undefined,
           cbm: cbm && !isNaN(cbm) ? cbm : undefined,

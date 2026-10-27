@@ -115,8 +115,8 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
     locationId = location.id as string;
     const [wrr] = await sql`INSERT INTO wrr_documents (wrr_number, vendor_party_id, flow_type, status, staged_by_user_id)
       VALUES ('WRR-OUTBOUND-01', ${partyId}, 'trading', 'confirmed', ${userId}) RETURNING id`;
-    const [wrrItem] = await sql`INSERT INTO wrr_items (wrr_id, item_id, lot_number, carton_qty, expected_qty, scanned_qty, unit_cbm, uom, disposition)
-      VALUES (${wrr.id}, ${itemId}, 'LOT-01', 20, 20, 20, 0.1, 'piece', 'store') RETURNING id`;
+    const [wrrItem] = await sql`INSERT INTO wrr_items (wrr_id, item_id, lot_number, expected_qty, scanned_qty, unit_cbm, uom, disposition)
+      VALUES (${wrr.id}, ${itemId}, 'LOT-01', 20, 20, 0.1, 'piece', 'store') RETURNING id`;
     const [lot] = await sql`INSERT INTO lots (lot_number, wrr_item_id, item_id, flow_type, status)
       VALUES ('LOT-01', ${wrrItem.id}, ${itemId}, 'trading', 'available') RETURNING id`;
     lotId = lot.id as string;
@@ -187,10 +187,10 @@ describe.skipIf(!hasLiveDb)("outbound commitment and dispatch — real Postgres"
 
     const [wrr2] = await sql`INSERT INTO wrr_documents (wrr_number, vendor_party_id, flow_type, status, staged_by_user_id)
       VALUES ('WRR-OUTBOUND-02', ${partyId}, 'trading', 'confirmed', ${userId}) RETURNING id`;
-    const [wrrItemA] = await sql`INSERT INTO wrr_items (wrr_id, item_id, lot_number, carton_qty, expected_qty, scanned_qty, unit_cbm, uom, disposition)
-      VALUES (${wrr2.id}, ${itemId}, 'LOT-A', 15, 15, 15, 0.1, 'piece', 'store') RETURNING id`;
-    const [wrrItemB] = await sql`INSERT INTO wrr_items (wrr_id, item_id, lot_number, carton_qty, expected_qty, scanned_qty, unit_cbm, uom, disposition)
-      VALUES (${wrr2.id}, ${itemId}, 'LOT-B', 15, 15, 15, 0.1, 'piece', 'store') RETURNING id`;
+    const [wrrItemA] = await sql`INSERT INTO wrr_items (wrr_id, item_id, lot_number, expected_qty, scanned_qty, unit_cbm, uom, disposition)
+      VALUES (${wrr2.id}, ${itemId}, 'LOT-A', 15, 15, 0.1, 'piece', 'store') RETURNING id`;
+    const [wrrItemB] = await sql`INSERT INTO wrr_items (wrr_id, item_id, lot_number, expected_qty, scanned_qty, unit_cbm, uom, disposition)
+      VALUES (${wrr2.id}, ${itemId}, 'LOT-B', 15, 15, 0.1, 'piece', 'store') RETURNING id`;
 
     const [lotA] = await sql`INSERT INTO lots (lot_number, wrr_item_id, item_id, flow_type, status, created_at)
       VALUES ('LOT-A', ${wrrItemA.id}, ${itemId}, 'trading', 'available', '2026-01-01T00:00:00Z') RETURNING id`;

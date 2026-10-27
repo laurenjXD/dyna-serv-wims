@@ -124,9 +124,8 @@ describe("wrr.ts — wrr_items table (Req 6)", () => {
     expect(column(wrrItems, "lotNumber").notNull).toBe(true);
   });
 
-  it("has cartonQty and expectedQty notNull, with scannedQty notNull default 0", async () => {
+  it("has expectedQty notNull, with scannedQty notNull default 0", async () => {
     const { wrrItems } = await import("../wrr");
-    expect(column(wrrItems, "cartonQty").notNull).toBe(true);
     expect(column(wrrItems, "expectedQty").notNull).toBe(true);
     const scannedQty = column(wrrItems, "scannedQty");
     expect(scannedQty.notNull).toBe(true);

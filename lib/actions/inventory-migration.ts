@@ -379,7 +379,6 @@ export async function commitOpeningStockMigration(
         wrrId,
         itemId: row.itemId,
         lotNumber: row.lotNumber,
-        cartonQty: row.boxes,
         expectedQty: row.totalQty,
         scannedQty: row.boxes,
         committedQty: row.boxes,

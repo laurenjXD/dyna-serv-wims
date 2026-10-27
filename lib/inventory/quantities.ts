@@ -21,6 +21,18 @@ export function boxesToPieces(boxes: number, spq: number | null | undefined): nu
   return boxes * positiveInteger(spq);
 }
 
+/**
+ * Returns the exact number of physical cartons represented by a base-unit
+ * quantity. QR labels are only safe to generate when the quantity is made up
+ * of complete cartons; partial cartons need an explicit packaging decision.
+ */
+export function exactCartonCount(totalUnits: number, spq: number | null | undefined): number | null {
+  const packageSize = positiveInteger(spq, 0);
+  if (!Number.isInteger(totalUnits) || totalUnits <= 0 || packageSize <= 0) return null;
+  if (totalUnits % packageSize !== 0) return null;
+  return totalUnits / packageSize;
+}
+
 export function piecesToPalletEquivalent(
   pieces: number,
   spq: number | null | undefined,

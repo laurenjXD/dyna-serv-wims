@@ -52,7 +52,7 @@ import { getStorageClient } from "@/lib/supabase/storage";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
 import { randomUUID } from "node:crypto";
-import { boxesToPieces, positiveInteger } from "@/lib/inventory/quantities";
+import { boxesToPieces, exactCartonCount, positiveInteger } from "@/lib/inventory/quantities";
 import { validateReceivingOrganization } from "@/lib/organizations/relationship-contract";
 
 // Every action below binds its DB work to the caller's RLS-claimed
@@ -94,7 +94,6 @@ export type SetWrrLineDispositionResult = { ok: true } | { ok: false; errors: st
 export type UpdateWrrLineInput = {
   id: string;
   lotNumber: string;
-  cartonQty: number;
   expectedQty: number;
   unitCbm: number;
   uom: string;
@@ -162,7 +161,8 @@ async function fetchWrrForAction(
       // a camera or hardware scanner is unavailable.
       itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
       lotNumber: line.lotNumber as string,
-      cartonQty: line.cartonQty as number,
+      spq: enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq),
+      cartonCount: exactCartonCount(Number(line.expectedQty ?? 0), enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq)) ?? 0,
       manufactureDate: (line.manufactureDate ?? null) as string | null,
       expiryDate: (line.expiryDate ?? null) as string | null,
       isPerishable: Boolean(enrolledItem?.isPerishable),
@@ -316,10 +316,10 @@ export async function createWrr(
         const spqById = new Map<string, number>(catalogRows.map((row: { id: string; spq: number }) => [row.id, positiveInteger(row.spq)] as [string, number]));
         const quantityMismatch = resolvedLines.find((line) => {
           const spq = line.itemId ? spqById.get(line.itemId) : undefined;
-          return spq !== undefined && line.expectedQty !== line.cartonQty * spq;
+          return spq !== undefined && exactCartonCount(line.expectedQty, spq) === null;
         });
         if (quantityMismatch) {
-          return { ok: false, errors: ["Expected total quantity must equal carton quantity multiplied by the selected item's SPQ."] } satisfies CreateWrrActionResult;
+          return { ok: false, errors: ["Expected total quantity must be divisible by the selected item's SPQ before carton QR labels can be generated."] } satisfies CreateWrrActionResult;
         }
       }
 
@@ -362,7 +362,6 @@ export async function createWrr(
           manufactureDate: line.manufactureDate ?? null,
           expiryDate: line.expiryDate ?? null,
           remarks: line.remarks ?? null,
-          cartonQty: line.cartonQty,
           expectedQty: line.expectedQty,
           unitCbm: String(line.unitCbm),
           uom: line.uom,
@@ -493,8 +492,8 @@ export async function updateWrrLines(
   if (permission.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
   if (!Array.isArray(lines) || lines.length === 0) return { ok: false, errors: ["At least one expected line is required."] };
   for (const line of lines) {
-    if (!line.id || !line.lotNumber.trim() || !line.uom.trim() || line.cartonQty <= 0 || line.expectedQty <= 0 || line.unitCbm <= 0) {
-      return { ok: false, errors: ["Each expected line needs a lot, carton quantity, total quantity, UOM, and unit CBM."] };
+    if (!line.id || !line.lotNumber.trim() || !line.uom.trim() || line.expectedQty <= 0 || line.unitCbm <= 0) {
+      return { ok: false, errors: ["Each expected line needs a lot, total quantity, UOM, and unit CBM."] };
     }
     if (line.manufactureDate && !/^\d{4}-\d{2}-\d{2}$/.test(line.manufactureDate)) {
       return { ok: false, errors: ["Manufacturing dates must use YYYY-MM-DD."] };
@@ -527,13 +526,13 @@ export async function updateWrrLines(
     for (const line of lines) {
       const existing = existingById.get(line.id);
       const spq = existing?.spq == null ? null : positiveInteger(existing.spq);
-      if (spq !== null && line.expectedQty !== line.cartonQty * spq) {
-        return { ok: false, errors: ["Expected total quantity must equal carton quantity multiplied by the enrolled item's SPQ."] } satisfies UpdateWrrResult;
+      if (spq !== null && exactCartonCount(line.expectedQty, spq) === null) {
+        return { ok: false, errors: ["Expected total quantity must be divisible by the enrolled item's SPQ before carton QR labels can be generated."] } satisfies UpdateWrrResult;
       }
     }
     for (const line of lines) {
       const changed = await database.update(wrrItems).set({
-        lotNumber: line.lotNumber.trim(), cartonQty: line.cartonQty, expectedQty: line.expectedQty, unitCbm: String(line.unitCbm), uom: line.uom.trim(),
+        lotNumber: line.lotNumber.trim(), expectedQty: line.expectedQty, unitCbm: String(line.unitCbm), uom: line.uom.trim(),
         itemCode: line.itemCode?.trim() || null, customerItemCode: line.customerItemCode?.trim() || null,
         manufactureDate: line.manufactureDate || null, expiryDate: line.expiryDate || null, remarks: line.remarks?.trim() || null,
       }).where(and(eq(wrrItems.id, line.id), eq(wrrItems.wrrId, wrrId))).returning({ id: wrrItems.id });
@@ -709,7 +708,7 @@ function peekWrrItemUnitId(barcode: string): string | null {
  * are unaffected by that amendment (design.md §6.3): recordScan still
  * increments wrr_items.scanned_qty for them exactly as before, since
  * the line commit remains a whole-line commit gated on
- * `scanned_qty >= carton_qty` with no other writer of that column. This
+ * `scanned_qty >= derived carton count` with no other writer of that column. This
  * action still performs the WRR-document-QR check, matchScan matching, and
  * the per-unit duplicate-label (wrr_item_unit_scans) write, all unchanged.
  */
@@ -1010,20 +1009,21 @@ export async function commitWrrLine(
         return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
       }
 
+      if (!line.itemId) {
+        return { ok: false, errors: ["The WRR line must be matched to an enrolled item before receiving."] } satisfies CommitWrrLineResult;
+      }
       const [catalogItem] = await tx
         .select({ spq: itemCatalog.spq })
         .from(itemCatalog)
-        .where(eq(itemCatalog.id, line.itemId!))
+        .where(eq(itemCatalog.id, line.itemId))
         .limit(1);
-      const spq = positiveInteger(catalogItem?.spq);
-      const cartonQty = line.cartonQty ?? 0;
-
-      if (cartonQty <= 0) {
-        return { ok: false, errors: ["WRR line is missing its carton quantity."] } satisfies CommitWrrLineResult;
+      if (!catalogItem || !Number.isInteger(catalogItem.spq) || catalogItem.spq <= 0) {
+        return { ok: false, errors: ["The enrolled item's SPQ is missing or invalid; update Material Enrollment before receiving."] } satisfies CommitWrrLineResult;
       }
-
-      if (line.expectedQty !== cartonQty * spq) {
-        return { ok: false, errors: ["Expected total quantity does not match carton quantity × item SPQ."] } satisfies CommitWrrLineResult;
+      const spq = catalogItem.spq;
+      const cartonCount = exactCartonCount(line.expectedQty, spq);
+      if (cartonCount === null) {
+        return { ok: false, errors: ["Expected total quantity must be divisible by the enrolled item's SPQ before receiving."] } satisfies CommitWrrLineResult;
       }
 
       if (line.isPerishable && !line.expiryDate) {
@@ -1059,13 +1059,13 @@ export async function commitWrrLine(
       const isBatch = batchAllocations.length > 0;
       const allocatedTotal = isBatch
         ? batchAllocations.reduce((sum, allocation) => sum + allocation.qty, 0)
-        : cartonQty;
+        : cartonCount;
 
       if (isBatch && !params.presenceAttested) {
         return { ok: false, errors: ["presence_attestation_required"] } satisfies CommitWrrLineResult;
       }
-      if (isBatch && allocatedTotal !== cartonQty) {
-        return { ok: false, errors: ["allocation_qty_must_equal_carton_qty"] } satisfies CommitWrrLineResult;
+      if (isBatch && allocatedTotal !== cartonCount) {
+        return { ok: false, errors: ["allocation_qty_must_equal_derived_carton_count"] } satisfies CommitWrrLineResult;
       }
 
       const targetLocationIds = isBatch
@@ -1091,7 +1091,7 @@ export async function commitWrrLine(
         // allocation path is the only path allowed to rely on an explicit
         // presence attestation rather than the scan ledger itself.
         scannedQty: isBatch
-          ? (params.presenceAttested ? cartonQty : allocatedTotal)
+          ? (params.presenceAttested ? cartonCount : allocatedTotal)
           : line.scannedQty,
       };
       for (const targetLocationId of targetLocationIds) {
@@ -1152,14 +1152,14 @@ export async function commitWrrLine(
 
         const committedAllocations = isBatch
           ? batchAllocations
-          : [{ locationId: targetLocationIds[0], qty: cartonQty }];
+          : [{ locationId: targetLocationIds[0], qty: cartonCount }];
         const committedUnitLocations = (requestedUnitLocations && requestedUnitLocations.length === allocatedTotal)
           ? requestedUnitLocations
           : (isBatch
             ? committedAllocations.flatMap((allocation) =>
                 Array.from({ length: allocation.qty }, () => allocation.locationId),
               )
-            : Array.from({ length: cartonQty }, () => targetLocationIds[0]));
+            : Array.from({ length: cartonCount }, () => targetLocationIds[0]));
 
         if (isBatch) {
           const storageAllocations = committedAllocations.filter((a) => locationsById.get(a.locationId)?.locationType === "storage");

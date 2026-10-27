@@ -201,7 +201,7 @@ export default async function PreAlertExportPage({ params }: PageProps) {
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{item.expiryDate ?? "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
                       {item.expectedQty.toLocaleString()}
-                      <span className="block text-[9px] font-normal text-slate-500">({item.cartonQty} cartons)</span>
+                      <span className="block text-[9px] font-normal text-slate-500">({item.cartonCount} cartons)</span>
                     </td>
                     <td className="border border-slate-300 px-2 py-1.5 uppercase text-slate-600">{item.uom || "PCS"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-500">{item.remarks ?? "—"}</td>

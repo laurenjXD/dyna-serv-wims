@@ -28,7 +28,6 @@ import { describe, expect, it } from "vitest";
 
 const VALID_LINE = {
   lotNumber: "LOT-2026-001",
-  cartonQty: 10,
   expectedQty: 10,
   unitCbm: 0.5,
   uom: "piece",

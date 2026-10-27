@@ -35,12 +35,10 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   const lines = [];
   for (let i = 0; i < lineCount; i++) {
     const rawExpectedQty = formData.get(`line_${i}_expectedQty`) as string | null;
-    const rawCartonQty = formData.get(`line_${i}_cartonQty`) as string | null;
     const rawUnitCbm = formData.get(`line_${i}_unitCbm`) as string | null;
     lines.push({
       itemId: (formData.get(`line_${i}_itemId`) as string | null) || null,
       lotNumber: (formData.get(`line_${i}_lotNumber`) as string | null) ?? "",
-      cartonQty: rawCartonQty ? parseFloat(rawCartonQty) : NaN,
       expectedQty: rawExpectedQty ? parseFloat(rawExpectedQty) : NaN,
       unitCbm: rawUnitCbm ? parseFloat(rawUnitCbm) : NaN,
       uom: (formData.get(`line_${i}_uom`) as string | null) ?? "",

@@ -293,7 +293,6 @@ export async function seedSampleData(
             itemId: itemIds[index],
             itemCode: SAMPLE_ITEMS[index].code,
             lotNumber: sampleWrr.lotNumber,
-            cartonQty: sampleWrr.quantity,
             expectedQty: sampleWrr.quantity,
             unitCbm: SAMPLE_ITEMS[index].volumeCbm,
             uom: SAMPLE_ITEMS[index].uom,
@@ -305,7 +304,6 @@ export async function seedSampleData(
             .set({
               itemCode: SAMPLE_ITEMS[index].code,
               lotNumber: sampleWrr.lotNumber,
-              cartonQty: sampleWrr.quantity,
               expectedQty: sampleWrr.quantity,
               unitCbm: SAMPLE_ITEMS[index].volumeCbm,
               uom: SAMPLE_ITEMS[index].uom,

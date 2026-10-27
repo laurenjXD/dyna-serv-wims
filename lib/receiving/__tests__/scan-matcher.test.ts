@@ -80,6 +80,7 @@ const makeLine = (
     lotNumber: string;
     expectedQty: number;
     scannedQty: number;
+    spq: number;
     disposition: "store" | "inspect";
   }> = {}
 ) => ({
@@ -90,6 +91,7 @@ const makeLine = (
   lotNumber: "LOT-2026-001",
   expectedQty: 10,
   scannedQty: 0,
+  spq: 1,
   disposition: "store" as const,
   ...overrides,
 });

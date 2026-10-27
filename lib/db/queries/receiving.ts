@@ -21,6 +21,7 @@ import { items as itemsTable } from "@/lib/db/schema/items";
 // otherwise collide with the schema table.
 import { parties as partiesTable } from "@/lib/db/schema/parties";
 import { userProfiles } from "@/lib/db/schema/rbac";
+import { exactCartonCount } from "@/lib/inventory/quantities";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -66,7 +67,7 @@ export type WrrItemRow = {
   id: string;
   wrrId: string;
   lotNumber: string;
-  cartonQty: number;
+  cartonCount: number;
   expectedQty: number;
   scannedQty: number;
   disposition: string;
@@ -121,7 +122,6 @@ type RawJoinRow = {
   itemRowId: string | null;
   itemWrrId: string | null;
   itemLotNumber: string | null;
-  itemCartonQty: number | null;
   itemExpectedQty: number | null;
   itemScannedQty: number | null;
   itemDisposition: string | null;
@@ -280,7 +280,6 @@ export async function getWrrDocument(
       itemRowId: wrrItems.id,
       itemWrrId: wrrItems.wrrId,
       itemLotNumber: wrrItems.lotNumber,
-      itemCartonQty: wrrItems.cartonQty,
       itemExpectedQty: wrrItems.expectedQty,
       itemScannedQty: wrrItems.scannedQty,
       itemDisposition: wrrItems.disposition,
@@ -318,8 +317,8 @@ export async function getWrrDocument(
       id: row.itemRowId!,
       wrrId: row.itemWrrId!,
       lotNumber: row.itemLotNumber ?? "",
-      cartonQty: Number(row.itemCartonQty ?? 0),
       expectedQty: Number(row.itemExpectedQty ?? 0),
+      cartonCount: exactCartonCount(Number(row.itemExpectedQty ?? 0), row.itemSpq == null ? undefined : Number(row.itemSpq)) ?? 0,
       scannedQty: Number(row.itemScannedQty ?? 0),
       disposition: row.itemDisposition ?? "store",
       itemId: row.itemItemId,
@@ -332,7 +331,7 @@ export async function getWrrDocument(
       remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
-      spq: Number(row.itemSpq ?? 1) > 0 ? Number(row.itemSpq) : 1,
+      spq: Number(row.itemSpq ?? 0) > 0 ? Number(row.itemSpq) : 0,
       putawayLocationId: row.itemPutawayLocationId,
       committedAt: row.itemCommittedAt,
     }));

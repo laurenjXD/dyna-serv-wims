@@ -14,9 +14,9 @@ Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 
 ### WRR quantity grain amendment — 2026-10-27 (Approved)
 
-- [x] Add `wrr_items.carton_qty` as the explicit physical carton count declared by the CIPL/WRR.
-- [x] Define `wrr_items.expected_qty` as total base units, server-derived/validated as `carton_qty × items.spq`.
-- [x] Keep `wrr_items.scanned_qty` as accepted physical carton scans and use carton grain for putaway allocations and `inventory_units`.
+- [x] Define `wrr_items.expected_qty` as the authoritative total base-unit quantity; derive complete-carton QR count at runtime as `expected_qty / items.spq` and do not persist a redundant carton field.
+- [x] Keep `wrr_items.scanned_qty` as accepted physical carton scans and use the derived carton count for putaway allocations and `inventory_units`.
+- [x] Reject QR generation/receipt confirmation when the enrolled item's SPQ is missing or `expected_qty` is not divisible by SPQ; retain source package count only as import metadata.
 - [x] Product owner approval — User, 2026-10-27.
 - [x] Second approver approval — System standing approval, 2026-10-27.
 

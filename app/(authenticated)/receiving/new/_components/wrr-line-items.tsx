@@ -4,7 +4,7 @@
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §5.1 — expected line fields
-//   specs/07-incoming-receiving/requirements.md R1.3 — lotNumber, cartonQty, expectedQty,
+//   specs/07-incoming-receiving/requirements.md R1.3 — lotNumber, expectedQty,
 //     UOM, unit_cbm, disposition required per line
 //   specs/00-steering/brand-design-system.md §9 (forms), §3 (touch targets h-11)
 //
@@ -27,7 +27,6 @@ export interface ImportedWrrLine {
   mfgDate: string;
   expiryDate: string;
   expectedQty: string;
-  cartonQty?: string;
   packageCount?: string;
   unitCbm?: string;
   uom: string;
@@ -37,7 +36,6 @@ export interface ImportedWrrLine {
 
 interface LineState {
   lotNumber: string;
-  cartonQty: string;
   expectedQty: string;
   unitCbm: string;
   uom: string;
@@ -53,7 +51,6 @@ interface LineState {
 
 const EMPTY_LINE: LineState = {
   lotNumber: "",
-  cartonQty: "",
   expectedQty: "",
   unitCbm: "",
   uom: "",
@@ -108,8 +105,7 @@ export function WrrLineItems({
         const item = itemOptions.find((candidate) => candidate.id === imp.itemId);
         return {
           lotNumber: imp.lotNumber || "",
-          cartonQty: imp.cartonQty || imp.packageCount || "",
-          expectedQty: imp.cartonQty && item && Number(imp.cartonQty) > 0 ? String(Number(imp.cartonQty) * item.spq) : imp.expectedQty || "",
+          expectedQty: imp.expectedQty || "",
           unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
           uom: (imp.uom || (item ? item.uom : "BOX")).toLowerCase(),
           itemCode: item
@@ -162,7 +158,7 @@ export function WrrLineItems({
         customerItemCode: item.customerItemCode ?? "",
         uom: item.uom.toLowerCase(),
         unitCbm: item.volumeCbm,
-        expectedQty: line.cartonQty && Number(line.cartonQty) > 0 ? String(Number(line.cartonQty) * item.spq) : line.expectedQty,
+        expectedQty: line.expectedQty,
       };
     }));
   }, [codeFor, importedLines, itemOptions]);
@@ -180,7 +176,7 @@ export function WrrLineItems({
       customerItemCode: item.customerItemCode ?? "",
       uom: item.uom.toLowerCase(),
       unitCbm: item.volumeCbm,
-      expectedQty: line.cartonQty && Number(line.cartonQty) > 0 ? String(Number(line.cartonQty) * item.spq) : line.expectedQty,
+      expectedQty: line.expectedQty,
       expiryDate: item.isPerishable ? line.expiryDate : "",
     } : line));
   }
@@ -364,50 +360,9 @@ export function WrrLineItems({
               </div>
             </div>
 
-            {/* Row 3: Cartons, total units, CBM & UOM */}
+            {/* Row 3: Total units, derived labels, CBM & UOM */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-              {/* Col 1: Explicit physical carton count */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <label htmlFor={`line-${index}-cartonQty`} className="block font-label text-label text-text-grey">
-                    Carton Qty (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
-                  </label>
-                  {(() => {
-                    const selItem = itemOptions.find((i) => i.id === line.itemId);
-                    if (!selItem) return null;
-                    const cartons = Number(line.cartonQty);
-                    const totalUnits = cartons > 0 ? cartons * selItem.spq : null;
-                    return (
-                      <span className="font-mono text-[11px] font-bold text-brand-navy bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                        SPQ: {selItem.spq}/carton {totalUnits ? `· ${cartons} cartons · ${totalUnits} units` : ""}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <input
-                  id={`line-${index}-cartonQty`}
-                  name={`line_${index}_cartonQty`}
-                  type="number"
-                  required
-                  min="1"
-                  step="1"
-                  value={line.cartonQty}
-                  onChange={(e) => {
-                    const cartonQty = e.target.value;
-                    const selected = itemOptions.find((item) => item.id === line.itemId);
-                    setLines((prev) => prev.map((candidate, lineIndex) => lineIndex === index
-                      ? { ...candidate, cartonQty, expectedQty: selected && Number(cartonQty) > 0 ? String(Number(cartonQty) * selected.spq) : "" }
-                      : candidate));
-                  }}
-                  placeholder="0"
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                />
-                <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Physical carton count used for scanning and QR label generation.
-                </p>
-              </div>
-
-              {/* Col 2: Expected total base units */}
+              {/* Col 1: Expected total base units */}
               <div>
                 <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
                   Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
@@ -419,13 +374,29 @@ export function WrrLineItems({
                   required
                   min="1"
                   step="1"
-                  readOnly
                   value={line.expectedQty}
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-slate-100/70 px-3 font-mono text-mono-md text-on-surface"
+                  onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface"
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Cartons × item SPQ; posted to inventory in the selected UOM.
+                  Total base units from the CIPL/WRR.
                 </p>
+              </div>
+
+              {/* Col 2: Derived carton QR labels */}
+              <div>
+                <label className="block font-label text-label text-text-grey">Carton QR Labels</label>
+                {(() => {
+                  const spq = selectedItem?.spq ?? 0;
+                  const total = Number(line.expectedQty);
+                  const valid = Number.isInteger(total) && total > 0 && spq > 0 && total % spq === 0;
+                  return (
+                    <div className={`mt-1 flex h-11 items-center rounded-lg border px-3 font-mono text-mono-md ${valid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                      {valid ? `${total / spq} labels` : selectedItem ? "Quantity must divide evenly by SPQ" : "Select an enrolled item"}
+                    </div>
+                  );
+                })()}
+                <p className="mt-1 font-body text-[11px] text-text-grey">Derived from total units ÷ enrolled SPQ.</p>
               </div>
 
               {/* Col 3: Unit CBM */}

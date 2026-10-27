@@ -91,17 +91,17 @@ export default async function WrrDetailPage({ params }: PageProps) {
   // doesn't retain the `!wrr` early-return's narrowing of `wrr` itself
   // across a hoisted `function` declaration's body.
   const ciplFileUrl = wrr.ciplFileUrl;
-  const shortageItems = wrr.items.filter((item) => item.scannedQty < item.cartonQty);
-  const totalExpectedCartons = wrr.items.reduce((sum, item) => sum + item.cartonQty, 0);
+  const shortageItems = wrr.items.filter((item) => item.scannedQty < item.cartonCount);
+  const totalExpectedCartons = wrr.items.reduce((sum, item) => sum + item.cartonCount, 0);
   const totalReceivedCartons = wrr.items.reduce((sum, item) => sum + item.scannedQty, 0);
   const totalExpectedUnits = wrr.items.reduce((sum, item) => sum + item.expectedQty, 0);
   const totalReceivedUnits = wrr.items.reduce((sum, item) => sum + boxesToPieces(item.scannedQty, item.spq), 0);
   const totalMissingCartons = shortageItems.reduce(
-    (sum, item) => sum + Math.max(0, item.cartonQty - item.scannedQty),
+    (sum, item) => sum + Math.max(0, item.cartonCount - item.scannedQty),
     0,
   );
   const totalMissingUnits = shortageItems.reduce(
-    (sum, item) => sum + boxesToPieces(Math.max(0, item.cartonQty - item.scannedQty), item.spq),
+    (sum, item) => sum + boxesToPieces(Math.max(0, item.cartonCount - item.scannedQty), item.spq),
     0,
   );
   const inspectionAllocations = putawayAllocations.filter(
@@ -341,7 +341,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   </thead>
                   <tbody className="divide-y divide-status-held/10">
                     {shortageItems.map((item) => {
-                      const missingCartons = Math.max(0, item.cartonQty - item.scannedQty);
+                      const missingCartons = Math.max(0, item.cartonCount - item.scannedQty);
                       const spq = Number(item.spq) || 1;
                       return (
                         <tr key={item.id}>
@@ -350,7 +350,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                             <span className="block text-text-grey">Lot {item.lotNumber}</span>
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-body-sm text-on-surface">
-                            {item.expectedQty.toLocaleString()} {item.uom || "PCS"} ({item.cartonQty} cartons)
+                            {item.expectedQty.toLocaleString()} {item.uom || "PCS"} ({item.cartonCount} cartons)
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-body-sm text-status-available">
                             {boxesToPieces(item.scannedQty, spq).toLocaleString()} {item.uom || "PCS"} ({item.scannedQty} cartons)
@@ -392,7 +392,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
               <MobileDataCardList className="md:hidden">
                 {wrr.items.map((item: WrrItemRow) => {
                   const spq = Number(item.spq) || 1;
-                  const isShortage = item.scannedQty < item.cartonQty && wrr.status === "confirmed";
+                  const isShortage = item.scannedQty < item.cartonCount && wrr.status === "confirmed";
                   return (
                     <MobileDataCard
                       key={item.id}
@@ -403,13 +403,13 @@ export default async function WrrDetailPage({ params }: PageProps) {
                         { label: "Customer code", value: item.customerItemCode ?? "—" },
                         { label: "Mfg. date", value: item.manufactureDate ?? "—" },
                         { label: "Expiry date", value: item.expiryDate ?? "—" },
-                        { label: "Expected", value: `${item.expectedQty.toLocaleString()} ${item.uom || "PCS"} (${item.cartonQty} cartons)` },
+                        { label: "Expected", value: `${item.expectedQty.toLocaleString()} ${item.uom || "PCS"} (${item.cartonCount} cartons)` },
                         { label: "Received", value: <span className={isShortage ? "font-bold text-status-held" : ""}>{boxesToPieces(item.scannedQty, spq).toLocaleString()} {item.uom || "PCS"} ({item.scannedQty} cartons)</span> },
                         { label: "Remarks", value: item.remarks ?? "—", className: "col-span-2" },
                       ]}
                     >
                       <div className="mt-3 border-t border-border pt-3">
-                        <WRRUnitLabelGenerator wrrItemId={item.id} wrrNumber={wrr.wrrNumber} itemCode={item.itemCode ?? item.lotNumber} lotNumber={item.lotNumber} cartonCount={item.cartonQty} spq={spq} uom={item.uom || "units"} />
+                        <WRRUnitLabelGenerator wrrItemId={item.id} wrrNumber={wrr.wrrNumber} itemCode={item.itemCode ?? item.lotNumber} lotNumber={item.lotNumber} cartonCount={item.cartonCount} spq={spq} uom={item.uom || "units"} />
                       </div>
                     </MobileDataCard>
                   );
@@ -449,7 +449,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                   <tbody className="divide-y divide-outline-variant/30">
                     {wrr.items.map((item: WrrItemRow) => {
                       const spq = Number(item.spq) || 1;
-                      const isShortage = item.scannedQty < item.cartonQty && wrr.status === "confirmed";
+                      const isShortage = item.scannedQty < item.cartonCount && wrr.status === "confirmed";
 
                       return (
                         <tr key={item.id} className="hover:bg-surface-light-grey/50">
@@ -468,7 +468,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                           <td className="px-4 py-3 font-body text-body-md text-on-surface">{item.expiryDate ?? "—"}</td>
                           <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
                             <span className="font-mono font-bold block">{item.expectedQty.toLocaleString()} {item.uom || "PCS"}</span>
-                            <span className="text-text-grey font-mono text-body-xs">({item.cartonQty} cartons)</span>
+                        <span className="text-text-grey font-mono text-body-xs">({item.cartonCount} cartons)</span>
                           </td>
                           <td className="px-4 py-3 text-right font-body text-body-md text-on-surface">
                             <span className={`font-mono font-bold block ${isShortage ? "text-status-held" : ""}`}>
@@ -485,7 +485,7 @@ export default async function WrrDetailPage({ params }: PageProps) {
                               wrrNumber={wrr.wrrNumber}
                               itemCode={item.itemCode ?? item.lotNumber}
                               lotNumber={item.lotNumber}
-                              cartonCount={item.cartonQty}
+                            cartonCount={item.cartonCount}
                               spq={spq}
                               uom={item.uom || "units"}
                             />

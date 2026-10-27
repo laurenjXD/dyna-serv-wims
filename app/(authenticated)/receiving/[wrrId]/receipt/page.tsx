@@ -33,7 +33,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
 
   const items = wrr.items || [];
   const receiptNumber = `IGR-${(wrr.wrrNumber || "00000").replace(/^WRR-/, "")}`;
-  const totalCartons = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.cartonQty) || 0), 0);
+  const totalCartons = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.cartonCount) || 0), 0);
   const totalPieces = items.reduce((sum, item) => {
     return sum + (Number(item.scannedQty) > 0 ? boxesToPieces(Number(item.scannedQty), item.spq) : Number(item.expectedQty) || 0);
   }, 0);
@@ -188,7 +188,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
             <tbody className="divide-y divide-slate-200">
               {wrr.items.map((item: WrrItemRow) => {
                 const spq = Number(item.spq) || 1;
-                const cartonCount = item.scannedQty > 0 ? item.scannedQty : item.cartonQty;
+                const cartonCount = item.scannedQty > 0 ? item.scannedQty : item.cartonCount;
                 const totalUnits = item.scannedQty > 0 ? boxesToPieces(cartonCount, spq) : item.expectedQty;
 
                 return (
