@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronRight, FileSpreadsheet, PackagePlus, Trash2, Upload } from "@/components/ui/icons";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { boxesToPieces, exactCartonCount, piecesToBoxes } from "@/lib/inventory/quantities";
@@ -11,11 +11,14 @@ type StockSource = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  supplierItemCode?: string | null;
+  dsgcItemNumber?: string | null;
   customerItemCode: string | null;
   organizationId: string | null;
   organizationName: string | null;
   flowType: "vmi" | "trading" | "supplies";
   uom: string;
+  volumeCbm?: string | number | null;
   spq: number;
   spqMeter?: string | number | null;
   manufactureDate?: string | null;
@@ -40,6 +43,164 @@ type FifoBoxAllocation = {
   availableBoxes: number;
   remainingBoxes: number;
 };
+
+type CatalogItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  supplierItemCode?: string | null;
+  dsgcItemNumber?: string | null;
+  customerItemCode: string | null;
+  uom: string;
+  spq: number;
+  volumeCbm?: string | number | null;
+  sources: StockSource[];
+};
+
+function itemCodeFor(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "dsgcItemNumber">, flowType: string) {
+  return flowType === "trading"
+    ? (item.dsgcItemNumber ?? item.itemCode)
+    : (item.supplierItemCode ?? item.itemCode);
+}
+
+function PickListItemSearch({
+  catalog,
+  flowType,
+  selectedItemId,
+  onSelectItem,
+  disabled = false,
+}: {
+  catalog: CatalogItem[];
+  flowType: string;
+  selectedItemId: string;
+  onSelectItem: (itemId: string) => void;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
+  const selectedItem = catalog.find((item) => item.itemId === selectedItemId);
+
+  useEffect(() => {
+    setInputValue(selectedItem ? itemCodeFor(selectedItem, flowType) : "");
+  }, [flowType, selectedItem]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const query = inputValue.trim().toLowerCase();
+  const filteredItems = catalog.filter((item) => {
+    if (!query) return true;
+    return [
+      itemCodeFor(item, flowType),
+      item.itemCode,
+      item.itemName,
+      item.customerItemCode,
+      item.supplierItemCode,
+      item.dsgcItemNumber,
+    ].some((value) => value?.toLowerCase().includes(query));
+  });
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div className="relative flex items-center">
+        <Search className="absolute left-3 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <input
+          type="text"
+          disabled={disabled}
+          value={inputValue}
+          role="combobox"
+          aria-label="Search item code"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          onFocus={() => {
+            if (!disabled) setIsOpen(true);
+          }}
+          onChange={(event) => {
+            const value = event.target.value;
+            setInputValue(value);
+            if (selectedItem && value !== itemCodeFor(selectedItem, flowType)) onSelectItem("");
+            if (!isOpen && !disabled) setIsOpen(true);
+          }}
+          placeholder={disabled ? "Select organization and model first" : "Type item code, description, or customer code…"}
+          className={`h-9 w-full rounded-lg border pl-8 pr-8 font-body text-xs text-slate-900 shadow-2xs outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 ${
+            disabled ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400" : "border-slate-200 bg-white"
+          }`}
+        />
+        <ChevronDown
+          onClick={() => {
+            if (!disabled) setIsOpen((open) => !open);
+          }}
+          className={`absolute right-2.5 h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""} ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+          aria-hidden="true"
+        />
+      </div>
+
+      {isOpen && !disabled && (
+        <div className="absolute left-0 right-0 z-50 mt-1 max-h-80 min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="border-b border-slate-100 bg-[#F0F4FF] px-3 py-2">
+            <p className="truncate font-label text-[10px] uppercase tracking-wider text-slate-500">
+              Available Item Recommendations ({filteredItems.length})
+            </p>
+          </div>
+          <div id={listboxId} role="listbox" className="max-h-64 overflow-y-auto divide-y divide-slate-100 p-1">
+            {filteredItems.length > 0 ? filteredItems.map((item) => {
+              const formattedCode = itemCodeFor(item, flowType);
+              const isSelected = item.itemId === selectedItemId;
+              const availableBoxes = item.sources.reduce(
+                (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
+                0,
+              );
+              return (
+                <button
+                  key={item.itemId}
+                  type="button"
+                  onClick={() => {
+                    onSelectItem(item.itemId);
+                    setInputValue(formattedCode);
+                    setIsOpen(false);
+                  }}
+                  className={`flex w-full items-start justify-between gap-3 rounded-lg p-2.5 text-left transition-colors ${isSelected ? "bg-brand-navy/10 text-brand-navy" : "text-slate-900 hover:bg-slate-50"}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-mono text-xs font-bold text-brand-navy">{formattedCode}</span>
+                      {item.customerItemCode && <span className="truncate font-mono text-[10px] text-slate-500">(Cust: {item.customerItemCode})</span>}
+                      <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-800">Available</span>
+                    </div>
+                    <p className="mt-0.5 truncate font-body text-xs text-slate-700">{item.itemName}</p>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-slate-500">
+                      <span>SPQ: {item.spq}</span>
+                      <span aria-hidden="true">•</span>
+                      <span>UOM: {item.uom}</span>
+                      <span aria-hidden="true">•</span>
+                      <span>CBM: {item.volumeCbm ?? "—"}</span>
+                      <span aria-hidden="true">•</span>
+                      <span>{availableBoxes} boxes available</span>
+                    </div>
+                  </div>
+                  {isSelected && <Check className="mt-1 h-4 w-4 shrink-0 text-brand-navy" aria-hidden="true" />}
+                </button>
+              );
+            }) : (
+              <div className="p-4 text-center">
+                <AlertCircle className="mx-auto h-7 w-7 text-rose-400" aria-hidden="true" />
+                <p className="mt-2 font-body text-xs font-semibold text-slate-800">No available item found</p>
+                <p className="mt-0.5 font-body text-[11px] text-slate-500">Try another item code, description, or customer code.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function allocateFifoBoxes(sources: StockSource[], requestedBoxes: number): FifoBoxAllocation[] {
   if (!Number.isInteger(requestedBoxes) || requestedBoxes <= 0) return [];
@@ -108,14 +269,16 @@ export function MultiItemPickListDraft({
     stock
       .filter((row) => row.organizationId === organizationId && row.flowType === flowType)
       .forEach((row) => grouped.set(row.itemId, [...(grouped.get(row.itemId) ?? []), row]));
-    return [...grouped.values()].map((sources) => ({
+    return [...grouped.values()].map((sources): CatalogItem => ({
       itemId: sources[0].itemId,
       itemCode: sources[0].itemCode,
       itemName: sources[0].itemName,
+      supplierItemCode: sources[0].supplierItemCode,
+      dsgcItemNumber: sources[0].dsgcItemNumber,
       customerItemCode: sources[0].customerItemCode,
       uom: sources[0].uom,
       spq: sources[0].spq,
-      spqMeter: sources[0].spqMeter,
+      volumeCbm: sources[0].volumeCbm,
       sources: sources
         .sort((a, b) => a.priority - b.priority)
         .map((source, index) => ({ ...source, priority: index + 1 })),
@@ -606,17 +769,20 @@ export function MultiItemPickListDraft({
               {lineDetails.map(({ line, item, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
                 <MobileDataCard
                   key={line.id}
-                  title={item?.itemCode || "Select an item"}
+                  title={item ? itemCodeFor(item, flowType) : "Select an item"}
                   subtitle={item?.itemName || "Item line requires selection"}
                   badge={<button type="button" onClick={() => removeLine(line.id)} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy" aria-label="Remove line"><Trash2 size={18} aria-hidden="true" /></button>}
                 >
                   <div className="mt-3 grid min-w-0 gap-3">
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                       Item Code
-                      <select value={line.itemId} onChange={(event) => updateLine(line.id, { itemId: event.target.value, totalUnits: "" })} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10">
-                        <option value="">Select item code…</option>
-                        {catalog.map((candidate) => <option key={candidate.itemId} value={candidate.itemId}>{candidate.itemCode}</option>)}
-                      </select>
+                      <PickListItemSearch
+                        catalog={catalog}
+                        flowType={flowType}
+                        selectedItemId={line.itemId}
+                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalUnits: "" })}
+                        disabled={!organizationId || !flowType}
+                      />
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
@@ -706,18 +872,13 @@ export function MultiItemPickListDraft({
                   <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* ITEM CODE */}
                     <td className="py-2.5 px-3 align-middle">
-                      <select
-                        value={line.itemId}
-                        onChange={(event) => updateLine(line.id, { itemId: event.target.value, totalUnits: "" })}
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 font-body text-xs text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
-                      >
-                        <option value="">Select item code…</option>
-                        {catalog.map((candidate) => (
-                          <option key={candidate.itemId} value={candidate.itemId}>
-                            {candidate.itemCode}
-                          </option>
-                        ))}
-                      </select>
+                      <PickListItemSearch
+                        catalog={catalog}
+                        flowType={flowType}
+                        selectedItemId={line.itemId}
+                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalUnits: "" })}
+                        disabled={!organizationId || !flowType}
+                      />
                     </td>
 
                     {/* SPQ (inherited from item enrollment; never manually adjusted) */}
