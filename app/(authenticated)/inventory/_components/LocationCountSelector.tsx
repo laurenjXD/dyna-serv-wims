@@ -41,13 +41,14 @@ export function LocationCountSelector({
     });
   }, [availableOnly, locations, query, stockOnly, zone]);
   const selected = locations.find((location) => location.id === selectedId) ?? null;
+  const hasLocationFilter = query.trim().length > 0 || zone !== "all" || !stockOnly || !availableOnly;
 
   return (
     <form action={createAction} className="mt-6 space-y-4">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto] lg:items-end">
         <div>
           <label htmlFor="cycle-count-location-search" className="font-label text-label font-semibold text-text-grey">
-            Search location
+            Find a location
           </label>
           <input
             id="cycle-count-location-search"
@@ -80,8 +81,16 @@ export function LocationCountSelector({
         </label>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {filteredLocations.map((location) => {
+      {!hasLocationFilter ? (
+        <div className="rounded-xl border border-dashed border-outline-variant bg-surface-low/40 p-5 text-center">
+          <p className="font-body text-body-sm font-semibold text-on-surface">Search or filter to choose a location</p>
+          <p className="mt-1 font-body text-body-sm text-text-grey">
+            Enter a location code, label, or zone, or choose a zone below. Only locations with recorded system stock are shown by default.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredLocations.map((location) => {
           const isSelected = selectedId === location.id;
           return (
             <button
@@ -104,12 +113,13 @@ export function LocationCountSelector({
               </p>
             </button>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
-      {filteredLocations.length === 0 && (
+      {hasLocationFilter && filteredLocations.length === 0 && (
         <p className="rounded-xl border border-dashed border-outline-variant p-5 text-center font-body text-body-sm text-text-grey">
-          No active locations match these filters. Try another zone or include empty locations.
+          No active locations match these filters. Try another search or include empty locations.
         </p>
       )}
 
