@@ -12,9 +12,10 @@
 // form inputs named `line_N_fieldName`. A hidden `lineCount` input tells the
 // server action how many lines to parse. The disposition is submitted as `store`.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 import { filterReceivingItemOptions } from "@/lib/receiving/item-selection";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 import { ItemSearchCombobox } from "./ItemSearchCombobox";
 
 export interface ImportedWrrLine {
@@ -83,6 +84,11 @@ export function WrrLineItems({
   importedLines?: ImportedWrrLine[];
 }) {
   const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
+  const codeFor = useCallback((item: WrrItemOption): string => {
+    return flowType === "trading"
+      ? (item.dsgcItemNumber ?? item.code)
+      : (item.supplierItemCode ?? item.code);
+  }, [flowType]);
 
   // Handle imported document lines automatically
   useEffect(() => {
@@ -146,15 +152,9 @@ export function WrrLineItems({
         unitCbm: item.volumeCbm,
       };
     }));
-  }, [flowType, importedLines, itemOptions]);
+  }, [codeFor, importedLines, itemOptions]);
 
   const availableItems = filterReceivingItemOptions(itemOptions, vendorPartyId);
-
-  function codeFor(item: WrrItemOption): string {
-    return flowType === "trading"
-      ? (item.dsgcItemNumber ?? item.code)
-      : (item.supplierItemCode ?? item.code);
-  }
 
   function chooseItem(index: number, itemId: string) {
     const item = availableItems.find((candidate) => candidate.id === itemId);
@@ -310,13 +310,11 @@ export function WrrLineItems({
                 <label htmlFor={`line-${index}-manufactureDate`} className="block font-label text-label text-text-grey">
                   Manufacturing Date
                 </label>
-                <input
+                <DatePickerField
                   id={`line-${index}-manufactureDate`}
                   name={`line_${index}_manufactureDate`}
-                  type="date"
                   value={line.manufactureDate}
-                  onChange={(e) => updateLine(index, "manufactureDate", e.target.value)}
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  onChange={(value) => updateLine(index, "manufactureDate", value)}
                 />
               </div>
 
@@ -325,14 +323,12 @@ export function WrrLineItems({
                 <label htmlFor={`line-${index}-expiryDate`} className="block font-label text-label text-text-grey">
                   Expiry Date {isPerishable && <span aria-hidden="true" className="text-brand-red">*</span>}
                 </label>
-                <input
+                <DatePickerField
                   id={`line-${index}-expiryDate`}
                   name={`line_${index}_expiryDate`}
-                  type="date"
-                  required={isPerishable}
                   value={line.expiryDate}
-                  onChange={(e) => updateLine(index, "expiryDate", e.target.value)}
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  required={isPerishable}
+                  onChange={(value) => updateLine(index, "expiryDate", value)}
                 />
                 {isPerishable && <p className="mt-1 text-xs text-status-warning">Required for perishable inventory.</p>}
               </div>
