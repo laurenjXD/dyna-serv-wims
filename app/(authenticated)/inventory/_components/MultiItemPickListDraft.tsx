@@ -123,7 +123,8 @@ export function MultiItemPickListDraft({
   };
 
   const request = useMemo(() => {
-    if (!organizationId || !customerPartyId || !flowType || lineDetails.length === 0) return "";
+    const effectiveCustomerPartyId = flowType === "vmi" ? organizationId : customerPartyId;
+    if (!organizationId || !effectiveCustomerPartyId || !flowType || lineDetails.length === 0) return "";
     if (flowType === "vmi" && !endCustomerPartyId) return "";
     const recipientPartyId = flowType === "supplies"
       ? organizationId
@@ -145,7 +146,7 @@ export function MultiItemPickListDraft({
     if (prepared.some((line) => !line.valid)) return "";
     return JSON.stringify({
       partyId: organizationId,
-      customerPartyId,
+      customerPartyId: effectiveCustomerPartyId,
       endCustomerPartyId: recipientPartyId,
       flowType,
       lines: prepared.map(({ valid: _valid, ...line }) => line),
@@ -160,7 +161,8 @@ export function MultiItemPickListDraft({
 
   const overrideRequest = useMemo(() => {
     const alternate = alternateLines[0];
-    if (!canRequestOverride || !organizationId || !customerPartyId || !flowType || !alternate?.source) return "";
+    const effectiveCustomerPartyId = flowType === "vmi" ? organizationId : customerPartyId;
+    if (!canRequestOverride || !organizationId || !effectiveCustomerPartyId || !flowType || !alternate?.source) return "";
     if (flowType === "vmi" && !endCustomerPartyId) return "";
     const qty = Number(alternate.line.qty);
     if (
@@ -173,7 +175,7 @@ export function MultiItemPickListDraft({
       : flowType === "trading" ? customerPartyId : endCustomerPartyId;
     return JSON.stringify({
       partyId: organizationId,
-      customerPartyId,
+      customerPartyId: effectiveCustomerPartyId,
       endCustomerPartyId: recipientPartyId,
       flowType,
       lines: [{ itemId: alternate.line.itemId, lotId: alternate.source.lotId, locationId: alternate.source.locationId, qty: boxesToPieces(qty, alternate.item?.spq ?? 1) }],
@@ -197,7 +199,7 @@ export function MultiItemPickListDraft({
     );
     if (availableFlows.length > 0) {
       setFlowType(availableFlows[0]);
-      setCustomerPartyId(availableFlows[0] === "supplies" ? value : "");
+      setCustomerPartyId(availableFlows[0] === "vmi" || availableFlows[0] === "supplies" ? value : "");
       setEndCustomerPartyId(availableFlows[0] === "supplies" ? value : "");
     } else {
       setFlowType("");
@@ -208,7 +210,7 @@ export function MultiItemPickListDraft({
   const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => {
     setFlowType(value);
     resetDraft();
-    if (value === "supplies") {
+    if (value === "vmi" || value === "supplies") {
       setCustomerPartyId(organizationId);
       setEndCustomerPartyId(organizationId);
     } else {
@@ -321,6 +323,10 @@ export function MultiItemPickListDraft({
         message: "Please select Organization and Inventory Model first, or upload a DRA matching active stock.",
       });
       return;
+    }
+
+    if (targetFlow === "vmi" || targetFlow === "supplies") {
+      setCustomerPartyId(targetOrgId);
     }
 
     const availableStock = stock.filter((s) => s.organizationId === targetOrgId && s.flowType === targetFlow);
@@ -523,43 +529,47 @@ export function MultiItemPickListDraft({
             </label>
           )}
 
-          <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-            {flowType === "vmi" ? "VMI Customer / Stock Owner" : flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
-            <select
-              value={customerPartyId}
-              onChange={(event) => {
-                const nextCustomerId = event.target.value;
-                setCustomerPartyId(nextCustomerId);
-                setEndCustomerPartyId(
-                  flowType === "trading"
-                    ? nextCustomerId
-                    : endCustomers.some((party) => party.id === nextCustomerId) ? nextCustomerId : "",
-                );
-              }}
-              required={flowType !== "supplies"}
-              disabled={flowType === "supplies"}
-              className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
-            >
-              <option value="">Select customer…</option>
-              {flowType === "supplies" && (
-                <option value={organizationId}>
-                  {organizations.find((organization) => organization.id === organizationId)?.name ?? "Internal Supplies Organization"}
-                </option>
-              )}
-              {visibleCustomers.map((customer) => (
-                <option key={`${customer.id}:${customer.relationship}`} value={customer.id}>
-                  {customer.name} — {customer.relationship === "vmi_customer" ? "Customer · VMI" : customer.relationship === "trading_customer" ? "Customer · Trading" : "Customer"}
-                </option>
-              ))}
-            </select>
-            <span className="font-body text-[11px] font-normal text-slate-500">
-              {flowType === "vmi"
-                ? "The VMI customer owns the selected stock; choose the downstream recipient above."
-                : flowType === "supplies"
+          {flowType === "vmi" ? (
+            <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+              VMI Customer / Stock Owner
+              <div className="flex h-11 min-w-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-body text-sm text-slate-700">
+                {organizations.find((organization) => organization.id === organizationId)?.name ?? "Selected Organization"}
+              </div>
+              <span className="font-body text-[11px] font-normal text-slate-500">Inherited from Organization; the selected Organization owns the VMI stock.</span>
+            </div>
+          ) : (
+            <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+              {flowType === "supplies" ? "Internal Supplies Organization" : "Trading Customer / Recipient"}
+              <select
+                value={customerPartyId}
+                onChange={(event) => {
+                  const nextCustomerId = event.target.value;
+                  setCustomerPartyId(nextCustomerId);
+                  setEndCustomerPartyId(flowType === "trading" ? nextCustomerId : organizationId);
+                }}
+                required={flowType !== "supplies"}
+                disabled={flowType === "supplies"}
+                className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="">Select customer…</option>
+                {flowType === "supplies" && (
+                  <option value={organizationId}>
+                    {organizations.find((organization) => organization.id === organizationId)?.name ?? "Internal Supplies Organization"}
+                  </option>
+                )}
+                {visibleCustomers.map((customer) => (
+                  <option key={`${customer.id}:${customer.relationship}`} value={customer.id}>
+                    {customer.name} — {customer.relationship === "trading_customer" ? "Customer · Trading" : "Customer"}
+                  </option>
+                ))}
+              </select>
+              <span className="font-body text-[11px] font-normal text-slate-500">
+                {flowType === "supplies"
                   ? "The Internal Supplies Organization is the consuming recipient."
                   : "The trading customer is both the bill-to and delivery recipient."}
-            </span>
-          </label>
+              </span>
+            </label>
+          )}
 
           <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
             <div className="flex items-center justify-between">

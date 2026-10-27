@@ -328,12 +328,17 @@ export async function commitWithdrawal(
     rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
 
+    // VMI stock ownership is the selected source Organization. The UI no
+    // longer accepts a second customer selector for this flow, and the
+    // server normalizes direct/tampered payloads to the same organization.
+    const customerPartyId = data.flowType === "vmi" ? data.partyId : data.customerPartyId;
+
     const recipientPartyId = data.flowType === "supplies"
       ? data.partyId
       : data.flowType === "trading"
-        ? data.customerPartyId
+        ? customerPartyId
         : data.endCustomerPartyId;
-    const organizationIds = [...new Set([data.partyId, data.customerPartyId, recipientPartyId])];
+    const organizationIds = [...new Set([data.partyId, customerPartyId, recipientPartyId])];
     const organizationRows = (await db
       .select({
         id: parties.id,
@@ -359,7 +364,7 @@ export async function commitWithdrawal(
     // while preventing a supplier from being used as a customer relationship.
     const sourceValidation = validateReceivingOrganization(rowsFor(data.partyId), data.partyId, data.flowType);
     if (!sourceValidation.ok) throw new Error(sourceValidation.error);
-    const customerValidation = validateOutboundOrganization(rowsFor(data.customerPartyId), data.customerPartyId, data.flowType);
+    const customerValidation = validateOutboundOrganization(rowsFor(customerPartyId), customerPartyId, data.flowType);
     if (!customerValidation.ok) throw new Error(customerValidation.error);
     if (data.flowType === "vmi") {
       const endCustomerValidation = validateVmiEndCustomer(rowsFor(data.endCustomerPartyId), data.endCustomerPartyId);
@@ -525,7 +530,7 @@ export async function commitWithdrawal(
       .values({
         ...(overridePickListId ? { id: overridePickListId } : {}),
         pickListNumber,
-        customerPartyId: data.customerPartyId,
+        customerPartyId,
         endCustomerPartyId: recipientPartyId,
         flowType: data.flowType,
         // Commitment reserves the stock but does not certify that warehouse
@@ -586,7 +591,7 @@ export async function commitWithdrawal(
       // reference and Supplies carries no price, so neither enters this path.
       if (data.flowType === "trading") {
         const price = await freezeTradingPriceInTransaction(db, {
-          partyId: data.customerPartyId,
+          partyId: customerPartyId,
           itemId: line.itemId,
           pickListItemId,
           qty: String(line.qty),
