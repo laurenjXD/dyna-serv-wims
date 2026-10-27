@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ClientRouteRedirect } from "@/app/(authenticated)/_components/ClientRouteRedirect";
 
 export default function TradingPoliciesRedirectPage() {
-  redirect("/billing-pricing?section=configuration&subtab=logistics");
+  return <ClientRouteRedirect href="/billing-pricing?section=configuration&subtab=logistics" />;
 }

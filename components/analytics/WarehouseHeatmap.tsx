@@ -101,7 +101,11 @@ export function WarehouseHeatmap({
       </div>
 
       {/* 2D Grid Table */}
-      <div className="relative overflow-x-auto">
+      {rows.length === 0 || columns.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center font-body text-sm text-text-grey">
+          No live location data is available for this analysis.
+        </div>
+      ) : <div className="relative overflow-x-auto">
         <table className="w-full border-collapse text-center">
           <thead>
             <tr>
@@ -145,7 +149,7 @@ export function WarehouseHeatmap({
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {/* Cell Hover Summary Footer */}
       <div className="mt-3 flex min-h-6 items-center justify-between border-t border-slate-100 pt-2 text-xs">

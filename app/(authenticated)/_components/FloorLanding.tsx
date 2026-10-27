@@ -45,6 +45,7 @@ export function FloorLanding({
   openPickLists,
   pendingTransfers,
   openInspections,
+  dataUnavailable = false,
   isOnline = true,
   pendingSyncCount = 0,
   workQueue = [],
@@ -52,10 +53,11 @@ export function FloorLanding({
   firstName: string;
   greeting: string;
   dateString: string;
-  openWrrs: number;
-  openPickLists: number;
-  pendingTransfers: number;
-  openInspections: number;
+  openWrrs: number | null;
+  openPickLists: number | null;
+  pendingTransfers: number | null;
+  openInspections: number | null;
+  dataUnavailable?: boolean;
   isOnline?: boolean;
   pendingSyncCount?: number;
   workQueue?: SmartWorkItem[];
@@ -66,6 +68,11 @@ export function FloorLanding({
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-5 sm:px-6 sm:py-6">
+      {dataUnavailable && (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900">
+          Some live work counts are unavailable. Values are withheld until the warehouse data source responds.
+        </div>
+      )}
       {/* ── Header: Greeting & Status ───────────────────────────────────────── */}
       <header className="flex items-center justify-between gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-4 sm:p-5 shadow-elevation-1">
         <div>
@@ -118,7 +125,7 @@ export function FloorLanding({
                 <PackageCheck size={20} />
               </span>
               <span className="font-heading text-2xl sm:text-3xl font-bold text-on-surface">
-                {openWrrs}
+                {openWrrs ?? "—"}
               </span>
             </div>
             <div className="mt-3">
@@ -138,7 +145,7 @@ export function FloorLanding({
                 <ListChecks size={20} />
               </span>
               <span className="font-heading text-2xl sm:text-3xl font-bold text-on-surface">
-                {openPickLists}
+                {openPickLists ?? "—"}
               </span>
             </div>
             <div className="mt-3">
@@ -158,7 +165,7 @@ export function FloorLanding({
                 <ArrowLeftRight size={20} />
               </span>
               <span className="font-heading text-2xl sm:text-3xl font-bold text-on-surface">
-                {pendingTransfers}
+                {pendingTransfers ?? "—"}
               </span>
             </div>
             <div className="mt-3">
@@ -178,7 +185,7 @@ export function FloorLanding({
                 <FlaskConical size={20} />
               </span>
               <span className="font-heading text-2xl sm:text-3xl font-bold text-on-surface">
-                {openInspections}
+                {openInspections ?? "—"}
               </span>
             </div>
             <div className="mt-3">

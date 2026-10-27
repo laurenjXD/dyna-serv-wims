@@ -145,7 +145,7 @@ describe("LabelPrinter (specs/18-barcode-integration FR-3.1, FR-3.2, AC-3)", () 
     const printButton = screen.getByRole("button", { name: /print/i });
     await userEvent.click(printButton);
 
-    expect(printSpy).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(printSpy).toHaveBeenCalledOnce());
   });
 
   // -------------------------------------------------------------------------

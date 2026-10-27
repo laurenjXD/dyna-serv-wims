@@ -169,7 +169,7 @@ function makeSelectChain(rows: unknown[]): any {
 
 // Minimal valid location input.
 const validLocationInput = {
-  zone: "A",
+  zone: "storage",
   rack: "A",
   level: "1",
   position: "01",

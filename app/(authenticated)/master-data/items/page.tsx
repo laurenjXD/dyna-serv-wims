@@ -14,7 +14,7 @@
 //   specs/06-party-and-item-enrollment/design.md §7
 //   specs/00-steering/revision-log.md (2026-08-11 Master Data nav consolidation)
 
-import { redirect } from "next/navigation";
+import { ClientRouteRedirect } from "@/app/(authenticated)/_components/ClientRouteRedirect";
 
 interface PageProps {
   searchParams: Promise<{ search?: string; page?: string }>;
@@ -27,5 +27,5 @@ export default async function ItemsPage({ searchParams }: PageProps) {
   if (search) params.set("search", search);
   if (page) params.set("page", page);
 
-  redirect(`/enrollment?${params.toString()}`);
+  return <ClientRouteRedirect href={`/enrollment?${params.toString()}`} />;
 }

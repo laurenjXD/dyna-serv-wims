@@ -86,7 +86,7 @@ export default async function LocationDetailPage({
           <PageBreadcrumb
             backHref="/enrollment?tab=locations"
             backLabel="Locations"
-            currentLabel={location.label}
+            currentLabel={location.label ?? location.zone.toUpperCase()}
           />
           {/*
             <ol className="flex items-center gap-1 font-body text-body-sm text-text-grey">
@@ -100,12 +100,12 @@ export default async function LocationDetailPage({
               </li>
               <li aria-hidden="true">/</li>
               <li aria-current="page" className="text-on-surface">
-                {location.label}
+                {location.label ?? location.zone.toUpperCase()}
               </li>
             </ol>
           </nav>*/}
           <h1 className="font-heading font-extrabold text-headline-xl text-on-surface">
-            {location.label}
+            {location.label ?? location.zone.toUpperCase()}
           </h1>
           <p className="mt-1 font-body text-body-md text-text-grey capitalize">
             {location.locationType.replace(/_/g, " ")} — Zone {location.zone}
@@ -120,7 +120,7 @@ export default async function LocationDetailPage({
           </Link>
         )}
         <Link
-          href={`/enrollment?tab=locations&view=map&label=${encodeURIComponent(location.label)}`}
+          href={location.label ? `/enrollment?tab=locations&view=map&label=${encodeURIComponent(location.label)}` : "/enrollment?tab=locations"}
           className="inline-flex h-11 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-4 font-label text-label text-brand-navy hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
         >
           <MapPinned size={16} aria-hidden="true" />

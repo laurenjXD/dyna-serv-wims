@@ -28,14 +28,6 @@ export function TradingCapitalSection({
   const [agingFilter, setAgingFilter] = useState<"all" | "90plus">("all");
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const sampleWaterfallData: WaterfallDatum[] = [
-    { label: "Purchase Price", value: 12500, type: "base" },
-    { label: "Freight & Customs", value: 1800, type: "addition" },
-    { label: "Inbound Handling", value: 650, type: "addition" },
-    { label: "Storage Accrual", value: 950, type: "addition" },
-    { label: "Total Landed Cost", value: 0, type: "total" },
-  ];
-
   const filteredAging = useMemo(() => {
     return agingFilter === "90plus"
       ? agingRows.filter((r) => r.qty90PlusDays > 0)
@@ -205,7 +197,9 @@ export function TradingCapitalSection({
             </p>
           </div>
           <div className="h-72 w-full">
-            <WaterfallChart data={sampleWaterfallData} currency="₱" height={280} />
+            <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center font-body text-sm text-text-grey">
+              No landed-cost ledger data is available for this period.
+            </div>
           </div>
         </div>
 

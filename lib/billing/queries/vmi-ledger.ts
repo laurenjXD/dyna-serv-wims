@@ -67,6 +67,40 @@ type RawLedgerRow = {
   storage_amount_usd: string;
 };
 
+type RawBillingPeriodRow = {
+  id: string;
+  periodNumber: string;
+  partyId: string;
+  partyName: string;
+  partyCode: string;
+  periodStartDate: string;
+  periodEndDate: string;
+  status: string;
+  billingStatementTotalUsd: string | number | null;
+  soaClosingBalanceUsd: string | number | null;
+  lockedExchangeRatePhp: string | number | null;
+  createdAt: Date | string;
+};
+
+type RawChargeLineRow = {
+  id: string;
+  partyId: string;
+  chargeType: string;
+  amount: string | number | null;
+  currency: string;
+  source: string;
+  notes: string | null;
+  createdAt: Date | string;
+};
+
+type RawManpowerRow = {
+  hours: string | number | null;
+  notes: string | null;
+  recurringFeeLineId: string;
+};
+
+type RawRateRow = { rate: string | number | null };
+
 // ---------------------------------------------------------------------------
 // monthDateBounds — pure helper. `month` is 0-indexed (matches
 // `Date.getMonth()` / the page's `MONTHS` array). Returns the calendar
@@ -249,7 +283,7 @@ export async function listVmiBillingPeriods(
   database: DbLike = db,
 ): Promise<VmiBillingPeriodRow[]> {
   try {
-    const query = database
+    let query = database
       .select({
         id: vmiBillingPeriods.id,
         periodNumber: vmiBillingPeriods.periodNumber,
@@ -265,15 +299,15 @@ export async function listVmiBillingPeriods(
         createdAt: vmiBillingPeriods.createdAt,
       })
       .from(vmiBillingPeriods)
-      .innerJoin(parties, eq(parties.id, vmiBillingPeriods.partyId))
-      .orderBy(desc(vmiBillingPeriods.createdAt))
-      .limit(limit);
+      .innerJoin(parties, eq(parties.id, vmiBillingPeriods.partyId));
 
     if (partyId) {
-      query.where(eq(vmiBillingPeriods.partyId, partyId));
+      query = query.where(eq(vmiBillingPeriods.partyId, partyId));
     }
 
-    const rawRows = (await query) as Record<string, any>[];
+    query = query.orderBy(desc(vmiBillingPeriods.createdAt)).limit(limit);
+
+    const rawRows = (await query) as RawBillingPeriodRow[];
 
     return rawRows.map((r) => ({
       id: r.id,
@@ -332,7 +366,7 @@ export async function getVmiChargeLinesForPeriod(
           lte(vmiChargeLines.createdAt, new Date(endDate + "T23:59:59.999Z")),
         ),
       )
-      .orderBy(vmiChargeLines.createdAt)) as Record<string, any>[];
+      .orderBy(vmiChargeLines.createdAt)) as RawChargeLineRow[];
 
     return rawRows.map((r) => ({
       id: r.id,
@@ -378,7 +412,7 @@ export async function getVmiManpowerForPeriod(
           eq(vmiManpowerHoursLog.periodEndDate, endDate),
         ),
       )
-      .limit(1)) as Record<string, any>[];
+      .limit(1)) as RawManpowerRow[];
 
     if (logs.length === 0) {
       return { hours: 0, ratePerHour: 10, totalAmountUsd: 0, notes: null };
@@ -392,7 +426,7 @@ export async function getVmiManpowerForPeriod(
       .select({ rate: vmiRecurringFeeLines.manpowerRatePerHour })
       .from(vmiRecurringFeeLines)
       .where(eq(vmiRecurringFeeLines.id, log.recurringFeeLineId))
-      .limit(1)) as Record<string, any>[];
+      .limit(1)) as RawRateRow[];
 
     const ratePerHour = feeLine.length > 0 && feeLine[0].rate ? Number(feeLine[0].rate) : 10;
     const totalAmountUsd = hours * ratePerHour;

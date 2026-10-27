@@ -10,17 +10,18 @@ describe("locations.ts — locations table (Req 10)", () => {
     expect(tableName(locations)).toBe("locations");
   });
 
-  it("has notNull zone, rack, level, position", async () => {
+  it("has notNull zone while rack coordinates are nullable for RCV/Hold", async () => {
     const { locations } = await import("../locations");
-    for (const key of ["zone", "rack", "level", "position"]) {
-      expect(column(locations, key).notNull).toBe(true);
+    expect(column(locations, "zone").notNull).toBe(true);
+    for (const key of ["rack", "level", "position"]) {
+      expect(column(locations, key).notNull).toBe(false);
     }
   });
 
-  it("has label as notNull + unique (Rack+Level-Position format e.g. A1-01)", async () => {
+  it("has nullable unique label (Rack+Level-Position for storage only)", async () => {
     const { locations } = await import("../locations");
     const label = column(locations, "label");
-    expect(label.notNull).toBe(true);
+    expect(label.notNull).toBe(false);
     expect(label.isUnique).toBe(true);
   });
 
@@ -38,9 +39,9 @@ describe("locations.ts — locations table (Req 10)", () => {
     ]);
   });
 
-  it("has maxCbmCapacity as notNull", async () => {
+  it("has nullable maxCbmCapacity for RCV/Hold", async () => {
     const { locations } = await import("../locations");
-    expect(column(locations, "maxCbmCapacity").notNull).toBe(true);
+    expect(column(locations, "maxCbmCapacity").notNull).toBe(false);
   });
 
   it("has isActive notNull with a default", async () => {

@@ -19,9 +19,9 @@ export default async function NewLocationPage() {
   const { rows } = await listLocations(db, { limit: 5000, offset: 0 });
   const suggestions = {
     zones: [...new Set(rows.map((row) => row.zone))].sort(),
-    racks: [...new Set(rows.map((row) => row.rack))].sort(),
-    levels: [...new Set(rows.map((row) => row.level))].sort(),
-    positions: [...new Set(rows.map((row) => row.position))].sort(),
+    racks: [...new Set(rows.map((row) => row.rack).filter((value): value is string => Boolean(value)))].sort(),
+    levels: [...new Set(rows.map((row) => row.level).filter((value): value is string => Boolean(value)))].sort(),
+    positions: [...new Set(rows.map((row) => row.position).filter((value): value is string => Boolean(value)))].sort(),
   };
 
   return (

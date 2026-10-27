@@ -27,6 +27,29 @@ export type TradingPriceFreezeResult =
   | { ok: true; sellPrice: string; currency: string; snapshotHash: string }
   | { ok: false; error: "no_rate_configured" | "fx_rate_required" | "price_invalid" };
 
+type TradingPolicyRecord = {
+  id: string;
+  partyId: string;
+  itemId: string;
+  buyCost: string | number;
+  buyCurrency: string;
+  marginType: TradingPolicyRow["marginType"];
+  marginValue: string | number;
+  sellPrice: string | number;
+  sellPriceIsOverride: boolean;
+  sellCurrency: string;
+  fxSource: string | null;
+  isActive: boolean;
+  effectiveFrom: Date | string;
+  effectiveTo: Date | string | null;
+};
+
+type ForexRateRecord = {
+  effectiveDate: Date | string;
+  source: string | null;
+  usdToPhpRate: string | number;
+};
+
 function hashSnapshot(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
@@ -41,7 +64,7 @@ function invertRate(value: string): string {
   return `${raw.slice(0, -scale)}.${raw.slice(-scale)}`;
 }
 
-function resolveForex(rows: Array<Record<string, any>>, buyCurrency: string, sellCurrency: string) {
+function resolveForex(rows: ForexRateRecord[], buyCurrency: string, sellCurrency: string) {
   if (rows.length === 0) return undefined;
   const latest = rows.reduce((best, row) =>
     new Date(row.effectiveDate).getTime() > new Date(best.effectiveDate).getTime() ? row : best,
@@ -72,7 +95,7 @@ export async function freezeTradingPriceInTransaction(
     .where(and(
       eq(tradingPolicies.partyId, input.partyId),
       eq(tradingPolicies.itemId, input.itemId),
-    ))) as Array<Record<string, any>>;
+  ))) as TradingPolicyRecord[];
 
   const policies: TradingPolicyRow[] = policyRows.map((row) => ({
     id: row.id,
@@ -96,7 +119,7 @@ export async function freezeTradingPriceInTransaction(
 
   let fxRate: { rate: string; source: string } | undefined;
   if (resolved.policy.buyCurrency !== resolved.policy.sellCurrency) {
-    const rows = (await db.select().from(forexRates)) as Array<Record<string, any>>;
+    const rows = (await db.select().from(forexRates)) as ForexRateRecord[];
     fxRate = resolveForex(rows, resolved.policy.buyCurrency, resolved.policy.sellCurrency);
     if (!fxRate) return { ok: false, error: "fx_rate_required" };
   }

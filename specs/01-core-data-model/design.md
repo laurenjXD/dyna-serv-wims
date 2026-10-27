@@ -1,6 +1,6 @@
 # Core Data Model — Design
 Status: Approved
-Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
 
 ## 1. Data Model & Schema Definitions
@@ -306,16 +306,21 @@ import { locationTypeEnum } from "./enums";
 export const locations = pgTable("locations", {
   id: uuid("id").primaryKey().defaultRandom(),
   zone: varchar("zone", { length: 50 }).notNull(),
-  rack: varchar("rack", { length: 50 }).notNull(),
-  level: varchar("level", { length: 50 }).notNull(),
-  position: varchar("position", { length: 50 }).notNull(),
-  label: varchar("label", { length: 100 }).notNull().unique(), // Format: Rack+Level-Position (e.g. 'A1-01' for Rack A, Level 1, Position 01)
+  rack: varchar("rack", { length: 50 }),
+  level: varchar("level", { length: 50 }),
+  position: varchar("position", { length: 50 }),
+  label: varchar("label", { length: 100 }).unique(), // Storage only: Rack+Level-Position (e.g. 'A1-01')
   locationType: locationTypeEnum("location_type").default("storage").notNull(),
-  maxCbmCapacity: decimal("max_cbm_capacity", { precision: 10, scale: 4 }).notNull(),
+  maxCbmCapacity: decimal("max_cbm_capacity", { precision: 10, scale: 4 }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 ```
+
+The 2026-10-23 zone-only amendment is pending reapproval: `zone` is limited
+to `storage`, `rcv`, and `hold`; storage rows require rack A–I, level 1–4,
+position A 1–30/B–I 1–15, and positive capacity; RCV/Hold rows are tracking
+only and keep rack, level, position, label, and capacity NULL.
 
 #### `lots` (`lib/db/schema/lots.ts`)
 ```typescript
@@ -398,8 +403,8 @@ export const wrrItems = pgTable("wrr_items", {
   lotNumber: varchar("lot_number", { length: 100 }).notNull(), // Source business lot number from the WRR
   manufactureDate: date("manufacture_date"), // Supplier-declared manufacturing date, copied to lots at receipt
   remarks: text("remarks"), // Receiving/CIPL line remarks; never an inventory adjustment
-  expectedQty: integer("expected_qty").notNull(),
-  scannedQty: integer("scanned_qty").default(0).notNull(),
+  expectedQty: integer("expected_qty").notNull(), // Total base units; complete-carton QR count is derived as expected_qty / items.spq
+  scannedQty: integer("scanned_qty").default(0).notNull(), // Accepted physical carton scans
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),
   disposition: text("disposition").default("store").notNull(),

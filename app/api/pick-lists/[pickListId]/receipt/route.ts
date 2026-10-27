@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
-import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -102,7 +102,7 @@ export async function GET(
   const drNumber = `DR-${pickList.pickListNumber.replace(/^PL-/, "")}`;
   const template = await getDocumentTemplate(db);
 
-  let logoImage: any = null;
+  let logoImage: PDFImage | undefined;
   try {
     const logoPath = template.logoUrl?.startsWith("/") ? template.logoUrl.slice(1) : "logo-hd.png";
     const logoPng = await readFile(path.join(process.cwd(), "public", logoPath));

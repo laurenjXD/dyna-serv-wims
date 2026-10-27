@@ -24,7 +24,7 @@
 //     confirmed target (2026-08-17)"
 //   specs/11-transfer-and-inspection/requirements.md R2.2
 
-import { redirect } from "next/navigation";
+import { ClientRouteRedirect } from "@/app/(authenticated)/_components/ClientRouteRedirect";
 
 export default async function TransferListPage({
   searchParams,
@@ -33,5 +33,5 @@ export default async function TransferListPage({
 }) {
   await searchParams;
 
-  redirect("/inventory?tab=inspection");
+  return <ClientRouteRedirect href="/inventory?tab=inspection" />;
 }

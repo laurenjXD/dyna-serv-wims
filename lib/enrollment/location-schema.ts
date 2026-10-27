@@ -10,11 +10,11 @@ import { WAREHOUSE_RACK_LIMITS } from "@/lib/location-map/layout";
 
 export type LocationInput = {
   zone: string;
-  rack: string;
-  level: string;
-  position: string;
+  rack: string | null;
+  level: string | null;
+  position: string | null;
   locationType: "receiving_bay" | "inspection" | "storage" | "picking" | "dispatch";
-  maxCbmCapacity: string;
+  maxCbmCapacity: string | null;
   isActive: boolean;
 };
 
@@ -31,6 +31,16 @@ const VALID_LOCATION_TYPES = [
   "picking",
   "dispatch",
 ] as const;
+
+export const VALID_LOCATION_ZONES = ["storage", "rcv", "hold"] as const;
+export const VALID_RACKS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"] as const;
+export const VALID_LEVELS = ["1", "2", "3", "4"] as const;
+
+export type LocationZone = (typeof VALID_LOCATION_ZONES)[number];
+
+export function maxPositionForRack(rack: string): number {
+  return rack === "A" ? 30 : 15;
+}
 
 /**
  * Produces the canonical Rack+Level-Position label.
@@ -64,36 +74,72 @@ export function parseLocationInput(input: unknown): ParseResult<LocationInput> {
 
   const raw = input as Record<string, unknown>;
 
-  // zone — varchar(50) NOT NULL
+  // zone — the only supported zone values
   const zone = raw["zone"];
   if (zone === undefined || zone === null || zone === "") {
     errors.push({ field: "zone", message: "Zone is required." });
   } else if (typeof zone !== "string") {
     errors.push({ field: "zone", message: "Zone must be a string." });
+  } else if (!(VALID_LOCATION_ZONES as readonly string[]).includes(zone.trim())) {
+    errors.push({ field: "zone", message: "Zone must be Storage, RCV, or Hold." });
   }
 
-  // rack — varchar(50) NOT NULL
+  const resolvedZone = typeof zone === "string" ? zone.trim() as LocationZone : null;
+
+  // Rack-specific fields are required only for storage rows.
   const rack = raw["rack"];
-  if (rack === undefined || rack === null || rack === "") {
-    errors.push({ field: "rack", message: "Rack is required." });
-  } else if (typeof rack !== "string") {
-    errors.push({ field: "rack", message: "Rack must be a string." });
-  }
-
-  // level — varchar(50) NOT NULL
   const level = raw["level"];
-  if (level === undefined || level === null || level === "") {
-    errors.push({ field: "level", message: "Level is required." });
-  } else if (typeof level !== "string") {
-    errors.push({ field: "level", message: "Level must be a string." });
-  }
-
-  // position — varchar(50) NOT NULL
   const position = raw["position"];
-  if (position === undefined || position === null || position === "") {
-    errors.push({ field: "position", message: "Position is required." });
-  } else if (typeof position !== "string") {
-    errors.push({ field: "position", message: "Position must be a string." });
+  const maxCbmCapacity = raw["maxCbmCapacity"];
+
+  if (resolvedZone === "storage") {
+    if (rack === undefined || rack === null || rack === "") {
+      errors.push({ field: "rack", message: "Rack is required for Storage." });
+    } else if (typeof rack !== "string") {
+      errors.push({ field: "rack", message: "Rack must be a string." });
+    } else if (!(VALID_RACKS as readonly string[]).includes(rack.trim().toUpperCase())) {
+      errors.push({ field: "rack", message: "Rack must be one of A through I." });
+    }
+
+    if (level === undefined || level === null || level === "") {
+      errors.push({ field: "level", message: "Level is required for Storage." });
+    } else if (typeof level !== "string") {
+      errors.push({ field: "level", message: "Level must be a string." });
+    } else if (!(VALID_LEVELS as readonly string[]).includes(level.trim())) {
+      errors.push({ field: "level", message: "Level must be between 1 and 4." });
+    }
+
+    if (position === undefined || position === null || position === "") {
+      errors.push({ field: "position", message: "Position is required for Storage." });
+    } else if (typeof position !== "string" || !/^\d{1,2}$/.test(position.trim())) {
+      errors.push({ field: "position", message: "Position must be a whole number." });
+    } else if (typeof rack === "string") {
+      const positionNumber = Number(position.trim());
+      const maxPosition = maxPositionForRack(rack.trim().toUpperCase());
+      if (positionNumber < 1 || positionNumber > maxPosition) {
+        errors.push({
+          field: "position",
+          message: `Rack ${rack.trim().toUpperCase()} supports positions 1-${maxPosition}.`,
+        });
+      }
+    }
+
+    if (maxCbmCapacity === undefined || maxCbmCapacity === null || maxCbmCapacity === "") {
+      errors.push({ field: "maxCbmCapacity", message: "Maximum CBM capacity is required for Storage." });
+    } else if (typeof maxCbmCapacity !== "string") {
+      errors.push({ field: "maxCbmCapacity", message: "Maximum CBM capacity must be a decimal string." });
+    } else {
+      const parsed = parseFloat(maxCbmCapacity);
+      if (isNaN(parsed) || parsed <= 0) {
+        errors.push({ field: "maxCbmCapacity", message: "Maximum CBM capacity must be a positive decimal value." });
+      }
+    }
+  } else if (resolvedZone === "rcv" || resolvedZone === "hold") {
+    for (const [field, value] of [["rack", rack], ["level", level], ["position", position], ["maxCbmCapacity", maxCbmCapacity]] as const) {
+      if (value !== undefined && value !== null && value !== "") {
+        errors.push({ field, message: `${field} must be blank for ${resolvedZone.toUpperCase()} tracking.` });
+      }
+    }
   }
 
   // locationType — enum, defaults to 'storage'
@@ -113,39 +159,21 @@ export function parseLocationInput(input: unknown): ParseResult<LocationInput> {
     }
   }
 
-  // maxCbmCapacity — decimal(10,4) NOT NULL, must be positive
-  const maxCbmCapacity = raw["maxCbmCapacity"];
-  if (maxCbmCapacity === undefined || maxCbmCapacity === null || maxCbmCapacity === "") {
-    errors.push({
-      field: "maxCbmCapacity",
-      message: "Maximum CBM capacity is required.",
-    });
-  } else if (typeof maxCbmCapacity !== "string") {
-    errors.push({
-      field: "maxCbmCapacity",
-      message: "Maximum CBM capacity must be a decimal string.",
-    });
-  } else {
-    const parsed = parseFloat(maxCbmCapacity);
-    if (isNaN(parsed) || parsed <= 0) {
-      errors.push({
-        field: "maxCbmCapacity",
-        message: "Maximum CBM capacity must be a positive decimal value.",
-      });
-    }
-  }
-
   if (errors.length > 0) {
     return { success: false, errors };
   }
 
+  const normalizedRack = resolvedZone === "storage" ? (rack as string).trim().toUpperCase() : null;
+  const normalizedLevel = resolvedZone === "storage" ? (level as string).trim() : null;
+  const normalizedPosition = resolvedZone === "storage" ? String(Number((position as string).trim())).padStart(2, "0") : null;
+
   const data: LocationInput = {
-    zone: (zone as string).trim(),
-    rack: (rack as string).trim(),
-    level: (level as string).trim(),
-    position: (position as string).trim(),
+    zone: resolvedZone as LocationZone,
+    rack: normalizedRack,
+    level: normalizedLevel,
+    position: normalizedPosition,
     locationType: resolvedLocationType,
-    maxCbmCapacity: maxCbmCapacity as string,
+    maxCbmCapacity: resolvedZone === "storage" ? maxCbmCapacity as string : null,
     isActive: typeof raw["isActive"] === "boolean" ? raw["isActive"] : true,
   };
 
@@ -234,6 +262,8 @@ export function parseBulkLocationGeneratorInput(
   const zone = raw["zone"];
   if (zone === undefined || zone === null || zone === "" || typeof zone !== "string") {
     errors.push({ field: "zone", message: "Zone is required." });
+  } else if (zone.trim() !== "storage") {
+    errors.push({ field: "zone", message: "Bulk generation is available for Storage only." });
   }
 
   const racks = raw["racks"];
@@ -295,13 +325,13 @@ export function parseBulkLocationGeneratorInput(
       if (levelStart < 1 || levelEnd > limit.levels) {
         errors.push({
           field: "levelEnd",
-          message: `Rack ${rack.toUpperCase()} supports levels 1-${limit.levels}. Generate the workbook rack range separately.`,
+          message: `Rack ${rack.toUpperCase()} supports levels 1-${limit.levels}. Generate the approved rack range separately.`,
         });
       }
       if (positionStart < 1 || positionEnd > limit.positions) {
         errors.push({
           field: "positionEnd",
-          message: `Rack ${rack.toUpperCase()} supports positions 1-${limit.positions}. Generate the workbook rack range separately.`,
+          message: `Rack ${rack.toUpperCase()} supports positions 1-${limit.positions}. Generate the approved rack range separately.`,
         });
       }
     }

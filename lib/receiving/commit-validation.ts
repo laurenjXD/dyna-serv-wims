@@ -31,11 +31,16 @@ export type WrrDocument = {
   vendorPartyId: string;
 };
 
+import { exactCartonCount } from "@/lib/inventory/quantities";
+
 export type WrrLine = {
   id: string;
   itemId: string | null;
   itemBarcode: string | null;
   lotNumber: string;
+  /** Derived physical carton-label count; not persisted on wrr_items. */
+  cartonCount?: number;
+  spq?: number;
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect" | null | undefined;
@@ -84,9 +89,14 @@ export function validateLineCommit(
   }
 
   // R3.5 / §5.2: under-scanned lines block confirmation
-  if (line.scannedQty < line.expectedQty) {
+  const cartonCount = line.cartonCount ?? exactCartonCount(line.expectedQty, line.spq) ?? 0;
+  if (cartonCount <= 0) {
     errors.push(
-      `Line ${line.id} (lot: ${line.lotNumber}) is under-scanned (scanned ${line.scannedQty} of ${line.expectedQty})`
+      `Line ${line.id} (lot: ${line.lotNumber}) has a total quantity that cannot be converted into complete cartons using the enrolled item's SPQ`
+    );
+  } else if (line.scannedQty < cartonCount) {
+    errors.push(
+      `Line ${line.id} (lot: ${line.lotNumber}) is under-scanned (scanned ${line.scannedQty} of ${cartonCount} cartons)`
     );
   }
 

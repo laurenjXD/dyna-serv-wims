@@ -36,6 +36,8 @@ import { Bell, AlertTriangle, Info, CheckCircle2 } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
+import { listRecentNotifications } from "@/lib/db/queries/notifications";
+import { MarkAllNotificationsReadButton } from "./MarkAllNotificationsReadButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Field shape mirrors specs/14-notifications-and-alerts/design.md §3's
@@ -53,58 +55,6 @@ interface NotificationRow {
   createdAt: string;
   readAt: string | null;
 }
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: wire to `notifications` table query, scoped to the caller's own
-// party per design.md §4's notifications.read (assigned_party) grant.
-
-const MOCK_NOTIFICATIONS: NotificationRow[] = [
-  {
-    id: "notif-001",
-    category: "Inventory",
-    severity: "warning",
-    title: "Low Stock Alert",
-    body: "Inventory for Industrial Bearings (item ITM-4092) has fallen below the minimum reorder threshold.",
-    createdAt: "2026-08-12T08:14:00Z",
-    readAt: null,
-  },
-  {
-    id: "notif-002",
-    category: "Orders",
-    severity: "info",
-    title: "Pick List #PL-8824 Approved",
-    body: "Your pick list has been verified and approved for dispatch.",
-    createdAt: "2026-08-11T15:32:00Z",
-    readAt: null,
-  },
-  {
-    id: "notif-003",
-    category: "Inspection",
-    severity: "critical",
-    title: "Inbound Lot Held",
-    body: "Lot LOT-2291 failed inbound inspection and is currently held. Contact your account manager for disposition details.",
-    createdAt: "2026-08-10T11:05:00Z",
-    readAt: "2026-08-10T13:40:00Z",
-  },
-  {
-    id: "notif-004",
-    category: "Documents",
-    severity: "info",
-    title: "Acknowledgement Receipt Ready",
-    body: "AR #AR-5502 has been generated and is available for download.",
-    createdAt: "2026-08-09T09:00:00Z",
-    readAt: "2026-08-09T09:20:00Z",
-  },
-  {
-    id: "notif-005",
-    category: "System",
-    severity: "info",
-    title: "Scheduled Maintenance",
-    body: "The portal will be briefly unavailable this weekend for scheduled maintenance.",
-    createdAt: "2026-08-07T17:00:00Z",
-    readAt: "2026-08-08T08:00:00Z",
-  },
-];
 
 // ─── Severity helpers — tokens from tailwind.config.ts, never raw hex ─────────
 // brand-design-system.md §1.3: status is never color-alone — every severity
@@ -178,11 +128,22 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
   }
 
   const activeFilter = filterParam === "unread" ? "unread" : "all";
-  const rows =
-    activeFilter === "unread"
-      ? MOCK_NOTIFICATIONS.filter((n) => n.readAt === null)
-      : MOCK_NOTIFICATIONS;
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.readAt === null).length;
+  let notificationsLoadFailed = false;
+  const notificationRows = await listRecentNotifications(resolution.context.userId, 100).catch(() => {
+    notificationsLoadFailed = true;
+    return [];
+  });
+  const allRows: NotificationRow[] = notificationRows.map((row) => ({
+    id: row.id,
+    category: row.category,
+    severity: "info",
+    title: row.title,
+    body: row.body ?? "",
+    createdAt: row.createdAt.toISOString(),
+    readAt: row.readAt ? row.readAt.toISOString() : null,
+  }));
+  const rows = activeFilter === "unread" ? allRows.filter((row) => row.readAt === null) : allRows;
+  const unreadCount = allRows.filter((row) => row.readAt === null).length;
 
   return (
     <div className="mx-auto max-w-container">
@@ -196,19 +157,7 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
             Alerts and updates for your account.
           </p>
         </div>
-        {/* Mark all as read — TODO: no notification-state mutation exists yet
-            (design.md §9: notification read/dismiss actions are audited
-            through 14's boundary, which isn't implemented). Disabled until
-            that server action lands, not silently faked here. */}
-        <button
-          type="button"
-          disabled
-          title="Not yet available — pending 14-notifications-and-alerts' schema and mutation implementation"
-          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/30 px-4 font-label text-label text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <CheckCircle2 size={16} aria-hidden="true" />
-          Mark all as read
-        </button>
+        <MarkAllNotificationsReadButton disabled={unreadCount === 0 || notificationsLoadFailed} />
       </div>
 
       {/* ── Filter tabs ────────────────────────────────────────────────────── */}
@@ -244,7 +193,13 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
 
       {/* ── Notification list ─────────────────────────────────────────────── */}
       <div className="mt-4">
-        {rows.length === 0 ? (
+        {notificationsLoadFailed ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-status-held/30 bg-status-held/5 px-6 py-12 text-center shadow-elevation-1">
+            <AlertTriangle size={40} className="text-status-held" aria-hidden="true" />
+            <p className="font-body text-body-md text-on-surface">Notifications are temporarily unavailable.</p>
+            <p className="font-body text-body-sm text-text-grey">Refresh the page to try the authoritative notification query again.</p>
+          </div>
+        ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
             <Bell size={40} className="text-text-grey" aria-hidden="true" />
             <p className="font-body text-body-md text-text-grey">

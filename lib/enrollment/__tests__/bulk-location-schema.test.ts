@@ -72,7 +72,7 @@ import {
 } from "@/lib/enrollment/location-schema";
 
 const BASE_VALID = {
-  zone: "ZONE-A",
+  zone: "storage",
   locationType: "storage",
   maxCbmCapacity: "10.0000",
   racks: "A,B",
@@ -231,8 +231,8 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
       racks: "A",
       levelStart: "1",
       levelEnd: "1",
-      positionStart: "9",
-      positionEnd: "10",
+      positionStart: "1",
+      positionEnd: "2",
       positionPadding: "3",
     });
     expect(parsed.success).toBe(true);
@@ -242,7 +242,7 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
     expect(result.success).toBe(true);
     if (result.success) {
       const labels = result.candidates.map((c) => c.label).sort();
-      expect(labels).toEqual(["A1-009", "A1-010"]);
+      expect(labels).toEqual(["A1-001", "A1-002"]);
     }
   });
 
@@ -281,7 +281,7 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
     expect(result.success).toBe(true);
     if (result.success) {
       const [candidate] = result.candidates;
-      expect(candidate.zone).toBe("ZONE-A");
+      expect(candidate.zone).toBe("storage");
       expect(candidate.locationType).toBe("storage");
       expect(candidate.maxCbmCapacity).toBe("10.0000");
       expect(candidate.isActive).toBe(true);
@@ -309,7 +309,7 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
     }
   });
 
-  it("enforces the workbook rack ranges", () => {
+  it("enforces the approved A-I rack ranges", () => {
     const rackA = parseBulkLocationGeneratorInput({
       ...BASE_VALID,
       racks: "A",
@@ -331,6 +331,29 @@ describe("expandBulkLocationCandidates — cartesian generation over racks x lev
     expect(rackB.success).toBe(false);
     if (!rackB.success) {
       expect(rackB.errors.some((error) => error.message.includes("positions 1-15"))).toBe(true);
+    }
+
+    const rackF = parseBulkLocationGeneratorInput({
+      ...BASE_VALID,
+      racks: "F",
+      levelStart: "1",
+      levelEnd: "4",
+      positionStart: "1",
+      positionEnd: "15",
+    });
+    expect(rackF.success).toBe(true);
+
+    const rackH = parseBulkLocationGeneratorInput({
+      ...BASE_VALID,
+      racks: "H",
+      levelStart: "1",
+      levelEnd: "4",
+      positionStart: "1",
+      positionEnd: "16",
+    });
+    expect(rackH.success).toBe(false);
+    if (!rackH.success) {
+      expect(rackH.errors.some((error) => error.message.includes("positions 1-15"))).toBe(true);
     }
   });
 });

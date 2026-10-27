@@ -4,10 +4,9 @@
 //
 // Split out from page.tsx (2026-08-19 user request) so Inventory Model
 // selection can be shared client-side state between the header select and
-// WrrLineItems' conditional Item Code label. Organization is a
-// dropdown of real organizations (page.tsx fetches the list). PEZA Number is no
-// longer collected on this form. CIPL is a real Storage upload (2026-08-19
-// follow-up request), not a pasted URL.
+// WrrLineItems' conditional Item Code label. Organization is a dropdown of
+// real organizations (page.tsx fetches the list). PEZA Number and manual CIPL
+// file attachment are not collected on this form.
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §5 (pre-receiving WRR design), §5.1
@@ -18,12 +17,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
-import type { UploadCiplFileResult } from "@/lib/actions/receiving";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
-import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search, Upload } from "@/components/ui/icons";
-
-const CIPL_ACCEPT = "application/pdf,image/png,image/jpeg";
+import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search } from "@/components/ui/icons";
 
 const BUSINESS_ROLE_LABELS: Record<string, string> = {
   supplier: "Supplier",
@@ -44,27 +40,18 @@ interface WrrNewFormProps {
   action: (formData: FormData) => void;
   vendorParties: SupplierPartyOption[];
   itemOptions: WrrItemOption[];
-  onUploadCipl: (wrrId: string, formData: FormData) => Promise<UploadCiplFileResult>;
 }
 
-export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }: WrrNewFormProps) {
+export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormProps) {
   const [flowType, setFlowType] = useState("");
   const [vendorPartyId, setVendorPartyId] = useState("");
   const [vendorSearch, setVendorSearch] = useState("");
   const [isVendorOpen, setIsVendorOpen] = useState(false);
   const vendorSearchRef = useRef<HTMLDivElement>(null);
 
-  // Reserved up front (specs/04-services-and-infrastructure/design.md §10.2's
-  // path pattern needs a wrr_id before the row exists) so a CIPL file can
-  // upload to its final Storage path immediately on selection, without
-  // waiting for the whole form to submit. lib/actions/receiving.ts's
-  // createWrr reuses this exact id when creating the row (CreateWrrInput.id)
-  // so the two agree.
+  // Reserved up front for the auto-parse modal's document context and the
+  // deterministic imported-line flow.
   const [wrrId] = useState(() => crypto.randomUUID());
-  const [ciplPath, setCiplPath] = useState<string | null>(null);
-  const [ciplFileName, setCiplFileName] = useState<string | null>(null);
-  const [ciplStatus, setCiplStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
-  const [ciplError, setCiplError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedLines, setImportedLines] = useState<ImportedWrrLine[]>([]);
 
@@ -87,28 +74,6 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
   const availableModels = selectedRelationships
     .map((relationship) => relationship === "vmi_customer" ? "vmi" : relationship === "internal_supplies" ? "supplies" : "trading")
     .filter((model, index, models): model is "vmi" | "trading" | "supplies" => models.indexOf(model) === index);
-
-  async function handleCiplFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setCiplFileName(file.name);
-    setCiplStatus("uploading");
-    setCiplError(null);
-    setCiplPath(null);
-
-    const uploadFormData = new FormData();
-    uploadFormData.set("file", file);
-
-    const result = await onUploadCipl(wrrId, uploadFormData);
-    if (result.ok) {
-      setCiplPath(result.path);
-      setCiplStatus("done");
-    } else {
-      setCiplStatus("error");
-      setCiplError(result.error);
-    }
-  }
 
   return (
     <form action={action} className="mt-6 space-y-6">
@@ -158,8 +123,6 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               type="button"
               onClick={() => {
                 setImportedLines([]);
-                setCiplFileName(null);
-                setCiplStatus("idle");
               }}
               className="text-emerald-800 underline hover:text-emerald-950 font-bold"
             >
@@ -188,8 +151,6 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               if (mawbInput) mawbInput.value = header.mawbMbl;
             }
             setImportedLines(lines);
-            setCiplStatus("done");
-            setCiplFileName("Parsed Document Lines Applied");
           }}
         />
       )}
@@ -227,7 +188,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               </span>
               <span className="sr-only">(required)</span>
             </label>
-            <p className="mt-1 font-body text-xs text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
+            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
             <div className="relative mt-1" ref={vendorSearchRef}>
               <input type="hidden" name="vendorPartyId" value={vendorPartyId} />
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-grey" />
@@ -326,21 +287,25 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
                 </span>
               )}
             </div>
-            {/* Keep the first desktop row aligned with Organization's helper copy. */}
-            <div aria-hidden="true" className="hidden h-[3.75rem] md:block" />
-            <select
-              id="flowType"
-              name="flowType"
-              required
-              value={flowType}
-              onChange={(e) => setFlowType(e.target.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
-            >
-              <option value="">Select inventory model…</option>
-              {availableModels.includes("vmi") && <option value="vmi">VMI (Consignment)</option>}
-              {availableModels.includes("trading") && <option value="trading">Trading (Owned)</option>}
-              {availableModels.includes("supplies") && <option value="supplies">Supplies</option>}
-            </select>
+            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">
+              Choose the model permitted by the organization&apos;s receiving relationship.
+            </p>
+            <div className="relative mt-1">
+              <select
+                id="flowType"
+                name="flowType"
+                required
+                value={flowType}
+                onChange={(e) => setFlowType(e.target.value)}
+                className="h-11 w-full appearance-none rounded-lg border border-slate-200 bg-surface-white px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+              >
+                <option value="">Select inventory model…</option>
+                {availableModels.includes("vmi") && <option value="vmi">VMI (Consignment)</option>}
+                {availableModels.includes("trading") && <option value="trading">Trading (Owned)</option>}
+                {availableModels.includes("supplies") && <option value="supplies">Supplies</option>}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
+            </div>
           </div>
 
           {/* Commercial Invoice No — optional */}
@@ -358,56 +323,6 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
               placeholder="CIPL / commercial invoice reference"
               className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
             />
-          </div>
-
-          {/* CIPL / Packing List Document (Manual Attachment) */}
-          <div>
-            <label
-              htmlFor="ciplFile"
-              className="block font-label text-label text-text-grey"
-            >
-              CIPL / Packing List Document (Attachment)
-            </label>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <label
-                htmlFor="ciplFile"
-                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface-white px-4 font-label text-label font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
-              >
-                <Upload size={15} className="text-slate-500" />
-                {ciplFileName && ciplStatus === "done" ? "Change Attached File" : "Choose File"}
-              </label>
-              {ciplFileName && (
-                <span className="truncate text-xs font-semibold text-slate-700 max-w-[200px]" title={ciplFileName}>
-                  {ciplFileName}
-                </span>
-              )}
-            </div>
-            <input
-              id="ciplFile"
-              type="file"
-              accept={CIPL_ACCEPT}
-              onChange={handleCiplFileChange}
-              className="sr-only"
-            />
-            <input type="hidden" name="ciplFileUrl" value={ciplPath ?? ""} />
-            {ciplStatus === "uploading" && (
-              <p className="mt-1.5 font-body text-body-sm text-text-grey">
-                Uploading {ciplFileName}…
-              </p>
-            )}
-            {ciplStatus === "done" && (
-              <p className="mt-1.5 font-body text-body-sm text-status-available">
-                ✓ Attached: {ciplFileName}
-              </p>
-            )}
-            {ciplStatus === "error" && (
-              <p role="alert" className="mt-1.5 font-body text-body-sm text-brand-red">
-                {ciplError}
-              </p>
-            )}
-            <p className="mt-1 font-body text-xs text-text-grey">
-              PDF, PNG, or JPEG — up to 10MB.
-            </p>
           </div>
 
           {/* IP Number — optional */}
@@ -465,10 +380,10 @@ export function WrrNewForm({ action, vendorParties, itemOptions, onUploadCipl }:
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="submit"
-          disabled={vendorParties.length === 0 || ciplStatus === "uploading"}
+          disabled={vendorParties.length === 0}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
-          {ciplStatus === "uploading" ? "Uploading CIPL…" : "Create Staged WRR"}
+          Create Staged WRR
         </button>
         <Link
           href="/receiving"

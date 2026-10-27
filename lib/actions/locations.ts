@@ -102,7 +102,9 @@ export async function createLocation(
   const data = parsed.data;
 
   // Server-compute the canonical label (design.md §6a Create step 3)
-  const label = generateLocationLabel(data.rack, data.level, data.position);
+  const label = data.rack && data.level && data.position
+    ? generateLocationLabel(data.rack, data.level, data.position)
+    : null;
 
   try {
     const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
@@ -112,7 +114,7 @@ export async function createLocation(
       const existing = await db
         .select({ id: locations.id })
         .from(locations)
-        .where(eq(locations.label, label));
+        .where(label ? eq(locations.label, label) : eq(locations.id, "00000000-0000-0000-0000-000000000000"));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((existing as any[]).length > 0) {
@@ -136,11 +138,11 @@ export async function createLocation(
         })
         .returning({ id: locations.id, label: locations.label });
 
-      const row = inserted as { id: string; label: string };
+      const row = inserted as { id: string; label: string | null };
 
       return {
         ok: true,
-        data: { id: row.id, label: row.label },
+        data: { id: row.id, label: row.label ?? "" },
       } satisfies ActionCreateLocationResult;
     });
 
@@ -215,7 +217,7 @@ export async function updateLocation(
       return { ok: false, error: "Not found" } satisfies ActionResult;
     }
 
-    const row = currentRow as { id: string; label: string; created_at: Date };
+    const row = currentRow as { id: string; label: string | null; created_at: Date };
 
     // Stale-edit guard (created_at used as version token for locations)
     const dbTimestamp = row.created_at.getTime();
@@ -225,11 +227,15 @@ export async function updateLocation(
     }
 
     // Recompute label and re-validate uniqueness, excluding current row's id
-    const newLabel = generateLocationLabel(data.rack, data.level, data.position);
-    const collision = await db
-      .select({ id: locations.id })
-      .from(locations)
-      .where(and(eq(locations.label, newLabel), ne(locations.id, id)));
+    const newLabel = data.rack && data.level && data.position
+      ? generateLocationLabel(data.rack, data.level, data.position)
+      : null;
+    const collision = newLabel
+      ? await db
+          .select({ id: locations.id })
+          .from(locations)
+          .where(and(eq(locations.label, newLabel), ne(locations.id, id)))
+      : [];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((collision as any[]).length > 0) {

@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
 import Link from "next/link";
 import { Building2, ChevronRight } from "@/components/ui/icons";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
@@ -33,6 +32,20 @@ interface SoaDirectoryClientProps {
   monthName: string;
   selectedParty?: PartySummary;
   initialHistoricalPeriods?: HistoricalPeriod[];
+  activePeriodStatuses?: Record<string, string>;
+}
+
+function formatPeriodStatus(status?: string): string {
+  if (!status) return "Not generated";
+  if (status === "voided") return "Voided";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function statusClasses(status?: string): string {
+  if (status === "issued") return "bg-blue-50 text-blue-800 border-blue-300";
+  if (status === "voided") return "bg-slate-100 text-slate-700 border-slate-300";
+  if (status === "draft") return "bg-amber-50 text-amber-800 border-amber-300";
+  return "bg-slate-50 text-slate-600 border-slate-200";
 }
 
 export function SoaDirectoryClient({
@@ -42,48 +55,9 @@ export function SoaDirectoryClient({
   selectedYear,
   monthName,
   selectedParty,
-  initialHistoricalPeriods = [
-    { month: "August 2026", monthIdx: 7, year: 2026, status: "Draft", tier: "Hot Tier (Active)" },
-    { month: "July 2026", monthIdx: 6, year: 2026, status: "Issued", tier: "Hot Tier (Active)" },
-    { month: "June 2026", monthIdx: 5, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
-    { month: "May 2026", monthIdx: 4, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
-    { month: "April 2026", monthIdx: 3, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
-    { month: "March 2026", monthIdx: 2, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
-    { month: "February 2026", monthIdx: 1, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
-    { month: "January 2026", monthIdx: 0, year: 2026, status: "Paid", tier: "Hot Tier (Active)" },
-    { month: "December 2025", monthIdx: 11, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
-    { month: "November 2025", monthIdx: 10, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
-    { month: "October 2025", monthIdx: 9, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
-    { month: "September 2025", monthIdx: 8, year: 2025, status: "Archived", tier: "Hot Tier (1 Year)" },
-  ],
+  initialHistoricalPeriods = [],
+  activePeriodStatuses = {},
 }: SoaDirectoryClientProps) {
-  // State for active customer statement statuses
-  const [activeStatuses, setActiveStatuses] = useState<Record<string, SoaStatus>>(() => {
-    const initial: Record<string, SoaStatus> = {};
-    displayedParties.forEach((p) => {
-      initial[p.id] = "Issued";
-    });
-    return initial;
-  });
-
-  // State for historical archive statuses
-  const [historyStatuses, setHistoryStatuses] = useState<Record<string, SoaStatus>>(() => {
-    const initial: Record<string, SoaStatus> = {};
-    initialHistoricalPeriods.forEach((row) => {
-      const key = `${row.year}-${row.monthIdx}`;
-      initial[key] = (row.status as SoaStatus) || "Paid";
-    });
-    return initial;
-  });
-
-  const handleActiveStatusChange = (partyId: string, newStatus: SoaStatus) => {
-    setActiveStatuses((prev) => ({ ...prev, [partyId]: newStatus }));
-  };
-
-  const handleHistoryStatusChange = (key: string, newStatus: SoaStatus) => {
-    setHistoryStatuses((prev) => ({ ...prev, [key]: newStatus }));
-  };
-
   return (
     <div className="space-y-6">
       {/* Customer Statements Grid / Table */}
@@ -121,7 +95,7 @@ export function SoaDirectoryClient({
                 displayedParties.map((p) => {
                   const vmiSummary = vmiSummaries.find((s) => s.id === p.id);
                   const soaUrl = `/billing-pricing/soa/${p.id}?partyId=${p.id}&month=${selectedMonth}&year=${selectedYear}`;
-                  const currentStatus = activeStatuses[p.id] ?? "Issued";
+                  const currentStatus = activePeriodStatuses[p.id];
 
                   return (
                     <tr key={p.id} className="hover:bg-surface-background/40 transition-colors">
@@ -144,10 +118,9 @@ export function SoaDirectoryClient({
                         {vmiSummary ? `$${vmiSummary.subtotal.toFixed(2)}` : "—"}
                       </td>
                       <td className="py-3.5 px-4">
-                        <SoaStatusSelect
-                          value={currentStatus}
-                          onChange={(next) => handleActiveStatusChange(p.id, next)}
-                        />
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(currentStatus)}`}>
+                          {formatPeriodStatus(currentStatus)}
+                        </span>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <Link
@@ -197,8 +170,6 @@ export function SoaDirectoryClient({
               <tbody className="divide-y divide-border-light font-body text-body-sm text-text-dark">
                 {initialHistoricalPeriods.map((row) => {
                   const key = `${row.year}-${row.monthIdx}`;
-                  const currentStatus = historyStatuses[key] ?? row.status;
-
                   return (
                     <tr key={key} className="hover:bg-surface-background/40 transition-colors">
                       <td className="py-3 px-4 font-semibold text-text-dark">
@@ -213,10 +184,9 @@ export function SoaDirectoryClient({
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <SoaStatusSelect
-                          value={currentStatus}
-                          onChange={(next) => handleHistoryStatusChange(key, next)}
-                        />
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(row.status)}`}>
+                          {formatPeriodStatus(row.status)}
+                        </span>
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end gap-3">

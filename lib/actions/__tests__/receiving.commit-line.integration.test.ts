@@ -308,28 +308,28 @@ describe.skipIf(!hasLiveDb)(
 
       const [storageLoc] = await sql`
         INSERT INTO locations (zone, rack, level, position, label, location_type, max_cbm_capacity, is_active)
-        VALUES ('A', '1', '1', '01', 'A1-01', 'storage', 100, true)
+        VALUES ('storage', 'A', '1', '01', 'A1-01', 'storage', 100, true)
         RETURNING id
       `;
       storageLocationId = storageLoc.id as string;
 
       const [otherStorageLoc] = await sql`
         INSERT INTO locations (zone, rack, level, position, label, location_type, max_cbm_capacity, is_active)
-        VALUES ('A', '1', '2', '01', 'A1-02', 'storage', 100, true)
+        VALUES ('storage', 'A', '1', '02', 'A1-02', 'storage', 100, true)
         RETURNING id
       `;
       otherStorageLocationId = otherStorageLoc.id as string;
 
       const [inspectionLoc] = await sql`
         INSERT INTO locations (zone, rack, level, position, label, location_type, max_cbm_capacity, is_active)
-        VALUES ('INSP', '1', '1', '01', 'INSP-01', 'inspection', 100, true)
+        VALUES ('hold', NULL, NULL, NULL, NULL, 'inspection', NULL, true)
         RETURNING id
       `;
       inspectionLocationId = inspectionLoc.id as string;
 
       const [inactiveLoc] = await sql`
         INSERT INTO locations (zone, rack, level, position, label, location_type, max_cbm_capacity, is_active)
-        VALUES ('A', '1', '3', '01', 'A1-03', 'storage', 100, false)
+        VALUES ('storage', 'A', '1', '03', 'A1-03', 'storage', 100, false)
         RETURNING id
       `;
       inactiveLocationId = inactiveLoc.id as string;

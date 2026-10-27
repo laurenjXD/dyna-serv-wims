@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getDashboardKpis, getDashboardMasterInventory } from "@/lib/db/queries/dashboard";
@@ -96,7 +96,7 @@ export async function GET() {
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  let logoImage: any = null;
+  let logoImage: PDFImage | undefined;
   try {
     const logoPath = template.logoUrl?.startsWith("/") ? template.logoUrl.slice(1) : "logo-hd.png";
     const logoPng = await readFile(path.join(process.cwd(), "public", logoPath));

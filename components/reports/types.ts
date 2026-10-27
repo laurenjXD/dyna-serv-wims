@@ -14,6 +14,18 @@ export type ReportCategory = "Financial" | "Inventory" | "Operations" | "Settlem
 
 export type ReportFormat = "PDF" | "CSV" | "XLSX";
 
+export interface CustomReportPreviewRow {
+  name: string;
+  flow: string;
+  cbm: number | null;
+  valuation: number | null;
+  marginPct: number | null;
+  volumeQty: number | null;
+  otifPct: number | null;
+  dwellDays: number | null;
+  accrualUsd: number | null;
+}
+
 export type ReportStatus = "Ready" | "Processing" | "Failed";
 
 export interface VmiBillingRow {

@@ -3,9 +3,7 @@
 import React, { useState } from "react";
 import {
   FileText,
-  Download,
   Play,
-  Calendar,
   Clock,
   CheckCircle2,
   Share2,
@@ -182,14 +180,24 @@ export function TemplateCardGrid({
                 </div>
 
                 {/* Run CTA Button */}
-                <button
-                  type="button"
-                  onClick={() => onRunTemplate(tpl, activeFormat)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-2xs hover:bg-brand-navy/90 active:scale-95 transition-all"
-                >
-                  <Play size={12} fill="white" />
-                  <span>Run</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onScheduleTemplate(tpl)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 font-label text-xs font-bold text-brand-navy hover:bg-slate-50 transition-all"
+                  >
+                    <Clock size={12} />
+                    <span>Schedule</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRunTemplate(tpl, activeFormat)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-2xs hover:bg-brand-navy/90 active:scale-95 transition-all"
+                  >
+                    <Play size={12} fill="white" />
+                    <span>Run</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -239,14 +247,24 @@ export function TemplateCardGrid({
                     ))}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onRunTemplate(tpl, activeFormat)}
-                    className="flex min-h-[40px] items-center gap-1 rounded-xl bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-2xs"
-                  >
-                    <Play size={12} fill="white" />
-                    <span>Run</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onScheduleTemplate(tpl)}
+                      className="flex min-h-[40px] items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 font-label text-xs font-bold text-brand-navy"
+                    >
+                      <Clock size={12} />
+                      <span>Schedule</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRunTemplate(tpl, activeFormat)}
+                      className="flex min-h-[40px] items-center gap-1 rounded-xl bg-brand-navy px-3 font-label text-xs font-bold text-white shadow-2xs"
+                    >
+                      <Play size={12} fill="white" />
+                      <span>Run</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

@@ -285,12 +285,10 @@ async function LocationsTab({
     );
   }
 
-  // Both views use the map read model so the table contains exactly the same
-  // Workbook-backed Rack A–G locations as the SVG. Legacy/non-rack records remain
-  // in the database for operational history, but are intentionally excluded
-  // from this aligned rack registry until they have confirmed geometry.
+  // Table View includes every canonical location, including RCV/Hold tracking
+  // rows that intentionally have no rack-map cell.
   const mapRows = await listLocationMapRows(db);
-  const rows = mapRows.filter((row) => row.isMapped && matchesLocationSearch(row, search));
+  const rows = mapRows.filter((row) => matchesLocationSearch(row, search));
 
   return (
     <div className="mt-4">

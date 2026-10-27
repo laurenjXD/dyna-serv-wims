@@ -154,23 +154,23 @@ describe("Superseded /master-data/*/page.tsx list routes forward into /enrollmen
     return readFileSync(resolve(__dirname, path), "utf8");
   }
 
-  it("/master-data/parties/page.tsx redirects into /enrollment?tab=parties", () => {
+  it("/master-data/parties/page.tsx hands off into /enrollment?tab=parties", () => {
     const source = moduleSource("../../master-data/parties/page.tsx");
-    expect(source).toContain("redirect(");
+    expect(source).toContain("ClientRouteRedirect");
     expect(source).toContain("/enrollment?");
     expect(source).toContain('tab: "parties"');
   });
 
-  it("/master-data/items/page.tsx redirects into /enrollment?tab=items", () => {
+  it("/master-data/items/page.tsx hands off into /enrollment?tab=items", () => {
     const source = moduleSource("../../master-data/items/page.tsx");
-    expect(source).toContain("redirect(");
+    expect(source).toContain("ClientRouteRedirect");
     expect(source).toContain("/enrollment?");
     expect(source).toContain('tab: "items"');
   });
 
-  it("/master-data/locations/page.tsx redirects into /enrollment?tab=locations", () => {
+  it("/master-data/locations/page.tsx hands off into /enrollment?tab=locations", () => {
     const source = moduleSource("../../master-data/locations/page.tsx");
-    expect(source).toContain("redirect(");
+    expect(source).toContain("ClientRouteRedirect");
     expect(source).toContain("/enrollment?");
     expect(source).toContain('tab: "locations"');
   });

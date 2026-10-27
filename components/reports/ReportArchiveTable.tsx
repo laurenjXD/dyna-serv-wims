@@ -11,12 +11,10 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import {
-  FileText,
   Download,
   Share2,
   Archive,
   User,
-  Clock,
   ExternalLink,
 } from "@/components/ui/icons";
 import type { ReportArchiveItem } from "./types";

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { systemSettings } from "@/lib/db/schema";
 import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
+import type { VmiDocumentArtifactsDbLike } from "@/lib/billing/vmi-document-artifacts";
 
 export type DocumentTemplate = {
   companyName: string;
@@ -32,9 +33,7 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
   previewOrientation: "portrait",
 };
 
-type DbLike = {
-  select: (...args: any[]) => any;
-};
+type DbLike = Pick<VmiDocumentArtifactsDbLike, "select">;
 
 /** Loads the Settings > General document template without requiring settings-page access. */
 export async function getDocumentTemplate(db: DbLike): Promise<DocumentTemplate> {

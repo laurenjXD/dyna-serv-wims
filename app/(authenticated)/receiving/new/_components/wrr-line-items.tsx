@@ -12,9 +12,11 @@
 // form inputs named `line_N_fieldName`. A hidden `lineCount` input tells the
 // server action how many lines to parse. The disposition is submitted as `store`.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ChevronDown } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 import { filterReceivingItemOptions } from "@/lib/receiving/item-selection";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 import { ItemSearchCombobox } from "./ItemSearchCombobox";
 
 export interface ImportedWrrLine {
@@ -25,6 +27,7 @@ export interface ImportedWrrLine {
   mfgDate: string;
   expiryDate: string;
   expectedQty: string;
+  packageCount?: string;
   unitCbm?: string;
   uom: string;
   remarks: string;
@@ -61,6 +64,12 @@ const EMPTY_LINE: LineState = {
   disposition: "store",
 };
 
+const STANDARD_UOM_OPTIONS = [
+  { value: "piece", label: "PIECE" },
+  { value: "roll", label: "ROLL" },
+  { value: "meter", label: "METER" },
+] as const;
+
 // Item Code label is conditional on the WRR's Inventory Model (2026-08-19
 // user request): Trading lines are identified by DSGC Item Number; VMI (and
 // unset/Supplies) lines keep the original Supplier Item Code framing —
@@ -83,6 +92,11 @@ export function WrrLineItems({
   importedLines?: ImportedWrrLine[];
 }) {
   const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
+  const codeFor = useCallback((item: WrrItemOption): string => {
+    return flowType === "trading"
+      ? (item.dsgcItemNumber ?? item.code)
+      : (item.supplierItemCode ?? item.code);
+  }, [flowType]);
 
   // Handle imported document lines automatically
   useEffect(() => {
@@ -93,7 +107,7 @@ export function WrrLineItems({
           lotNumber: imp.lotNumber || "",
           expectedQty: imp.expectedQty || "",
           unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
-          uom: imp.uom || (item ? item.uom : "BOX"),
+          uom: (imp.uom || (item ? item.uom : "BOX")).toLowerCase(),
           itemCode: item
             ? flowType === "trading"
               ? (item.dsgcItemNumber ?? item.code)
@@ -142,19 +156,14 @@ export function WrrLineItems({
         itemCode: codeFor(item),
         itemDescription: item.description?.trim() || item.name,
         customerItemCode: item.customerItemCode ?? "",
-        uom: item.uom,
+        uom: item.uom.toLowerCase(),
         unitCbm: item.volumeCbm,
+        expectedQty: line.expectedQty,
       };
     }));
-  }, [flowType, importedLines, itemOptions]);
+  }, [codeFor, importedLines, itemOptions]);
 
   const availableItems = filterReceivingItemOptions(itemOptions, vendorPartyId);
-
-  function codeFor(item: WrrItemOption): string {
-    return flowType === "trading"
-      ? (item.dsgcItemNumber ?? item.code)
-      : (item.supplierItemCode ?? item.code);
-  }
 
   function chooseItem(index: number, itemId: string) {
     const item = availableItems.find((candidate) => candidate.id === itemId);
@@ -165,8 +174,9 @@ export function WrrLineItems({
       itemCode: codeFor(item),
       itemDescription: item.description?.trim() || item.name,
       customerItemCode: item.customerItemCode ?? "",
-      uom: item.uom,
+      uom: item.uom.toLowerCase(),
       unitCbm: item.volumeCbm,
+      expectedQty: line.expectedQty,
       expiryDate: item.isPerishable ? line.expiryDate : "",
     } : line));
   }
@@ -310,13 +320,11 @@ export function WrrLineItems({
                 <label htmlFor={`line-${index}-manufactureDate`} className="block font-label text-label text-text-grey">
                   Manufacturing Date
                 </label>
-                <input
+                <DatePickerField
                   id={`line-${index}-manufactureDate`}
                   name={`line_${index}_manufactureDate`}
-                  type="date"
                   value={line.manufactureDate}
-                  onChange={(e) => updateLine(index, "manufactureDate", e.target.value)}
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  onChange={(value) => updateLine(index, "manufactureDate", value)}
                 />
               </div>
 
@@ -325,14 +333,12 @@ export function WrrLineItems({
                 <label htmlFor={`line-${index}-expiryDate`} className="block font-label text-label text-text-grey">
                   Expiry Date {isPerishable && <span aria-hidden="true" className="text-brand-red">*</span>}
                 </label>
-                <input
+                <DatePickerField
                   id={`line-${index}-expiryDate`}
                   name={`line_${index}_expiryDate`}
-                  type="date"
-                  required={isPerishable}
                   value={line.expiryDate}
-                  onChange={(e) => updateLine(index, "expiryDate", e.target.value)}
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  required={isPerishable}
+                  onChange={(value) => updateLine(index, "expiryDate", value)}
                 />
                 {isPerishable && <p className="mt-1 text-xs text-status-warning">Required for perishable inventory.</p>}
               </div>
@@ -354,26 +360,13 @@ export function WrrLineItems({
               </div>
             </div>
 
-            {/* Row 3: Quantities, CBM & UOM (3 balanced columns) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-              {/* Col 1: Expected Qty */}
+            {/* Row 3: Total units, derived labels, CBM & UOM */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+              {/* Col 1: Expected total base units */}
               <div>
-                <div className="flex items-center justify-between">
-                  <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
-                    Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
-                  </label>
-                  {(() => {
-                    const selItem = itemOptions.find((i) => i.id === line.itemId);
-                    if (!selItem) return null;
-                    const qtyNum = Number(line.expectedQty);
-                    const cartons = qtyNum > 0 && selItem.spq ? (qtyNum / selItem.spq).toFixed(1).replace(/\.0$/, "") : null;
-                    return (
-                      <span className="font-mono text-[11px] font-bold text-brand-navy bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                        SPQ: {selItem.spq} {cartons ? `(${cartons} ctn)` : ""}
-                      </span>
-                    );
-                  })()}
-                </div>
+                <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
+                  Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
                 <input
                   id={`line-${index}-expectedQty`}
                   name={`line_${index}_expectedQty`}
@@ -381,23 +374,35 @@ export function WrrLineItems({
                   required
                   min="1"
                   step="1"
-                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
                   value={line.expectedQty}
                   onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
-                  placeholder="0"
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
-                  }`}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface"
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Total units = SPQ &times; packages/cartons
+                  Total base units from the CIPL/WRR.
                 </p>
               </div>
 
-              {/* Col 2: Unit CBM */}
+              {/* Col 2: Derived carton QR labels */}
+              <div>
+                <label className="block font-label text-label text-text-grey">Carton QR Labels</label>
+                {(() => {
+                  const spq = selectedItem?.spq ?? 0;
+                  const total = Number(line.expectedQty);
+                  const valid = Number.isInteger(total) && total > 0 && spq > 0 && total % spq === 0;
+                  return (
+                    <div className={`mt-1 flex h-11 items-center rounded-lg border px-3 font-mono text-mono-md ${valid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                      {valid ? `${total / spq} labels` : selectedItem ? "Quantity must divide evenly by SPQ" : "Select an enrolled item"}
+                    </div>
+                  );
+                })()}
+                <p className="mt-1 font-body text-[11px] text-text-grey">Derived from total units ÷ enrolled SPQ.</p>
+              </div>
+
+              {/* Col 3: Unit CBM */}
               <div>
                 <label htmlFor={`line-${index}-unitCbm`} className="block font-label text-label text-text-grey">
-                  Unit CBM <span aria-hidden="true" className="text-brand-red">*</span>
+                  Unit CBM (Per Carton) <span aria-hidden="true" className="text-brand-red">*</span>
                 </label>
                 <input
                   id={`line-${index}-unitCbm`}
@@ -415,28 +420,38 @@ export function WrrLineItems({
                   }`}
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Cubic meter volume per unit
+                  Cubic meter volume per carton
                 </p>
               </div>
 
-              {/* Col 3: UOM */}
+              {/* Col 4: UOM */}
               <div>
                 <label htmlFor={`line-${index}-uom`} className="block font-label text-label text-text-grey">
                   UOM <span aria-hidden="true" className="text-brand-red">*</span>
                 </label>
-                <input
-                  id={`line-${index}-uom`}
-                  name={`line_${index}_uom`}
-                  type="text"
-                  required
-                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
-                  value={line.uom}
-                  onChange={(e) => updateLine(index, "uom", e.target.value)}
-                  placeholder="e.g. PIECE, BOX, CTN"
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy uppercase ${
-                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
-                  }`}
-                />
+                <div className="relative mt-1">
+                  <select
+                    id={`line-${index}-uom`}
+                    name={`line_${index}_uom`}
+                    required
+                    disabled={isImported}
+                    value={line.uom}
+                    onChange={(e) => updateLine(index, "uom", e.target.value)}
+                    className={`h-11 w-full appearance-none rounded-lg border border-slate-200 px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20 ${
+                      isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"
+                    }`}
+                  >
+                    {!line.uom && <option value="">Select UOM…</option>}
+                    {line.uom && !STANDARD_UOM_OPTIONS.some((option) => option.value === line.uom) && (
+                      <option value={line.uom}>{line.uom.toUpperCase()} (current)</option>
+                    )}
+                    {STANDARD_UOM_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  {isImported && <input type="hidden" name={`line_${index}_uom`} value={line.uom} />}
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
+                </div>
                 <p className="mt-1 font-body text-[11px] text-text-grey">
                   Standard unit of measure
                 </p>

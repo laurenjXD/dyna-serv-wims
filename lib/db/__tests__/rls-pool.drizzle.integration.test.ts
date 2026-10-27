@@ -40,6 +40,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import postgres, { type Sql } from "postgres";
+import { eq } from "drizzle-orm";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "../schema";
+
+type IntegrationDb = PostgresJsDatabase<typeof schema>;
 
 const connectionString = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
 const hasLiveDb = connectionString.length > 0;
@@ -138,11 +143,40 @@ describe.skipIf(!hasLiveDb)(
       `;
     });
 
+    async function assignSystemRole(userId: string, roleKey: string) {
+      const [role] = await sql`
+        SELECT id FROM roles WHERE key = ${roleKey} AND is_active = true
+      `;
+      if (!role) throw new Error(`Missing seeded role ${roleKey}`);
+      await sql`
+        INSERT INTO user_roles (user_id, role_id, grant_reason)
+        VALUES (${userId}::uuid, ${role.id}::uuid, ${"integration test grant"})
+      `;
+    }
+
+    async function expectRlsDenied<T>(operation: Promise<T>) {
+      try {
+        await operation;
+      } catch (error) {
+        const cause = (error as { cause?: { code?: string } }).cause;
+        expect(cause?.code).toBe("42501");
+        return;
+      }
+      throw new Error("Expected PostgreSQL RLS denial (SQLSTATE 42501)");
+    }
+
+    function getOkValue<T>(
+      result: { kind: "ok"; value: T } | { kind: "unauthenticated" },
+    ): T {
+      if (result.kind !== "ok") {
+        throw new Error("Expected an authenticated integration result");
+      }
+      return result.value;
+    }
+
     it("exposes a real Drizzle query builder on the transaction-bound client, and a session only sees its own row (user_profiles_select_self policy)", async () => {
       const { withRlsTransaction } = await import("../rls-transaction");
       const { rlsPool: pool } = await import("../rls-pool");
-      const schema = await import("../schema");
-
       const getAuthenticatedSession = async () => ({ userId: selfUserId });
 
       const result = await withRlsTransaction(
@@ -170,8 +204,6 @@ describe.skipIf(!hasLiveDb)(
     it("a different authenticated session sees only ITS own row, not the first session's row — proving per-session isolation, not a fixed/cached result", async () => {
       const { withRlsTransaction } = await import("../rls-transaction");
       const { rlsPool: pool } = await import("../rls-pool");
-      const schema = await import("../schema");
-
       const getAuthenticatedSession = async () => ({ userId: otherUserId });
 
       const result = await withRlsTransaction(
@@ -188,6 +220,166 @@ describe.skipIf(!hasLiveDb)(
       const rows = (result as { kind: "ok"; value: Array<{ id: string }> }).value;
       expect(rows.length).toBe(1);
       expect(rows[0]!.id).toBe(otherUserId);
+    });
+
+    it("enforces request/approve/reject boundaries in real RLS: requester can create, reviewer can decide, requester cannot self-approve", async () => {
+      await assignSystemRole(selfUserId, "warehouse_staff");
+      await assignSystemRole(otherUserId, "supervisor");
+
+      const { withRlsTransaction } = await import("../rls-transaction");
+      const { rlsPool: pool } = await import("../rls-pool");
+      const requestId = "33333333-3333-3333-3333-333333333333";
+      const targetId = "44444444-4444-4444-4444-444444444444";
+      const requestResult = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: selfUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          return db.insert(schema.approvalRequests).values({
+            id: requestId,
+            idempotencyKey: "integration-approval-request",
+            approvalType: "fifo_override",
+            requestedAction: "override_fifo",
+            targetResourceType: "lot_location_balance",
+            targetResourceId: targetId,
+            targetSnapshot: { itemId: targetId, requestedQty: 1 },
+            requesterUserId: selfUserId,
+            reason: "Integration approval request reason",
+            expiryAt: new Date(Date.now() + 60_000),
+          }).returning({ id: schema.approvalRequests.id });
+        },
+      );
+      expect(requestResult.kind).toBe("ok");
+      expect(getOkValue(requestResult)).toHaveLength(1);
+
+      const reviewerResult = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: otherUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          const decisions = await db.insert(schema.approvalDecisions).values({
+            requestId,
+            reviewerUserId: otherUserId,
+            outcome: "approved",
+            reason: "Integration reviewer approval",
+          }).returning({ id: schema.approvalDecisions.id });
+          const updated = await db.update(schema.approvalRequests)
+            .set({ status: "approved" })
+            .where(eq(schema.approvalRequests.id, requestId))
+            .returning({ id: schema.approvalRequests.id });
+          return { decisions, updated };
+        },
+      );
+      expect(reviewerResult.kind).toBe("ok");
+      expect(getOkValue(reviewerResult).decisions).toHaveLength(1);
+      expect(getOkValue(reviewerResult).updated).toHaveLength(1);
+
+      await expectRlsDenied(
+        withRlsTransaction(
+          { getAuthenticatedSession: async () => ({ userId: selfUserId }), pool },
+          async (tx) => {
+            const db = tx.db as IntegrationDb;
+            return db.insert(schema.approvalDecisions).values({
+              requestId,
+              reviewerUserId: selfUserId,
+              outcome: "approved",
+              reason: "Self approval must be rejected",
+            }).returning({ id: schema.approvalDecisions.id });
+          },
+        ),
+      );
+
+      const [stored] = await sql`
+        SELECT status FROM approval_requests WHERE id = ${requestId}::uuid
+      `;
+      expect(stored.status).toBe("approved");
+    });
+
+    it("enforces enrollment and settings mutation boundaries: administrator can write, supervisor cannot", async () => {
+      await assignSystemRole(selfUserId, "administrator");
+      await assignSystemRole(otherUserId, "supervisor");
+
+      const { withRlsTransaction } = await import("../rls-transaction");
+      const { rlsPool: pool } = await import("../rls-pool");
+      const partyCode = "INT-RLS-001";
+      const adminCreate = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: selfUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          return db.insert(schema.parties).values({
+            code: partyCode,
+            name: "Integration RLS Organization",
+            isActive: true,
+          }).returning({ id: schema.parties.id });
+        },
+      );
+      expect(adminCreate.kind).toBe("ok");
+      expect(getOkValue(adminCreate)).toHaveLength(1);
+      const partyId = getOkValue(adminCreate)[0]!.id;
+
+      await expectRlsDenied(
+        withRlsTransaction(
+          { getAuthenticatedSession: async () => ({ userId: otherUserId }), pool },
+          async (tx) => {
+            const db = tx.db as IntegrationDb;
+            return db.insert(schema.parties).values({
+              code: "INT-RLS-DENY",
+              name: "Must Not Be Created",
+              isActive: true,
+            }).returning({ id: schema.parties.id });
+          },
+        ),
+      );
+
+      const adminUpdate = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: selfUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          return db.update(schema.parties)
+            .set({ name: "Integration RLS Organization Updated" })
+            .where(eq(schema.parties.id, partyId))
+            .returning({ id: schema.parties.id });
+        },
+      );
+      expect(adminUpdate.kind).toBe("ok");
+      expect(getOkValue(adminUpdate)).toHaveLength(1);
+
+      const supervisorUpdate = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: otherUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          return db.update(schema.parties)
+            .set({ name: "Unauthorized Update" })
+            .where(eq(schema.parties.id, partyId))
+            .returning({ id: schema.parties.id });
+        },
+      );
+      expect(supervisorUpdate.kind).toBe("ok");
+      expect(getOkValue(supervisorUpdate)).toHaveLength(0);
+
+      const profileUpdate = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: selfUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          return db.update(schema.userProfiles)
+            .set({ displayName: "Self Profile Updated" })
+            .where(eq(schema.userProfiles.id, selfUserId))
+            .returning({ id: schema.userProfiles.id });
+        },
+      );
+      expect(profileUpdate.kind).toBe("ok");
+      expect(getOkValue(profileUpdate)).toHaveLength(1);
+
+      const crossProfileUpdate = await withRlsTransaction(
+        { getAuthenticatedSession: async () => ({ userId: otherUserId }), pool },
+        async (tx) => {
+          const db = tx.db as IntegrationDb;
+          return db.update(schema.userProfiles)
+            .set({ displayName: "Must Not Update Other Profile" })
+            .where(eq(schema.userProfiles.id, selfUserId))
+            .returning({ id: schema.userProfiles.id });
+        },
+      );
+      expect(crossProfileUpdate.kind).toBe("ok");
+      expect(getOkValue(crossProfileUpdate)).toHaveLength(0);
     });
   },
 );

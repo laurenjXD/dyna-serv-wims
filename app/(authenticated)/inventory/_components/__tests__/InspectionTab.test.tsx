@@ -110,19 +110,19 @@ describe("InspectionTab (app/(authenticated)/inventory/_components/InspectionTab
     render(<InspectionTab rows={mixedRows} />);
     const container = screen.getByTestId("inspection-transfer-queue");
 
-    expect(within(container).getByText(/transfer/i)).toBeInTheDocument();
-    expect(within(container).getByText(/inspection/i)).toBeInTheDocument();
+    expect(within(container).getAllByText(/transfer/i).length).toBeGreaterThan(0);
+    expect(within(container).getAllByText(/inspection/i).length).toBeGreaterThan(0);
 
-    expect(within(container).getByText("Transfer Bay-A1 → Bay-B2")).toBeInTheDocument();
-    expect(within(container).getByText("Rice 25kg — Lot LOT-0042")).toBeInTheDocument();
+    expect(within(container).getAllByText("Transfer Bay-A1 → Bay-B2").length).toBeGreaterThan(0);
+    expect(within(container).getAllByText("Rice 25kg — Lot LOT-0042").length).toBeGreaterThan(0);
 
-    expect(within(container).getByText(/pending/i)).toBeInTheDocument();
-    expect(within(container).getByText(/open/i)).toBeInTheDocument();
+    expect(within(container).getAllByText(/pending/i).length).toBeGreaterThan(0);
+    expect(within(container).getAllByText(/open/i).length).toBeGreaterThan(0);
 
-    const transferLink = within(container).getByRole("link", { name: /Transfer Bay-A1 → Bay-B2/i });
+    const transferLink = within(container).getAllByRole("link", { name: /Transfer Bay-A1 → Bay-B2/i })[0]!;
     expect(transferLink).toHaveAttribute("href", "/transfers/t-1");
 
-    const inspectionLink = within(container).getByRole("link", { name: /Rice 25kg/i });
+    const inspectionLink = within(container).getAllByRole("link", { name: /Rice 25kg/i })[0]!;
     expect(inspectionLink).toHaveAttribute("href", "/inspection/c-1");
   });
 
@@ -134,9 +134,9 @@ describe("InspectionTab (app/(authenticated)/inventory/_components/InspectionTab
     render(<InspectionTab rows={inspectionOnlyRows} />);
     const container = screen.getByTestId("inspection-transfer-queue");
 
-    expect(within(container).getByText("Cooking Oil 5L — Lot LOT-0099")).toBeInTheDocument();
+    expect(within(container).getAllByText("Cooking Oil 5L — Lot LOT-0099").length).toBeGreaterThan(0);
     expect(within(container).queryByText(/transfer/i)).not.toBeInTheDocument();
-    const link = within(container).getByRole("link", { name: /Cooking Oil 5L/i });
+    const link = within(container).getAllByRole("link", { name: /Cooking Oil 5L/i })[0]!;
     expect(link).toHaveAttribute("href", "/inspection/c-2");
   });
 

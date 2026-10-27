@@ -122,6 +122,7 @@ const makeLine = (
     lotNumber: string;
     expectedQty: number;
     scannedQty: number;
+    spq: number;
     disposition: "store" | "inspect" | null | undefined;
     putawayLocationId: string | null;
   }> = {}
@@ -132,6 +133,7 @@ const makeLine = (
   lotNumber: "LOT-2026-001",
   expectedQty: 10,
   scannedQty: 10,
+  spq: 1,
   disposition: "store" as const,
   putawayLocationId: "location-storage-uuid",
   ...overrides,

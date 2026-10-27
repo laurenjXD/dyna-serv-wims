@@ -92,55 +92,6 @@ interface SoaDetailClientProps {
   otherChargeRows?: OtherChargeRow[];
 }
 
-// ── Demo stubs (replace with real DB queries later) ────────────────────────────
-
-const DEMO_DELIVERY_ROWS: DeliveryRow[] = [
-  { date: "2026-06-03", dr: "DR-2026-0601", consignee: "UPI — Cavite Assembly Plant A", delCharge: 85.00, docCharge: 60.00, remarks: "Regular run, 2 pallets" },
-  { date: "2026-06-07", dr: "DR-2026-0612", consignee: "UPI — Calamba Storage Hub", delCharge: 72.50, docCharge: 60.00, remarks: "Co-load with DR-0614" },
-  { date: "2026-06-14", dr: "DR-2026-0625", consignee: "UPI — Cavite Assembly Plant A", delCharge: 92.00, docCharge: 60.00, remarks: "Priority rush delivery" },
-  { date: "2026-06-21", dr: "DR-2026-0638", consignee: "UPI — Manila Bonded Warehouse", delCharge: 78.21, docCharge: 60.00, remarks: "Standard run" },
-  { date: "2026-06-28", dr: "DR-2026-0649", consignee: "UPI — Cavite Assembly Plant A", delCharge: 95.00, docCharge: 60.00, remarks: "End-of-month closeout" },
-  { date: "2026-06-30", dr: "DR-2026-0654", consignee: "UPI — Calamba Storage Hub", delCharge: 90.00, docCharge: 60.00, remarks: "Final June run" },
-  { date: "2026-06-30", dr: "DR-2026-0658", consignee: "UPI — Cavite Assembly Plant A", delCharge: 150.00, docCharge: 60.00, remarks: "Bulk consolidated delivery" },
-];
-
-const DEMO_LOA_ROWS: LoaRow[] = [
-  { permit: "LOA-2026-887", scope: "PEZA Economic Zone Access — Zone 4 (Biñan)", validFrom: "2026-01-01", validTo: "2026-12-31", rate: 18.00 },
-  { permit: "LOA-2026-888", scope: "Bureau of Customs Bonded Warehouse Authority", validFrom: "2026-01-01", validTo: "2026-12-31", rate: 18.00 },
-  { permit: "LOA-2026-889", scope: "PEZA Duty-Free Tax Exemption Permit", validFrom: "2026-01-01", validTo: "2026-12-31", rate: 36.00 },
-];
-
-const DEMO_OTHER_CHARGES: OtherChargeRow[] = [
-  { name: "Trucking Administrative Fee", code: "TRUCK-ADMIN", amount: 200.00, notes: "Monthly fleet scheduling and POD archiving fee" },
-  { name: "Surety Bond Fee", code: "SURETY-BOND", amount: 0.00, notes: "Waived under Contract DSGC-VMI-2026-001" },
-  { name: "Container Transfer Fee (CTF)", code: "CTF-FEE", amount: 0.00, notes: "No container transfers logged for June 2026" },
-];
-
-const DEMO_MANPOWER_ROWS: ManpowerRow[] = [
-  { role: "Receiving and Stripping Team", hours: 44.01, rate: 5.00, amount: 220.05, notes: "WRR Inbound Stripping (44.01 hrs @ USD5/hr)" },
-  { role: "Picking and Loading Team", hours: 73.63, rate: 5.00, amount: 368.14, notes: "Outbound Pick and Staging (73.63 hrs @ USD5/hr)" },
-];
-
-function buildDemoCbmRows(): DailyStorageRow[] {
-  const rows: DailyStorageRow[] = [];
-  let beg = 714.22;
-  const rate = 0.05;
-  for (let d = 1; d <= 30; d++) {
-    const date = `2026-06-${String(d).padStart(2, "0")}`;
-    const inFg = [3, 10, 17, 24].includes(d) ? 12.40 : 0;
-    const inRaw = [5, 15, 25].includes(d) ? 8.80 : 0;
-    const outFg = [7, 14, 21, 28].includes(d) ? 10.20 : 0;
-    const outRaw = [8, 22].includes(d) ? 6.60 : 0;
-    const end = +(beg + inFg + inRaw - outFg - outRaw).toFixed(2);
-    const amount = +(end * rate).toFixed(2);
-    rows.push({ date, beg, inFg, inRaw, outFg, outRaw, end, rate, amount });
-    beg = end;
-  }
-  return rows;
-}
-
-const DEMO_CBM_ROWS = buildDemoCbmRows();
-
 // ── Utilities ──────────────────────────────────────────────────────────────────
 
 function usd(n: number) {
@@ -189,6 +140,16 @@ function AppendixTable({ headers, children }: { headers: string[]; children: Rea
   );
 }
 
+function EmptyAppendixRow({ colSpan, message = "No source records for this period." }: { colSpan: number; message?: string }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="py-4 px-3 text-center text-slate-500">
+        {message}
+      </td>
+    </tr>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function SoaDetailClient({
@@ -201,9 +162,7 @@ export function SoaDetailClient({
   otherChargeRows,
 }: SoaDetailClientProps) {
   const [showAppendix, setShowAppendix] = useState(false);
-  const [status, setStatus] = useState<SoaStatus>(
-    (soaData.status as SoaStatus) || "Issued"
-  );
+  const status = soaData.status ?? "issued";
 
   const effectiveCbmRows = cbmRows ?? [];
   const effectiveDeliveryRows = deliveryRows ?? [];
@@ -341,7 +300,9 @@ export function SoaDetailClient({
             </h1>
             <div className="flex items-center gap-2 bg-surface-white px-2.5 py-1 rounded-full border border-slate-200 shadow-2xs">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Status:</span>
-              <SoaStatusSelect value={status} onChange={(next) => setStatus(next)} size="sm" />
+              <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold uppercase text-slate-700">
+                {status}
+              </span>
             </div>
           </div>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -500,7 +461,7 @@ export function SoaDetailClient({
         <AppendixSection id="section-2" title="Appendix A — Delivery and Distribution Detail Schedule">
           <AppendixTable headers={["Date", "DR Number", "Consignee / Destination", "Delivery ($)", "Doc Fee ($)", "Remarks"]}>
             <tbody>
-              {effectiveDeliveryRows.map((d, i) => (
+              {effectiveDeliveryRows.length === 0 ? <EmptyAppendixRow colSpan={6} /> : effectiveDeliveryRows.map((d, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 whitespace-nowrap">{d.date}</td>
                   <td className="py-1.5 px-3 font-bold whitespace-nowrap">{d.dr}</td>
@@ -523,7 +484,7 @@ export function SoaDetailClient({
         <AppendixSection id="section-3" title="Appendix B — LOA Permit Detail Schedule">
           <AppendixTable headers={["Permit No.", "Scope", "Valid From", "Valid To", "Monthly Rate ($)"]}>
             <tbody>
-              {effectiveLoaRows.map((l, i) => (
+              {effectiveLoaRows.length === 0 ? <EmptyAppendixRow colSpan={5} /> : effectiveLoaRows.map((l, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 font-bold">{l.permit}</td>
                   <td className="py-1.5 px-3">{l.scope}</td>
@@ -543,7 +504,7 @@ export function SoaDetailClient({
         <AppendixSection id="section-4" title="Appendix C — Surety Bond and Other Contractual Fees">
           <AppendixTable headers={["Charge Description", "Code", "Amount ($)", "Notes"]}>
             <tbody>
-              {effectiveOtherChargeRows.map((o, i) => (
+              {effectiveOtherChargeRows.length === 0 ? <EmptyAppendixRow colSpan={4} /> : effectiveOtherChargeRows.map((o, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 font-semibold">{o.name}</td>
                   <td className="py-1.5 px-3">{o.code}</td>
@@ -558,7 +519,7 @@ export function SoaDetailClient({
         <AppendixSection id="section-5" title="Appendix D — Manpower Activity Schedule">
           <AppendixTable headers={["Role / Activity", "Hours", "Rate ($/hr)", "Amount ($)", "Task Log"]}>
             <tbody>
-              {effectiveManpowerRows.map((m, i) => (
+              {effectiveManpowerRows.length === 0 ? <EmptyAppendixRow colSpan={5} /> : effectiveManpowerRows.map((m, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1.5 px-3 font-semibold">{m.role}</td>
                   <td className="py-1.5 px-3 text-right">{m.hours.toFixed(2)}</td>
@@ -579,7 +540,7 @@ export function SoaDetailClient({
         <AppendixSection id="section-7" title="Appendix E — Daily Warehousing CBM Storage Calculation (30-Day Replay)" pageBreakBefore={true}>
           <AppendixTable headers={["Date", "Beg CBM", "+ In FG", "+ In Raw", "Out FG", "Out Raw", "End CBM", "Rate ($/CBM/day)", "Charge ($)"]}>
             <tbody>
-              {effectiveCbmRows.map((r, i) => (
+              {effectiveCbmRows.length === 0 ? <EmptyAppendixRow colSpan={9} message="No daily storage ledger rows for this period." /> : effectiveCbmRows.map((r, i) => (
                 <tr key={i} className={i % 2 === 1 ? "bg-slate-50" : ""}>
                   <td className="py-1 px-2 font-semibold whitespace-nowrap">{r.date}</td>
                   <td className="py-1 px-2 text-right">{usd(r.beg)}</td>

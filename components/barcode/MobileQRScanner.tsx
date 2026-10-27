@@ -194,7 +194,7 @@ export function MobileQRScanner({
           try {
             const rawDevices = await Html5Qrcode.getCameras();
             if (rawDevices && rawDevices.length > 0) {
-              const deviceList = rawDevices.map((d: any) => ({
+              const deviceList = rawDevices.map((d) => ({
                 id: d.id,
                 label: d.label || `Camera ${d.id.slice(0, 5)}`,
               }));
@@ -225,7 +225,7 @@ export function MobileQRScanner({
             setIsLoading(false);
             setErrorMessage(null);
           }
-        } catch (startErr: any) {
+        } catch {
           if (!isMounted) return;
           // Fallback to user facing camera / webcam
           try {
@@ -240,10 +240,10 @@ export function MobileQRScanner({
               setIsLoading(false);
               setErrorMessage(null);
             }
-          } catch (fallbackErr: any) {
+          } catch (fallbackErr: unknown) {
             if (!isMounted) return;
             setIsLoading(false);
-            const errText = fallbackErr?.message || String(fallbackErr);
+            const errText = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
             if (/permission|notallowed|denied/i.test(errText)) {
               setErrorMessage(
                 "Camera permission was blocked. Please allow camera access in your browser and tap Retry.",
@@ -263,7 +263,7 @@ export function MobileQRScanner({
             }
           }
         }
-      } catch (err: any) {
+      } catch {
         if (!isMounted) return;
         setIsLoading(false);
         setErrorMessage("Scanner initialization error.");

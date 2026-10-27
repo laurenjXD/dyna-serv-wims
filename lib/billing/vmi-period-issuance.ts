@@ -1,18 +1,24 @@
 import { eq, inArray } from "drizzle-orm";
 import { documentEvents, generatedDocuments } from "@/lib/db/schema/documents";
 import { vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
-import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts";
+import { ensureVmiDocumentArtifacts, type VmiDocumentArtifactsDbLike } from "@/lib/billing/vmi-document-artifacts";
 import { loadVmiDocumentPdfData } from "@/lib/billing/vmi-document-pdf-data";
 import { renderVmiBillingPdf } from "@/lib/documents/render-vmi-billing-pdf";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
-import { buildVmiArtifactPath, type VmiDocumentType, VMI_DOCUMENT_TYPES } from "@/lib/documents/vmi-artifacts";
+import { buildVmiArtifactPath, VMI_DOCUMENT_TYPES } from "@/lib/documents/vmi-artifacts";
 
-type DbLike = any;
 type StorageLike = {
   from(bucket: string): {
     upload(path: string, body: Uint8Array, options: { contentType: string; upsert: boolean }): Promise<{ error: { message: string } | null }>;
     remove(paths: string[]): Promise<{ error: { message: string } | null }>;
   };
+};
+
+type IssuedDocumentRow = {
+  id: string;
+  documentType: string;
+  status: string;
+  artifactPath: string | null;
 };
 
 const BUCKET = "generated-documents";
@@ -26,7 +32,7 @@ export type VmiPeriodIssuanceResult = { ok: true; documentIds: string[] } | { ok
  * artifact rows to pending; the billing period remains a mutable draft.
  */
 export async function issueVmiPeriodDocuments(
-  db: DbLike,
+  db: VmiDocumentArtifactsDbLike,
   storage: StorageLike,
   input: { periodId: string; actorId: string; now?: Date },
 ): Promise<VmiPeriodIssuanceResult> {
@@ -47,12 +53,12 @@ export async function issueVmiPeriodDocuments(
   });
   const documentIds = Object.values(artifactIds);
   const docs = await db.select({ id: generatedDocuments.id, documentType: generatedDocuments.documentType, status: generatedDocuments.status, artifactPath: generatedDocuments.artifactPath })
-    .from(generatedDocuments).where(inArray(generatedDocuments.id, documentIds));
+    .from(generatedDocuments).where(inArray(generatedDocuments.id, documentIds)) as IssuedDocumentRow[];
   if (docs.length !== VMI_DOCUMENT_TYPES.length) return { ok: false, error: "All four document records must be prepared before issue." };
 
-  const documentByType = new Map(docs.map((doc: any) => [doc.documentType, doc]));
+  const documentByType = new Map(docs.map((doc) => [doc.documentType, doc]));
   if (VMI_DOCUMENT_TYPES.some((type) => !documentByType.has(type))) return { ok: false, error: "A required billing document record is missing." };
-  if (docs.some((doc: any) => doc.status === "ready" && !doc.artifactPath)) {
+  if (docs.some((doc) => doc.status === "ready" && !doc.artifactPath)) {
     return { ok: false, error: "A ready document is missing its private Storage artifact. Create a correction instead of overwriting an immutable document." };
   }
 
@@ -61,7 +67,7 @@ export async function issueVmiPeriodDocuments(
   const now = input.now ?? new Date();
   const createdPaths: string[] = [];
   const uploaded = new Map<string, { path: string; sizeBytes: number }>();
-  const activeIds = docs.filter((doc: any) => doc.status !== "ready").map((doc: any) => doc.id);
+  const activeIds = docs.filter((doc) => doc.status !== "ready").map((doc) => doc.id);
 
   try {
     if (activeIds.length > 0) {

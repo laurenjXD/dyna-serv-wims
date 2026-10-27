@@ -256,10 +256,10 @@ export async function archiveExpiredApprovalRequest(
     if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
     revalidatePath("/approvals");
     return rlsResult.value;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       ok: false,
-      error: err?.message || "Failed to archive expired approval request.",
+      error: err instanceof Error ? err.message : "Failed to archive expired approval request.",
     };
   }
 }
@@ -290,10 +290,10 @@ export async function archiveAllExpiredApprovals(
     if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
     revalidatePath("/approvals");
     return rlsResult.value;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       ok: false,
-      error: err?.message || "Failed to bulk archive expired requests.",
+      error: err instanceof Error ? err.message : "Failed to bulk archive expired requests.",
     };
   }
 }
@@ -375,10 +375,10 @@ export async function createFifoOverrideRequest(
     if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };
     revalidatePath("/approvals");
     return rlsResult.value;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       ok: false,
-      error: err?.message || "Failed to create FIFO override request.",
+      error: err instanceof Error ? err.message : "Failed to create FIFO override request.",
     };
   }
 }

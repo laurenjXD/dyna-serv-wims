@@ -10,13 +10,18 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 import { createWrrUnitPayload } from "@/lib/barcode/wrr-unit";
+import { scheduleThermalPrint } from "@/lib/barcode/thermal-print";
 
 export interface WRRUnitLabelGeneratorProps {
   wrrItemId: string;
   wrrNumber: string;
   itemCode: string;
   lotNumber: string;
-  expectedQty: number;
+  /** Physical carton/box count. One durable QR label is generated per carton. */
+  cartonCount: number;
+  /** Base units contained in one carton, taken from the enrolled item's SPQ. */
+  spq: number;
+  uom: string;
 }
 
 interface UnitLabelData {
@@ -31,7 +36,9 @@ export function WRRUnitLabelGenerator({
   wrrNumber,
   itemCode,
   lotNumber,
-  expectedQty,
+  cartonCount,
+  spq,
+  uom,
 }: WRRUnitLabelGeneratorProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -47,12 +54,12 @@ export function WRRUnitLabelGenerator({
     };
   }, [isModalOpen]);
 
-  // Generate N unique unit labels per line when modal is opened
+  // Generate one unique physical-carton label per expected carton.
   const unitLabels = useMemo<UnitLabelData[]>(() => {
-    if (!isModalOpen || expectedQty <= 0) return [];
+    if (!isModalOpen || cartonCount <= 0) return [];
 
     const labels: UnitLabelData[] = [];
-    for (let i = 1; i <= expectedQty; i++) {
+    for (let i = 1; i <= cartonCount; i++) {
       const unitPayload = createWrrUnitPayload(wrrItemId, i);
       const unitId = unitPayload.unit_id;
       const payload = JSON.stringify(unitPayload);
@@ -65,14 +72,13 @@ export function WRRUnitLabelGenerator({
       });
     }
     return labels;
-  }, [isModalOpen, wrrItemId, expectedQty]);
+  }, [isModalOpen, wrrItemId, cartonCount]);
+
+  const totalUnits = cartonCount * Math.max(1, spq);
+  const canGenerateLabels = cartonCount > 0 && Number.isInteger(spq) && spq > 0;
 
   const handlePrint = () => {
-    // react-qr-code paints SVG nodes during the commit. Waiting two frames
-    // ensures Chromium has painted those nodes before it snapshots print.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
-    });
+    scheduleThermalPrint();
   };
 
   return (
@@ -80,11 +86,12 @@ export function WRRUnitLabelGenerator({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsModalOpen(true)}
-        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+        onClick={() => { if (canGenerateLabels) setIsModalOpen(true); }}
+        disabled={!canGenerateLabels}
+        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span aria-hidden="true">&#128424;</span>
-        <span>Print Unit Labels ({expectedQty})</span>
+        <span>{canGenerateLabels ? `Print Carton Labels (${cartonCount})` : "Labels unavailable — resolve item/SPQ"}</span>
       </button>
 
       {/* Modal Preview & Print Sheet */}
@@ -99,11 +106,13 @@ export function WRRUnitLabelGenerator({
           {/* Print Media Isolation Rules */}
           <style>{`
             @page {
-              size: 2in 2in;
+              size: 50mm 50mm;
               margin: 0;
             }
             @media print {
               html, body {
+                width: 50mm !important;
+                min-width: 50mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #FFFFFF !important;
@@ -117,8 +126,8 @@ export function WRRUnitLabelGenerator({
               body[data-qr-print-mode] [data-qr-print-modal] {
                 position: static !important;
                 display: block !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 margin: 0 auto !important;
                 height: auto !important;
                 min-height: 0 !important;
@@ -129,8 +138,8 @@ export function WRRUnitLabelGenerator({
                 position: static !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 2in !important;
-                min-width: 2in !important;
+                width: 50mm !important;
+                min-width: 50mm !important;
                 height: auto !important;
                 margin: 0 auto !important;
                 padding: 0 !important;
@@ -139,12 +148,12 @@ export function WRRUnitLabelGenerator({
                 overflow: visible !important;
               }
               .unit-thermal-label-card {
-                width: 2in !important;
-                height: 2in !important;
-                max-width: 2in !important;
-                max-height: 2in !important;
+                width: 50mm !important;
+                height: 50mm !important;
+                max-width: 50mm !important;
+                max-height: 50mm !important;
                 margin: 0 auto !important;
-                padding: 1.5mm !important;
+                padding: 1mm !important;
                 box-sizing: border-box !important;
                 border: none !important;
                 border-radius: 0 !important;
@@ -156,13 +165,48 @@ export function WRRUnitLabelGenerator({
                 flex-direction: column !important;
                 align-items: center !important;
                 justify-content: space-between !important;
+                gap: 0 !important;
                 image-rendering: pixelated !important;
                 image-rendering: crisp-edges !important;
               }
-              .unit-thermal-label-card svg {
+              .unit-thermal-label-header {
+                flex: 0 0 6mm !important;
+                width: 100% !important;
+                height: 6mm !important;
+                max-height: 6mm !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
+              }
+              .unit-thermal-label-qr {
+                flex: 0 0 36mm !important;
+                width: 36mm !important;
+                height: 36mm !important;
+                max-width: 36mm !important;
+                max-height: 36mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+              }
+              .unit-thermal-label-qr svg {
                 display: block !important;
-                width: 29mm !important;
-                height: 29mm !important;
+                width: 36mm !important;
+                height: 36mm !important;
+                max-width: 36mm !important;
+                max-height: 36mm !important;
+              }
+              .unit-thermal-label-footer {
+                flex: 0 0 6mm !important;
+                width: 100% !important;
+                height: 6mm !important;
+                max-height: 6mm !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
+                line-height: 1 !important;
+                padding-top: 0.5mm !important;
               }
               .unit-thermal-label-card:last-child {
                 page-break-after: avoid !important;
@@ -171,7 +215,7 @@ export function WRRUnitLabelGenerator({
             }
           `}</style>
 
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:max-h-none print:p-0 print:shadow-none">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[50mm] print:p-0 print:shadow-none">
             {/* Header — Screen only */}
             <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
               <div>
@@ -180,7 +224,7 @@ export function WRRUnitLabelGenerator({
                     id="print-modal-title"
                     className="font-heading font-semibold text-headline-md text-brand-navy"
                   >
-                    Unit Labels ({expectedQty} {expectedQty === 1 ? "label" : "labels"})
+                    Carton Labels ({cartonCount} {cartonCount === 1 ? "label" : "labels"})
                   </h2>
                   <span className="rounded bg-brand-navy/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy">
                     2&quot; × 2&quot; Thermal Roll · HD
@@ -191,7 +235,7 @@ export function WRRUnitLabelGenerator({
                   <span className="font-mono text-mono-md font-bold">{lotNumber}</span>
                 </p>
                 <p className="mt-1 font-body text-body-sm text-text-grey">
-                  Formatted for 2&quot; × 2&quot; (50mm × 50mm) continuous thermal label rolls. High-definition 1-bit monochrome output.
+                  {cartonCount.toLocaleString()} cartons × SPQ {Math.max(1, spq).toLocaleString()} = {totalUnits.toLocaleString()} {uom || "units"}. One unique QR is generated per carton.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -201,7 +245,7 @@ export function WRRUnitLabelGenerator({
                   className="flex h-12 items-center justify-center gap-2 rounded bg-primary px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   <span aria-hidden="true">&#128424;</span>
-                  <span>Print 2&quot; × 2&quot; Labels</span>
+                  <span>Print 2&quot; × 2&quot; Carton Labels</span>
                 </button>
                 <button
                   type="button"
@@ -215,10 +259,10 @@ export function WRRUnitLabelGenerator({
             </div>
 
             {/* Printable Sheet Grid (Screen: responsive preview grid; Print: 2x2 sequential pages) */}
-            <div className="mt-4 flex-1 overflow-y-auto print:overflow-visible">
+            <div className="mt-4 flex-1 overflow-y-auto print:mt-0 print:flex-none print:overflow-visible">
               <div
                 id="print-unit-labels-sheet"
-                className="grid grid-cols-2 gap-4 print:block print:w-[2in]"
+                className="grid grid-cols-2 gap-4 print:block print:w-[50mm]"
               >
                 {unitLabels.map((unit) => (
                   <div
@@ -227,11 +271,11 @@ export function WRRUnitLabelGenerator({
                     className="unit-thermal-label-card flex flex-col items-center justify-between rounded-xl border border-outline-variant/60 bg-surface-white p-3 text-center shadow-xs print:border-none print:shadow-none min-h-[210px] print:min-h-0"
                   >
                     {/* Header info */}
-                    <div className="w-full text-black pb-0.5 border-b border-black">
+                    <div className="unit-thermal-label-header w-full text-black pb-0.5 border-b border-black">
                       <div className="flex items-center justify-between text-[8px] font-mono font-black uppercase tracking-wider">
                         <span>DYNA-SERV</span>
                         <span className="font-bold">
-                          CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex}/{expectedQty})
+                          CTN-{String(unit.unitIndex).padStart(2, "0")} ({unit.unitIndex}/{cartonCount})
                         </span>
                       </div>
                       <p className="font-mono text-[9.5px] font-bold text-black text-left mt-0.5 truncate tracking-tight">
@@ -240,7 +284,7 @@ export function WRRUnitLabelGenerator({
                     </div>
 
                     {/* High-Definition QR Code */}
-                    <div className="my-1 p-1 bg-white flex items-center justify-center">
+                    <div className="unit-thermal-label-qr my-1 p-1 bg-white flex items-center justify-center">
                       <QRCode
                         value={unit.payload}
                         size={110}
@@ -248,13 +292,13 @@ export function WRRUnitLabelGenerator({
                         fgColor="#000000"
                         bgColor="#FFFFFF"
                         shapeRendering="crispEdges"
-                        style={{ height: "auto", maxWidth: "29mm", width: "100%" }}
+                        style={{ height: "auto", maxWidth: "40mm", width: "100%" }}
                         viewBox={`0 0 256 256`}
                       />
                     </div>
 
                     {/* Footer info */}
-                    <div className="w-full text-center border-t border-black pt-0.5 font-mono text-black leading-tight">
+                    <div className="unit-thermal-label-footer w-full text-center border-t border-black pt-0.5 font-mono text-black leading-tight">
                       <p className="text-[10px] font-black tracking-tight truncate">
                         Lot: {lotNumber}
                       </p>

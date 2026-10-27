@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxesToPieces, piecesToBoxes, piecesToPalletEquivalent, positiveInteger } from "../quantities";
+import { boxesToPieces, exactCartonCount, piecesToBoxes, piecesToPalletEquivalent, positiveInteger } from "../quantities";
 
 describe("inventory quantity conversions", () => {
   it("uses safe defaults for missing or invalid SPQ", () => {
@@ -17,5 +17,11 @@ describe("inventory quantity conversions", () => {
   it("returns pallet equivalents only when pallet capacity is known", () => {
     expect(piecesToPalletEquivalent(500, 50, 10)).toBe(1);
     expect(piecesToPalletEquivalent(500, 50, null)).toBeNull();
+  });
+
+  it("derives only complete carton counts from total units and SPQ", () => {
+    expect(exactCartonCount(800, 8)).toBe(100);
+    expect(exactCartonCount(801, 8)).toBeNull();
+    expect(exactCartonCount(800, null)).toBeNull();
   });
 });

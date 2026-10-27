@@ -9,7 +9,15 @@ import type { AnalyticsExecutor } from "../shared";
 
 describe("spatial queries", () => {
   it("returns TDC time-series data with cost per unit and per cbm", async () => {
-    const res = await getTotalDistributionCost();
+    const mockExecutor: AnalyticsExecutor = {
+      execute: async <T>() => [{
+        month: "Oct 2026",
+        total_cost: "100",
+        units_shipped: "20",
+        cbm_shipped: "10",
+      }] as unknown as T[],
+    };
+    const res = await getTotalDistributionCost(mockExecutor);
     expect(res.length).toBeGreaterThan(0);
     expect(res[0]).toHaveProperty("costPerUnit");
     expect(res[0]).toHaveProperty("costPerCbm");
@@ -41,6 +49,7 @@ describe("spatial queries", () => {
       execute: async <T>() => [
         {
           current_cbm: "600",
+          total_capacity_cbm: "1200",
         },
       ] as unknown as T[],
     };
@@ -50,5 +59,12 @@ describe("spatial queries", () => {
     expect(res.totalCapacityCbm).toBe(1200);
     expect(res.utilizationPct).toBe(50); // 600 / 1200 = 50%
     expect(res.forecastPoints.length).toBeGreaterThan(0);
+  });
+
+  it("does not fabricate a profitability heatmap without an approved source metric", async () => {
+    const res = await getStorageProfitabilityHeatmap();
+    expect(res.rows).toEqual([]);
+    expect(res.columns).toEqual([]);
+    expect(res.matrix).toEqual([]);
   });
 });

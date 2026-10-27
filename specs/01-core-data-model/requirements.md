@@ -1,6 +1,6 @@
 # Core Data Model — Requirements
-Status: Pending Reapproval
-Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
+Status: Approved
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
 
 ## 1. Overview
@@ -16,6 +16,13 @@ The Core Data Model defines the foundational database entities, relationships, c
 
 ### Physical Location Management
 - **WHEN** warehouse managers configure storage slots, **THE SYSTEM SHALL** enforce a location label structure formatted as `Rack+Level-Position` (e.g., `A1-01` for Rack `A`, Level `1`, Position `01`) with `max_cbm_capacity` and assign a `location_type` (`'receiving_bay'`, `'inspection'`, `'storage'`, `'picking'`, `'dispatch'`), **SO THAT** physical capacity and putaway algorithms operate on clear location boundaries without `warehouse_id` references, while holding pre-received inspection stock in `'inspection'` prior to inventory balance increment.
+
+#### Zone-only tracking areas amendment — 2026-10-23 (Pending Reapproval)
+
+- `locations.zone` SHALL be one of `storage`, `rcv`, or `hold`.
+- `storage` rows SHALL require rack `A`–`I`, level `1`–`4`, position `1`–`30` for rack A or `1`–`15` for racks B–I, positive `max_cbm_capacity`, and a server-generated `Rack+Level-Position` label.
+- `rcv` and `hold` rows are tracking-only records. They SHALL store `NULL` for rack, level, position, label, and `max_cbm_capacity`; no physical rack label or capacity is generated for them.
+- The existing `location_type` field remains a separate workflow classification and is not used to invent rack data for tracking-only rows.
 
 ### Pre-Receiving Staging (CIPL / WRR)
 - **WHEN** back-office staff encode an incoming Commercial Invoice & Packing List (CIPL), **THE SYSTEM SHALL** create a `wrr_document` in `staged_pending_arrival` status with expected `wrr_items`, optional attached physical CIPL file document (`cipl_file_url`), `peza_number` (PEZA permit reference), `commercial_invoice_no`, `mawb_mbl_number`, and `ip_number` (Import Permit number), and SHALL retain per-line shipping lot, manufacture date, and receiving remarks, **SO THAT** incoming stock is declared pre-arrival with full regulatory, supplier, and warehouse-receiving-report references.
@@ -76,7 +83,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
    - `wrr_documents` MUST support storing a physical file attachment URL (`cipl_file_url`) alongside encoded expected line items.
 
 10. **Location Labeling & Capacity**:
-   - `locations` MUST enforce `max_cbm_capacity` (numeric > 0) and formatted label naming as `Rack+Level-Position` (e.g. `A1-01` for Rack `A`, Level `1`, Position `01`).
+   - `storage` locations MUST enforce positive `max_cbm_capacity`, rack `A`–`I`, level `1`–`4`, and position `1`–`30` for rack A or `1`–`15` for racks B–I, with formatted label naming as `Rack+Level-Position` (e.g. `A1-01`). `rcv` and `hold` tracking rows MUST allow the rack-specific fields, label, and capacity to remain NULL.
 
 11. **FIFO/FEFO Eligibility Gate**:
     - Lot picking algorithms MUST evaluate `lots.status = 'available'` as the sole eligibility flag.
@@ -179,6 +186,16 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
   response. It SHALL never apply stock movement twice.
 -
 ### Material Origin Organization amendment (2026-10-26)
+
+### WRR quantity grain amendment (2026-10-27)
+
+For every `wrr_items` line, `expected_qty` is the authoritative total base-unit
+quantity from the WRR/CIPL. The complete-carton QR count is derived at runtime
+as `expected_qty / items.spq`; no expected-carton value is persisted on the WRR.
+The total must divide evenly by the enrolled item's SPQ before QR generation or
+receipt confirmation. `scanned_qty` is the accepted physical carton scan count.
+Inventory balances and transaction quantities are posted as base units; physical
+carton identities and QR labels remain one per carton.
 
 Material Enrollment may select an active Organization with either the
 `trading_supplier` or `vmi_customer` relationship and derive the Material's

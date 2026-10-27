@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Printer, Truck, ShieldCheck, CheckCircle2 } from "@/components/ui/icons";
+import { ShieldCheck, CheckCircle2 } from "@/components/ui/icons";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -10,6 +10,7 @@ import { WrrBarcode } from "../print/_components/WrrBarcode";
 import { PrintButton } from "../print/_components/PrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
+import { boxesToPieces } from "@/lib/inventory/quantities";
 
 interface PageProps {
   params: Promise<{ wrrId: string }>;
@@ -32,11 +33,9 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
 
   const items = wrr.items || [];
   const receiptNumber = `IGR-${(wrr.wrrNumber || "00000").replace(/^WRR-/, "")}`;
-  const totalBoxes = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0), 0);
+  const totalCartons = items.reduce((sum, item) => sum + (Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.cartonCount) || 0), 0);
   const totalPieces = items.reduce((sum, item) => {
-    const spq = Number(item.spq) || 1;
-    const count = Number(item.scannedQty) > 0 ? Number(item.scannedQty) : Number(item.expectedQty) || 0;
-    return sum + (count * spq);
+    return sum + (Number(item.scannedQty) > 0 ? boxesToPieces(Number(item.scannedQty), item.spq) : Number(item.expectedQty) || 0);
   }, 0);
   const template = await getDocumentTemplate(db);
 
@@ -81,13 +80,8 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
       />
 
       {/* Screen-only navigation bar */}
-      <div className="print-hide mb-6 flex items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4 shadow-elevation-1">
-        <Link
-          href={`/receiving/${wrrId}`}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy"
-        >
-          <ChevronLeft size={16} /> Back to Receiving
-        </Link>
+      <div className="print-hide mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4 shadow-elevation-1">
+        <PageBreadcrumb backHref="/receiving" backLabel="Receiving Queue" currentLabel={wrr.wrrNumber} monoCurrent className="mb-0" />
         <div className="flex items-center gap-2">
           <PrintButton />
         </div>
@@ -181,7 +175,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
                   Lot / Batch
                 </th>
                 <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">
-                  Boxes
+                  Cartons
                 </th>
                 <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">
                   Total Units
@@ -194,8 +188,8 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
             <tbody className="divide-y divide-slate-200">
               {wrr.items.map((item: WrrItemRow) => {
                 const spq = Number(item.spq) || 1;
-                const boxCount = item.scannedQty > 0 ? item.scannedQty : item.expectedQty;
-                const totalUnits = boxCount * spq;
+                const cartonCount = item.scannedQty > 0 ? item.scannedQty : item.cartonCount;
+                const totalUnits = item.scannedQty > 0 ? boxesToPieces(cartonCount, spq) : item.expectedQty;
 
                 return (
                   <tr key={item.id} className="hover:bg-slate-50">
@@ -209,7 +203,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
                       {item.lotNumber}
                     </td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
-                      {boxCount.toLocaleString()} {boxCount === 1 ? "box" : "boxes"}
+                      {cartonCount.toLocaleString()} {cartonCount === 1 ? "carton" : "cartons"}
                     </td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-brand-navy">
                       {totalUnits.toLocaleString()} {item.uom || "PCS"}
@@ -229,7 +223,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
                   Grand Total Received:
                 </td>
                 <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
-                  {totalBoxes.toLocaleString()} boxes
+                  {totalCartons.toLocaleString()} cartons
                 </td>
                 <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
                   {totalPieces.toLocaleString()} pcs

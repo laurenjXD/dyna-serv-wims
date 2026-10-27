@@ -2,11 +2,15 @@ import { eq } from "drizzle-orm";
 import { parties } from "@/lib/db/schema/parties";
 import { vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
 import { closeVmiPeriod } from "@/lib/billing/vmi-period-close";
+import type { VmiDocumentArtifactsDbLike } from "@/lib/billing/vmi-document-artifacts";
 
 /** Creates a revision draft first, then voids the immutable issued source.
  * The caller must subsequently issue the new draft through the normal four-
  * document Storage pipeline. */
-export async function correctVmiPeriod(db: any, input: { periodId: string; actorId: string; generationDate: string }) {
+export async function correctVmiPeriod(
+  db: VmiDocumentArtifactsDbLike,
+  input: { periodId: string; actorId: string; generationDate: string },
+) {
   const [source] = await db.select({
     id: vmiBillingPeriods.id, status: vmiBillingPeriods.status, partyId: vmiBillingPeriods.partyId,
     periodStartDate: vmiBillingPeriods.periodStartDate, periodEndDate: vmiBillingPeriods.periodEndDate,

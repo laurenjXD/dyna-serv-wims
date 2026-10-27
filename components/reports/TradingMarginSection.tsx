@@ -24,11 +24,7 @@ import {
 } from "recharts";
 import {
   DollarSign,
-  TrendingUp,
-  Percent,
   Layers,
-  ChevronRight,
-  X,
   PieChart,
 } from "@/components/ui/icons";
 import type { TradingMarginRow, TradingCategoryPerformance } from "./types";
@@ -48,7 +44,7 @@ export function TradingMarginSection({ initialData }: TradingMarginSectionProps)
   const marginData = initialData?.marginHistory && initialData.marginHistory.length > 0 ? initialData.marginHistory : defaultMarginData;
   const categoryData = initialData?.categoryBreakdown && initialData.categoryBreakdown.length > 0 ? initialData.categoryBreakdown : defaultCategoryData;
 
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [, setIsMobileDrawerOpen] = useState(false);
   const [categorySorting, setCategorySorting] = useState<SortingState>([]);
 
   const categoryColumns = useMemo<ColumnDef<TradingCategoryPerformance>[]>(
@@ -126,7 +122,7 @@ export function TradingMarginSection({ initialData }: TradingMarginSectionProps)
   const currentMonthData = marginData[marginData.length - 1];
   const totalRevenue = categoryData.reduce((acc, c) => acc + c.grossRevenue, 0);
   const totalMargin = categoryData.reduce((acc, c) => acc + c.netMargin, 0);
-  const avgMarginPct = totalRevenue > 0 ? ((totalMargin / totalRevenue) * 100).toFixed(1) : "18.4";
+  const avgMarginPct = totalRevenue > 0 ? `${((totalMargin / totalRevenue) * 100).toFixed(1)}%` : "—";
 
   return (
     <div className="space-y-6">
@@ -264,7 +260,7 @@ export function TradingMarginSection({ initialData }: TradingMarginSectionProps)
           {/* Quick Summary Strip */}
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-wrap items-center justify-between text-xs font-label">
             <div className="flex items-center gap-4">
-              <span className="text-text-grey">Avg 6-Mo Margin: <strong className="text-slate-900 font-mono">{avgMarginPct}%</strong></span>
+              <span className="text-text-grey">Avg 6-Mo Margin: <strong className="text-slate-900 font-mono">{avgMarginPct}</strong></span>
               <span className="text-text-grey">Target SLA: <strong className="text-emerald-700 font-mono">20.0%</strong></span>
             </div>
             <button

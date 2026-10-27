@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { ensureVmiDocumentArtifacts } from "../vmi-document-artifacts";
+import type { VmiDocumentArtifactsDbLike } from "../vmi-document-artifacts";
 
 function chain(rows: unknown[]) {
   const result: Record<string, unknown> = {};
   for (const method of ["from", "where"]) result[method] = vi.fn(() => result);
   Object.assign(result, Promise.resolve(rows));
-  (result as any).then = Promise.resolve(rows).then.bind(Promise.resolve(rows));
+  result.then = Promise.resolve(rows).then.bind(Promise.resolve(rows));
   return result;
 }
 
@@ -17,7 +18,7 @@ describe("ensureVmiDocumentArtifacts", () => {
       { id: "bs", documentType: "vmi_billing_statement" }, { id: "wc", documentType: "vmi_warehousing_charges" }, { id: "soa", documentType: "vmi_statement_of_account" }, { id: "loa", documentType: "vmi_letter_of_authority" },
     ]) })) }));
     const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue({}) })) }));
-    const db: any = { select: vi.fn(() => chain([])), insert, update };
+    const db: VmiDocumentArtifactsDbLike = { select: vi.fn(() => chain([])), insert, update };
     const result = await ensureVmiDocumentArtifacts(db, period);
     expect(Object.values(result)).toHaveLength(4);
     expect(insert).toHaveBeenCalledOnce();

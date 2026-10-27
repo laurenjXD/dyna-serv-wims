@@ -23,6 +23,15 @@ const LOCATION_TYPES = [
   { value: "dispatch", label: "Dispatch" },
 ] as const;
 
+const ZONES = [
+  { value: "storage", label: "Storage" },
+  { value: "rcv", label: "RCV" },
+  { value: "hold", label: "Hold" },
+] as const;
+
+const RACKS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"] as const;
+const LEVELS = ["1", "2", "3", "4"] as const;
+
 type LocationFormAction = (
   prevState: LocationFormState,
   formData: FormData,
@@ -45,6 +54,16 @@ function previewLabel(rack: string, level: string, position: string): string {
   return `${rack.trim()}${level.trim()}-${position.trim()}`;
 }
 
+function positionOptions(rack: string): string[] {
+  const max = rack === "A" ? 30 : 15;
+  return Array.from({ length: max }, (_, index) => String(index + 1).padStart(2, "0"));
+}
+
+function initialZone(location?: LocationDetail): "storage" | "rcv" | "hold" {
+  if (location?.zone === "rcv" || location?.zone === "hold") return location.zone;
+  return "storage";
+}
+
 export function LocationForm({
   action,
   location,
@@ -54,9 +73,13 @@ export function LocationForm({
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!location;
 
+  const [zone, setZone] = useState(initialZone(location));
   const [rack, setRack] = useState(location?.rack ?? "");
   const [level, setLevel] = useState(location?.level ?? "");
   const [position, setPosition] = useState(location?.position ?? "");
+  const [maxCbmCapacity, setMaxCbmCapacity] = useState(location?.maxCbmCapacity ?? "");
+  const isStorage = zone === "storage";
+  const positions = positionOptions(rack);
 
   const labelPreview = previewLabel(rack, level, position);
 
@@ -76,7 +99,7 @@ export function LocationForm({
       state.fieldErrors?.[name]
         ? "border-brand-red"
         : "border-outline-variant/30"
-    } bg-surface-white px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy`;
+    } ${isStorage ? "bg-surface-white" : "cursor-not-allowed bg-slate-100"} px-3 py-2 font-body text-body-md text-on-surface placeholder:text-status-neutral disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-navy`;
 
   const ariaProps = (name: string) =>
     state.fieldErrors?.[name]
@@ -116,19 +139,28 @@ export function LocationForm({
             Zone{" "}
             <span aria-hidden="true" className="text-brand-red">*</span>
           </label>
-          <input
+          <select
             id="zone"
             name="zone"
-            type="text"
             required
-            maxLength={50}
-            defaultValue={location?.zone ?? ""}
-            placeholder="e.g. A"
-            list="location-zone-suggestions"
+            value={zone}
+            onChange={(event) => {
+              const nextZone = event.target.value as "storage" | "rcv" | "hold";
+              setZone(nextZone);
+              if (nextZone !== "storage") {
+                setRack("");
+                setLevel("");
+                setPosition("");
+                setMaxCbmCapacity("");
+              }
+            }}
             className={inputClass("zone")}
             {...ariaProps("zone")}
-          />
-          <datalist id="location-zone-suggestions">{suggestions?.zones.map((value) => <option key={value} value={value} />)}</datalist>
+          >
+            {ZONES.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
           {fieldError("zone")}
         </div>
 
@@ -163,23 +195,26 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Rack{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            {isStorage && <span aria-hidden="true" className="text-brand-red">*</span>}
           </label>
-          <input
+          <select
             id="rack"
             name="rack"
-            type="text"
-            required
-            maxLength={50}
+            required={isStorage}
+            disabled={!isStorage}
             value={rack}
-            onChange={(e) => setRack(e.target.value)}
-            placeholder="e.g. A"
-            list="location-rack-suggestions"
+            onChange={(e) => {
+              const nextRack = e.target.value;
+              setRack(nextRack);
+              if (Number(position) > (nextRack === "A" ? 30 : 15)) setPosition("");
+            }}
             className={inputClass("rack")}
             {...ariaProps("rack")}
-          />
+          >
+            <option value="">Select rack</option>
+            {RACKS.map((value) => <option key={value} value={value}>Rack {value}</option>)}
+          </select>
           {fieldError("rack")}
-          <datalist id="location-rack-suggestions">{suggestions?.racks.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         {/* Level */}
@@ -189,23 +224,22 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Level{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            {isStorage && <span aria-hidden="true" className="text-brand-red">*</span>}
           </label>
-          <input
+          <select
             id="level"
             name="level"
-            type="text"
-            required
-            maxLength={50}
+            required={isStorage}
+            disabled={!isStorage}
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            placeholder="e.g. 1"
-            list="location-level-suggestions"
             className={inputClass("level")}
             {...ariaProps("level")}
-          />
+          >
+            <option value="">Select level</option>
+            {LEVELS.map((value) => <option key={value} value={value}>Level {value}</option>)}
+          </select>
           {fieldError("level")}
-          <datalist id="location-level-suggestions">{suggestions?.levels.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         {/* Position */}
@@ -215,23 +249,22 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Position{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            {isStorage && <span aria-hidden="true" className="text-brand-red">*</span>}
           </label>
-          <input
+          <select
             id="position"
             name="position"
-            type="text"
-            required
-            maxLength={50}
+            required={isStorage}
+            disabled={!isStorage}
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            placeholder="e.g. 01"
-            list="location-position-suggestions"
             className={inputClass("position")}
             {...ariaProps("position")}
-          />
+          >
+            <option value="">Select position</option>
+            {positions.map((value) => <option key={value} value={value}>Position {value}</option>)}
+          </select>
           {fieldError("position")}
-          <datalist id="location-position-suggestions">{suggestions?.positions.map((value) => <option key={value} value={value} />)}</datalist>
         </div>
 
         {/* Max CBM Capacity */}
@@ -241,7 +274,7 @@ export function LocationForm({
             className="block font-label text-label text-on-surface"
           >
             Max CBM Capacity{" "}
-            <span aria-hidden="true" className="text-brand-red">*</span>
+            {isStorage && <span aria-hidden="true" className="text-brand-red">*</span>}
           </label>
           <input
             id="maxCbmCapacity"
@@ -249,8 +282,10 @@ export function LocationForm({
             type="number"
             min="0.0001"
             step="0.0001"
-            required
-            defaultValue={location?.maxCbmCapacity ?? ""}
+            required={isStorage}
+            disabled={!isStorage}
+            value={maxCbmCapacity}
+            onChange={(event) => setMaxCbmCapacity(event.target.value)}
             placeholder="e.g. 10.0000"
             className={inputClass("maxCbmCapacity")}
             {...ariaProps("maxCbmCapacity")}
@@ -300,7 +335,11 @@ export function LocationForm({
             (server-computed, shown for confirmation)
           </span>
         </p>
-        {labelPreview ? (
+        {!isStorage ? (
+          <p className="mt-1 font-body text-body-md text-status-neutral">
+            {zone === "rcv" ? "RCV" : "Hold"} is a tracking-only zone. Rack, level, position, and max CBM are not required.
+          </p>
+        ) : labelPreview ? (
           <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
             {labelPreview}
           </p>
@@ -314,11 +353,13 @@ export function LocationForm({
             {state.fieldErrors.label}
           </p>
         )}
-        <p className="mt-2 font-body text-body-sm text-text-grey">
-          Format: Rack + Level + &quot;-&quot; + Position (e.g. rack A, level 1,
-          position 01 → <span className="font-mono">A1-01</span>). The server
-          always re-computes and re-validates this value at write time.
-        </p>
+        {isStorage && (
+          <p className="mt-2 font-body text-body-sm text-text-grey">
+            Format: Rack + Level + &quot;-&quot; + Position (e.g. rack A, level 1,
+            position 01 → <span className="font-mono">A1-01</span>). The server
+            always re-computes and re-validates this value at write time.
+          </p>
+        )}
       </div>
 
       {/* Form actions */}

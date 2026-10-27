@@ -29,7 +29,6 @@ export interface ReportKpisProps {
 export function ReportKpis({ kpis }: ReportKpisProps) {
   const valuation = kpis?.valuationTotal ?? 0;
   const accruedStorage = kpis?.vmiAccruedStorage ?? 0;
-  const grossRev = kpis?.tradingGrossRevenue ?? 0;
   const marginPct = kpis?.tradingMarginPct ?? 0;
 
   return (

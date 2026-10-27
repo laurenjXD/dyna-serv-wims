@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
- 
+import { ClientRouteRedirect } from "@/app/(authenticated)/_components/ClientRouteRedirect";
+
 export default function SettingsIndexPage() {
-  redirect("/settings/general");
+  return <ClientRouteRedirect href="/settings/general" />;
 }

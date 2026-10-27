@@ -4,7 +4,7 @@
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §5.1 — Expected line fields
-//   specs/07-incoming-receiving/design.md §5.2 — Scan-line state: expectedQty > 0 invariant
+//   specs/07-incoming-receiving/design.md §5.2 — derived carton QR count from expectedQty/SPQ
 //   specs/07-incoming-receiving/design.md §7.1 — disposition defaults to 'store'
 //   specs/07-incoming-receiving/requirements.md R1.2 — vendorPartyId, flowType, commercialInvoiceNo
 //   specs/07-incoming-receiving/requirements.md R1.3 — line fields: item, lot_number, expected_qty, UOM, unit_cbm, disposition
@@ -162,7 +162,7 @@ function validateLine(
     errors.push(`Line[${index}]: lotNumber is required and must be a non-empty string`);
   }
 
-  // expectedQty: must be a positive whole unit count
+  // expectedQty: total base-unit count; carton QR count is derived from SPQ
   const expectedQty = line["expectedQty"];
   if (typeof expectedQty !== "number" || !Number.isInteger(expectedQty) || expectedQty <= 0) {
     errors.push(`Line[${index}]: expectedQty must be a whole number greater than 0`);

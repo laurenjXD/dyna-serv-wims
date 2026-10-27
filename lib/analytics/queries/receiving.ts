@@ -21,11 +21,11 @@ export async function getReceivingQuality(range: DateRange, executor: AnalyticsE
   const endDate = range.endDate.toISOString();
   const [row] = await executor.execute<{ discrepancy_count: string; total_lines: string; discrepancy_pct: string | null; average_cycle_hours: string | null }>(sql`
     SELECT
-      COUNT(*) FILTER (WHERE wi.scanned_qty <> wi.expected_qty) AS discrepancy_count,
+      COUNT(*) FILTER (WHERE i.spq IS NULL OR wi.expected_qty % i.spq <> 0 OR wi.scanned_qty <> wi.expected_qty / i.spq) AS discrepancy_count,
       COUNT(wi.id) AS total_lines,
-      ROUND(100.0 * COUNT(*) FILTER (WHERE wi.scanned_qty <> wi.expected_qty) / NULLIF(COUNT(wi.id), 0), 2) AS discrepancy_pct,
+      ROUND(100.0 * COUNT(*) FILTER (WHERE i.spq IS NULL OR wi.expected_qty % i.spq <> 0 OR wi.scanned_qty <> wi.expected_qty / i.spq) / NULLIF(COUNT(wi.id), 0), 2) AS discrepancy_pct,
       AVG(EXTRACT(EPOCH FROM (wd.confirmed_at - wd.created_at)) / 3600) FILTER (WHERE wd.status = 'confirmed') AS average_cycle_hours
-    FROM wrr_documents wd LEFT JOIN wrr_items wi ON wi.wrr_id = wd.id
+    FROM wrr_documents wd LEFT JOIN wrr_items wi ON wi.wrr_id = wd.id LEFT JOIN items i ON i.id = wi.item_id
     WHERE wd.created_at >= ${startDate} AND wd.created_at <= ${endDate}
   `);
   return row ?? { discrepancy_count: "0", total_lines: "0", discrepancy_pct: null, average_cycle_hours: null };
@@ -48,7 +48,7 @@ export async function getTopReceivedItems(range: DateRange, executor: AnalyticsE
   const startDate = range.startDate.toISOString();
   const endDate = range.endDate.toISOString();
   return executor.execute(sql`
-    SELECT i.id, i.code, i.name, SUM(wi.scanned_qty) AS total_received, COUNT(*) AS receipt_frequency
+    SELECT i.id, i.code, i.name, SUM(wi.scanned_qty * COALESCE(i.spq, 1)) AS total_received, COUNT(*) AS receipt_frequency
     FROM wrr_items wi JOIN wrr_documents wd ON wd.id = wi.wrr_id JOIN items i ON i.id = wi.item_id
     WHERE wd.status = 'confirmed' AND wd.confirmed_at >= ${startDate} AND wd.confirmed_at <= ${endDate}
     GROUP BY i.id, i.code, i.name ORDER BY total_received DESC, receipt_frequency DESC LIMIT 10

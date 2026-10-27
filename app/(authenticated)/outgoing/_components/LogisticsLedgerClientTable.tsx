@@ -74,7 +74,7 @@ export function LogisticsLedgerClientTable() {
       } else {
         alert(`Failed to fetch live BSP rate: ${res.error}`);
       }
-    } catch (e) {
+    } catch {
       alert("Error contacting live BSP Forex server.");
     } finally {
       setIsSyncingFx(false);

@@ -1,16 +1,16 @@
 # Warehouse Map Visualization — Design
 
 Status: Approved
+Updated: 2026-10-23 — Final PDF rack footprint and label-spacing amendment approved
 Depends on: `specs/25-warehouse-map-visualization/requirements.md`
 
 ## 1. Design intent
 
 The map is an office-first read surface with a floor-usable focused-location
 mode. It renders the physical layout as data-driven SVG so each location can
-be selected, highlighted, and linked to canonical WIMS data. The workbook's
-`Racking ID` sheet is the current rack-geometry reference; the previously
-supplied PDF is retained only as an older visual reference and is not embedded
-as the interactive data model.
+be selected, highlighted, and linked to canonical WIMS data. The supplied PDF
+is the authoritative rack-geometry reference for v1; the workbook is not used
+to override the PDF's visible footprint.
 
 ## 2. Route and authorization
 
@@ -54,6 +54,18 @@ The configuration maps a canonical WIMS label such as `A1-01` to one SVG
 cell. The workbook's position-level identifiers are normalized to WIMS's
 level-position convention before they are used as map keys. Unmapped canonical
 locations appear in an exceptions summary and remain available in Table View.
+
+The final canonical storage geometry follows the PDF allocation: A has 30
+positions per layer across 4 layers, B–E have 12 per layer across 4 layers,
+F–G have 14 per layer across 4 layers, and H–I have 12 positions per layer
+across 2 layers, exactly as shown in the supplied PDF.
+RCV/Hold tracking rows have no label and are excluded from SVG rack-cell
+rendering while remaining available in table/list views.
+
+SVG text placement uses reserved bands for the warehouse title, each rack
+title, headers, and cell labels. The layout must add enough gap around each
+band that text never overlaps, and focused-rack rendering must preserve the
+same spacing rules.
 
 The v1 configuration MUST NOT invent CBM capacity, ownership, or allocation
 status from the workbook. Capacity comes from canonical locations; the
@@ -114,3 +126,5 @@ space.
 
 - Technical Lead: User / System, 2026-10-21
 - Product/Operations Lead: User / System, 2026-10-21
+- Product/Operations approval of final PDF mapping and spacing: User, 2026-10-23
+- Technical/map verification approval: System standing approval, 2026-10-23

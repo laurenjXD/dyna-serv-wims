@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/db/queries/dashboard.ts
 //
 // Real-time operations telemetry, inventory valuation, flow movement, and heatmap analytics
@@ -105,12 +104,12 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
     const passRate =
       qcInspectionStats && qcInspectionStats.total > 0
         ? Number(((qcInspectionStats.passed / qcInspectionStats.total) * 100).toFixed(1))
-        : 98.5;
+        : 0;
 
     // D. Financial Summary
     const [vmiAvgRateRow] = await db
       .select({
-        avgRate: sql<string>`coalesce(avg(${vmiContractTerms.storageRatePerCbmDay}), 0.48)`,
+        avgRate: sql<string>`coalesce(avg(${vmiContractTerms.storageRatePerCbmDay}), 0)`,
         clientCount: sql<number>`count(distinct ${vmiContractTerms.partyId})::int`,
       })
       .from(vmiContractTerms)
@@ -118,7 +117,7 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
 
     const [tradingMarginAgg] = await db
       .select({
-        avgTarget: sql<string>`coalesce(avg(${tradingPolicies.marginValue}), 20.0)`,
+        avgTarget: sql<string>`coalesce(avg(${tradingPolicies.marginValue}), 0)`,
       })
       .from(tradingPolicies);
 
@@ -159,13 +158,7 @@ export async function getDashboardKpis(): Promise<DashboardKpiData> {
     };
   } catch (error) {
     console.error("Error fetching dashboard KPIs:", error);
-    return {
-      valuation: { total: 0, trendPct: 0, trendDirection: "flat" as const, vmiAmount: 0, tradingAmount: 0 },
-      floorQueues: { pendingReceivingWrrs: 0, activePickLists: 0, pendingQcInspections: 0 },
-      stockHealth: { lowStockCount: 0, heldLotsCount: 0, qcPassRatePct: 0 },
-      financialSummary: { vmiDailyCbmRate: 0, vmiClientCount: 0, tradingMarginPct: 0, tradingMarginTargetPct: 0, pendingBillingAmount: 0, pendingInvoicesCount: 0 },
-      inventoryPosition: { distinctItems: 0, totalPieces: 0, totalBoxes: 0, knownPalletEquivalent: 0, stockRows: 0, rowsMissingPalletFactor: 0 },
-    };
+    throw error;
   }
 }
 
@@ -190,7 +183,7 @@ export async function getDashboardMonthlyFlow(): Promise<Record<string, MonthlyF
       )
       .orderBy(sql`extract(month from ${inventoryTransactions.createdAt})`);
 
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
+    const months = Array.from(new Set(rawMovements.map((row) => row.monthStr)));
     const flowResult: Record<string, MonthlyFlowDatum[]> = {
       all: [],
       vmi: [],
@@ -232,12 +225,7 @@ export async function getDashboardMonthlyFlow(): Promise<Record<string, MonthlyF
     return flowResult;
   } catch (error) {
     console.error("Error fetching dashboard monthly flow:", error);
-    return {
-      all: [],
-      vmi: [],
-      trading: [],
-      supplies: [],
-    };
+    throw error;
   }
 }
 
@@ -278,7 +266,7 @@ export async function getDashboardLocationOccupancy(): Promise<LocationOccupancy
     return [];
   } catch (error) {
     console.error("Error fetching location occupancy:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -300,12 +288,10 @@ export async function getDashboardDeliveryPerformance(): Promise<{
       .groupBy(sql`to_char(${pickLists.createdAt}, 'Mon')`, sql`extract(month from ${pickLists.createdAt})`)
       .orderBy(sql`extract(month from ${pickLists.createdAt})`);
 
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
-    const chartData: DeliveryPerformanceDatum[] = months.map((m) => {
-      const found = rawDelivery.find((d) => d.monthStr === m);
-      const otif = found && found.totalPicks > 0 ? (found.completedPicks / found.totalPicks) * 100 : 0.0;
+    const chartData: DeliveryPerformanceDatum[] = rawDelivery.map((found) => {
+      const otif = found.totalPicks > 0 ? (found.completedPicks / found.totalPicks) * 100 : 0;
       return {
-        month: m,
+        month: found.monthStr,
         otifRate: Number(otif.toFixed(1)),
         otdRate: Number(otif.toFixed(1)),
         inFullRate: Number(otif.toFixed(1)),
@@ -335,10 +321,7 @@ export async function getDashboardDeliveryPerformance(): Promise<{
     };
   } catch (error) {
     console.error("Error fetching delivery performance:", error);
-    return {
-      chartData: [],
-      miniMetrics: { avgLeadTimeHours: 0, firstAttemptDeliveryRatePct: 0, freightDamageClaimsPct: 0, slaTargetPct: 95.0 },
-    };
+    throw error;
   }
 }
 
@@ -347,7 +330,7 @@ export async function getDashboardDeliveryPerformance(): Promise<{
  */
 export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
   try {
-    const locRows = await db
+    const queriedLocRows = await db
       .select({
         label: locations.label,
         zone: locations.zone,
@@ -357,6 +340,10 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       .where(eq(locations.isActive, true))
       .limit(6);
 
+    const locRows = queriedLocRows.filter(
+      (row): row is typeof row & { label: string } => Boolean(row.label),
+    );
+
     if (locRows.length === 0) {
       return [];
     }
@@ -364,7 +351,12 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
     const locIds = locRows.map((l) => l.id);
     const locMap = new Map(locRows.map((l) => [l.id, l.label]));
     const binRows = locRows.map((l) => l.label);
-    const days = 31;
+    const dayDates = Array.from({ length: 31 }, (_, index) => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - (30 - index));
+      return date;
+    });
     const grid: HeatmapCellDatum[][] = [];
 
     // Query transactions efficiently with limit
@@ -372,7 +364,7 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       .select({
         toLocationId: inventoryTransactions.toLocationId,
         fromLocationId: inventoryTransactions.fromLocationId,
-        dayNumber: sql<number>`extract(day from ${inventoryTransactions.createdAt})::int`,
+        dayDate: sql<string>`to_char(${inventoryTransactions.createdAt}, 'YYYY-MM-DD')`,
         action: inventoryTransactions.movementType,
         qty: inventoryTransactions.qty,
         sku: items.code,
@@ -402,9 +394,11 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       const rowData: HeatmapCellDatum[] = [];
       const binName = binRows[r];
 
-      for (let day = 1; day <= days; day++) {
-        const isWeekend = (day % 7 === 1 || day % 7 === 2);
-        const dayTxns = locationTxns.filter((t) => t.locationLabel === binName && t.dayNumber === day);
+      for (let day = 1; day <= dayDates.length; day++) {
+        const currentDate = dayDates[day - 1];
+        const dateKey = currentDate.toISOString().slice(0, 10);
+        const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+        const dayTxns = locationTxns.filter((t) => t.locationLabel === binName && t.dayDate === dateKey);
         const basePick = dayTxns.length;
 
         rowData.push({
@@ -416,10 +410,10 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
           varianceRatePct: 0,
           auditRecord: {
             binId: binName,
-            date: `2026-08-${String(day).padStart(2, "0")}`,
+            date: dateKey,
             dayNumber: day,
-            monthName: "August",
-            year: 2026,
+            monthName: currentDate.toLocaleDateString("en-US", { month: "long" }),
+            year: currentDate.getFullYear(),
             metricType: "pickActivity",
             metricValue: basePick,
             metricFormatted: `${basePick} Picks`,
@@ -442,8 +436,8 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
                 qty: t.qty || 0,
                 uom: t.uom || "piece",
                 lotNumber: t.lotNumber || "N/A",
-                timestamp: t.timestamp || `2026-08-${String(day).padStart(2, "0")}`,
-                operatorBadge: "System Floor Scan",
+                timestamp: t.timestamp || dateKey,
+                operatorBadge: "Recorded warehouse transaction",
               };
             }),
           },
@@ -526,7 +520,7 @@ export async function getDashboardMasterInventory(params?: {
     };
   } catch (error) {
     console.error("Error fetching master inventory:", error);
-    return { items: [], total: 0 };
+    throw error;
   }
 }
 
@@ -580,7 +574,7 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
       .where(eq(locations.label, cleanCode))
       .limit(1);
 
-    if (locMatch) {
+    if (locMatch?.label) {
       return {
         found: true,
         type: "location",

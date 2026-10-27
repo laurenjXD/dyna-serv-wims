@@ -1852,9 +1852,119 @@ labels, removes only safe duplicate/out-of-grid rows, and fills any missing
 canonical cells. Legacy H/I records remain outside the aligned map registry so
 their operational history is not deleted without a separate source-backed
 decision.
+
+## A-I rack footprint restored from supplied position drawing (2026-10-23)
+
+The Product Owner clarified that the warehouse location registry and map must
+cover **Racks A through I**, matching the supplied pallet-position drawing.
+The prior A-G implementation was an incorrect regression from the approved
+`25-warehouse-map-visualization` A-I contract and must not be treated as the
+canonical footprint.
+
+The corrected geometry is:
+
+- Rack A: 30 levels × 4 positions (120 locations).
+- Racks B-E: 12 levels × 4 positions (48 locations each).
+- Racks F-G: 14 levels × 4 positions (56 locations each).
+- Racks H-I: 12 levels × 2 positions (24 locations each).
+- Total: 472 canonical rack locations.
+
+The map layout is versioned as `v5-pdf-rack-a-i`, with the reference drawing's
+position order preserved per rack. Migration
+`0062_align_pdf_rack_locations_a_i.sql` rotates the transposed A-G rows from
+the prior map implementation, normalizes H-I to the supplied footprint,
+preserves referenced location IDs and stock, and removes only duplicate or
+out-of-grid rows with no operational references.
 ## End-customer recipient identity (2026-10-22)
 
 The Product Owner clarified that `customer` is the company's direct commercial buyer for both VMI and Trading. `supplier` is the Trading-side inbound source. `end_customer` is the non-billable outbound recipient and may also be classified as a supplier or customer. The approved amendment adds `pick_lists.end_customer_party_id`, backfills it from the legacy `customer_party_id`, requires recipient selection before commitment, keeps commercial customer/bill-to identity in `customer_party_id`, and displays the physical recipient in the ICL/Pick Lists queue, dispatch, Outgoing Ledger, pick-list print, and acknowledgement receipt. Same-party cases display one combined value; post-commitment changes require release/reissue or superseding documentation.
 
 The same role boundary applies to master-data enrollment: the default inbound-source/supplier selector admits only Supplier-classified organizations (legacy `vendor` only for migration compatibility); Customer is not a Trading supplier, and End-Customer is not an inbound source merely because it is an outbound recipient. Multi-role parties remain valid, but each workflow uses the relationship-specific role and field.
+
+## FS1/FS2 are not warehouse locations (2026-10-23)
+
+The Product Owner clarified that `FS1-*` and `FS2-*` records are not part of
+the physical warehouse location layout, and no stock is stored there. Empty
+legacy FS rows must not appear as “unmapped” exceptions on the Rack A-I map.
+The map now reports only unmapped locations that contain live stock. Migration
+`0063_remove_unused_fs_locations.sql` removes unreferenced FS1/FS2 rows while
+retaining any row with operational references for historical safety.
+
+## Rack operating-level range clarified (2026-10-23)
+
+The Product Owner further clarified the operating range: Rack A runs through
+level 30, while every rack B-I runs through level 15. The map and enrollment
+generator now use that range, retaining four positions for B-G and two
+positions for H-I. The resulting operating registry is 540 cells. Migration
+`0064_expand_rack_levels_a_30_b_i_15.sql` adds only the newly required empty
+locations and leaves existing location IDs, stock, and history unchanged.
+
+## Custom-role management requested for RBAC v1 (2026-10-27)
+
+The Product Owner requested true administrator-managed custom-role creation,
+editing, assignment, and deactivation after reviewing the Role Capability
+Reference surface. The prior v1 decision (protected system roles only) is
+therefore superseded by a pending amendment, not silently implemented in
+application code.
+
+The proposed contract keeps the four seeded system roles protected and permits
+custom roles only as compositions of the canonical active permission catalog.
+Permission invention, system-role mutation, role-name authorization branches,
+and hard deletion of assigned roles remain prohibited. Custom-role mutations
+must be transactional, audited, RLS-protected, and covered by disposable
+real-Postgres tests before release.
+
+`specs/02-rbac-roles/{requirements,design,tasks}.md` are marked `Pending
+Reapproval` and contain the amendment and its sign-off checklist. No
+application or migration code for custom roles may be written until that
+checklist is complete under the repository implementation gate.
+
+## Runtime schema and migration-history blocker pass (2026-10-27)
+
+The configured runtime database was read-audited against the current repository
+contracts. The approved additive schemas for canonical `party_rbe_classifications`,
+`system_settings`, `compliance_applications`/`compliance_application_fees`, and
+the optional `billing_frequency` type were applied and verified without changing
+existing party-role rows. Runtime migration history was repaired only for schema
+effects already verified present. Duplicate local migration prefixes were given
+unique ordered filenames so future Supabase migration checks are deterministic.
+
+The location rewrite was not applied. The live registry still contains
+referenced legacy transposed rack rows and unused FS rows; the existing guard
+correctly refuses a conversion that could move or delete operational references.
+The location migrations remain a release blocker pending approval of the current
+zone/location contract and a source-backed disposable-copy conversion test.
+
+The real-Postgres integration tier now covers 4 files and 23 tests, including
+approval reviewer boundaries and administrator-versus-supervisor enrollment and
+settings mutations. The disposable database was removed after verification.
+
+## WRR quantity grain corrected for carton labels and total units — superseded (2026-10-27)
+
+The Product Owner clarified that `wrr_items.expected_qty` is the total base-unit
+quantity already calculated as `SPQ × cartons`; it is not the physical carton
+count. The receiving contract now adds `wrr_items.carton_qty` as the explicit
+CIPL/WRR carton count. `scanned_qty`, putaway allocations, and durable
+`inventory_units` remain at carton grain, while inventory balances,
+transactions, receipts, and expected-quantity displays use base units.
+
+This was the intermediate proposal and is superseded by the later same-day
+decision below. It is retained only as decision history.
+
+## WRR carton count is derived, not persisted (2026-10-27)
+
+The Product Owner clarified the quantity contract again: WRR/CIPL stores only
+the authoritative total base-unit quantity. Material Enrollment already stores
+the item's SPQ, so the number of carton QR labels is derived as
+`expected_qty / enrolled_item.spq`; no expected-carton field, manual actual
+carton field, or manual label-status field is added to the WRR. `scanned_qty`
+remains the accepted physical carton scan count.
+
+The implementation keeps migration `0066` as the upgrade step that converts
+legacy carton-grain expected quantities to base units, then migration `0067`
+removes the now-redundant persisted `carton_qty` column. Missing enrollment/SPQ
+or a non-divisible total blocks label generation and receipt commit. Under-scan
+is handled as a shortage, over-scan is rejected, duplicate/reprinted labels
+remain deterministic and idempotent, and mixed or partial packaging requires
+separate WRR lines or a separately approved packaging override.
 

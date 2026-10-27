@@ -101,13 +101,13 @@ async function main() {
         }
       }
     }
-  } catch (err: any) {
-    console.log('Note on storage cleanup:', err.message);
+  } catch (err: unknown) {
+    console.log('Note on storage cleanup:', err instanceof Error ? err.message : err);
   }
 
   // Re-create baseline test vendor and party scope for party_user
   console.log('\n--- Rebuilding Baseline Seed for Dev Party ---');
-  let [testParty] = await db
+  const [testParty] = await db
     .insert(parties)
     .values({
       code: 'DEV-VENDOR-01',

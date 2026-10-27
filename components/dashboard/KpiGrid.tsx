@@ -9,10 +9,7 @@ import {
   ClipboardList,
   AlertTriangle,
   Lock,
-  Warehouse,
-  Receipt,
   ArrowRight,
-  Sparkles,
   Layers,
   ArrowUpRight,
 } from "@/components/ui/icons";

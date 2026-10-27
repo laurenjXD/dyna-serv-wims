@@ -15,7 +15,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listParties } from "@/lib/db/queries/parties";
-import { getVmiDailyBalanceRows } from "@/lib/billing/queries/vmi-ledger";
+import { getVmiDailyBalanceRows, listVmiBillingPeriods } from "@/lib/billing/queries/vmi-ledger";
 import { getDailyForexRate } from "@/lib/billing/forex-service";
 import { getVmiHandlingForPeriod } from "@/lib/billing/vmi-handling";
 import { getVmiChargeAggregationForPeriod } from "@/lib/billing/vmi-charge-aggregation";
@@ -91,7 +91,24 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
   const periodEndDate = `${year}-${monthPadded}-${String(daysInMonth).padStart(2, "0")}`;
 
   const targetDate = `${year}-${monthPadded}-01`;
-  const exchangeRate = await getDailyForexRate(targetDate);
+  const billingPeriod = (await listVmiBillingPeriods(party.id, 100)).find(
+    (period) => period.periodStartDate === periodStartDate,
+  );
+  const exchangeRate = billingPeriod?.lockedExchangeRatePhp ?? await getDailyForexRate(targetDate);
+
+  if (exchangeRate === null || exchangeRate <= 0) {
+    return (
+      <div className="mx-auto max-w-container px-8 py-12">
+        <WorkflowState
+          kind="unavailable"
+          title="Exchange rate unavailable"
+          description="This billing period has no locked exchange rate and no recorded daily rate is available. The statement is withheld until a valid rate is recorded."
+          actionLabel="Back to SOA directory"
+          actionHref="/billing-pricing/soa"
+        />
+      </div>
+    );
+  }
 
   let storageAmount = 0;
   let handlingInUsd = 0;
@@ -229,6 +246,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
     creditsUsd: 0.0,
     paymentsAppliedUsd: 0.0,
     outstandingBalanceUsd: totalAmount,
+    status: billingPeriod?.status ?? "draft",
     categories: [
       { name: "Warehousing (Daily CBM Storage)", code: "WH-STORAGE", amount: storageAmount, sectionId: "section-7" },
       { name: "Delivery & Distribution Charges", code: "DELIVERY", amount: deliveryUsd, sectionId: "section-2" },

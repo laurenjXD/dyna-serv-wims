@@ -16,6 +16,8 @@
 //     whose own flow_type does not match the WRR's flow_type SHALL produce immediate
 //     non-success feedback and a recoverable exception state.
 
+import { exactCartonCount } from "@/lib/inventory/quantities";
+
 export type WrrLine = {
   id: string;
   itemId: string | null;
@@ -26,6 +28,9 @@ export type WrrLine = {
   manufactureDate?: string | null;
   expiryDate?: string | null;
   isPerishable?: boolean;
+  /** Derived physical carton-label count; not persisted on wrr_items. */
+  cartonCount?: number;
+  spq?: number;
   expectedQty: number;
   scannedQty: number;
   disposition: "store" | "inspect";
@@ -54,8 +59,8 @@ export type ScanMatchResult =
  * 2. unknown_item — no line matches the barcode, or matched line has null itemId
  * 3. flow_type_mismatch — matched line's itemFlowType differs from the WRR's flowType
  * 4. duplicate_unit_scan — the wrr_item_unit payload's unit_id was already scanned (Spec 18 §2.2)
- * 5. over_quantity — matched line's scannedQty already exceeds expectedQty (corrupted state)
- * 6. fully_scanned — matched line's scannedQty equals expectedQty
+ * 5. over_quantity — matched line's scannedQty already exceeds the derived carton count (corrupted state)
+ * 6. fully_scanned — matched line's scannedQty equals the derived carton count
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
  * Every accepted QR represents one physical pallet or unit.
@@ -143,12 +148,16 @@ export function matchScan(
     }
 
     // Corrupted/malformed state: scanned already exceeds expected
-    if (line.scannedQty > line.expectedQty) {
+    const cartonCount = line.cartonCount ?? exactCartonCount(line.expectedQty, line.spq) ?? 0;
+    if (cartonCount <= 0) {
+      return { matched: false, reason: "over_quantity" };
+    }
+    if (line.scannedQty > cartonCount) {
       return { matched: false, reason: "over_quantity" };
     }
 
     // Line is already fully scanned; continue to next matching line
-    if (line.scannedQty >= line.expectedQty) {
+    if (line.scannedQty >= cartonCount) {
       continue;
     }
 
@@ -156,15 +165,15 @@ export function matchScan(
     // line: the WRR determines the related carton identities and one scan
     // receives the entire declared group. The IDs are persisted together so
     // a later scan of any related label is an exact duplicate.
-    const scanQty = parsedCartonId !== null ? line.expectedQty - line.scannedQty : 1;
+    const scanQty = parsedCartonId !== null ? cartonCount - line.scannedQty : 1;
     const unitIds = parsedCartonId !== null && /^[0-9a-f-]{36}$/i.test(line.id)
-      ? Array.from({ length: line.expectedQty }, (_, index) => {
+      ? Array.from({ length: cartonCount }, (_, index) => {
           const source = line.id.replaceAll("-", "").toLowerCase();
           const hex = `${source.slice(0, 24)}${(index + 1).toString(16).padStart(8, "0")}`;
           return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
         })
       : undefined;
-    const remainingQty = line.expectedQty - line.scannedQty - scanQty;
+    const remainingQty = cartonCount - line.scannedQty - scanQty;
     return {
       matched: true,
       line,

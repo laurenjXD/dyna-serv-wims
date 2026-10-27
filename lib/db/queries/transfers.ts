@@ -342,7 +342,7 @@ export async function listInspectionCases(
  * Fetches one inspection_case by id, joined to lots/items/parties for
  * display, plus a resolved qtyToInspect derived from the polymorphic
  * source line (transfer_lines.qty_requested for context_type = 'transfer',
- * wrr_items.scanned_qty/expected_qty for context_type = 'inbound').
+ * wrr_items.scanned_qty for context_type = 'inbound'.
  * Returns null if no case matches the id.
  */
 export async function getInspectionCase(
@@ -357,8 +357,9 @@ export async function getInspectionCase(
         WHERE ${transferLines.id} = ${inspectionCases.sourceRefId}
       )
       WHEN 'wrr_item' THEN (
-        SELECT COALESCE(${wrrItems.scannedQty}, ${wrrItems.expectedQty})
+        SELECT COALESCE(${wrrItems.scannedQty}, 0) * COALESCE(i.spq, 1)
         FROM ${wrrItems}
+        LEFT JOIN ${items} i ON i.id = ${wrrItems.itemId}
         WHERE ${wrrItems.id} = ${inspectionCases.sourceRefId}
       )
       ELSE NULL

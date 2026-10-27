@@ -31,7 +31,34 @@ export async function GET(request: Request) {
   } else {
     const partyRows = await db.select().from(parties).orderBy(asc(parties.code));
     const roleRows = await db.select({ partyId: partyRoles.partyId, role: partyRoles.role }).from(partyRoles);
-    const rbeRows = await db.select({ partyId: partyRbeClassifications.partyId, classification: partyRbeClassifications.classification }).from(partyRbeClassifications);
+    let rbeRows: Array<{ partyId: string; classification: string }>;
+    try {
+      rbeRows = await db
+        .select({
+          partyId: partyRbeClassifications.partyId,
+          classification: partyRbeClassifications.classification,
+        })
+        .from(partyRbeClassifications);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const causeMessage =
+        error && typeof error === "object" && "cause" in error
+          ? String((error as { cause?: unknown }).cause)
+          : "";
+      if (
+        message.includes('relation "party_rbe_classifications" does not exist') ||
+        causeMessage.includes('relation "party_rbe_classifications" does not exist')
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Organization export is temporarily unavailable because the canonical RBE classification table is not installed. Apply the approved enrollment migration before exporting party data.",
+          },
+          { status: 503 },
+        );
+      }
+      throw error;
+    }
     const roles = new Map<string, string[]>();
     const rbes = new Map<string, string[]>();
     for (const row of roleRows) roles.set(row.partyId, [...(roles.get(row.partyId) ?? []), row.role]);

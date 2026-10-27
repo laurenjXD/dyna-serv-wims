@@ -1,5 +1,5 @@
-export const WAREHOUSE_MAP_LAYOUT_VERSION = "v4-racking-tab-vertical-a-g";
-export const WAREHOUSE_MAP_SOURCE = "V2_UBOT HK_VMI System_Billing - Full Setup.xlsx / RACKING";
+export const WAREHOUSE_MAP_LAYOUT_VERSION = "v7-pdf-footprint-canonical-labels";
+export const WAREHOUSE_MAP_SOURCE = "DSGC PALLET POSITION.pdf / confirmed RACK A-I footprint";
 
 export type RackLayout = {
   rack: string;
@@ -10,7 +10,7 @@ export type RackLayout = {
   width: number;
   height: number;
   reversePositions?: boolean;
-  /** Display the workbook's position run vertically while keeping labels canonical. */
+  /** Display the physical position run vertically while keeping labels canonical. */
   verticalPositions?: boolean;
 };
 
@@ -27,24 +27,34 @@ export type WarehouseMapCell = {
 };
 
 /**
- * The workbook's visible RACKING sheet is the current geometry reference:
- * Rack A has four levels and thirty positions; Racks B-G have four levels
- * and fifteen positions. The display rotates the position run vertically so
- * the map matches the physical reference: A occupies the full left side,
- * followed by F/B, G/C, and D/E stacked columns. Canonical labels remain
+ * The supplied PDF is the current geometry reference. Its physical footprint
+ * is represented as positions running vertically: A is 30 positions across 4
+ * layers, B-E are 12 positions across 4 layers, F-G are 14 positions across
+ * 4 layers, and H-I are 12 positions across 2 layers. Canonical labels remain
  * level-position labels, so map clicks continue to resolve live locations.
+ *
+ * WAREHOUSE_RACK_LIMITS below is intentionally separate: it describes the
+ * location-entry contract (A: 1-30, B-I: 1-15; levels 1-4), while this layout
+ * describes only the confirmed PDF drawing footprint.
  */
 export const WAREHOUSE_RACK_LAYOUT: readonly RackLayout[] = [
   // Keep the first rack title below the warehouse subtitle with a clear gap.
-  { rack: "A", levels: 4, positions: 30, x: 84, y: 124, width: 164, height: 600, verticalPositions: true },
-  { rack: "F", levels: 4, positions: 15, x: 316, y: 124, width: 164, height: 280, verticalPositions: true },
-  { rack: "B", levels: 4, positions: 15, x: 316, y: 444, width: 164, height: 280, verticalPositions: true },
-  { rack: "G", levels: 4, positions: 15, x: 548, y: 124, width: 164, height: 280, verticalPositions: true },
-  { rack: "C", levels: 4, positions: 15, x: 548, y: 444, width: 164, height: 280, verticalPositions: true },
-  { rack: "D", levels: 4, positions: 15, x: 780, y: 124, width: 164, height: 280, verticalPositions: true },
-  { rack: "E", levels: 4, positions: 15, x: 780, y: 444, width: 164, height: 280, verticalPositions: true },
+  { rack: "A", levels: 4, positions: 30, x: 84, y: 150, width: 168, height: 600, reversePositions: true, verticalPositions: true },
+  { rack: "F", levels: 4, positions: 14, x: 332, y: 150, width: 180, height: 270, verticalPositions: true },
+  { rack: "G", levels: 4, positions: 14, x: 580, y: 150, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "H", levels: 2, positions: 12, x: 828, y: 150, width: 128, height: 270, verticalPositions: true },
+  { rack: "I", levels: 2, positions: 12, x: 1024, y: 150, width: 128, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "B", levels: 4, positions: 12, x: 332, y: 510, width: 180, height: 270, verticalPositions: true },
+  { rack: "C", levels: 4, positions: 12, x: 580, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
+  { rack: "D", levels: 4, positions: 12, x: 828, y: 510, width: 180, height: 270, verticalPositions: true },
+  // Keep enough gutter before E's vertical POS labels so D's final level
+  // header does not visually merge with them in the horizontally scrollable
+  // map view.
+  { rack: "E", levels: 4, positions: 12, x: 1048, y: 510, width: 180, height: 270, reversePositions: true, verticalPositions: true },
 ];
 
+// Form/storage-entry limits. These are broader than the visible PDF footprint
+// for B-I and must not be derived from the rendered cell counts above.
 export const WAREHOUSE_RACK_LIMITS = {
   A: { levels: 4, positions: 30 },
   B: { levels: 4, positions: 15 },
@@ -53,9 +63,11 @@ export const WAREHOUSE_RACK_LIMITS = {
   E: { levels: 4, positions: 15 },
   F: { levels: 4, positions: 15 },
   G: { levels: 4, positions: 15 },
+  H: { levels: 4, positions: 15 },
+  I: { levels: 4, positions: 15 },
 } as const;
 
-export const WAREHOUSE_MAP_VIEWBOX = { width: 1000, height: 760 } as const;
+export const WAREHOUSE_MAP_VIEWBOX = { width: 1240, height: 820 } as const;
 
 export function canonicalLocationLabel(rack: string, level: number, position: number): string {
   return `${rack}${level}-${String(position).padStart(2, "0")}`;

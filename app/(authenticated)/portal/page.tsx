@@ -31,6 +31,7 @@ import { partyScopeMatchesFlow } from "@/lib/rbac/session";
 import { resolveActivePartyScope } from "@/lib/portal/resolve-party-scope";
 import { db } from "@/lib/db/client";
 import { getPartyWithRoles } from "@/lib/db/queries/parties";
+import { listRecentNotifications } from "@/lib/db/queries/notifications";
 
 // ─── Nav card ─────────────────────────────────────────────────────────────────
 // 2×2 grid cards: bg-surface-white, h-44, rounded-2xl.
@@ -112,6 +113,7 @@ export default async function PortalPage() {
 
   const party = await getPartyWithRoles(db, partyScope.partyId);
   const partyName = party?.name ?? "Your Account";
+  const recentNotifications = await listRecentNotifications(context.userId, 3).catch(() => []);
   const partyFlowType =
     partyScope.flowType === "vmi"
       ? "VMI"
@@ -190,7 +192,17 @@ export default async function PortalPage() {
       </div>
       <aside className="rounded-xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
         <div className="flex items-center justify-between"><h2 className="font-heading text-body-lg font-bold text-on-surface">Recent Alerts</h2><Link href="/portal/notifications" className="font-label text-label font-bold text-on-surface underline">View All</Link></div>
-        <div className="mt-5 space-y-4 font-body text-body-sm text-text-grey"><p><span className="mr-2 text-status-held">●</span><strong className="text-on-surface">Low Stock Alert: ITM-4092</strong><br />Inventory for Industrial Bearings has fallen below minimum threshold.</p><p><span className="mr-2 text-on-surface">●</span><strong className="text-on-surface">Pick List #PL-8824 Approved</strong><br />Pick list verified and approved.</p><p><span className="mr-2 text-status-neutral">●</span><strong className="text-on-surface">System Maintenance</strong><br />Scheduled later this week.</p></div>
+        <div className="mt-5 space-y-4 font-body text-body-sm text-text-grey">
+          {recentNotifications.length === 0 ? (
+            <p>No recent alerts.</p>
+          ) : recentNotifications.map((notification) => (
+            <p key={notification.id}>
+              <span className={`mr-2 ${notification.readAt ? "text-status-neutral" : "text-status-held"}`}>●</span>
+              <strong className="text-on-surface">{notification.title}</strong>
+              {notification.body ? <><br />{notification.body}</> : null}
+            </p>
+          ))}
+        </div>
       </aside>
       </div>
 

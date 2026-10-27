@@ -57,11 +57,12 @@ export async function getVendorScorecards(
       p.name AS vendor_name,
       COUNT(DISTINCT wd.id) AS wrr_count,
       SUM(wi.expected_qty) AS total_expected,
-      SUM(wi.scanned_qty) AS total_scanned,
-      COUNT(wi.id) FILTER (WHERE wi.scanned_qty <> wi.expected_qty) AS discrepancy_count
+      SUM(wi.scanned_qty * COALESCE(i.spq, 1)) AS total_scanned,
+      COUNT(wi.id) FILTER (WHERE i.spq IS NULL OR wi.expected_qty % i.spq <> 0 OR wi.scanned_qty <> wi.expected_qty / i.spq) AS discrepancy_count
     FROM parties p
     JOIN wrr_documents wd ON wd.vendor_party_id = p.id
     JOIN wrr_items wi ON wi.wrr_id = wd.id
+    LEFT JOIN items i ON i.id = wi.item_id
     WHERE wd.status = 'confirmed'::wrr_status
     GROUP BY p.id, p.name
     ORDER BY wrr_count DESC

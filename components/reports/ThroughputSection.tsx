@@ -22,7 +22,6 @@ interface ThroughputSectionProps {
 
 export function ThroughputSection({ initialData }: ThroughputSectionProps) {
   const [interval, setInterval] = useState<IntervalType>("daily");
-  const [flow, setFlow] = useState<FlowSegment>("all");
 
   const chartData: MovementThroughputDatum[] = initialData || [];
 

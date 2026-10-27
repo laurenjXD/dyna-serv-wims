@@ -5,41 +5,79 @@ import type { HeatmapCell } from "@/components/analytics/WarehouseHeatmap";
 
 export type TdcDatum = {
   month: string;
-  totalCost: number; // Total warehouse operation cost in ₱
+  totalCost: number; // Total warehouse operation cost in USD (billing_events.amount_usd)
   unitsShipped: number;
   cbmShipped: number;
-  costPerUnit: number; // TDC per unit in ₱
-  costPerCbm: number; // TDC per CBM in ₱
+  costPerUnit: number; // TDC per unit in USD
+  costPerCbm: number; // TDC per CBM in USD
 };
 
 export type SpaceUtilizationForecast = {
   currentCbmUsed: number;
   totalCapacityCbm: number;
   utilizationPct: number;
-  projectedDaysToFull: number;
-  growthRateCbmPerDay: number;
+  projectedDaysToFull: number | null;
+  growthRateCbmPerDay: number | null;
   forecastPoints: Array<{ date: string; occupiedCbm: number; capacityCbm: number }>;
 };
 
-export async function getTotalDistributionCost(): Promise<TdcDatum[]> {
-  return [
-    { month: "Apr 2026", totalCost: 180000, unitsShipped: 12000, cbmShipped: 450, costPerUnit: 15.0, costPerCbm: 400 },
-    { month: "May 2026", totalCost: 185000, unitsShipped: 13500, cbmShipped: 490, costPerUnit: 13.7, costPerCbm: 377.5 },
-    { month: "Jun 2026", totalCost: 192000, unitsShipped: 15000, cbmShipped: 540, costPerUnit: 12.8, costPerCbm: 355.5 },
-    { month: "Jul 2026", totalCost: 190000, unitsShipped: 15800, cbmShipped: 560, costPerUnit: 12.0, costPerCbm: 339.3 },
-    { month: "Aug 2026", totalCost: 198000, unitsShipped: 17200, cbmShipped: 610, costPerUnit: 11.5, costPerCbm: 324.6 },
-    { month: "Sep 2026", totalCost: 205000, unitsShipped: 18500, cbmShipped: 660, costPerUnit: 11.1, costPerCbm: 310.6 },
-  ];
+export async function getTotalDistributionCost(
+  executor: AnalyticsExecutor = defaultAnalyticsExecutor,
+): Promise<TdcDatum[]> {
+  const rows = await executor.execute<{
+    month: string;
+    total_cost: string | number | null;
+    units_shipped: string | number | null;
+    cbm_shipped: string | number | null;
+  }>(sql`
+    WITH shipped AS (
+      SELECT
+        DATE_TRUNC('month', it.created_at) AS month_start,
+        SUM(ABS(it.qty)) AS units_shipped,
+        SUM(ABS(it.qty) * COALESCE(i.volume_cbm, 0)) AS cbm_shipped
+      FROM inventory_transactions it
+      JOIN items i ON i.id = it.item_id
+      WHERE it.movement_type = 'pick'::movement_type
+      GROUP BY DATE_TRUNC('month', it.created_at)
+    ), costs AS (
+      SELECT
+        DATE_TRUNC('month', be.created_at) AS month_start,
+        SUM(be.amount_usd) AS total_cost
+      FROM billing_events be
+      WHERE be.status <> 'voided'::billing_event_status
+        AND be.source_transaction_type IN ('delivery', 'picking')
+      GROUP BY DATE_TRUNC('month', be.created_at)
+    )
+    SELECT
+      TO_CHAR(COALESCE(shipped.month_start, costs.month_start), 'Mon YYYY') AS month,
+      COALESCE(costs.total_cost, 0) AS total_cost,
+      COALESCE(shipped.units_shipped, 0) AS units_shipped,
+      COALESCE(shipped.cbm_shipped, 0) AS cbm_shipped
+    FROM shipped
+    FULL OUTER JOIN costs ON costs.month_start = shipped.month_start
+    ORDER BY COALESCE(shipped.month_start, costs.month_start) ASC
+  `);
+
+  return rows.map((row) => {
+    const totalCost = toNumber(row.total_cost);
+    const unitsShipped = toNumber(row.units_shipped);
+    const cbmShipped = toNumber(row.cbm_shipped);
+    return {
+      month: row.month,
+      totalCost,
+      unitsShipped,
+      cbmShipped,
+      costPerUnit: unitsShipped > 0 ? totalCost / unitsShipped : 0,
+      costPerCbm: cbmShipped > 0 ? totalCost / cbmShipped : 0,
+    };
+  });
 }
 
 export async function getWarehousePickingDensity(
   executor: AnalyticsExecutor = defaultAnalyticsExecutor
 ): Promise<{ rows: string[]; columns: string[]; matrix: HeatmapCell[] }> {
-  const aisles = ["Aisle A", "Aisle B", "Aisle C", "Aisle D", "Aisle E", "Aisle F"];
-  const bays = ["Bay 01", "Bay 02", "Bay 03", "Bay 04", "Bay 05", "Bay 06", "Bay 07", "Bay 08"];
-
   // Real warehouse matrix calculation:
-  const rows = await executor.execute<{
+  const rawRows = await executor.execute<{
     aisle: string;
     bay: string;
     pick_count: string;
@@ -55,16 +93,19 @@ export async function getWarehousePickingDensity(
     GROUP BY aisle, bay
   `);
 
+  const aisles = [...new Set(rawRows.map((row) => row.aisle))].sort();
+  const bays = [...new Set(rawRows.map((row) => row.bay))].sort();
+
   const lookup = new Map<string, number>();
-  for (const r of rows) {
+  for (const r of rawRows) {
     lookup.set(`${r.aisle}-${r.bay}`, toNumber(r.pick_count));
   }
 
   const matrix: HeatmapCell[] = [];
-  aisles.forEach((aisle, aIdx) => {
-    bays.forEach((bay, bIdx) => {
-      const code = `A${aIdx + 1}-${String(bIdx + 1).padStart(2, "0")}`;
-      const val = lookup.get(`${aisle}-${bay}`) ?? ((aIdx + 1) * (8 - bIdx) * 14 + 5);
+  aisles.forEach((aisle) => {
+    bays.forEach((bay) => {
+      const code = `${aisle}-${bay}`;
+      const val = lookup.get(`${aisle}-${bay}`) ?? 0;
       matrix.push({
         row: aisle,
         col: bay,
@@ -84,27 +125,9 @@ export async function getStorageProfitabilityHeatmap(): Promise<{
   columns: string[];
   matrix: HeatmapCell[];
 }> {
-  const aisles = ["Aisle A", "Aisle B", "Aisle C", "Aisle D", "Aisle E", "Aisle F"];
-  const bays = ["Bay 01", "Bay 02", "Bay 03", "Bay 04", "Bay 05", "Bay 06", "Bay 07", "Bay 08"];
-
-  const matrix: HeatmapCell[] = [];
-  aisles.forEach((aisle, aIdx) => {
-    bays.forEach((bay, bIdx) => {
-      // Mocked realistic profitability index: Green for high margin fast turnover, Red for stagnant consignment
-      const score = Math.round(Math.max(10, Math.min(100, 100 - (aIdx * 12 + bIdx * 8) + ((aIdx + bIdx) % 3) * 20)));
-      const isDead = score < 30;
-      matrix.push({
-        row: aisle,
-        col: bay,
-        value: score,
-        label: `${aisle.charAt(6)}${bIdx + 1}`,
-        meta: isDead ? "Dead Consignment Stock" : "Active Fast-Moving",
-        status: score > 70 ? "fast" : score > 40 ? "normal" : isDead ? "dead" : "slow",
-      });
-    });
-  });
-
-  return { rows: aisles, columns: bays, matrix };
+  // There is currently no approved location-level profitability contract.
+  // Returning an empty dataset is safer than presenting a synthetic score.
+  return { rows: [], columns: [], matrix: [] };
 }
 
 export async function getSpaceUtilizationForecast(
@@ -112,27 +135,27 @@ export async function getSpaceUtilizationForecast(
 ): Promise<SpaceUtilizationForecast> {
   const [row] = await executor.execute<{
     current_cbm: string | null;
+    total_capacity_cbm: string | null;
   }>(sql`
     SELECT
-      COALESCE(SUM((lit.qty_remaining::numeric / NULLIF(i.spq, 0)) * i.volume_cbm), 0) AS current_cbm
-    FROM lots l
-    JOIN items i ON i.id = l.item_id
-    JOIN lot_inventory_totals lit ON lit.lot_id = l.id
-    WHERE l.status = 'available'::lot_status
+      COALESCE((SELECT SUM((lit.qty_remaining::numeric / NULLIF(i.spq, 0)) * i.volume_cbm)
+        FROM lots l
+        JOIN items i ON i.id = l.item_id
+        JOIN lot_inventory_totals lit ON lit.lot_id = l.id
+        WHERE l.status = 'available'::lot_status), 0) AS current_cbm,
+      COALESCE((SELECT SUM(max_cbm_capacity) FROM locations WHERE zone = 'storage' AND is_active = TRUE), 0) AS total_capacity_cbm
   `);
 
-  const currentCbm = toNumber(row?.current_cbm ?? 620);
-  const totalCapacityCbm = 1200; // Dyna-Serv warehouse standard target capacity
-  const utilizationPct = Math.round((currentCbm / totalCapacityCbm) * 1000) / 10;
-  const growthRate = 3.5; // Net +3.5 CBM / day average
-  const daysToFull = Math.max(10, Math.round((totalCapacityCbm - currentCbm) / growthRate));
+  const currentCbm = toNumber(row?.current_cbm ?? 0);
+  const totalCapacityCbm = toNumber(row?.total_capacity_cbm ?? 0);
+  const utilizationPct = totalCapacityCbm > 0
+    ? Math.round((currentCbm / totalCapacityCbm) * 1000) / 10
+    : 0;
+  const growthRate: number | null = null;
+  const daysToFull: number | null = null;
 
   const forecastPoints = [
     { date: "Current", occupiedCbm: currentCbm, capacityCbm: totalCapacityCbm },
-    { date: "+30 Days", occupiedCbm: Math.min(totalCapacityCbm, currentCbm + growthRate * 30), capacityCbm: totalCapacityCbm },
-    { date: "+60 Days", occupiedCbm: Math.min(totalCapacityCbm, currentCbm + growthRate * 60), capacityCbm: totalCapacityCbm },
-    { date: "+90 Days", occupiedCbm: Math.min(totalCapacityCbm, currentCbm + growthRate * 90), capacityCbm: totalCapacityCbm },
-    { date: "+120 Days", occupiedCbm: Math.min(totalCapacityCbm, currentCbm + growthRate * 120), capacityCbm: totalCapacityCbm },
   ];
 
   return {

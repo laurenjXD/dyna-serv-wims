@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getNextSuggestedItemCodes } from "../items";
+import { getNextSuggestedItemCodes, type DbLike } from "../items";
 
 describe("getNextSuggestedItemCodes", () => {
   it("returns default DSGC-TRD-0001 and ITM-00001 when database has no matching items", async () => {
@@ -9,7 +9,7 @@ describe("getNextSuggestedItemCodes", () => {
       }),
     };
 
-    const result = await getNextSuggestedItemCodes(mockDb as any);
+    const result = await getNextSuggestedItemCodes(mockDb as DbLike);
     expect(result).toEqual({
       nextDsgcCode: "DSGC-TRD-0001",
       nextGenericCode: "ITM-00001",
@@ -27,7 +27,7 @@ describe("getNextSuggestedItemCodes", () => {
       }),
     };
 
-    const result = await getNextSuggestedItemCodes(mockDb as any);
+    const result = await getNextSuggestedItemCodes(mockDb as DbLike);
     expect(result.nextDsgcCode).toBe("DSGC-TRD-0006");
   });
 
@@ -42,7 +42,7 @@ describe("getNextSuggestedItemCodes", () => {
       }),
     };
 
-    const result = await getNextSuggestedItemCodes(mockDb as any);
+    const result = await getNextSuggestedItemCodes(mockDb as DbLike);
     expect(result.nextGenericCode).toBe("ITM-00016");
     expect(result.nextDsgcCode).toBe("DSGC-TRD-0004");
   });
@@ -57,7 +57,7 @@ describe("getNextSuggestedItemCodes", () => {
       }),
     };
 
-    const result = await getNextSuggestedItemCodes(mockDb as any);
+    const result = await getNextSuggestedItemCodes(mockDb as DbLike);
     expect(result).toEqual({
       nextDsgcCode: "DSGC-TRD-0001",
       nextGenericCode: "ITM-00001",

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ClientRouteRedirect } from "@/app/(authenticated)/_components/ClientRouteRedirect";
 
 export default function VmiContractsRedirectPage() {
-  redirect("/billing-pricing?section=configuration&subtab=contracts");
+  return <ClientRouteRedirect href="/billing-pricing?section=configuration&subtab=contracts" />;
 }

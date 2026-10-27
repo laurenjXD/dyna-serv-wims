@@ -18,7 +18,7 @@ interface ExportDataButtonProps<T> {
   buttonLabel?: string;
 }
 
-export function ExportDataButton<T extends Record<string, any>>({
+export function ExportDataButton<T extends object>({
   data,
   filename,
   columns,
@@ -38,13 +38,13 @@ export function ExportDataButton<T extends Record<string, any>>({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function formatDataForExport(): Record<string, any>[] {
+  function formatDataForExport(): Record<string, unknown>[] {
     if (!data || data.length === 0) return [];
 
     if (!columns || columns.length === 0) {
       // Direct raw data cleanup (strip complex objects/react nodes)
       return data.map((row) => {
-        const clean: Record<string, any> = {};
+        const clean: Record<string, unknown> = {};
         for (const [key, val] of Object.entries(row)) {
           if (val instanceof Date) {
             clean[key] = val.toISOString().split("T")[0];
@@ -59,12 +59,12 @@ export function ExportDataButton<T extends Record<string, any>>({
     }
 
     return data.map((row) => {
-      const formattedRow: Record<string, any> = {};
+      const formattedRow: Record<string, unknown> = {};
       for (const col of columns) {
         if (col.format) {
           formattedRow[col.header] = col.format(row) ?? "";
         } else if (col.key) {
-          const val = row[col.key as keyof T] as any;
+          const val: unknown = row[col.key as keyof T];
           if (val instanceof Date) {
             formattedRow[col.header] = val.toISOString().split("T")[0];
           } else if (typeof val === "object" && val !== null) {

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { ClientRouteRedirect } from "@/app/(authenticated)/_components/ClientRouteRedirect";
 
 export default function BillingRedirectPage() {
-  redirect("/billing-pricing");
+  return <ClientRouteRedirect href="/billing-pricing" />;
 }

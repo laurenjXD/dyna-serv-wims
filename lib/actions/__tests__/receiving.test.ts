@@ -580,6 +580,7 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
       expectedQty: 10,
       scannedQty: 5,
       disposition: "store",
+      items: { id: "item-master-uuid-1", barcode: "MATCH-BARCODE-001", spq: 1, flowType: "vmi" },
     });
     const db = makeReceivingDb([wrrDocRow()], [item]);
 
@@ -608,7 +609,7 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
       {
         wrr_documents: wrr,
         wrr_items: line,
-        items: { id: line.itemId, barcode: catalogBarcode, flowType: "vmi" },
+        items: { id: line.itemId, barcode: catalogBarcode, spq: 1, flowType: "vmi" },
       },
     ]);
 

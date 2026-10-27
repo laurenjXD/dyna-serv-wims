@@ -21,6 +21,7 @@ import { items as itemsTable } from "@/lib/db/schema/items";
 // otherwise collide with the schema table.
 import { parties as partiesTable } from "@/lib/db/schema/parties";
 import { userProfiles } from "@/lib/db/schema/rbac";
+import { exactCartonCount } from "@/lib/inventory/quantities";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy.
@@ -66,6 +67,7 @@ export type WrrItemRow = {
   id: string;
   wrrId: string;
   lotNumber: string;
+  cartonCount: number;
   expectedQty: number;
   scannedQty: number;
   disposition: string;
@@ -316,6 +318,7 @@ export async function getWrrDocument(
       wrrId: row.itemWrrId!,
       lotNumber: row.itemLotNumber ?? "",
       expectedQty: Number(row.itemExpectedQty ?? 0),
+      cartonCount: exactCartonCount(Number(row.itemExpectedQty ?? 0), row.itemSpq == null ? undefined : Number(row.itemSpq)) ?? 0,
       scannedQty: Number(row.itemScannedQty ?? 0),
       disposition: row.itemDisposition ?? "store",
       itemId: row.itemItemId,
@@ -328,7 +331,7 @@ export async function getWrrDocument(
       remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
-      spq: Number(row.itemSpq ?? 1) > 0 ? Number(row.itemSpq) : 1,
+      spq: Number(row.itemSpq ?? 0) > 0 ? Number(row.itemSpq) : 0,
       putawayLocationId: row.itemPutawayLocationId,
       committedAt: row.itemCommittedAt,
     }));

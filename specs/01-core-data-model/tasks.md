@@ -1,8 +1,24 @@
 # Core Data Model — Tasks
-Status: Pending Reapproval
-Updated: 2026-10-22 — Organization / Inventory Model and workflow-integrity amendment approved
+Status: Approved
+Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 
 ## Implementation Tasks
+
+### Zone-only tracking areas amendment — 2026-10-23 (Approved)
+
+- [ ] Amend `locations` nullability so `rack`, `level`, `position`, `label`, and `max_cbm_capacity` may be NULL for `rcv`/`hold` while remaining required for `storage`.
+- [ ] Enforce the `zone` value set (`storage`, `rcv`, `hold`) and storage rack/level/position ranges in the schema and server validation.
+- [ ] Add and verify the migration, schema, read-model, and RLS impact of the conditional location contract in real Postgres.
+- [x] Product owner approval — User, 2026-10-23.
+- [x] Technical/data-model/RBAC review and second approval — System standing approval, 2026-10-23.
+
+### WRR quantity grain amendment — 2026-10-27 (Approved)
+
+- [x] Define `wrr_items.expected_qty` as the authoritative total base-unit quantity; derive complete-carton QR count at runtime as `expected_qty / items.spq` and do not persist a redundant carton field.
+- [x] Keep `wrr_items.scanned_qty` as accepted physical carton scans and use the derived carton count for putaway allocations and `inventory_units`.
+- [x] Reject QR generation/receipt confirmation when the enrolled item's SPQ is missing or `expected_qty` is not divisible by SPQ; retain source package count only as import metadata.
+- [x] Product owner approval — User, 2026-10-27.
+- [x] Second approver approval — System standing approval, 2026-10-27.
 
 - [x] **1. Drizzle ORM Schema Definitions** — **implemented and fully verified 2026-08-07**
   - [x] Define PostgreSQL enums in `lib/db/schema/enums.ts` (`partyRoleEnum` with vendor/supplier/customer/end_customer/internal_warehouse, `flowTypeEnum`, `locationTypeEnum`, `lotStatusEnum`, `wrrStatusEnum`, `movementTypeEnum`, `pickListStatusEnum`, `conformanceStatusEnum`, `nonConformanceReasonEnum`, `commitmentStatusEnum`)
