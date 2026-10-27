@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CountLocation = {
   id: string;
@@ -22,8 +22,8 @@ export function LocationCountSelector({
 }) {
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
-  const [stockOnly, setStockOnly] = useState(true);
-  const [availableOnly, setAvailableOnly] = useState(true);
+  const [stockFilter, setStockFilter] = useState<"with-stock" | "empty" | "all">("with-stock");
+  const [countState, setCountState] = useState<"ready" | "active" | "all">("ready");
   const [selectedId, setSelectedId] = useState("");
 
   const zones = useMemo(
@@ -35,17 +35,26 @@ export function LocationCountSelector({
     return locations.filter((location) => {
       const matchesQuery = !normalized || `${location.label ?? ""} ${location.zone}`.toLowerCase().includes(normalized);
       const matchesZone = zone === "all" || location.zone === zone;
-      const matchesStock = !stockOnly || location.stockLineCount > 0;
-      const matchesAvailability = !availableOnly || location.activeSessionCount === 0;
-      return matchesQuery && matchesZone && matchesStock && matchesAvailability;
+      const matchesStock = stockFilter === "all"
+        || (stockFilter === "with-stock" && location.stockLineCount > 0)
+        || (stockFilter === "empty" && location.stockLineCount === 0);
+      const matchesCountState = countState === "all"
+        || (countState === "ready" && location.activeSessionCount === 0)
+        || (countState === "active" && location.activeSessionCount > 0);
+      return matchesQuery && matchesZone && matchesStock && matchesCountState;
     });
-  }, [availableOnly, locations, query, stockOnly, zone]);
+  }, [countState, locations, query, stockFilter, zone]);
   const selected = locations.find((location) => location.id === selectedId) ?? null;
-  const hasLocationFilter = query.trim().length > 0 || zone !== "all" || !stockOnly || !availableOnly;
+
+  useEffect(() => {
+    if (selectedId && !filteredLocations.some((location) => location.id === selectedId)) {
+      setSelectedId("");
+    }
+  }, [filteredLocations, selectedId]);
 
   return (
     <form action={createAction} className="mt-6 space-y-4">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto] lg:items-end">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_210px_180px] lg:items-end">
         <div>
           <label htmlFor="cycle-count-location-search" className="font-label text-label font-semibold text-text-grey">
             Find a location
@@ -71,25 +80,42 @@ export function LocationCountSelector({
             {zones.map((value) => <option key={value} value={value}>Zone {value}</option>)}
           </select>
         </div>
-        <label className="flex h-12 items-center gap-2 rounded-xl border border-outline-variant px-3 font-body text-body-sm text-on-surface">
-          <input type="checkbox" checked={stockOnly} onChange={(event) => setStockOnly(event.target.checked)} />
-          Has system stock
-        </label>
-        <label className="flex h-12 items-center gap-2 rounded-xl border border-outline-variant px-3 font-body text-body-sm text-on-surface">
-          <input type="checkbox" checked={availableOnly} onChange={(event) => setAvailableOnly(event.target.checked)} />
-          No active count
-        </label>
+        <div>
+          <label htmlFor="cycle-count-state" className="font-label text-label font-semibold text-text-grey">Count state</label>
+          <select
+            id="cycle-count-state"
+            value={countState}
+            onChange={(event) => setCountState(event.target.value as typeof countState)}
+            className="mt-2 h-12 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-body text-body-sm text-on-surface"
+          >
+            <option value="ready">Ready to count</option>
+            <option value="active">Count in progress</option>
+            <option value="all">All locations</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="cycle-count-stock" className="font-label text-label font-semibold text-text-grey">Stock state</label>
+          <select
+            id="cycle-count-stock"
+            value={stockFilter}
+            onChange={(event) => setStockFilter(event.target.value as typeof stockFilter)}
+            className="mt-2 h-12 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-body text-body-sm text-on-surface"
+          >
+            <option value="with-stock">With system stock</option>
+            <option value="empty">Empty locations</option>
+            <option value="all">Any stock state</option>
+          </select>
+        </div>
       </div>
 
-      {!hasLocationFilter ? (
-        <div className="rounded-xl border border-dashed border-outline-variant bg-surface-low/40 p-5 text-center">
-          <p className="font-body text-body-sm font-semibold text-on-surface">Search or filter to choose a location</p>
-          <p className="mt-1 font-body text-body-sm text-text-grey">
-            Enter a location code, label, or zone, or choose a zone below. Only locations with recorded system stock are shown by default.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface-low/50 px-3 py-2">
+        <p className="font-body text-body-sm text-text-grey">
+          Showing <span className="font-semibold text-on-surface">{filteredLocations.length}</span> of {locations.length} locations
+        </p>
+        <p className="font-body text-body-xs text-text-grey">Ready to count = stock present and no active session</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredLocations.map((location) => {
           const isSelected = selectedId === location.id;
           return (
@@ -114,12 +140,11 @@ export function LocationCountSelector({
             </button>
           );
           })}
-        </div>
-      )}
+      </div>
 
-      {hasLocationFilter && filteredLocations.length === 0 && (
+      {filteredLocations.length === 0 && (
         <p className="rounded-xl border border-dashed border-outline-variant p-5 text-center font-body text-body-sm text-text-grey">
-          No active locations match these filters. Try another search or include empty locations.
+          No locations match these filters. Try another search, choose another zone, or change the count/stock state.
         </p>
       )}
 
