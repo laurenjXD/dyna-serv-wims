@@ -12,8 +12,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
-import { createWrr, uploadCiplFile } from "@/lib/actions/receiving";
-import type { UploadCiplFileResult } from "@/lib/actions/receiving";
+import { createWrr } from "@/lib/actions/receiving";
 import { db } from "@/lib/db/client";
 import { getActiveWrrOrganizations, listActiveWrrItemOptions } from "@/lib/db/queries/items";
 import { WrrNewForm } from "./_components/wrr-new-form";
@@ -61,8 +60,7 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   }
 
   const input = {
-    // Client-generated (see WrrNewForm) so an uploaded CIPL file's Storage
-    // path — reserved before this row exists — and this row's own id agree.
+    // Client-generated id keeps the auto-parse/import context deterministic.
     id: (formData.get("id") as string | null) || undefined,
     vendorPartyId:
       (formData.get("vendorPartyId") as string | null) ?? "",
@@ -70,8 +68,6 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
       (formData.get("flowType") as string | null) ?? "",
     commercialInvoiceNo:
       (formData.get("commercialInvoiceNo") as string | null) || null,
-    ciplFileUrl:
-      (formData.get("ciplFileUrl") as string | null) || null,
     // PEZA Number is no longer collected on this form (2026-08-19 user
     // request) — wrr_documents.peza_number stays nullable and unset here.
     pezaNumber: null,
@@ -90,22 +86,6 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   // Redirect with encoded errors. The page re-reads them via searchParams.
   const encodedErrors = encodeURIComponent(result.errors.join("|"));
   redirect(`/receiving/new?errors=${encodedErrors}`);
-}
-
-// Thin wrapper so WrrNewForm (client) can call uploadCiplFile with a real
-// resolver built from this request's session — the pure action itself takes
-// a resolver, which only server-side code can construct.
-async function handleUploadCipl(
-  wrrId: string,
-  formData: FormData,
-): Promise<UploadCiplFileResult> {
-  "use server";
-  const actionResolver = await createPageResolver();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return { ok: false, error: "No file was provided." };
-  }
-  return uploadCiplFile(actionResolver, wrrId, file);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -182,7 +162,6 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
         action={handleCreateWrr}
         vendorParties={vendorParties}
         itemOptions={wrrItemOptions}
-        onUploadCipl={handleUploadCipl}
       />
     </div>
   );
