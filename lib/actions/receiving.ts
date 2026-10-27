@@ -834,9 +834,6 @@ export async function startReceiving(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
-  const network = await verifyFloorNetworkAccess();
-  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
-
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
 
