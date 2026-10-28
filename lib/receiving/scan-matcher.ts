@@ -24,6 +24,10 @@ export type WrrLine = {
   itemBarcode: string | null;
   /** Visible item code accepted as the camera-free manual fallback. */
   itemCode?: string | null;
+  /** Alternate item identities printed on supplier/customer/DSGC labels. */
+  itemSupplierCode?: string | null;
+  itemCustomerCode?: string | null;
+  itemDsgcNumber?: string | null;
   lotNumber: string;
   manufactureDate?: string | null;
   expiryDate?: string | null;
@@ -79,8 +83,10 @@ export function matchScan(
   wrrFlowType?: "vmi" | "trading" | "supplies",
   alreadyScannedUnitIds?: Set<string>
 ): ScanMatchResult {
+  const normalizedBarcode = barcode.trim();
+
   // Guard: reject empty or whitespace-only barcodes
-  if (barcode.trim() === "") {
+  if (normalizedBarcode === "") {
     return { matched: false, reason: "invalid_barcode" };
   }
 
@@ -88,9 +94,9 @@ export function matchScan(
   let parsedWrrItemId: string | null = null;
   let parsedUnitId: string | null = null;
   let parsedCartonId: string | null = null;
-  if (barcode.trim().startsWith("{")) {
+  if (normalizedBarcode.startsWith("{")) {
     try {
-      const parsed = JSON.parse(barcode.trim());
+      const parsed = JSON.parse(normalizedBarcode);
       if (parsed?.type === "wrr_item_unit" && typeof parsed?.wrr_item_id === "string") {
         parsedWrrItemId = parsed.wrr_item_id;
         if (typeof parsed?.unit_id === "string") {
@@ -110,13 +116,16 @@ export function matchScan(
     if (parsedWrrItemId) {
       return l.id === parsedWrrItemId;
     }
-    return (
-      l.itemBarcode === barcode ||
-      l.itemCode === barcode ||
-      l.itemId === barcode ||
-      l.id === barcode ||
-      l.lotNumber === barcode
-    );
+    return [
+      l.itemBarcode,
+      l.itemCode,
+      l.itemSupplierCode,
+      l.itemCustomerCode,
+      l.itemDsgcNumber,
+      l.itemId,
+      l.id,
+      l.lotNumber,
+    ].some((identity) => identity != null && identity.trim() === normalizedBarcode);
   });
 
   if (matchingLines.length === 0) {

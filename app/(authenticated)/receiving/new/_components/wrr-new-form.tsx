@@ -15,6 +15,7 @@
 //     design — `cipl-documents` bucket, object path convention)
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
@@ -43,6 +44,7 @@ interface WrrNewFormProps {
 }
 
 export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormProps) {
+  const router = useRouter();
   const [flowType, setFlowType] = useState("");
   const [vendorPartyId, setVendorPartyId] = useState("");
   const [vendorSearch, setVendorSearch] = useState("");
@@ -357,7 +359,13 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
           </p>
         </div>
         <div>
-          <WrrLineItems flowType={flowType} vendorPartyId={vendorPartyId} itemOptions={itemOptions} importedLines={importedLines} />
+          <WrrLineItems
+            flowType={flowType}
+            vendorPartyId={vendorPartyId}
+            itemOptions={itemOptions}
+            importedLines={importedLines}
+            onRefresh={() => router.refresh()}
+          />
         </div>
       </div>
 

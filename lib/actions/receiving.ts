@@ -125,7 +125,7 @@ async function fetchWrrForAction(
   id: string;
   wrrNumber: string;
   status: string;
-  flowType: string;
+  flowType: "vmi" | "trading" | "supplies";
   vendorPartyId: string;
   stagedByUserId: string;
   commercialInvoiceNo: string | null;
@@ -164,6 +164,9 @@ async function fetchWrrForAction(
       // Preserve the item code separately so it can be entered manually when
       // a camera or hardware scanner is unavailable.
       itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
+      itemSupplierCode: (enrolledItem?.supplierItemCode ?? null) as string | null,
+      itemCustomerCode: (enrolledItem?.customerItemCode ?? null) as string | null,
+      itemDsgcNumber: (enrolledItem?.dsgcItemNumber ?? null) as string | null,
       lotNumber: line.lotNumber as string,
       spq: enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq),
       cartonCount: exactCartonCount(Number(line.expectedQty ?? 0), enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq)) ?? 0,
@@ -181,7 +184,7 @@ async function fetchWrrForAction(
     id: first.id as string,
     wrrNumber: first.wrrNumber as string,
     status: first.status as string,
-    flowType: first.flowType as string,
+    flowType: first.flowType as "vmi" | "trading" | "supplies",
     vendorPartyId: first.vendorPartyId as string,
     stagedByUserId: first.stagedByUserId as string,
     commercialInvoiceNo: (first.commercialInvoiceNo ?? null) as string | null,
@@ -831,7 +834,7 @@ export async function recordScan(
     }
 
     // 4. Match barcode against expected lines
-    const matchResult = matchScan(barcode, doc.items, undefined, alreadyScannedUnitIds);
+    const matchResult = matchScan(barcode, doc.items, doc.flowType, alreadyScannedUnitIds);
     if (!matchResult.matched) {
       return { ok: false, reason: matchResult.reason } satisfies RecordScanResult;
     }

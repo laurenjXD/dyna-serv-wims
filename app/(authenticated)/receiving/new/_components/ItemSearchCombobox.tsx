@@ -14,6 +14,9 @@ interface ItemSearchComboboxProps {
   selectedItemCode: string;
   selectedItemDescription: string;
   onSelectItem: (item: WrrItemOption) => void;
+  onInputValueChange?: (value: string) => void;
+  onUseTypedCode?: (value: string) => void;
+  onRefresh?: () => void;
   disabled?: boolean;
 }
 
@@ -26,6 +29,9 @@ export function ItemSearchCombobox({
   selectedItemCode,
   selectedItemDescription: _selectedItemDescription,
   onSelectItem,
+  onInputValueChange,
+  onUseTypedCode,
+  onRefresh,
   disabled = false,
 }: ItemSearchComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -75,11 +81,16 @@ export function ItemSearchCombobox({
             type="text"
             disabled={disabled || !vendorPartyId}
             value={inputValue}
+          role="combobox"
+          aria-label="Item code search"
+          aria-expanded={isOpen}
             onFocus={() => {
               if (!disabled && vendorPartyId) setIsOpen(true);
             }}
             onChange={(e) => {
-              setInputValue(e.target.value);
+              const value = e.target.value;
+              setInputValue(value);
+              onInputValueChange?.(value);
               if (!isOpen && vendorPartyId) setIsOpen(true);
             }}
             placeholder={
@@ -177,9 +188,32 @@ export function ItemSearchCombobox({
                 </p>
                 <p className="mt-0.5 font-body text-body-xs text-text-grey">
                   {availableItems.length === 0
-                    ? "Assign the material to this organization in Master Data before staging the WRR."
+                    ? "Assign a material to this organization in Master Data, then refresh this list."
                     : `No assigned item matches "${inputValue}" for this organization.`}
                 </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  {inputValue.trim() && onUseTypedCode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUseTypedCode(inputValue.trim());
+                        setIsOpen(false);
+                      }}
+                      className="min-h-11 rounded-lg border border-brand-navy/30 bg-brand-navy px-3 py-2 font-label text-label-xs font-bold text-white"
+                    >
+                      Use “{inputValue.trim()}” as CIPL code
+                    </button>
+                  )}
+                  {availableItems.length === 0 && onRefresh && (
+                    <button
+                      type="button"
+                      onClick={onRefresh}
+                      className="min-h-11 rounded-lg border border-outline-variant/50 bg-surface-white px-3 py-2 font-label text-label-xs font-bold text-brand-navy"
+                    >
+                      Refresh assigned materials
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

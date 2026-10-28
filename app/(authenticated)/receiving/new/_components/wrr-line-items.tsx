@@ -85,11 +85,13 @@ export function WrrLineItems({
   vendorPartyId,
   itemOptions,
   importedLines,
+  onRefresh,
 }: {
   flowType: string;
   vendorPartyId: string;
   itemOptions: WrrItemOption[];
   importedLines?: ImportedWrrLine[];
+  onRefresh?: () => void;
 }) {
   const [lines, setLines] = useState<LineState[]>([{ ...EMPTY_LINE }]);
   const codeFor = useCallback((item: WrrItemOption): string => {
@@ -183,6 +185,19 @@ export function WrrLineItems({
     } : line));
   }
 
+  function editItemCode(index: number, value: string) {
+    setLines((prev) => prev.map((line, i) => i === index ? {
+      ...line,
+      itemId: "",
+      itemCode: value,
+      itemDescription: "",
+      customerItemCode: "",
+      unitCbm: "",
+      uom: "",
+      expiryDate: "",
+    } : line));
+  }
+
   function addLine() {
     setLines((prev) => [...prev, { ...EMPTY_LINE }]);
   }
@@ -260,6 +275,9 @@ export function WrrLineItems({
                     selectedItemCode={line.itemCode}
                     selectedItemDescription={line.itemDescription}
                     onSelectItem={(item) => chooseItem(index, item.id)}
+                    onInputValueChange={(value) => editItemCode(index, value)}
+                    onUseTypedCode={(value) => editItemCode(index, value)}
+                    onRefresh={onRefresh}
                     disabled={isImported}
                   />
                 </div>

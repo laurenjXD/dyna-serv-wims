@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
-import { boxesToPieces, exactCartonCount, piecesToBoxes } from "@/lib/inventory/quantities";
+import { boxesToPieces, piecesToBoxes } from "@/lib/inventory/quantities";
 import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 type StockSource = {
@@ -35,7 +35,7 @@ type StockSource = {
 type DraftLine = {
   id: string;
   itemId: string;
-  totalUnits: string;
+  boxes: string;
 };
 
 type FifoBoxAllocation = {
@@ -335,10 +335,10 @@ export function MultiItemPickListDraft({
   const lineDetails = lines.map((line) => {
     const item = catalog.find((candidate) => candidate.itemId === line.itemId);
     const effectiveSpq = item?.spq ?? 0;
-    const requestedUnits = Number(line.totalUnits);
-    const requestedBoxes = item && Number.isInteger(requestedUnits) && requestedUnits > 0
-      ? exactCartonCount(requestedUnits, effectiveSpq)
+    const requestedBoxes = item && Number.isInteger(Number(line.boxes)) && Number(line.boxes) > 0
+      ? Number(line.boxes)
       : null;
+    const requestedUnits = requestedBoxes !== null ? boxesToPieces(requestedBoxes, effectiveSpq) : null;
     const fifoAllocations = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const totalAvailableBoxes = item?.sources.reduce(
@@ -361,8 +361,8 @@ export function MultiItemPickListDraft({
     };
   });
 
-  const handleTotalUnitsChange = (lineId: string, val: string) => {
-    updateLine(lineId, { totalUnits: val });
+  const handleBoxesChange = (lineId: string, val: string) => {
+    updateLine(lineId, { boxes: val });
   };
 
   const request = useMemo(() => {
@@ -400,7 +400,7 @@ export function MultiItemPickListDraft({
     });
   }, [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId]);
 
-  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", totalUnits: "" }]);
+  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", boxes: "" }]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
   const resetDraft = () => setLines([]);
@@ -640,7 +640,7 @@ export function MultiItemPickListDraft({
       newDraftLines.push({
         id: crypto.randomUUID(),
         itemId: request.itemId,
-        totalUnits: String(request.requestedBoxes * request.spq),
+        boxes: String(request.requestedBoxes),
       });
       totalBoxesAllocated += request.requestedBoxes;
       mappedCount++;
@@ -861,7 +861,7 @@ export function MultiItemPickListDraft({
             </div>
           ) : (
             <MobileDataCardList>
-              {lineDetails.map(({ line, item, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
+              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
                 <MobileDataCard
                   key={line.id}
                   title={item ? itemCodeFor(item, flowType) : "Select an item"}
@@ -875,22 +875,23 @@ export function MultiItemPickListDraft({
                         catalog={catalog}
                         flowType={flowType}
                         selectedItemId={line.itemId}
-                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalUnits: "" })}
+                        onSelectItem={(itemId) => updateLine(line.id, { itemId, boxes: "" })}
                         disabled={!organizationId || !flowType}
                       />
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-                        Qty (Units)
-                        <input value={line.totalUnits} onChange={(event) => handleTotalUnitsChange(line.id, event.target.value)} type="number" min="1" disabled={!item} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                        Qty (Boxes)
+                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" disabled={!item} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-                        Number of Boxes
+                        Qty (Units)
                         <div className="flex h-11 items-center justify-end rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-base font-semibold text-slate-900">
-                          {requestedBoxes ?? "—"}
+                          {requestedUnits ?? "—"}
                         </div>
                       </label>
                     </div>
+                    {item && <p className="font-body text-xs text-slate-500">Enter complete boxes. Units are calculated from SPQ {item.spq}.</p>}
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                       Location
                       <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-base text-slate-900">
@@ -899,7 +900,7 @@ export function MultiItemPickListDraft({
                             <span className="truncate">{source.locationLabel} <span className="text-sm text-slate-500">({source.lotNumber})</span></span>
                             <span className="font-mono text-sm font-semibold text-brand-navy">{boxes} boxes</span>
                           </div>
-                        )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? `Qty must be a complete multiple of SPQ (${item.spq})` : "No FIFO source can fulfill this quantity"}</span>}
+                        )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
                       </div>
                     </label>
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
@@ -938,8 +939,8 @@ export function MultiItemPickListDraft({
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">
                 <th scope="col" className="py-3 px-3">Item Code</th>
                 <th scope="col" className="py-3 px-2 text-right">SPQ</th>
-                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Units)</th>
-                <th scope="col" className="py-3 px-2 text-right">Number of Boxes</th>
+                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Boxes)</th>
+                <th scope="col" className="py-3 px-2 text-right">Qty (Units)</th>
                 <th scope="col" className="py-3 px-3">Location</th>
                 <th scope="col" className="py-3 px-3">Remaining</th>
                 <th scope="col" className="py-3 px-3">Cust PN</th>
@@ -963,7 +964,7 @@ export function MultiItemPickListDraft({
                   </td>
                 </tr>
               ) : (
-                lineDetails.map(({ line, item, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
+                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
                   <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* ITEM CODE */}
                     <td className="py-2.5 px-3 align-middle">
@@ -971,7 +972,7 @@ export function MultiItemPickListDraft({
                         catalog={catalog}
                         flowType={flowType}
                         selectedItemId={line.itemId}
-                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalUnits: "" })}
+                        onSelectItem={(itemId) => updateLine(line.id, { itemId, boxes: "" })}
                         disabled={!organizationId || !flowType}
                       />
                     </td>
@@ -983,24 +984,24 @@ export function MultiItemPickListDraft({
                       </span>
                     </td>
 
-                    {/* Qty (Total Units input) */}
+                    {/* Qty (Boxes input) */}
                     <td className="py-2.5 pl-4 pr-2 align-middle">
                       <input
-                        value={line.totalUnits}
-                        onChange={(event) => handleTotalUnitsChange(line.id, event.target.value)}
+                        value={line.boxes}
+                        onChange={(event) => handleBoxesChange(line.id, event.target.value)}
                         type="number"
                         min="1"
                         disabled={!item}
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
-                        title="Total Units (Pieces)"
+                        title="Quantity in complete boxes"
                       />
                     </td>
 
-                    {/* Number of Boxes (derived from Qty ÷ SPQ) */}
+                    {/* Qty (Units, derived from boxes × SPQ) */}
                     <td className="py-2.5 px-2 align-middle">
                       <span className="block rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-right font-mono text-xs font-semibold text-slate-900">
-                        {requestedBoxes ?? "—"}
+                        {requestedUnits ?? "—"}
                       </span>
                     </td>
 

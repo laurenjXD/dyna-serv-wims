@@ -77,6 +77,9 @@ const makeLine = (
     itemId: string | null;
     itemBarcode: string | null;
     itemCode: string | null;
+    itemSupplierCode: string | null;
+    itemCustomerCode: string | null;
+    itemDsgcNumber: string | null;
     lotNumber: string;
     expectedQty: number;
     scannedQty: number;
@@ -136,6 +139,21 @@ describe("matchScan — manual item-code fallback", () => {
     const result = matchScan("ITEM-ALPHA-001", [makeLine()]);
 
     expect(result).toMatchObject({ matched: true, remainingQty: 9, scanQty: 1 });
+  });
+});
+
+describe("matchScan — alternate item identities", () => {
+  it("accepts a registered DSGC/supplier/customer label identity", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan("101379104", [makeLine({
+      itemBarcode: "MASTER-BARCODE",
+      itemDsgcNumber: "101379104",
+      expectedQty: 90,
+      spq: 30,
+      scannedQty: 0,
+    })]);
+
+    expect(result).toMatchObject({ matched: true, scanQty: 1, remainingQty: 2 });
   });
 });
 

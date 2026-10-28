@@ -122,8 +122,39 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
       uom: r.uom.toLowerCase() === "pallet" ? "piece" : r.uom,
     }));
   } catch (error) {
-    console.error("[items] active WRR item options unavailable", error);
-    return [];
+    // Keep the receiving picker useful during a rolling deployment where a
+    // newly-added catalog identity column may not yet exist on the database.
+    // The assignment filter and server-side assignment validation remain in
+    // force; this fallback only omits optional display aliases.
+    console.error("[items] full WRR item options unavailable; retrying core catalog projection", error);
+    try {
+      const rows = (await db
+        .select({
+          id: items.id,
+          defaultSupplierPartyId: items.defaultSupplierPartyId,
+          code: items.code,
+          name: items.name,
+          description: items.description,
+          customerItemCode: items.customerItemCode,
+          uom: items.uom,
+          volumeCbm: items.volumeCbm,
+          spq: items.spq,
+          isPerishable: items.isPerishable,
+        })
+        .from(items)
+        .where(and(eq(items.isActive, true), isNotNull(items.defaultSupplierPartyId)))
+        .orderBy(items.code)) as Array<Omit<WrrItemOption, "supplierItemCode" | "dsgcItemNumber">>;
+
+      return rows.map((row) => ({
+        ...row,
+        supplierItemCode: null,
+        dsgcItemNumber: null,
+        uom: row.uom.toLowerCase() === "pallet" ? "piece" : row.uom,
+      }));
+    } catch (fallbackError) {
+      console.error("[items] core WRR item options unavailable", fallbackError);
+      return [];
+    }
   }
 }
 

@@ -661,6 +661,32 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
     expect(result.ok).toBe(true);
     expect(db.update).toHaveBeenCalled();
   });
+
+  it("matches an enrolled item's alternate DSGC label identity", async () => {
+    const line = wrrItemRow({
+      barcode: "MASTER-BARCODE",
+      expectedQty: 90,
+      scannedQty: 0,
+      items: {
+        id: "item-master-uuid-1",
+        barcode: "MASTER-BARCODE",
+        dsgcItemNumber: "101379104",
+        spq: 30,
+        flowType: "vmi",
+      },
+    });
+    const db = makeReceivingDb([wrrDocRow()], [line]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      "101379104",
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, remainingQty: 2, disposition: "store" });
+    expect(db.update).toHaveBeenCalled();
+  });
 });
 
 describe("recordScan — legacy multi-pallet QR", () => {

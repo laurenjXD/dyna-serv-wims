@@ -11,5 +11,9 @@ export function filterReceivingItemOptions(
 ): WrrItemOption[] {
   if (!vendorPartyId) return [];
 
-  return itemOptions.filter((item) => item.defaultSupplierPartyId === vendorPartyId);
+  const normalizedVendorPartyId = vendorPartyId.trim().toLowerCase();
+
+  return itemOptions.filter(
+    (item) => item.defaultSupplierPartyId?.trim().toLowerCase() === normalizedVendorPartyId,
+  );
 }
