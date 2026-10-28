@@ -1,4 +1,8 @@
-# Dyna-Serv WIMS — User Manual & Operations Guide
+# Dyna-Serv WIMS — Document Printing & Compliance Companion Guide
+
+**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
+**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
+**Last reconciled:** 2026-10-27
 
 ## Chapter: Warehouse Document Printing, Signatures & Compliance Standards
 
@@ -25,7 +29,7 @@ graph TD
 
 ### 2. Standardized Document Footer & 3-Tier Sign-Off
 
-All official operational documents implement the [`MasterDocumentFooter`](file:///d:/dyna-serv/dyna-serv-wims/components/print/MasterDocumentFooter.tsx) component. This ensures unified formatting, font sizing, and legal sign-off hierarchies across the entire facility.
+All official operational documents implement the [`MasterDocumentFooter`](../../components/print/MasterDocumentFooter.tsx) component. This ensures unified formatting, font sizing, and legal sign-off hierarchies across the entire facility.
 
 #### The Three Default Accountability Roles
 
@@ -91,3 +95,16 @@ All generated warehouse documents (`generated_documents` table and stored PDF ar
    * Archived off-platform to secure cold object storage with SHA-256 hash verification.
    * Supabase hot copy is pruned only after successful checksum verification.
    * **Documents are permanently retained and never deleted.**
+
+---
+
+### 6. Uniform preview and PDF typography
+
+All official warehouse-document previews and generated PDFs use the shared document contract:
+
+- Font size: **11pt for all document text**.
+- Font family: one Helvetica-family system stack (`Helvetica Neue`, Helvetica, Arial, sans-serif).
+- No separate heading, body, or monospace typeface is used in the document surface.
+- The same rule applies before printing in the live preview, so the preview is a reliable representation of the PDF typography.
+
+If an old preview remains visible after deployment, hard-refresh the page (`Ctrl+F5`) and reopen the document. This does not change operational data or document identity.

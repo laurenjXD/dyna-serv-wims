@@ -11,24 +11,6 @@ interface CiplDocumentsTableProps {
   rows: CiplArchiveRow[];
 }
 
-const CIPL_STATUS_CLASSES: Record<string, string> = {
-  staged_pending_arrival: "bg-status-pending/10 text-status-pending",
-  receiving_in_progress: "bg-status-pending/10 text-status-pending",
-  completed: "bg-status-available/10 text-status-available",
-  stored: "bg-status-available/10 text-status-available",
-  quarantined: "bg-status-held/10 text-status-held",
-  cancelled: "bg-status-held/10 text-status-held",
-};
-
-const CIPL_STATUS_LABELS: Record<string, string> = {
-  staged_pending_arrival: "PENDING ARRIVAL",
-  receiving_in_progress: "IN PROGRESS",
-  completed: "RECEIVED & MATCHED",
-  stored: "STORED",
-  quarantined: "QUARANTINED",
-  cancelled: "CANCELLED",
-};
-
 export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -102,9 +84,6 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Items / Qty
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Status
-                </th>
                 <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Actions
                 </th>
@@ -112,8 +91,6 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {pagedRows.map((row) => {
-                const statusClass = CIPL_STATUS_CLASSES[row.status] || "bg-status-neutral/10 text-status-neutral";
-                const statusLabel = CIPL_STATUS_LABELS[row.status] || row.status.toUpperCase();
                 const displayInvoice = row.commercialInvoiceNo || "CIPL / Invoice";
                 const formattedDate = new Date(row.createdAt).toISOString().slice(0, 10);
 
@@ -156,11 +133,6 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
                     </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {row.itemCount} items / {row.totalQuantity.toLocaleString()} pcs
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase tracking-wider ${statusClass}`}>
-                        {statusLabel}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">

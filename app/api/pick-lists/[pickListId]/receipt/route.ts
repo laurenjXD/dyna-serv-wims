@@ -9,7 +9,7 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
-import { PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
+import { PDF_FONT_SIZE, PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = PDF_PAGE.landscape;
@@ -41,7 +41,7 @@ function drawCell(
   width: number,
   height: number,
   font: PDFFont,
-  size: number,
+  _size: number,
   align: "left" | "center" = "left",
   fillColor?: ReturnType<typeof rgb>,
 ) {
@@ -55,18 +55,18 @@ function drawCell(
     color: fillColor,
   });
 
-  const lines = wrapText(text, font, size, width - 6);
-  const lineHeight = size + 2;
+  const lines = wrapText(text, font, PDF_FONT_SIZE, width - 6);
+  const lineHeight = PDF_FONT_SIZE + 2;
   const blockHeight = lines.length * lineHeight;
-  const startY = yTop - (height - blockHeight) / 2 - size;
+  const startY = yTop - (height - blockHeight) / 2 - PDF_FONT_SIZE;
 
   lines.slice(0, 3).forEach((line, index) => {
-    const textWidth = font.widthOfTextAtSize(line, size);
+    const textWidth = font.widthOfTextAtSize(line, PDF_FONT_SIZE);
     const textX = align === "center" ? x + (width - textWidth) / 2 : x + 3;
     page.drawText(line, {
       x: textX,
       y: startY - index * lineHeight,
-      size,
+      size: PDF_FONT_SIZE,
       font,
       color: INK,
     });
@@ -126,8 +126,8 @@ export async function GET(
       page.drawImage(logoImage, { x: MARGIN, y: 520, width: 34, height: 34 });
     }
     const headerX = MARGIN + (logoImage ? 44 : 0);
-    page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 540, size: 14, font: bold, color: INK });
-    page.drawText(`${template.companyName} — ${template.subtitle}`, { x: headerX, y: 526, size: 7.5, font: bold, color: MUTED });
+    page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 540, size: PDF_FONT_SIZE, font: bold, color: INK });
+    page.drawText(`${template.companyName} — ${template.subtitle}`, { x: headerX, y: 526, size: PDF_FONT_SIZE, font: bold, color: MUTED });
 
     const meta = [
       ["DELIVERY RECEIPT NO.", drNumber],
@@ -136,24 +136,24 @@ export async function GET(
       ["DELIVERY DATE", nonNullPickList.createdAt.toLocaleDateString()],
     ];
     meta.forEach(([label, value], index) => {
-      page.drawText(label, { x: 580, y: 544 - index * 12, size: 7, font: bold, color: INK });
-      page.drawText(value, { x: 705, y: 544 - index * 12, size: 7, font: bold, color: INK });
+      page.drawText(label, { x: 580, y: 544 - index * 12, size: PDF_FONT_SIZE, font: bold, color: INK });
+      page.drawText(value, { x: 705, y: 544 - index * 12, size: PDF_FONT_SIZE, font: bold, color: INK });
     });
 
     if (totalPages > 1) {
-      page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 730, y: 562, size: 7, font: bold, color: MUTED });
+      page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 730, y: 562, size: PDF_FONT_SIZE, font: bold, color: MUTED });
     }
 
-    page.drawText("DELIVERY TO (END CUSTOMER):", { x: MARGIN, y: 486, size: 7.5, font: bold, color: INK });
-    page.drawText(party?.name ?? nonNullPickList.endCustomerPartyId, { x: MARGIN, y: 474, size: 8.5, font: bold, color: INK });
-    page.drawText([party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file", { x: MARGIN, y: 462, size: 7.5, font: regular, color: MUTED });
-    page.drawText(`Inventory Model: ${nonNullPickList.flowType.toUpperCase()}`, { x: 630, y: 474, size: 7.5, font: bold, color: INK });
+    page.drawText("DELIVERY TO (END CUSTOMER):", { x: MARGIN, y: 486, size: PDF_FONT_SIZE, font: bold, color: INK });
+    page.drawText(party?.name ?? nonNullPickList.endCustomerPartyId, { x: MARGIN, y: 474, size: PDF_FONT_SIZE, font: bold, color: INK });
+    page.drawText([party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file", { x: MARGIN, y: 462, size: PDF_FONT_SIZE, font: regular, color: MUTED });
+    page.drawText(`Inventory Model: ${nonNullPickList.flowType.toUpperCase()}`, { x: 630, y: 474, size: PDF_FONT_SIZE, font: bold, color: INK });
     page.drawLine({ start: { x: MARGIN, y: 450 }, end: { x: PAGE_WIDTH - MARGIN, y: 450 }, thickness: 1, color: GRID });
 
     // Table Column Headers
     let x = MARGIN;
     headings.forEach((heading, index) => {
-      drawCell(page, heading, x, 442, widths[index], 22, bold, 6.5, "center", HEADER_FILL);
+      drawCell(page, heading, x, 442, widths[index], 22, bold, PDF_FONT_SIZE, "center", HEADER_FILL);
       x += widths[index];
     });
 
@@ -211,7 +211,7 @@ export async function GET(
           widths[column],
           ROW_HEIGHT,
           column === 4 ? bold : regular,
-          6.5,
+          PDF_FONT_SIZE,
           column < 4 || column === 5 ? "center" : "left"
         );
         x += widths[column];
@@ -231,13 +231,13 @@ export async function GET(
         ? ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", referenceTotal == null ? "—" : referenceTotal.toFixed(2), ""]
         : ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", ""];
       totals.forEach((value, column) => {
-        drawCell(page, value, x, rowTop, widths[column], 20, bold, 7, column < 4 ? "center" : "left", HEADER_FILL);
+        drawCell(page, value, x, rowTop, widths[column], 20, bold, PDF_FONT_SIZE, column < 4 ? "center" : "left", HEADER_FILL);
         x += widths[column];
       });
 
       if (nonNullPickList.flowType === "vmi") {
         page.drawText("Unit prices are per-release reference values only. Authoritative billing is the period VMI statement.", {
-          x: MARGIN, y: rowTop - 32, size: 7, font: regular, color: MUTED,
+          x: MARGIN, y: rowTop - 32, size: PDF_FONT_SIZE, font: regular, color: MUTED,
         });
       }
 
@@ -245,8 +245,8 @@ export async function GET(
       const instructionTop = rowTop - 20 - 10;
       page.drawRectangle({ x: MARGIN, y: instructionTop - 36, width: CONTENT_WIDTH, height: 36, borderColor: GRID, borderWidth: 0.6 });
       page.drawRectangle({ x: MARGIN, y: instructionTop - 14, width: CONTENT_WIDTH, height: 14, color: HEADER_FILL, borderColor: GRID, borderWidth: 0.6 });
-      page.drawText("DELIVERY INSTRUCTIONS / REMARKS", { x: MARGIN + 6, y: instructionTop - 10, size: 6.5, font: bold, color: INK });
-      page.drawText("Goods delivered in good condition. Certified under ISO 9001:2015 Dyna-Serv logistics standard.", { x: MARGIN + 6, y: instructionTop - 26, size: 7, font: regular, color: MUTED });
+      page.drawText("DELIVERY INSTRUCTIONS / REMARKS", { x: MARGIN + 6, y: instructionTop - 10, size: PDF_FONT_SIZE, font: bold, color: INK });
+      page.drawText("Goods delivered in good condition. Certified under ISO 9001:2015 Dyna-Serv logistics standard.", { x: MARGIN + 6, y: instructionTop - 26, size: PDF_FONT_SIZE, font: regular, color: MUTED });
 
       // Triple Sign-Off Footer
       const footerTop = instructionTop - 46;
@@ -254,8 +254,8 @@ export async function GET(
       ["CHECKED & VERIFIED BY:", "LOADED & DISPATCHED BY:", "ACKNOWLEDGED & RECEIVED BY:"].forEach((label, index) => {
         const footerX = MARGIN + footerWidths.slice(0, index).reduce((sum, width) => sum + width, 0);
         page.drawRectangle({ x: footerX, y: footerTop - 48, width: footerWidths[index], height: 48, borderColor: GRID, borderWidth: 0.6 });
-        page.drawText(label, { x: footerX + 6, y: footerTop - 12, size: 6.5, font: bold, color: INK });
-        page.drawText("Signature / Printed Name / Date", { x: footerX + 6, y: footerTop - 40, size: 6, font: regular, color: MUTED });
+        page.drawText(label, { x: footerX + 6, y: footerTop - 12, size: PDF_FONT_SIZE, font: bold, color: INK });
+        page.drawText("Signature / Printed Name / Date", { x: footerX + 6, y: footerTop - 40, size: PDF_FONT_SIZE, font: regular, color: MUTED });
       });
       break;
     }

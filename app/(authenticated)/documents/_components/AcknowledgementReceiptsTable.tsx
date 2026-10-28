@@ -12,14 +12,6 @@ interface AcknowledgementReceiptsTableProps {
   rows: AcknowledgementReceiptArchiveRow[];
 }
 
-const AR_STATUS_CLASSES: Record<string, string> = {
-  ready: "bg-status-available/10 text-status-available",
-  pending: "bg-status-pending/10 text-status-pending",
-  generating: "bg-status-pending/10 text-status-pending",
-  failed: "bg-status-held/10 text-status-held",
-  voided: "bg-status-neutral/10 text-status-neutral",
-};
-
 export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   const [reprintTarget, setReprintTarget] = useState<{ id: string; number: string } | null>(null);
@@ -89,9 +81,6 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Qty / Total
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Status
-                </th>
                 <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Actions
                 </th>
@@ -99,7 +88,6 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {pagedRows.map((r) => {
-                const statusClass = AR_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
 
                 return (
@@ -135,11 +123,6 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
                       <div className="font-mono text-mono-sm text-text-grey">
                         {r.totalQuantity.toLocaleString()} pcs total
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase tracking-wider ${statusClass}`}>
-                        {r.status}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">

@@ -83,6 +83,9 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
     );
   }
 
+  const authorization = await resolver.getContext();
+  const authorizationContext = authorization.kind === "authorized" ? authorization.context : null;
+
   // Financial clearance check for the Statements of Account tab
   const financialPerm = await requirePermission(resolver, "reporting.financial_read");
   const canReadFinancial = financialPerm.kind === "authorized";
@@ -93,9 +96,33 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
   type DocTab = typeof validTabs[number];
   const activeTab: DocTab = validTabs.includes(tabParam as DocTab) ? (tabParam as DocTab) : "wrr";
 
+  const documentScope = authorizationContext?.grants.find(
+    (grant) => grant.resource === "documents" && grant.action === "read",
+  );
+  const scopedOrganizationIds = documentScope?.scopeKind === "assigned_party"
+    ? [...new Set(authorizationContext?.partyScopes.map((scope) => scope.partyId) ?? [])]
+    : [];
+  const organizationFilterVisible = activeTab !== "reports" && scopedOrganizationIds.length !== 1;
+  // Keep the tab-specific role scoping below, but use one clear label for the
+  // shared organization filter across document tabs.
+  const organizationFilterLabel = "Organization";
+  const allowedPartyRoles = activeTab === "wrr" || activeTab === "cipl"
+    ? new Set(["supplier", "customer"])
+    : activeTab === "pick-lists" || activeTab === "acknowledgement-receipts"
+    ? new Set(["customer", "end_customer"])
+    : new Set(["customer"]);
+
   const filters = {
     search: searchQuery,
-    partyId: partyParam,
+    partyId: organizationFilterVisible
+      ? (scopedOrganizationIds.length > 1 && partyParam && scopedOrganizationIds.includes(partyParam)
+        ? partyParam
+        : scopedOrganizationIds.length > 1
+        ? undefined
+        : partyParam)
+      : scopedOrganizationIds.length === 1
+      ? scopedOrganizationIds[0]
+      : undefined,
     flowType: flowParam,
     status: statusParam,
     from: fromParam,
@@ -103,18 +130,23 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
     limit: 50,
   };
 
-  // Parallel loading of organization options & active tab data
+  // Load every permitted archive category so tab badges remain accurate even
+  // before the operator opens that tab. The active tab still controls which
+  // rows are rendered below.
   const [partiesResult, wrrRows, ciplRows, pickListRows, arRows, soaRows, reportRows] = await Promise.all([
     listParties(db, { limit: 100 }),
-    activeTab === "wrr" ? listWrrArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "cipl" ? listCiplArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "pick-lists" ? listPickListArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "acknowledgement-receipts" ? listAcknowledgementReceiptArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "soa" && canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
-    activeTab === "reports" ? listGeneratedReportArchiveDocuments(db, filters) : Promise.resolve([]),
+    listWrrArchiveDocuments(db, filters),
+    listCiplArchiveDocuments(db, filters),
+    listPickListArchiveDocuments(db, filters),
+    listAcknowledgementReceiptArchiveDocuments(db, filters),
+    canReadFinancial ? listStatementOfAccountArchiveDocuments(db, filters) : Promise.resolve([]),
+    listGeneratedReportArchiveDocuments(db, filters),
   ]);
 
-  const organizationOptions: FilterPartyOption[] = partiesResult.rows.map((p) => ({
+  const organizationOptions: FilterPartyOption[] = partiesResult.rows
+    .filter((p) => allowedPartyRoles.has(p.roles?.[0] ?? "") || (p.roles ?? []).some((role) => allowedPartyRoles.has(role)))
+    .filter((p) => scopedOrganizationIds.length === 0 || scopedOrganizationIds.includes(p.id))
+    .map((p) => ({
     id: p.id,
     name: p.name,
     code: p.code,
@@ -199,6 +231,8 @@ export default async function DocumentsPage({ searchParams }: PageProps) {
       <DocumentsFilterBar
         organizations={organizationOptions}
         activeTab={activeTab}
+        organizationLabel={organizationFilterLabel}
+        showOrganizationFilter={organizationFilterVisible}
       />
 
       {/* Tab Table Body */}

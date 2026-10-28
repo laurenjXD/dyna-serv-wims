@@ -11,24 +11,6 @@ interface WrrDocumentsTableProps {
   rows: WrrArchiveRow[];
 }
 
-const WRR_STATUS_CLASSES: Record<string, string> = {
-  staged_pending_arrival: "bg-status-pending/10 text-status-pending",
-  receiving_in_progress: "bg-status-pending/10 text-status-pending",
-  completed: "bg-status-available/10 text-status-available",
-  stored: "bg-status-available/10 text-status-available",
-  quarantined: "bg-status-held/10 text-status-held",
-  cancelled: "bg-status-held/10 text-status-held",
-};
-
-const WRR_STATUS_LABELS: Record<string, string> = {
-  staged_pending_arrival: "PENDING ARRIVAL",
-  receiving_in_progress: "IN PROGRESS",
-  completed: "COMPLETED",
-  stored: "STORED",
-  quarantined: "QUARANTINED",
-  cancelled: "CANCELLED",
-};
-
 export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
   const [previewDoc, setPreviewDoc] = useState<PreviewDocData | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -89,9 +71,6 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                 <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Items / Qty
                 </th>
-                <th className="px-4 py-3 text-left font-label text-label uppercase tracking-[0.05em] text-text-grey">
-                  Status
-                </th>
                 <th className="px-4 py-3 text-right font-label text-label uppercase tracking-[0.05em] text-text-grey">
                   Actions
                 </th>
@@ -99,8 +78,6 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
               {pagedRows.map((r) => {
-                const statusClass = WRR_STATUS_CLASSES[r.status] ?? "bg-status-neutral/10 text-status-neutral";
-                const statusLabel = WRR_STATUS_LABELS[r.status] ?? r.status.toUpperCase();
                 const formattedDate = new Date(r.createdAt).toISOString().slice(0, 10);
 
                 return (
@@ -133,11 +110,6 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
                     </td>
                     <td className="px-4 py-3 font-mono text-mono-md text-on-surface">
                       {r.itemCount} items / {r.totalQuantity.toLocaleString()} pcs
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 font-label text-label uppercase tracking-wider ${statusClass}`}>
-                        {statusLabel}
-                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">

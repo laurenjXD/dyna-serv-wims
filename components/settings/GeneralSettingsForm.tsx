@@ -1072,7 +1072,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
                     Include Legal / Retention Notice
                   </span>
                   <span className="block font-body text-[11px] text-slate-500">
-                    Prints small bottom disclaimer text (&quot;Confidential Warehouse Document&quot;).
+                    Uses the standard 12pt document text size for consistent PDF output.
                   </span>
                 </div>
               </label>
@@ -1093,6 +1093,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
 
           <div className="rounded-xl border border-slate-300 bg-slate-100/70 p-4 sm:p-6 overflow-x-auto flex justify-center">
             <div
+              data-pdf-template-preview
               className={`bg-white rounded-lg border border-slate-300 shadow-elevation-1 p-6 transition-all duration-300 ${
                 settings.printTemplate.previewOrientation === "portrait"
                   ? "w-full max-w-xl min-h-[500px]"

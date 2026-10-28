@@ -21,7 +21,10 @@ import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
+import { eq } from "drizzle-orm";
 import { getWrrDocument, getWrrPutawayAllocations } from "@/lib/db/queries/receiving";
+import { receivingDiscrepancies } from "@/lib/db/schema/receiving_discrepancies";
+import { resolveReceivingDiscrepancy } from "@/lib/actions/receiving-discrepancies";
 import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
@@ -66,10 +69,20 @@ const DISPOSITION_CLASSES: Record<string, string> = {
 
 interface PageProps {
   params: Promise<{ wrrId: string }>;
+  searchParams?: Promise<{ startError?: string }>;
 }
 
-export default async function WrrDetailPage({ params }: PageProps) {
+const START_RECEIVING_ERRORS: Record<string, string> = {
+  forbidden: "Your account is not authorized to start receiving.",
+  network_restricted: "Receiving is restricted to the configured warehouse Wi‑Fi network.",
+  not_found: "This WRR could not be found.",
+  invalid_status: "This WRR is no longer waiting to start receiving.",
+  stale_record: "The WRR changed before receiving could start. Refresh and try again.",
+};
+
+export default async function WrrDetailPage({ params, searchParams }: PageProps) {
   const { wrrId } = await params;
+  const startError = (await searchParams)?.startError;
   const resolver = await createPageResolver();
 
   // Gate: receiving.view — read-only detail/review surface visible to any staff
@@ -104,6 +117,27 @@ export default async function WrrDetailPage({ params }: PageProps) {
     (sum, item) => sum + boxesToPieces(Math.max(0, item.cartonCount - item.scannedQty), item.spq),
     0,
   );
+  let discrepancies: Array<typeof receivingDiscrepancies.$inferSelect> = [];
+  try {
+    discrepancies = await db
+      .select()
+      .from(receivingDiscrepancies)
+      .where(eq(receivingDiscrepancies.wrrId, wrrId));
+  } catch {
+    // The feature migration may not yet be applied; the existing WRR view
+    // remains usable until the deployment migration is completed.
+  }
+  const discrepancyPermission = await requirePermission(resolver, "receiving.discrepancy_resolve");
+  const canResolveDiscrepancy = discrepancyPermission.kind === "authorized";
+
+  async function handleResolveDiscrepancy(formData: FormData): Promise<void> {
+    "use server";
+    const discrepancyId = String(formData.get("discrepancyId") ?? "");
+    const resolution = String(formData.get("resolution") ?? "");
+    const notes = String(formData.get("notes") ?? "");
+    await resolveReceivingDiscrepancy(discrepancyId, resolution, notes);
+    redirect(`/receiving/${wrrId}`);
+  }
   const inspectionAllocations = putawayAllocations.filter(
     (a) =>
       a.locationType === "inspection" ||
@@ -119,7 +153,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
   async function handleStartReceiving(): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
-    await startReceiving(actionResolver, wrrId);
+    const result = await startReceiving(actionResolver, wrrId);
+    if (!result.ok) {
+      const errorCode = result.errors[0] ?? "unknown";
+      redirect(`/receiving/${wrrId}?startError=${encodeURIComponent(errorCode)}`);
+    }
     // Revalidate by redirecting back to this page so the updated status renders.
     redirect(`/receiving/${wrrId}`);
   }
@@ -227,6 +265,11 @@ export default async function WrrDetailPage({ params }: PageProps) {
         <h2 className="font-heading font-semibold text-data-display text-on-surface">
           Actions
         </h2>
+        {startError && (
+          <div role="alert" className="mt-4 rounded-lg border border-status-held/30 bg-status-held/10 px-4 py-3 font-body text-body-sm text-status-held">
+            {START_RECEIVING_ERRORS[startError] ?? "Receiving could not be started. Refresh and try again."}
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-3">
           {wrr.status === "staged_pending_arrival" && (
             <>
@@ -367,6 +410,40 @@ export default async function WrrDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {discrepancies.length > 0 && (
+        <section className="mt-6 rounded-xl border border-status-held/30 bg-surface-white p-5 shadow-elevation-1" aria-labelledby="osd-resolution-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="osd-resolution-title" className="font-heading text-title-md font-bold text-on-surface">OS&amp;D Resolution</h2>
+              <p className="mt-1 font-body text-body-md text-text-grey">Shortage records are retained here for supervisor follow-up. This is separate from physical inspection.</p>
+            </div>
+            <span className="rounded-full bg-status-held/10 px-3 py-1 font-label text-label font-bold text-status-held">{discrepancies.filter((d) => d.status === "open").length} Open</span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {discrepancies.map((discrepancy) => (
+              <div key={discrepancy.id} className="rounded-xl border border-outline-variant/40 bg-surface-light-grey/40 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-body text-body-md font-bold text-on-surface">{discrepancy.missingCartons} carton{discrepancy.missingCartons === 1 ? "" : "s"} missing</p>
+                  <span className={`rounded-full px-2.5 py-1 font-label text-label font-bold uppercase ${discrepancy.status === "resolved" ? "bg-status-available/10 text-status-available" : "bg-status-held/10 text-status-held"}`}>{discrepancy.status}</span>
+                </div>
+                {discrepancy.status === "resolved" ? (
+                  <p className="mt-2 font-body text-body-md text-text-grey">Resolution: <strong>{discrepancy.resolution?.replaceAll("_", " ")}</strong>{discrepancy.resolutionNotes ? ` · ${discrepancy.resolutionNotes}` : ""}</p>
+                ) : canResolveDiscrepancy ? (
+                  <form action={handleResolveDiscrepancy} className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                    <input type="hidden" name="discrepancyId" value={discrepancy.id} />
+                    <label className="font-label text-label font-bold text-text-grey">Resolution<select name="resolution" required defaultValue="" className="mt-1 h-11 w-full rounded-lg border border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface"><option value="" disabled>Select resolution</option><option value="vendor_short_shipped">Vendor short-shipped</option><option value="backorder_expected">Backorder expected</option><option value="replacement_requested">Replacement requested</option><option value="credit_claim_filed">Credit / claim filed</option><option value="variance_accepted">Variance accepted</option><option value="other">Other</option></select></label>
+                    <label className="font-label text-label font-bold text-text-grey">Notes<span className="sr-only">Resolution notes</span><input name="notes" placeholder="Optional notes" className="mt-1 h-11 w-full rounded-lg border border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface" /></label>
+                    <button type="submit" className="h-11 rounded-lg bg-primary px-4 font-label text-label font-bold text-white">Resolve</button>
+                  </form>
+                ) : (
+                  <p className="mt-2 font-body text-body-md text-text-grey">Awaiting supervisor resolution.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* WRR Subtabs: Shipment Details vs Putaway Routing */}

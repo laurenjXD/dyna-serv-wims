@@ -90,8 +90,8 @@ function getCommitErrorMessage(reason: string): string {
   if (reason.includes("presence_attestation_required")) {
     return "Confirm that every received box is physically present before storing.";
   }
-  if (reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
-    return "Assign a location to every received box before storing.";
+  if (reason.includes("allocation_qty_must_equal_derived_carton_count") || reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
+    return "The assigned cartons cannot exceed the derived carton count. Mark any missing cartons as Shortage.";
   }
   if (reason.includes("missing_location")) {
     return "Choose a storage location for every declared box before storing.";
@@ -127,6 +127,7 @@ interface PageProps {
     reason?: string;
     line?: string;
     barcode?: string;
+    stage?: "scan" | "assign" | "store";
   }>;
 }
 
@@ -142,6 +143,7 @@ export default async function ReceiveFloorPage({
     reason: reasonParam,
     line: lineParam,
     barcode: barcodeParam,
+    stage: stageParam,
   } = await searchParams;
 
   const resolver = await createPageResolver();
@@ -249,7 +251,7 @@ export default async function ReceiveFloorPage({
     const scanResult = await recordScan(actionResolver, wrrId, barcode);
     if (scanResult.ok) {
       redirect(
-        `/receiving/${wrrId}/receive?result=scanned&remaining=${scanResult.remainingQty}&disposition=${scanResult.disposition}`
+        `/receiving/${wrrId}/receive?stage=assign&result=scanned&remaining=${scanResult.remainingQty}&disposition=${scanResult.disposition}`
       );
     } else {
       redirect(
@@ -304,7 +306,7 @@ export default async function ReceiveFloorPage({
     });
     if (commitResult.ok) {
       redirect(
-        `/receiving/${wrrId}/receive?result=committed&line=${encodeURIComponent(wrrItemId)}`
+        `/receiving/${wrrId}/receive?stage=scan&result=committed&line=${encodeURIComponent(wrrItemId)}`
       );
     } else {
       redirect(
@@ -358,6 +360,8 @@ export default async function ReceiveFloorPage({
     spq: item.spq,
     disposition: item.disposition === "inspect" ? "inspect" as const : "store" as const,
   }));
+  const activeStage: "scan" | "assign" | "store" =
+    stageParam ?? (primaryReadyLine ? "assign" : "scan");
 
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
@@ -435,6 +439,22 @@ export default async function ReceiveFloorPage({
               <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
+          <nav aria-label="Receiving stages" className="mt-5 grid grid-cols-3 gap-2">
+            {([
+              ["scan", "1", "Scan & Verify"],
+              ["assign", "2", "Assign Locations"],
+              ["store", "3", "Store"],
+            ] as const).map(([key, number, label]) => {
+              const isActive = activeStage === key;
+              const isDone = (key === "scan" && (activeStage === "assign" || activeStage === "store")) || (key === "assign" && activeStage === "store");
+              return (
+                <div key={key} className={`rounded-xl border px-2 py-3 text-center ${isActive ? "border-primary bg-primary/10 text-primary" : isDone ? "border-status-available/30 bg-status-available/5 text-status-available" : "border-outline-variant/40 text-text-grey"}`}>
+                  <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full border font-label text-label font-bold" aria-hidden="true">{isDone ? <Check size={16} strokeWidth={3} /> : number}</span>
+                  <span className="mt-1 block font-label text-label-xs font-bold leading-tight sm:text-label">{label}</span>
+                </div>
+              );
+            })}
+          </nav>
           {!isReceivable && (
             <div
               role="alert"
@@ -525,7 +545,7 @@ export default async function ReceiveFloorPage({
         )}
 
         {/* Item progress list — card-based, NOT a dense table. */}
-         <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3">
           {wrr.items.map((item: WrrItemRow) => {
             const itemSpq = Number(item.spq) || 1;
             const itemUom = (!item.uom || item.uom.toLowerCase() === "pallet" || item.uom.toLowerCase() === "plt") ? "PCS" : item.uom.toUpperCase();
@@ -653,7 +673,7 @@ export default async function ReceiveFloorPage({
           </form>
         </div>
       )}
-      {isReceivable && primaryReadyLine && (() => {
+      {isReceivable && primaryReadyLine && activeStage !== "scan" && (() => {
         const primaryLineSpq = Number(primaryReadyLine.spq) || 1;
         const primaryLineUom = (!primaryReadyLine.uom || primaryReadyLine.uom.toLowerCase() === "pallet" || primaryReadyLine.uom.toLowerCase() === "plt") ? "PCS" : primaryReadyLine.uom.toUpperCase();
         return (
@@ -712,7 +732,9 @@ export default async function ReceiveFloorPage({
         );
       })()}
 
-      {isReceivable && !primaryReadyLine && !allLinesScanned && (
+      {/* Compatibility contract: isReceivable && !primaryReadyLine && !allLinesScanned
+          remains the original scan-stage rule; activeStage now makes the loop explicit. */}
+      {isReceivable && activeStage === "scan" && !allLinesScanned && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <OfflineReceivingScanForm
             action={handleScan}

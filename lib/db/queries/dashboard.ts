@@ -3,7 +3,7 @@
 // Real-time operations telemetry, inventory valuation, flow movement, and heatmap analytics
 // backing the Operations Dashboard (/dashboard).
 
-import { sql, eq, inArray } from "drizzle-orm";
+import { sql, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
@@ -15,6 +15,7 @@ import { pickLists } from "@/lib/db/schema/pick_lists";
 import { wrrDocuments, wrrInspectionLogs } from "@/lib/db/schema/wrr";
 import { vmiContractTerms, vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
 import { tradingPolicies } from "@/lib/db/schema/trading_pricing";
+import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 import { getInventoryPositionSummary } from "@/lib/db/queries/inventory";
 import type {
   DashboardKpiData,
@@ -538,6 +539,54 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
   try {
     const cleanCode = code.trim();
 
+    // Carton labels intentionally encode machine-readable JSON rather than a
+    // human-facing item code. Resolve both current WRR labels and migrated
+    // inventory labels by their durable unit/carton identity first.
+    let qrUnitId: string | null = null;
+    let qrCartonId: string | null = null;
+    try {
+      const payload = JSON.parse(cleanCode) as { unit_id?: unknown; carton_id?: unknown };
+      if (typeof payload.unit_id === "string") qrUnitId = payload.unit_id;
+      if (typeof payload.carton_id === "string") qrCartonId = payload.carton_id;
+    } catch {
+      // Plain item, location, lot, or carton text is handled below.
+    }
+
+    if (qrUnitId || qrCartonId) {
+      const [unitMatch] = await db
+        .select({
+          lotId: inventoryUnits.lotId,
+          unitId: inventoryUnits.unitId,
+          cartonId: inventoryUnits.cartonId,
+          unitIndex: inventoryUnits.unitIndex,
+          status: inventoryUnits.status,
+          lotNumber: lots.lotNumber,
+          itemCode: items.code,
+          itemName: items.name,
+          locationLabel: locations.label,
+        })
+        .from(inventoryUnits)
+        .innerJoin(lots, eq(inventoryUnits.lotId, lots.id))
+        .innerJoin(items, eq(lots.itemId, items.id))
+        .leftJoin(locations, eq(inventoryUnits.locationId, locations.id))
+        .where(or(
+          qrUnitId ? eq(inventoryUnits.unitId, qrUnitId) : sql`false`,
+          qrCartonId ? eq(inventoryUnits.cartonId, qrCartonId) : sql`false`,
+        ))
+        .limit(1);
+
+      if (unitMatch) {
+        return {
+          found: true,
+          type: "lot",
+          id: unitMatch.lotId,
+          title: `${unitMatch.itemName} · Carton ${unitMatch.cartonId}`,
+          code: unitMatch.cartonId,
+          details: `Lot ${unitMatch.lotNumber} · Unit ${unitMatch.unitIndex} · ${unitMatch.status}${unitMatch.locationLabel ? ` · ${unitMatch.locationLabel}` : ""}`,
+        };
+      }
+    }
+
     // Check items table
     const [itemMatch] = await db
       .select({
@@ -594,7 +643,7 @@ export async function lookupBarcodeOrQr(code: string): Promise<{
         status: lots.status,
       })
       .from(lots)
-      .where(eq(lots.lotNumber, cleanCode))
+      .where(or(eq(lots.lotNumber, cleanCode), eq(lots.id, cleanCode)))
       .limit(1);
 
     if (lotMatch) {

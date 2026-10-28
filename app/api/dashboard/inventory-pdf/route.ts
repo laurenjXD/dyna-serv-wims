@@ -6,7 +6,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getDashboardKpis, getDashboardMasterInventory } from "@/lib/db/queries/dashboard";
 import { db } from "@/lib/db/client";
-import { PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
+import { PDF_FONT_SIZE, PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = PDF_PAGE.landscape;
@@ -37,7 +37,7 @@ function drawCell(
   width: number,
   height: number,
   font: PDFFont,
-  size: number,
+  _size: number,
   align: "left" | "center" | "right" = "left",
   fillColor?: ReturnType<typeof rgb>
 ) {
@@ -51,13 +51,13 @@ function drawCell(
     color: fillColor,
   });
 
-  const lines = wrapText(value, font, size, width - 8);
-  const lineHeight = size + 2;
-  const textBlockHeight = (lines.length - 1) * lineHeight + size;
-  const startY = top - (height - textBlockHeight) / 2 - size;
+  const lines = wrapText(value, font, PDF_FONT_SIZE, width - 8);
+  const lineHeight = PDF_FONT_SIZE + 2;
+  const textBlockHeight = (lines.length - 1) * lineHeight + PDF_FONT_SIZE;
+  const startY = top - (height - textBlockHeight) / 2 - PDF_FONT_SIZE;
 
   lines.slice(0, 2).forEach((line, index) => {
-    const lineWidth = font.widthOfTextAtSize(line, size);
+    const lineWidth = font.widthOfTextAtSize(line, PDF_FONT_SIZE);
     let drawX = x + 4;
     if (align === "center") {
       drawX = x + (width - lineWidth) / 2;
@@ -67,7 +67,7 @@ function drawCell(
     page.drawText(line, {
       x: drawX,
       y: startY - index * lineHeight,
-      size,
+      size: PDF_FONT_SIZE,
       font,
       color: INK,
     });
@@ -121,13 +121,13 @@ export async function GET() {
       page.drawImage(logoImage, { x: MARGIN, y: 520, width: 34, height: 34 });
     }
     const headerX = MARGIN + (logoImage ? 44 : 0);
-    page.drawText(template.companyName, { x: headerX, y: 542, size: 14, font: bold, color: ACCENT_NAVY });
-    page.drawText(template.subtitle || "Warehouse Operations & Master Inventory Executive Summary Report", { x: headerX, y: 526, size: 8.5, font: bold, color: MUTED });
+    page.drawText(template.companyName, { x: headerX, y: 542, size: PDF_FONT_SIZE, font: bold, color: ACCENT_NAVY });
+    page.drawText(template.subtitle || "Warehouse Operations & Master Inventory Executive Summary Report", { x: headerX, y: 526, size: PDF_FONT_SIZE, font: bold, color: MUTED });
 
-    page.drawText(`GENERATED: ${nowStr}`, { x: 610, y: 542, size: 7.5, font: bold, color: INK });
-    page.drawText(`STATUS: AUTHORIZED REAL-TIME TELEMETRY`, { x: 610, y: 528, size: 6.5, font: regular, color: MUTED });
+    page.drawText(`GENERATED: ${nowStr}`, { x: 610, y: 542, size: PDF_FONT_SIZE, font: bold, color: INK });
+    page.drawText(`STATUS: AUTHORIZED REAL-TIME TELEMETRY`, { x: 610, y: 528, size: PDF_FONT_SIZE, font: regular, color: MUTED });
     if (totalPages > 1) {
-      page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 740, y: 554, size: 7, font: bold, color: MUTED });
+      page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 740, y: 554, size: PDF_FONT_SIZE, font: bold, color: MUTED });
     }
 
     if (isFirstPage) {
@@ -168,17 +168,17 @@ export async function GET() {
           borderColor: GRID,
           borderWidth: 0.6,
         });
-        page.drawText(card.title, { x: cx + 6, y: kpiY - 12, size: 6.5, font: bold, color: ACCENT_NAVY });
-        page.drawText(card.value, { x: cx + 6, y: kpiY - 26, size: 10, font: bold, color: INK });
-        page.drawText(card.sub, { x: cx + 6, y: kpiY - 38, size: 6.5, font: regular, color: MUTED });
+        page.drawText(card.title, { x: cx + 6, y: kpiY - 12, size: PDF_FONT_SIZE, font: bold, color: ACCENT_NAVY });
+        page.drawText(card.value, { x: cx + 6, y: kpiY - 26, size: PDF_FONT_SIZE, font: bold, color: INK });
+        page.drawText(card.sub, { x: cx + 6, y: kpiY - 38, size: PDF_FONT_SIZE, font: regular, color: MUTED });
       });
 
       const tableTitleY = 448;
-      page.drawText("LIVE MASTER INVENTORY POSITIONS & BALANCES", { x: MARGIN, y: tableTitleY, size: 8.5, font: bold, color: ACCENT_NAVY });
+      page.drawText("LIVE MASTER INVENTORY POSITIONS & BALANCES", { x: MARGIN, y: tableTitleY, size: PDF_FONT_SIZE, font: bold, color: ACCENT_NAVY });
       const colHeaderY = tableTitleY - 8;
       let x = MARGIN;
       headings.forEach((heading, index) => {
-        drawCell(page, heading, x, colHeaderY, widths[index], 20, bold, 6.5, index >= 4 && index <= 5 ? "right" : index === 2 || index === 6 ? "center" : "left", HEADER_FILL);
+        drawCell(page, heading, x, colHeaderY, widths[index], 20, bold, PDF_FONT_SIZE, index >= 4 && index <= 5 ? "right" : index === 2 || index === 6 ? "center" : "left", HEADER_FILL);
         x += widths[index];
       });
       return colHeaderY - 20;
@@ -186,7 +186,7 @@ export async function GET() {
       const colHeaderY = 506;
       let x = MARGIN;
       headings.forEach((heading, index) => {
-        drawCell(page, heading, x, colHeaderY, widths[index], 20, bold, 6.5, index >= 4 && index <= 5 ? "right" : index === 2 || index === 6 ? "center" : "left", HEADER_FILL);
+        drawCell(page, heading, x, colHeaderY, widths[index], 20, bold, PDF_FONT_SIZE, index >= 4 && index <= 5 ? "right" : index === 2 || index === 6 ? "center" : "left", HEADER_FILL);
         x += widths[index];
       });
       return colHeaderY - 20;
@@ -233,7 +233,7 @@ export async function GET() {
           widths[col],
           18,
           col === 0 ? bold : regular,
-          6.5,
+          PDF_FONT_SIZE,
           col >= 4 && col <= 5 ? "right" : col === 2 || col === 6 ? "center" : "left"
         );
         x += widths[col];
@@ -249,16 +249,16 @@ export async function GET() {
       page.drawText("Confidential — Dyna-Serv WIMS Operations Report. Retention: Permanent hot/cold archival.", {
         x: MARGIN,
         y: footerY + 4,
-        size: 6.5,
+        size: PDF_FONT_SIZE,
         font: regular,
         color: MUTED,
       });
 
       const sigW = 160;
-      page.drawText("PREPARED BY / WAREHOUSE SUPERVISOR:", { x: PAGE_WIDTH - MARGIN - sigW * 2 - 20, y: footerY + 4, size: 6.5, font: bold, color: INK });
+      page.drawText("PREPARED BY / WAREHOUSE SUPERVISOR:", { x: PAGE_WIDTH - MARGIN - sigW * 2 - 20, y: footerY + 4, size: PDF_FONT_SIZE, font: bold, color: INK });
       page.drawLine({ start: { x: PAGE_WIDTH - MARGIN - sigW * 2 - 20, y: footerY - 14 }, end: { x: PAGE_WIDTH - MARGIN - sigW - 30, y: footerY - 14 }, thickness: 0.6, color: INK });
 
-      page.drawText("VERIFIED BY / INVENTORY CONTROLLER:", { x: PAGE_WIDTH - MARGIN - sigW, y: footerY + 4, size: 6.5, font: bold, color: INK });
+      page.drawText("VERIFIED BY / INVENTORY CONTROLLER:", { x: PAGE_WIDTH - MARGIN - sigW, y: footerY + 4, size: PDF_FONT_SIZE, font: bold, color: INK });
       page.drawLine({ start: { x: PAGE_WIDTH - MARGIN - sigW, y: footerY - 14 }, end: { x: PAGE_WIDTH - MARGIN, y: footerY - 14 }, thickness: 0.6, color: INK });
       break;
     }

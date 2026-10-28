@@ -37,7 +37,7 @@ import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { ToPickQueue } from "./_components/ToPickQueue";
 import { LotQrViewer } from "./_components/LotQrViewer";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
-import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, submitCycleCountAction, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
+import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
 import { deletePickList } from "../pick-lists/_actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
@@ -60,11 +60,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; count?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; count?: string; error?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, count: countId, pickListView, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
+  const { tab: tabParam, q, count: countId, error: countError, pickListView, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -194,7 +194,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
           view={pickListView === "deleted" ? "deleted" : "open"}
         />
       ) : activeTab === "stock-count" ? (
-        <StockCountTabSection countId={countId} />
+        <StockCountTabSection countId={countId} error={countError} />
       ) : (
         <InspectionTabSection />
       )}
@@ -202,13 +202,13 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   );
 }
 
-async function StockCountTabSection({ countId }: { countId?: string }) {
+async function StockCountTabSection({ countId, error }: { countId?: string; error?: string }) {
   const [locations, sessions, active] = await Promise.all([
     listCountLocations(db),
     listCycleCountSessions(db),
     countId ? getCycleCountSession(db, countId) : Promise.resolve(null),
   ]);
-  return <StockCountTab locations={locations} sessions={sessions} active={active} createAction={createCycleCountAction} recordAction={recordCycleCountAction} submitAction={submitCycleCountAction} approveAction={approveCycleCountAction} rejectAction={rejectCycleCountAction} postAction={postCycleCountAction} />;
+  return <StockCountTab locations={locations} sessions={sessions} active={active} error={error} createAction={createCycleCountAction} recordAction={recordCycleCountAction} submitAction={submitCycleCountAction} approveAction={approveCycleCountAction} rejectAction={rejectCycleCountAction} recountAction={requestCycleCountRecountAction} postAction={postCycleCountAction} />;
 }
 
 // ─── Stock View tab (default) ─────────────────────────────────────────────────

@@ -40,7 +40,7 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
   const template = await getDocumentTemplate(db);
 
   return (
-    <main className="mx-auto max-w-4xl bg-surface-white pb-12 print:max-w-none print:p-0">
+    <main data-document-root className="mx-auto max-w-4xl bg-surface-white pb-12 print:max-w-none print:p-0">
       <DocumentPrintStyles orientation="portrait" />
       {/* Print styles */}
       <style

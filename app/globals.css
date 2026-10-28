@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Official browser-generated PDFs use one text size everywhere. */
+@media print {
+  html body,
+  html body * {
+    font-size: 11pt !important;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  }
+}
+
+/* The Settings document-template preview mirrors the generated PDF contract. */
+[data-pdf-template-preview],
+[data-pdf-template-preview] * {
+  font-size: 11pt !important;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
 /*
  * Dyna-Serv surface primitives.
  * The brand guide permits 6px, 10px, 12px, and pill radii. These compatibility

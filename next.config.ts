@@ -15,7 +15,10 @@ const nextConfig: NextConfig = {
   async headers() {
     const headers = [
       { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "X-Frame-Options", value: "DENY" },
+      // The Documents Center previews authoritative same-origin print pages
+      // inside an iframe. SAMEORIGIN preserves clickjacking protection for
+      // external sites while allowing that internal preview to render.
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
     ];

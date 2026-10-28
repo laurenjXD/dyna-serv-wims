@@ -47,7 +47,7 @@ export default async function PickListPrintPage({
   const totalPieces = lines.reduce((total, line) => total + line.qty, 0);
 
   return (
-    <main className="mx-auto w-full max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
+    <main data-document-root className="mx-auto w-full max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
       <DocumentPrintStyles orientation="portrait" />
       {/* Print media rules */}
       <style

@@ -9,6 +9,8 @@ import {
   userProfiles,
   userRoles,
   roles,
+  permissions,
+  rolePermissions,
   userPartyScopes,
   parties,
   auditLog,
@@ -16,7 +18,7 @@ import {
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { inviteUserSchema, suspendUserSchema, SYSTEM_ROLE_KEYS, type InviteUserInput } from "@/lib/user-settings/schemas";
+import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib/user-settings/schemas";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
@@ -320,7 +322,44 @@ const DEFAULT_MODULE_CAPS = [
   { module: "Master Data", view: false, create: false, edit: false, approve: false, delete: false },
 ];
 
-const runtimeCustomRoles: DynamicRole[] = [
+const MODULE_PERMISSION_MAP: Record<string, Array<{ resource: string; action: string; field: "view" | "create" | "edit" | "approve" | "delete" }>> = {
+  Dashboard: [{ resource: "reporting", action: "read", field: "view" }],
+  "Receiving (WRR)": [
+    { resource: "receiving", action: "view", field: "view" },
+    { resource: "receiving", action: "scan", field: "create" },
+    { resource: "receiving", action: "confirm", field: "approve" },
+  ],
+  "Master Inventory": [
+    { resource: "inventory", action: "read", field: "view" },
+    { resource: "inventory", action: "manage", field: "edit" },
+  ],
+  "Outgoing & Picking": [
+    { resource: "pick_list", action: "read", field: "view" },
+    { resource: "pick_list", action: "generate", field: "create" },
+    { resource: "pick_list", action: "execute", field: "edit" },
+  ],
+  Approvals: [{ resource: "fifo_override", action: "approve", field: "approve" }],
+  Documents: [
+    { resource: "documents", action: "read", field: "view" },
+    { resource: "documents", action: "generate", field: "create" },
+    { resource: "documents", action: "download", field: "edit" },
+  ],
+  "Reports & Billing": [
+    { resource: "reporting", action: "read", field: "view" },
+    { resource: "reporting", action: "export", field: "create" },
+    { resource: "vmi_statements", action: "read", field: "view" },
+  ],
+  "Master Data": [
+    { resource: "parties", action: "read", field: "view" },
+    { resource: "parties", action: "manage", field: "edit" },
+    { resource: "items", action: "read", field: "view" },
+    { resource: "items", action: "manage", field: "edit" },
+    { resource: "locations", action: "read", field: "view" },
+    { resource: "locations", action: "manage", field: "edit" },
+  ],
+};
+
+let runtimeCustomRoles: DynamicRole[] = [
   {
     id: "role-admin",
     key: "administrator",
@@ -348,6 +387,15 @@ const runtimeCustomRoles: DynamicRole[] = [
     isSystem: true,
     capabilities: DEFAULT_MODULE_CAPS,
   },
+  {
+    id: "role-audit",
+    key: "audit_lead",
+    name: "Audit & Inventory Clerk",
+    description: "Cycle count verification, stock adjustment reviews, and discrepancy audits.",
+    color: "bg-amber-100 text-amber-800 border-amber-200",
+    isSystem: false,
+    capabilities: DEFAULT_MODULE_CAPS.map((m) => ({ ...m, view: true, create: false, edit: m.module === "Master Inventory", approve: false, delete: false })),
+  },
 ];
 
 export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
@@ -358,12 +406,22 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
 
   try {
     const dbRoles = await db.select().from(roles).where(eq(roles.isActive, true));
-    const approvedRoles = dbRoles.filter(
-      (role) => role.isSystem && (SYSTEM_ROLE_KEYS as readonly string[]).includes(role.key),
-    );
-    if (approvedRoles.length > 0) {
-      const mapped: DynamicRole[] = approvedRoles.map((r) => {
+    if (dbRoles.length > 0) {
+      const grants = await db
+        .select({ roleId: rolePermissions.roleId, resource: permissions.resource, action: permissions.action })
+        .from(rolePermissions)
+        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id));
+      const mapped: DynamicRole[] = dbRoles.map((r) => {
         const matchingRuntime = runtimeCustomRoles.find((cr) => cr.key === r.key);
+        const roleGrants = grants.filter((grant) => grant.roleId === r.id);
+        const capabilities = DEFAULT_MODULE_CAPS.map((moduleCap) => ({ ...moduleCap }));
+        for (const mapping of Object.values(MODULE_PERMISSION_MAP).flat()) {
+          const moduleName = Object.entries(MODULE_PERMISSION_MAP).find(([, entries]) => entries.includes(mapping))?.[0];
+          const target = capabilities.find((cap) => cap.module === moduleName);
+          if (target && roleGrants.some((grant) => grant.resource === mapping.resource && grant.action === mapping.action)) {
+            target[mapping.field] = true;
+          }
+        }
         return {
           id: r.id,
           key: r.key,
@@ -371,7 +429,7 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
           description: r.description ?? "",
           color: matchingRuntime?.color || (r.key === "administrator" ? "bg-purple-100 text-purple-800 border-purple-200" : "bg-blue-100 text-blue-800 border-blue-200"),
           isSystem: r.isSystem,
-          capabilities: matchingRuntime?.capabilities || DEFAULT_MODULE_CAPS,
+          capabilities: r.isSystem && matchingRuntime ? matchingRuntime.capabilities : capabilities,
         };
       });
       return { ok: true, data: mapped };
@@ -380,12 +438,7 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
     // fallback
   }
 
-  return {
-    ok: true,
-    data: runtimeCustomRoles.filter((role) =>
-      (SYSTEM_ROLE_KEYS as readonly string[]).includes(role.key),
-    ),
-  };
+  return { ok: true, data: runtimeCustomRoles };
 }
 
 export async function saveDynamicRole(role: DynamicRole): Promise<ActionResult> {
@@ -394,11 +447,57 @@ export async function saveDynamicRole(role: DynamicRole): Promise<ActionResult> 
     return { ok: false, error: "Access denied." };
   }
 
-  void role;
-  return {
-    ok: false,
-    error: "Role capabilities are migration-managed in v1. Assign an approved system role instead.",
-  };
+  try {
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx.select().from(roles).where(eq(roles.key, role.key)).limit(1);
+      const current = existing[0];
+      if (current?.isSystem) {
+        throw new Error("System-defined roles cannot be edited.");
+      }
+
+      const saved = current
+        ? (await tx.update(roles).set({ name: role.name, description: role.description, isActive: true, updatedAt: new Date() }).where(eq(roles.id, current.id)).returning({ id: roles.id }))[0]
+        : (await tx.insert(roles).values({ key: role.key, name: role.name, description: role.description, isSystem: false, isActive: true }).returning({ id: roles.id }))[0];
+      if (!saved) throw new Error("Unable to save role.");
+
+      await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, saved.id));
+      const catalog = await tx.select({ id: permissions.id, resource: permissions.resource, action: permissions.action }).from(permissions).where(eq(permissions.isActive, true));
+      const grants = role.capabilities.flatMap((cap) => (MODULE_PERMISSION_MAP[cap.module] ?? [])
+        .filter((entry) => cap[entry.field])
+        .map((entry) => {
+          const permissionRow = catalog.find((p) => p.resource === entry.resource && p.action === entry.action);
+          return permissionRow ? { roleId: saved.id, permissionId: permissionRow.id, scopeKind: "global" as const } : null;
+        }).filter((grant): grant is { roleId: string; permissionId: string; scopeKind: "global" } => Boolean(grant)));
+      if (grants.length > 0) await tx.insert(rolePermissions).values(grants).onConflictDoNothing();
+
+      return saved.id;
+    });
+
+    const existingIdx = runtimeCustomRoles.findIndex((r) => r.id === role.id || r.key === role.key);
+    const persistedRole = { ...role, id: result, isSystem: false };
+    if (existingIdx >= 0) runtimeCustomRoles[existingIdx] = persistedRole;
+    else runtimeCustomRoles.push(persistedRole);
+
+    // Write audit record
+    await db.insert(auditLog).values({
+      actorUserId: permission.context.userId,
+      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
+      action: "dynamic_role_saved",
+      entityType: "roles",
+      entityId: result,
+      diffData: {
+        roleKey: role.key,
+        name: role.name,
+        capabilities: role.capabilities,
+      },
+      correlationId: `ROLE-${Date.now()}`,
+    }).catch(() => {});
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unable to persist custom role." };
+  }
+
+  revalidatePath("/settings/team");
+  return { ok: true, data: undefined };
 }
 
 export async function deleteDynamicRole(roleId: string): Promise<ActionResult> {
@@ -407,8 +506,18 @@ export async function deleteDynamicRole(roleId: string): Promise<ActionResult> {
     return { ok: false, error: "Access denied." };
   }
 
-  void roleId;
-  return { ok: false, error: "System role definitions cannot be deleted in v1." };
+  try {
+    const target = (await db.select().from(roles).where(eq(roles.id, roleId)).limit(1))[0];
+    if (!target) return { ok: false, error: "Role not found." };
+    if (target.isSystem) return { ok: false, error: "System-defined roles cannot be deleted." };
+    await db.update(roles).set({ isActive: false, updatedAt: new Date() }).where(eq(roles.id, roleId));
+    runtimeCustomRoles = runtimeCustomRoles.filter((r) => r.id !== roleId);
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unable to deactivate role." };
+  }
+
+  revalidatePath("/settings/team");
+  return { ok: true, data: undefined };
 }
 
 // ── Per-User Administrative Audit Trail ─────────────────────

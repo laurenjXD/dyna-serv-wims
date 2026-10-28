@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { commitWithdrawal, markPickListPicked, requestFifoOverride } from "@/lib/actions/withdrawals";
-import { approveCycleCount, createCycleCount, postCycleCount, recordCycleCount, rejectCycleCount, submitCycleCount } from "@/lib/actions/cycle-count";
+import { approveCycleCount, createCycleCount, postCycleCount, recordCycleCount, rejectCycleCount, requestCycleCountRecount, submitCycleCount } from "@/lib/actions/cycle-count";
 
 export async function createPickList(formData: FormData): Promise<void> {
   const raw = formData.get("request");
@@ -109,11 +109,11 @@ export async function createCycleCountAction(formData: FormData): Promise<void> 
 }
 
 export async function recordCycleCountAction(formData: FormData): Promise<void> {
-  cycleCountRedirect(await recordCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), String(formData.get("lineId") ?? ""), Number(formData.get("countedQty")), String(formData.get("note") ?? "")));
+  cycleCountRedirect(await recordCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), String(formData.get("lineId") ?? ""), Number(formData.get("countedQty")), String(formData.get("note") ?? ""), formData.get("zeroConfirmed") === "yes"));
 }
 
 export async function submitCycleCountAction(formData: FormData): Promise<void> {
-  cycleCountRedirect(await submitCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? "")));
+  cycleCountRedirect(await submitCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), formData.get("missingLinesConfirmed") === "yes"));
 }
 
 export async function approveCycleCountAction(formData: FormData): Promise<void> {
@@ -122,6 +122,15 @@ export async function approveCycleCountAction(formData: FormData): Promise<void>
 
 export async function rejectCycleCountAction(formData: FormData): Promise<void> {
   cycleCountRedirect(await rejectCycleCount(await createPageResolver(), String(formData.get("sessionId") ?? ""), String(formData.get("reason") ?? "")));
+}
+
+export async function requestCycleCountRecountAction(formData: FormData): Promise<void> {
+  cycleCountRedirect(await requestCycleCountRecount(
+    await createPageResolver(),
+    String(formData.get("sessionId") ?? ""),
+    String(formData.get("lineId") ?? ""),
+    String(formData.get("reason") ?? ""),
+  ));
 }
 
 export async function postCycleCountAction(formData: FormData): Promise<void> {

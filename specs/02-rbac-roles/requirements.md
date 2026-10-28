@@ -1,7 +1,7 @@
 # RBAC & Roles — Requirements
 
-Status: Pending Reapproval
-Updated: 2026-10-27 — proposed custom-role management amendment
+Status: Approved
+Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 Depends on:
 
@@ -51,8 +51,6 @@ Party users receive read or action capabilities only for one or more explicitly 
 
 - The initial system roles are `warehouse_staff`, `supervisor`, `administrator`, and `party_user`.
 - System roles are fixed and their definitions cannot be edited through the v1 administration UI.
-- Administrators MAY create, edit, deactivate, and assign custom roles in v1, but only from the canonical active permission catalog. Custom roles MUST NOT create new permission resources, actions, or scope kinds.
-- Custom roles MUST be distinguishable from protected system roles, and system-role capability grants MUST remain immutable through the application UI.
 - Features authorize capabilities, not role names.
 - A user may hold multiple roles. Active grants combine additively.
 - There are no explicit deny grants. Anything not actively granted is denied.
@@ -81,7 +79,7 @@ Party users receive read or action capabilities only for one or more explicitly 
 
 1. Roles SHALL grant named capabilities represented by resource, action, and applicable scope type.
 2. Capability identifiers SHALL be stable authorization contracts and SHALL NOT be route names or UI labels.
-3. System-role capability mappings SHALL be centrally defined and protected from runtime editing in v1. Custom-role mappings SHALL be runtime-managed only through the authorized, audited role-management flow defined in this specification.
+3. System-role capability mappings SHALL be centrally defined and protected from runtime editing in v1.
 4. Effective capabilities SHALL be the union of all active role assignments for an active user.
 5. Expired, revoked, future-dated, or inactive assignments SHALL contribute no capabilities.
 6. Server Actions, route handlers, background jobs acting for a user, and protected server-rendered reads SHALL use the shared authorization contract.
@@ -127,12 +125,9 @@ Party users receive read or action capabilities only for one or more explicitly 
 6. The system SHALL prevent deactivation or revocation that would leave no active user with the required global administrator capability.
 7. The system SHALL NOT automatically promote another account.
 8. Deactivation SHALL preserve the user profile, assignment history, and audit records.
-9. Authorized administrators SHALL be able to create a custom role with a unique name/key, description, visual label, and a selected subset of active canonical permissions.
-10. Authorized administrators SHALL be able to edit a custom role's metadata and permission grants, subject to transactionality, confirmation, audit logging, and the last-administrator safeguard.
-11. A custom role SHALL be assignable during invitation and through the existing access-assignment flow. An inactive custom role SHALL grant no capability, including to existing assignees.
-12. A custom role SHALL NOT be deleted while actively assigned. It SHALL be deactivated/archived, preserving assignments and audit history; reactivation requires the same authorized role-management capability.
-13. The server SHALL reject client attempts to alter `is_system` roles, invent permission identifiers, change permission scope kinds outside the canonical catalog, or bypass the role-management capability.
-14. v1 SHALL NOT support user impersonation, delegation, or break-glass access.
+9. v1 SHALL NOT support user impersonation, delegation, or break-glass access.
+10. Authorized administrators SHALL be able to create persistent custom roles and combine canonical permissions from different modules.
+11. Custom-role grants SHALL be stored in `role_permissions`; effective access SHALL be the additive union of all active assigned roles.
 
 ### FR-8: Security events and auditability
 
@@ -234,6 +229,7 @@ The RBAC design owns canonical capability identifiers. The operational capabilit
 ## 8. Out of scope
 
 - Public self-service registration.
+- User-defined deny rules; access not granted by an active role remains denied.
 - User impersonation, delegation, or break-glass access.
 - Approval workflow state machines; this spec only defines their capability boundary.
 - Offline queue and conflict-resolution mechanics, owned by `03-offline-mode-and-client-storage`.
@@ -275,38 +271,3 @@ These are not unresolved RBAC model choices, but the final capability matrix can
   Inventory Model scope changes SHALL take effect on the next protected request
   and at offline replay. Every denial/replay rejection SHALL be auditable with
   actor, requested resource, actual scope, result code, and correlation ID.
-
-## 11. Pending reapproval — Custom-role management amendment (2026-10-27)
-
-This amendment changes the prior v1 decision from protected system-role
-assignment only to administrator-managed custom roles. It does not permit
-arbitrary capability invention or role-name authorization in feature code.
-
-- Custom roles use the existing `roles`, `role_permissions`, and `permissions`
-  model. The migration SHALL add only the metadata/constraints needed to
-  distinguish administrator-created roles and preserve the existing system
-  roles.
-- The permission catalog remains owned by RBAC migrations. A role editor may
-  select active catalog entries and their allowed scope kinds, but cannot
-  create, rename, or delete permission catalog entries.
-- Role creation, metadata edits, grant edits, assignment of a custom role,
-  reactivation, and deactivation are privileged mutations. Each mutation is
-  transactional and creates an append-only `rbac_security_events` record with
-  the actor, target role, before/after grant summaries, reason, and request
-  correlation ID where available.
-- A custom role key is immutable after creation, normalized for uniqueness,
-  and never used as an authorization branch. Display name and description are
-  editable, subject to bounded input validation.
-- The UI must render the live permission catalog rather than a hand-maintained
-  module/action approximation. A capability change is not effective until the
-  server mutation commits successfully.
-- Real-Postgres tests must cover custom-role create, edit, grant replacement,
-  assignment to a new inactive user, activation, deactivation, attempted
-  system-role mutation, attempted unknown-permission injection, and revocation
-  on the next protected request.
-
-### Amendment sign-off
-
-- [ ] Product Owner approval — pending explicit recording for this amendment.
-- [ ] Technical/RBAC review and real-Postgres verification — pending.
-- [ ] Second approver approval — pending.

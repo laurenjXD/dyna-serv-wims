@@ -27,6 +27,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [phone, setPhone] = useState(profile.phone);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatarUrl);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
@@ -41,11 +42,13 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
       displayName,
       phone,
       employeeId: profile.employeeId,
-      avatarUrl: avatarPreview || undefined,
+      avatarUrl: profile.avatarUrl || undefined,
+      avatarFile,
     });
 
     setIsSaving(false);
     if (res.ok) {
+      setAvatarFile(null);
       setSaveStatus({ type: "success", message: "Profile details updated successfully." });
     } else {
       setSaveStatus({ type: "error", message: res.error || "Failed to update profile." });
@@ -55,6 +58,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);

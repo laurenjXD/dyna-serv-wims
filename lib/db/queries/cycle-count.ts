@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { cycleCountLines, cycleCountSessions } from "@/lib/db/schema/cycle_count";
 import { items } from "@/lib/db/schema/items";
 import { locations } from "@/lib/db/schema/locations";
@@ -29,6 +29,8 @@ export type CycleCountLineRow = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  itemDescription: string | null;
+  uom: string;
   lotId: string;
   lotNumber: string;
   locationId: string;
@@ -95,6 +97,8 @@ export async function getCycleCountSession(db: DbLike, sessionId: string) {
     itemId: cycleCountLines.itemId,
     itemCode: items.code,
     itemName: items.name,
+    itemDescription: items.description,
+    uom: items.uom,
     lotId: cycleCountLines.lotId,
     lotNumber: lots.lotNumber,
     locationId: cycleCountLines.locationId,
@@ -112,8 +116,17 @@ export async function getCycleCountSession(db: DbLike, sessionId: string) {
 }
 
 export async function listCountLocations(db: DbLike) {
-  return db.select({ id: locations.id, label: locations.label, zone: locations.zone })
-    .from(locations).where(eq(locations.isActive, true)).orderBy(asc(locations.label));
+  return db.select({
+    id: locations.id,
+    label: locations.label,
+    zone: locations.zone,
+    stockLineCount: sql<number>`coalesce((select count(*)::int from ${lotLocationBalances} where ${lotLocationBalances.locationId} = ${locations.id} and ${lotLocationBalances.qtyRemaining} > 0), 0)`,
+    systemQty: sql<number>`coalesce((select sum(${lotLocationBalances.qtyRemaining})::int from ${lotLocationBalances} where ${lotLocationBalances.locationId} = ${locations.id} and ${lotLocationBalances.qtyRemaining} > 0), 0)`,
+    activeSessionCount: sql<number>`coalesce((select count(*)::int from ${cycleCountSessions} where ${cycleCountSessions.locationId} = ${locations.id} and ${cycleCountSessions.status} in ('counting', 'submitted', 'rejected')), 0)`,
+  })
+    .from(locations)
+    .where(eq(locations.isActive, true))
+    .orderBy(asc(locations.zone), asc(locations.label));
 }
 
 export async function listCountableBalances(db: DbLike, locationId: string) {

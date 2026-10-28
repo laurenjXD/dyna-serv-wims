@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
@@ -79,9 +78,7 @@ function PickListItemSearch({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const listboxRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
   const selectedItem = catalog.find((item) => item.itemId === selectedItemId);
 
@@ -91,10 +88,7 @@ function PickListItemSearch({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      const clickedInput = dropdownRef.current?.contains(target);
-      const clickedListbox = listboxRef.current?.contains(target);
-      if (!clickedInput && !clickedListbox) setIsOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -112,43 +106,6 @@ function PickListItemSearch({
       item.dsgcItemNumber,
     ].some((value) => value?.toLowerCase().includes(query));
   });
-
-  useEffect(() => {
-    if (!isOpen) {
-      setDropdownPosition(null);
-      return;
-    }
-
-    const updateDropdownPosition = () => {
-      const anchor = dropdownRef.current?.getBoundingClientRect();
-      if (!anchor) return;
-
-      const viewportPadding = 8;
-      const minWidth = 280;
-      const width = Math.min(
-        Math.max(anchor.width, minWidth),
-        Math.max(minWidth, window.innerWidth - viewportPadding * 2),
-      );
-      const left = Math.min(
-        anchor.left,
-        Math.max(viewportPadding, window.innerWidth - width - viewportPadding),
-      );
-      const estimatedHeight = Math.min(320, Math.max(96, filteredItems.length * 82 + 48));
-      const top = anchor.bottom + estimatedHeight <= window.innerHeight - viewportPadding
-        ? anchor.bottom + 4
-        : Math.max(viewportPadding, anchor.top - estimatedHeight - 4);
-
-      setDropdownPosition({ top, left, width });
-    };
-
-    updateDropdownPosition();
-    window.addEventListener("resize", updateDropdownPosition);
-    window.addEventListener("scroll", updateDropdownPosition, true);
-    return () => {
-      window.removeEventListener("resize", updateDropdownPosition);
-      window.removeEventListener("scroll", updateDropdownPosition, true);
-    };
-  }, [filteredItems.length, isOpen]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -185,17 +142,14 @@ function PickListItemSearch({
         />
       </div>
 
-      {isOpen && !disabled && dropdownPosition && createPortal(
-        <div
-          className="fixed z-[100] max-h-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
-          style={{ top: dropdownPosition.top, left: dropdownPosition.left, width: dropdownPosition.width }}
-        >
+      {isOpen && !disabled && (
+        <div className="absolute left-0 right-0 z-50 mt-1 max-h-80 min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
           <div className="border-b border-slate-100 bg-[#F0F4FF] px-3 py-2">
             <p className="truncate font-label text-[10px] uppercase tracking-wider text-slate-500">
               Available Item Recommendations ({filteredItems.length})
             </p>
           </div>
-          <div ref={listboxRef} id={listboxId} role="listbox" className="max-h-64 overflow-y-auto divide-y divide-slate-100 p-1">
+          <div id={listboxId} role="listbox" className="max-h-64 overflow-y-auto divide-y divide-slate-100 p-1">
             {filteredItems.length > 0 ? filteredItems.map((item) => {
               const formattedCode = itemCodeFor(item, flowType);
               const isSelected = item.itemId === selectedItemId;
@@ -242,8 +196,7 @@ function PickListItemSearch({
               </div>
             )}
           </div>
-        </div>,
-        document.body,
+        </div>
       )}
     </div>
   );

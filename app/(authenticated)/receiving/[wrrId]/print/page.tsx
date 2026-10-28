@@ -137,7 +137,7 @@ export default async function WrrPrintPage({ params }: PageProps) {
         </div>
 
         {/* Printable WRR document (Landscape) */}
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 print:border-0 print:p-0 print:shadow-none">
+        <div data-document-root className="rounded-xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 print:border-0 print:p-0 print:shadow-none">
           {/* Master Document Uniform Header */}
           <MasterDocumentHeader
             documentTitle="Warehouse Receiving Report (WRR)"

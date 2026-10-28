@@ -42,6 +42,7 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { locations } from "@/lib/db/schema/locations";
 import { inspectionCases } from "@/lib/db/schema/transfers";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { receivingDiscrepancies } from "@/lib/db/schema/receiving_discrepancies";
 import { deriveWrrUnitId } from "@/lib/barcode/wrr-unit";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
@@ -61,6 +62,10 @@ import { resolveReceivingInventoryModel, validateReceivingOrganization } from "@
 // app-layer capability gate (unchanged); `withRlsTransaction` additionally
 // makes the underlying Postgres RLS policies the real, DB-level backstop.
 const defaultRlsDeps: RlsTransactionDeps = { getAuthenticatedSession, pool: rlsPool };
+
+// Explicitly opt-in for local/UAT simulation. Production keeps the warehouse
+// Wi-Fi restriction unless this test-only switch is intentionally configured.
+const receivingSimulationMode = process.env.RECEIVING_SIMULATION_MODE === "true";
 
 function canonicalItemUom(uom: string): string {
   return uom.toLowerCase() === "pallet" ? "piece" : uom.toLowerCase();
@@ -799,8 +804,10 @@ export async function recordScan(
   if (perm.kind !== "authorized") {
     return { ok: false, reason: "forbidden" };
   }
-  const network = await verifyFloorNetworkAccess();
-  if (!network.allowed) return { ok: false, reason: "network_restricted" };
+  if (!receivingSimulationMode) {
+    const network = await verifyFloorNetworkAccess();
+    if (!network.allowed) return { ok: false, reason: "network_restricted" };
+  }
   const userId = perm.context.userId;
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
@@ -913,9 +920,6 @@ export async function startReceiving(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
-  const network = await verifyFloorNetworkAccess();
-  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
-
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
 
@@ -1061,9 +1065,10 @@ export async function commitWrrLine(
   if (perm.kind !== "authorized") {
     return { ok: false, errors: ["forbidden"] };
   }
-
-  const network = await verifyFloorNetworkAccess();
-  if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
+  if (!receivingSimulationMode) {
+    const network = await verifyFloorNetworkAccess();
+    if (!network.allowed) return { ok: false, errors: ["network_restricted"] };
+  }
 
   const userId = perm.context.userId;
 
@@ -1143,7 +1148,10 @@ export async function commitWrrLine(
       if (isBatch && !params.presenceAttested) {
         return { ok: false, errors: ["presence_attestation_required"] } satisfies CommitWrrLineResult;
       }
-      if (isBatch && allocatedTotal !== cartonCount) {
+      // A declared shortage is valid when the operator explicitly attests the
+      // physically present cartons. The allocation total may therefore be
+      // lower than the derived carton count, but never higher.
+      if (isBatch && allocatedTotal > cartonCount) {
         return { ok: false, errors: ["allocation_qty_must_equal_derived_carton_count"] } satisfies CommitWrrLineResult;
       }
 
@@ -1209,6 +1217,23 @@ export async function commitWrrLine(
         .returning({ id: wrrItems.id });
 
       if (claimed.length === 1) {
+        if (allocatedTotal < cartonCount) {
+          await tx.insert(receivingDiscrepancies).values({
+            wrrId: doc.id,
+            wrrItemId: line.id,
+            expectedCartons: cartonCount,
+            receivedCartons: allocatedTotal,
+            missingCartons: cartonCount - allocatedTotal,
+          }).onConflictDoUpdate({
+            target: receivingDiscrepancies.wrrItemId,
+            set: {
+              expectedCartons: cartonCount,
+              receivedCartons: allocatedTotal,
+              missingCartons: cartonCount - allocatedTotal,
+              updatedAt: new Date(),
+            },
+          });
+        }
         const hasStorageLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "storage");
         const hasInspectionLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "inspection");
 

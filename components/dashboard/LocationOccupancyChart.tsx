@@ -83,15 +83,17 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
           </ResponsiveContainer>
           )}
 
-            {/* Center Metric */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="font-mono text-xl font-black text-brand-navy leading-none">
-              {overallPct}%
-            </span>
-            <span className="text-[10px] font-label font-bold uppercase tracking-wider text-text-grey mt-0.5">
-              UTILIZED
-            </span>
-          </div>
+          {/* Center Metric — only overlay the donut when chart data exists. */}
+          {data.length > 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="font-mono text-xl font-black text-brand-navy leading-none">
+                {overallPct}%
+              </span>
+              <span className="text-[10px] font-label font-bold uppercase tracking-wider text-text-grey mt-0.5">
+                UTILIZED
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

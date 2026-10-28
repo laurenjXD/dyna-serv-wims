@@ -1,4 +1,8 @@
-# Dyna-Serv WIMS — User Manual & Operations Guide
+# Dyna-Serv WIMS — Incoming Receiving & WRR Companion Guide
+
+**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
+**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
+**Last reconciled:** 2026-10-27
 
 ## Chapter: Incoming Receiving & Warehouse Receipt (WRR) Operations
 
@@ -37,7 +41,8 @@ graph LR
 * Once the WRR is drafted, navigate to the WRR detail screen (`/receiving/[wrrId]`).
 * Click **Print Unit Labels**.
 * The system generates standardized, high-contrast QR labels formatted for industrial thermal label printers (or standard sheets).
-* Affix one QR label per physical box/carton.
+* Affix one unique unit/carton label per physical box/carton when carton-level evidence is required.
+* A lot QR is an aggregate lot label and must not be substituted for unique carton labels when duplicate-carton detection is required.
 
 ---
 
@@ -72,6 +77,7 @@ Floor receiving is optimized for handheld mobile scanners, tablets, and forklift
 
 5. **Independent Line-by-Line Progression**:
    * Each line commits atomically. A shortage on Line 1 never blocks Line 2 or subsequent lines from being scanned and stored.
+   * After the server confirms Store/Hold, the operator returns to the first receiving screen and starts the next line. A failed start or incomplete allocation remains on screen with the reason and recovery action.
 
 ---
 
@@ -89,5 +95,4 @@ Floor receiving is optimized for handheld mobile scanners, tablets, and forklift
 
 ### 6. Related Operating Guides
 * **Troubleshooting & Edge Cases**: See [Chapter 6: Edge Cases, Error Handling & System Exception Guide](./edge-cases-and-troubleshooting.md#2-inbound-receiving-edge-cases--sops) for handling unregistered items, inventory-model mismatches, unconfirmed advance notices, visual damage splits, and storage rack capacity overfills.
-* **Document Printing & Sign-Offs**: See [Chapter 5: Warehouse Document Printing, Signatures & Compliance Standards](./document-printing-and-compliance.md) for WRR printing, 3-tier signature block accountability, and page-break rules.
-
+* **Document Printing & Sign-Offs**: See [Document Printing & Compliance](./document-printing-and-compliance.md) for WRR printing, 3-tier signature block accountability, reprints, and page-break rules.

@@ -24,7 +24,7 @@ type DbLike = {
   update: (...args: any[]) => any;
 };
 
-type Result = { ok: true; sessionId?: string; countNumber?: string } | { ok: false; reason: string };
+type Result = { ok: true; sessionId?: string; countNumber?: string } | { ok: false; reason: string; sessionId?: string };
 
 function countNumber(): string {
   return `CC-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -87,10 +87,12 @@ export async function recordCycleCount(
   lineId: string,
   countedQty: number,
   note?: string,
+  zeroConfirmed = false,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<Result> {
   const perm = await requirePermission(resolver, "cycle_count.count");
   if (perm.kind !== "authorized" || !Number.isInteger(countedQty) || countedQty < 0) return { ok: false, reason: "invalid_count" };
+  if (countedQty === 0 && !zeroConfirmed) return { ok: false, reason: "zero_confirmation_required" };
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
     const [session] = await db.select({ status: cycleCountSessions.status }).from(cycleCountSessions).where(eq(cycleCountSessions.id, sessionId)).limit(1);
@@ -99,6 +101,7 @@ export async function recordCycleCount(
     if (!session || !line) return { ok: false as const, reason: "not_found" };
     if (session.status !== "counting" && session.status !== "rejected") return { ok: false as const, reason: "invalid_status" };
     const variance = countedQty - Number(line.systemQty);
+    if (variance > 0 && !note?.trim()) return { ok: false as const, reason: "surplus_explanation_required", sessionId };
     await db.update(cycleCountLines).set({ countedQty, variance, status: "counted", countedByUserId: perm.context.userId, countedAt: new Date(), updatedAt: new Date() })
       .where(eq(cycleCountLines.id, lineId));
     await db.insert(cycleCountEvents).values({ sessionId, lineId, eventType: "counted", countedQty, note: note?.trim() || null, actorUserId: perm.context.userId });
@@ -107,9 +110,10 @@ export async function recordCycleCount(
   return result.kind === "unauthenticated" ? { ok: false, reason: "forbidden" } : result.value;
 }
 
-export async function submitCycleCount(resolver: RequestAuthorizationResolver, sessionId: string, rlsDeps: RlsTransactionDeps = defaultRlsDeps): Promise<Result> {
+export async function submitCycleCount(resolver: RequestAuthorizationResolver, sessionId: string, missingLinesConfirmed = false, rlsDeps: RlsTransactionDeps = defaultRlsDeps): Promise<Result> {
   const perm = await requirePermission(resolver, "cycle_count.count");
   if (perm.kind !== "authorized") return { ok: false, reason: "forbidden" };
+  if (!missingLinesConfirmed) return { ok: false, reason: "missing_lines_confirmation_required", sessionId };
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
     const [session] = await db.select({ status: cycleCountSessions.status }).from(cycleCountSessions).where(eq(cycleCountSessions.id, sessionId)).limit(1);
@@ -118,6 +122,32 @@ export async function submitCycleCount(resolver: RequestAuthorizationResolver, s
     if (session.status !== "counting" && session.status !== "rejected" || openLines.length > 0) return { ok: false as const, reason: openLines.length > 0 ? "uncounted_lines" : "invalid_status" };
     await db.update(cycleCountSessions).set({ status: "submitted", submittedByUserId: perm.context.userId, version: sql`${cycleCountSessions.version} + 1`, updatedAt: new Date() }).where(and(eq(cycleCountSessions.id, sessionId)));
     return { ok: true as const };
+  });
+  return result.kind === "unauthenticated" ? { ok: false, reason: "forbidden" } : result.value;
+}
+
+export async function requestCycleCountRecount(
+  resolver: RequestAuthorizationResolver,
+  sessionId: string,
+  lineId: string,
+  reason: string,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<Result> {
+  const perm = await requirePermission(resolver, "cycle_count.review");
+  if (perm.kind !== "authorized" || !reason.trim()) return { ok: false, reason: "recount_reason_required" };
+  const result = await withRlsTransaction(rlsDeps, async (tx) => {
+    const db = tx.db as DbLike;
+    const [session] = await db.select({ status: cycleCountSessions.status }).from(cycleCountSessions).where(eq(cycleCountSessions.id, sessionId)).limit(1);
+    const [line] = await db.select({ id: cycleCountLines.id }).from(cycleCountLines)
+      .where(and(eq(cycleCountLines.id, lineId), eq(cycleCountLines.sessionId, sessionId))).limit(1);
+    if (!session || !line) return { ok: false as const, reason: "not_found" };
+    if (session.status !== "submitted") return { ok: false as const, reason: "invalid_status" };
+    await db.update(cycleCountLines).set({ countedQty: null, variance: null, status: "uncounted", countedByUserId: null, countedAt: null, updatedAt: new Date() })
+      .where(eq(cycleCountLines.id, lineId));
+    await db.update(cycleCountSessions).set({ status: "rejected", rejectionReason: reason.trim().slice(0, 1000), version: sql`${cycleCountSessions.version} + 1`, updatedAt: new Date() })
+      .where(and(eq(cycleCountSessions.id, sessionId), eq(cycleCountSessions.status, "submitted")));
+    await db.insert(cycleCountEvents).values({ sessionId, lineId, eventType: "recount_requested", note: reason.trim().slice(0, 1000), actorUserId: perm.context.userId });
+    return { ok: true as const, sessionId };
   });
   return result.kind === "unauthenticated" ? { ok: false, reason: "forbidden" } : result.value;
 }

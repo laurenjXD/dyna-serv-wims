@@ -125,11 +125,11 @@ function AppendixSection({
 
 function AppendixTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
   return (
-    <table data-document-table className="w-full text-left border-collapse font-mono text-[10px] leading-4 print:text-[7.5pt]">
+    <table data-document-table className="w-full text-left border-collapse font-mono text-[10px] leading-4 print:text-[9pt]">
       <thead>
         <tr className="bg-slate-100 border-b border-slate-300 print:bg-slate-100">
           {headers.map((h) => (
-            <th key={h} className="py-1.5 px-3 uppercase tracking-[0.08em] text-slate-700 font-bold whitespace-nowrap text-[9px] print:text-[7.5pt] print:py-1 print:px-1.5">
+            <th key={h} className="py-1.5 px-3 uppercase tracking-[0.08em] text-slate-700 font-bold whitespace-nowrap text-[9px] print:text-[9pt] print:py-1 print:px-1.5">
               {h}
             </th>
           ))}
@@ -185,7 +185,7 @@ export function SoaDetailClient({
   const grandTotal = chargeLines.reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
+      <div data-document-root className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 print:p-0 print:m-0 print:max-w-none">
       <DocumentPrintStyles orientation="portrait" />
 
       {/* ── Print stylesheet ─────────────────────────────────────────────── */}
@@ -201,7 +201,7 @@ export function SoaDetailClient({
             background: #fff !important;
             color: #000 !important;
             color-scheme: light !important;
-            font-family: Inter, "Helvetica Neue", Arial, sans-serif !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
             font-size: 9pt !important;
             line-height: 1.3 !important;
             width: 100% !important;
@@ -266,18 +266,18 @@ export function SoaDetailClient({
             border: 1px solid #475569 !important;
             padding: 2.5px 4px !important;
             font-weight: 700 !important;
-            font-size: 7.5pt !important;
+            font-size: 9pt !important;
           }
           td {
             border: 1px solid #cbd5e1 !important;
             padding: 2px 4px !important;
             color: #000 !important;
-            font-size: 7.5pt !important;
+            font-size: 9pt !important;
           }
           .soa-main-header { background: #1e293b !important; }
-          .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 8pt !important; padding: 4px 6px !important; }
-          .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 8.5pt !important; }
-          .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 8pt !important; }
+          .soa-main-header th { background: #1e293b !important; color: #ffffff !important; font-size: 9pt !important; padding: 4px 6px !important; }
+          .soa-grand-total td { background: #e2e8f0 !important; font-weight: 800 !important; font-size: 9pt !important; }
+          .soa-total-row td { background: #f1f5f9 !important; font-weight: 700 !important; font-size: 9pt !important; }
           .soa-document-meta td:last-child {
             border-right: 1px solid #cbd5e1 !important;
           }

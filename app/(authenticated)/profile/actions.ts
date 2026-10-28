@@ -179,7 +179,17 @@ export async function getOwnProfile(): Promise<OwnProfile | null> {
   const shortId = data.user.id.replace(/-/g, "").substring(0, 4).toUpperCase();
   const employeeId = (data.user.user_metadata?.employee_id as string) || `EMP-${shortId}`;
   const phone = (data.user.user_metadata?.phone as string) || (data.user.phone ?? "");
-  const avatarUrl = (data.user.user_metadata?.avatar_url as string) || null;
+  let avatarUrl: string | null = null;
+  const avatarPath = data.user.user_metadata?.avatar_url as string | undefined;
+  if (avatarPath && !avatarPath.startsWith("data:")) {
+    if (avatarPath.startsWith(`${data.user.id}/`)) {
+      const signed = await supabase.storage.from("profile-avatars").createSignedUrl(avatarPath, 3600);
+      avatarUrl = signed.data?.signedUrl ?? null;
+    } else if (/^https?:\/\//i.test(avatarPath)) {
+      // Keep compatibility with any legacy short external URL.
+      avatarUrl = avatarPath;
+    }
+  }
 
   let deviceAlias = "Desktop Workstation";
   let browserUserAgent = "Web Browser Client";
@@ -298,6 +308,7 @@ export async function updateProfileDetails(input: {
   phone?: string;
   employeeId?: string;
   avatarUrl?: string;
+  avatarFile?: File | null;
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
@@ -305,13 +316,35 @@ export async function updateProfileDetails(input: {
     return { ok: false, error: "Not authenticated" };
   }
 
+  const metadata: Record<string, string | null> = {
+    displayName: input.displayName,
+    phone: input.phone ?? null,
+    employee_id: input.employeeId ?? null,
+  };
+
+  if (input.avatarFile) {
+    if (!input.avatarFile.type.match(/^image\/(jpeg|png|webp)$/i)) {
+      return { ok: false, error: "Profile pictures must be JPG, PNG, or WebP." };
+    }
+    if (input.avatarFile.size > 2 * 1024 * 1024) {
+      return { ok: false, error: "Profile pictures must be 2 MB or smaller." };
+    }
+
+    const extension = input.avatarFile.type === "image/jpeg" ? "jpg" : input.avatarFile.type.split("/")[1];
+    const avatarPath = `${data.user.id}/avatar.${extension}`;
+    const upload = await supabase.storage.from("profile-avatars").upload(avatarPath, input.avatarFile, {
+      contentType: input.avatarFile.type,
+      upsert: true,
+    });
+    if (upload.error) return { ok: false, error: upload.error.message };
+    metadata.avatar_url = avatarPath;
+  } else if (input.avatarUrl?.startsWith("data:")) {
+    // Clean up the legacy implementation's oversized Auth metadata.
+    metadata.avatar_url = null;
+  }
+
   const { error: metaError } = await supabase.auth.updateUser({
-    data: {
-      displayName: input.displayName,
-      phone: input.phone,
-      employee_id: input.employeeId,
-      avatar_url: input.avatarUrl,
-    },
+    data: metadata,
   });
 
   if (metaError) {
