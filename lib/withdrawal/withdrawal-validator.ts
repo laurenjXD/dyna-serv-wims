@@ -16,6 +16,7 @@ export type ValidatedWithdrawalLine = {
   lotId: string;
   locationId: string;
   qty: number;
+  customerItemCode?: string;
   itemCodeIsProvisional?: boolean;
 };
 
@@ -185,6 +186,12 @@ function validateLine(
     errors.push(`lines[${index}]: qty must be a finite positive whole number`);
   }
 
+  const customerItemCode = line["customerItemCode"];
+  if (customerItemCode !== undefined &&
+      (typeof customerItemCode !== "string" || customerItemCode.length > 100)) {
+    errors.push(`lines[${index}]: customerItemCode must be a string of 100 characters or fewer when provided`);
+  }
+
   if (errors.length > 0) {
     return { errors, line: null };
   }
@@ -195,6 +202,10 @@ function validateLine(
     locationId: (line["locationId"] as string).trim(),
     qty: qty as number,
   };
+
+  if (typeof customerItemCode === "string" && customerItemCode.trim() !== "") {
+    result.customerItemCode = customerItemCode.trim();
+  }
 
   if (typeof line["itemCodeIsProvisional"] === "boolean") {
     result.itemCodeIsProvisional = line["itemCodeIsProvisional"] as boolean;

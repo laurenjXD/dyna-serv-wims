@@ -35,6 +35,8 @@ type DraftLine = {
   id: string;
   itemId: string;
   boxes: string;
+  sourceBalanceId: string;
+  customerItemCode: string;
 };
 
 type FifoBoxAllocation = {
@@ -61,6 +63,10 @@ function itemCodeFor(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "
   return flowType === "trading"
     ? (item.dsgcItemNumber ?? item.itemCode)
     : (item.supplierItemCode ?? item.itemCode);
+}
+
+function availableBoxesForSource(source: Pick<StockSource, "availableQty" | "spq">): number {
+  return Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq)));
 }
 
 function PickListItemSearch({
@@ -154,7 +160,7 @@ function PickListItemSearch({
               const formattedCode = itemCodeFor(item, flowType);
               const isSelected = item.itemId === selectedItemId;
               const availableBoxes = item.sources.reduce(
-                (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
+                (sum, source) => sum + availableBoxesForSource(source),
                 0,
               );
               return (
@@ -236,11 +242,6 @@ export function MultiItemPickListDraft({
   createAction: (formData: FormData) => void;
   overrideAction: (formData: FormData) => void;
 }) {
-  // Kept in the component contract for callers that also expose the shared
-  // FIFO-override action. This draft now derives only the standard FIFO/FEFO
-  // source plan, so alternate-source approval is not offered from this UI.
-  void overrideAction;
-
   const organizations = useMemo(() => {
     const unique = new Map<string, string>();
     stock.forEach((row) => {
@@ -292,14 +293,18 @@ export function MultiItemPickListDraft({
       ? Number(line.boxes)
       : null;
     const requestedUnits = requestedBoxes !== null ? boxesToPieces(requestedBoxes, effectiveSpq) : null;
-    const fifoAllocations = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
-    const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const totalAvailableBoxes = item?.sources.reduce(
-      (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
+      (sum, source) => sum + availableBoxesForSource(source),
       0,
     ) ?? 0;
+    const selectedSource = item?.sources.find((source) => source.balanceId === line.sourceBalanceId) ?? null;
+    const maxRequestBoxes = selectedSource ? availableBoxesForSource(selectedSource) : totalAvailableBoxes;
+    const allocationSources = selectedSource ? [selectedSource] : item?.sources ?? [];
+    const fifoAllocations = item && requestedBoxes ? allocateFifoBoxes(allocationSources, requestedBoxes) : [];
+    const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
+    const requiresOverride = Boolean(selectedSource && selectedSource.priority > 1);
     return {
       line,
       item,
@@ -309,35 +314,55 @@ export function MultiItemPickListDraft({
       fifoAllocations,
       allocatedBoxes,
       totalAvailableBoxes,
+      maxRequestBoxes,
+      selectedSource,
+      requiresOverride,
       hasWholeCartonQuantity,
       hasEnoughStock,
     };
   });
 
   const handleBoxesChange = (lineId: string, val: string) => {
-    updateLine(lineId, { boxes: val });
+    const detail = lineDetails.find(({ line }) => line.id === lineId);
+    const parsed = Number(val);
+    const nextValue = val !== "" && Number.isFinite(parsed) && parsed > (detail?.maxRequestBoxes ?? Number.MAX_SAFE_INTEGER)
+      ? String(detail?.maxRequestBoxes ?? parsed)
+      : val;
+    updateLine(lineId, { boxes: nextValue });
   };
 
-  const request = useMemo(() => {
+  const handleSourceChange = (lineId: string, sourceBalanceId: string) => {
+    const detail = lineDetails.find(({ line }) => line.id === lineId);
+    const nextSource = detail?.item?.sources.find((source) => source.balanceId === sourceBalanceId);
+    const maxBoxes = nextSource ? availableBoxesForSource(nextSource) : detail?.totalAvailableBoxes ?? 0;
+    const currentBoxes = Number(detail?.line.boxes ?? "");
+    updateLine(lineId, {
+      sourceBalanceId,
+      boxes: Number.isInteger(currentBoxes) && currentBoxes > maxBoxes ? String(maxBoxes) : detail?.line.boxes ?? "",
+    });
+  };
+
+  const buildRequest = (details: typeof lineDetails) => {
     const effectiveCustomerPartyId = flowType === "vmi" ? organizationId : customerPartyId;
-    if (!organizationId || !effectiveCustomerPartyId || !flowType || lineDetails.length === 0) return "";
+    if (!organizationId || !effectiveCustomerPartyId || !flowType || details.length === 0) return "";
     if (flowType === "vmi" && !endCustomerPartyId) return "";
     const recipientPartyId = flowType === "supplies"
       ? organizationId
       : flowType === "trading" ? customerPartyId : endCustomerPartyId;
-    const prepared = lineDetails.flatMap(({ line, item, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock }) =>
+    const prepared = details.flatMap(({ line, item, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock }) =>
       fifoAllocations.map(({ source, boxes }) => ({
         itemId: line.itemId,
         lotId: source.lotId,
         locationId: source.locationId,
         qty: boxesToPieces(boxes, item?.spq ?? 1),
+        customerItemCode: line.customerItemCode.trim() || source.customerItemCode || null,
         itemCodeIsProvisional: false,
         valid: Boolean(item && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
       })),
     );
     if (
       prepared.length === 0 ||
-      lineDetails.some(({ item, requestedBoxes, hasWholeCartonQuantity, hasEnoughStock }) =>
+      details.some(({ item, requestedBoxes, hasWholeCartonQuantity, hasEnoughStock }) =>
         !item || requestedBoxes === null || !hasWholeCartonQuantity || !hasEnoughStock,
       ) ||
       prepared.some((line) => !line.valid)
@@ -351,9 +376,41 @@ export function MultiItemPickListDraft({
       enforceSourceSelection: true,
       idempotencyKey: crypto.randomUUID(),
     });
-  }, [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId]);
+  };
 
-  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", boxes: "" }]);
+  const request = useMemo(
+    () => lineDetails.some(({ requiresOverride }) => requiresOverride) ? "" : buildRequest(lineDetails),
+    [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId],
+  );
+
+  const overrideDetails = lineDetails.filter(({ requiresOverride }) => requiresOverride);
+  const overrideDetail = overrideDetails[0] ?? null;
+  const overrideRequest = useMemo(
+    () => overrideDetails.length === 1 && overrideDetail ? buildRequest([overrideDetail]) : "",
+    [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId, overrideDetail, overrideDetails.length],
+  );
+  const [overrideReason, setOverrideReason] = useState("");
+  const generationBlocker = !organizationId
+    ? "Select an organization."
+    : !flowType
+      ? "Select an inventory model."
+      : flowType === "vmi" && !endCustomerPartyId
+        ? endCustomers.length === 0
+          ? "No active End Customer is enrolled. Complete End Customer enrollment before generating a pick list."
+          : "Select an End Customer / Recipient before generating a VMI pick list."
+        : flowType === "trading" && !customerPartyId
+          ? "Select a Trading Customer / Recipient before generating a pick list."
+        : lines.length === 0
+          ? "Add at least one item line."
+          : lineDetails.some(({ item }) => !item)
+            ? "Choose an item code for every line."
+            : lineDetails.some(({ requestedBoxes }) => requestedBoxes === null)
+              ? "Enter a positive whole-box quantity for every line."
+              : lineDetails.some(({ hasEnoughStock }) => !hasEnoughStock)
+                ? "Reduce the quantity to the on-hand boxes shown for this line."
+                : null;
+
+  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", boxes: "", sourceBalanceId: "", customerItemCode: "" }]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
   const resetDraft = () => setLines([]);
@@ -377,20 +434,6 @@ export function MultiItemPickListDraft({
       setEndCustomerPartyId("");
     }
   };
-  const handleFlow = (value: "" | "vmi" | "trading" | "supplies") => {
-    setFlowType(value);
-    resetDraft();
-    if (value === "vmi" || value === "supplies") {
-      setCustomerPartyId(organizationId);
-      setEndCustomerPartyId(organizationId);
-    } else {
-      // Customer/end-customer selections are model-specific. Never carry a
-      // valid selection from one model into another model's relationship.
-      setCustomerPartyId("");
-      setEndCustomerPartyId("");
-    }
-  };
-
   async function handleDraImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -498,7 +541,7 @@ export function MultiItemPickListDraft({
     let mappedCount = 0;
     let totalBoxesAllocated = 0;
     const reviewItems: string[] = [];
-    const importRequests = new Map<string, { itemId: string; spq: number; requestedBoxes: number; labels: string[] }>();
+    const importRequests = new Map<string, { itemId: string; spq: number; requestedBoxes: number; labels: string[]; customerItemCode: string }>();
 
     for (const draRow of draRows) {
       const documentQty = draRow.requestedQty == null ? null : Number(draRow.requestedQty);
@@ -565,12 +608,16 @@ export function MultiItemPickListDraft({
       if (existingRequest) {
         existingRequest.requestedBoxes += requestedBoxes;
         existingRequest.labels.push(rowLabel);
+        if (!existingRequest.customerItemCode && draRow.customerItemCode) {
+          existingRequest.customerItemCode = draRow.customerItemCode.trim();
+        }
       } else {
         importRequests.set(matchedItemId, {
           itemId: matchedItemId,
           spq,
           requestedBoxes,
           labels: [rowLabel],
+          customerItemCode: draRow.customerItemCode?.trim() ?? "",
         });
       }
     }
@@ -594,6 +641,8 @@ export function MultiItemPickListDraft({
         id: crypto.randomUUID(),
         itemId: request.itemId,
         boxes: String(request.requestedBoxes),
+        sourceBalanceId: "",
+        customerItemCode: request.customerItemCode,
       });
       totalBoxesAllocated += request.requestedBoxes;
       mappedCount++;
@@ -706,6 +755,28 @@ export function MultiItemPickListDraft({
             </select>
           </label>
 
+          <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
+            <div className="flex items-center justify-between gap-2">
+              <span>Inventory Model <span className="text-rose-600">*</span></span>
+              {flowType && organizationId && (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  Inherited from organization
+                </span>
+              )}
+            </div>
+            <p className="font-body text-[11px] font-normal leading-4 text-slate-500">
+              The Inventory Model is inherited from the organization&apos;s active receiving relationship and cannot be overridden here.
+            </p>
+            <div
+              role="status"
+              aria-label="Inventory Model"
+              className="flex h-11 min-w-0 items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 font-body text-sm text-slate-900"
+            >
+              <span>{flowType === "vmi" ? "VMI (Consignment)" : flowType === "trading" ? "Trading (Owned)" : flowType === "supplies" ? "Supplies" : "Select an organization first"}</span>
+              {flowType && <span className="font-label text-[10px] font-bold text-emerald-700">AUTO</span>}
+            </div>
+          </div>
+
           {flowType === "supplies" ? (
             <div className="grid gap-1 font-label text-xs font-bold text-slate-700">
               Internal Supplies Organization
@@ -732,6 +803,7 @@ export function MultiItemPickListDraft({
                 onChange={(event) => setEndCustomerPartyId(event.target.value)}
                 disabled={!customerPartyId || flowType !== "vmi"}
                 required={flowType === "vmi"}
+                aria-invalid={flowType === "vmi" && !endCustomerPartyId}
                 className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
               >
                 <option value="">Select end customer...</option>
@@ -739,7 +811,13 @@ export function MultiItemPickListDraft({
                   <option key={party.id} value={party.id}>{party.name} ({party.code})</option>
                 ))}
               </select>
-              <span className="font-body text-[11px] font-normal text-slate-500">VMI releases require the downstream end customer who will receive the stock.</span>
+              <span className={`font-body text-[11px] font-normal ${flowType === "vmi" && !endCustomerPartyId ? "text-amber-700" : "text-slate-500"}`}>
+                {flowType === "vmi" && !endCustomerPartyId
+                  ? endCustomers.length === 0
+                    ? "No active End Customer is available."
+                    : "Required: select the downstream End Customer / Recipient to enable generation."
+                  : "VMI releases require the downstream end customer who will receive the stock."}
+              </span>
             </label>
           )}
 
@@ -777,31 +855,6 @@ export function MultiItemPickListDraft({
             </label>
           )}
 
-          <div className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-            <div className="flex items-center justify-between">
-              <span>Inventory Model</span>
-              {flowType && organizationId && (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                  Auto-assigned: {flowType.toUpperCase()}
-                </span>
-              )}
-            </div>
-            <select
-              value={flowType}
-              onChange={(event) => handleFlow(event.target.value as typeof flowType)}
-              disabled={!organizationId}
-              className="h-11 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
-            >
-              <option value="">Select inventory model…</option>
-              {(["vmi", "trading", "supplies"] as const)
-                .filter((flow) => stock.some((row) => row.organizationId === organizationId && row.flowType === flow))
-                .map((flow) => (
-                  <option key={flow} value={flow}>
-                    {flow === "vmi" ? "VMI (Consignment)" : flow === "trading" ? "Trading (Owned)" : "Supplies"}
-                  </option>
-                ))}
-            </select>
-          </div>
         </div>
 
         {/* Pick List: mobile cards */}
@@ -814,7 +867,7 @@ export function MultiItemPickListDraft({
             </div>
           ) : (
             <MobileDataCardList>
-              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
+              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource }) => (
                 <MobileDataCard
                   key={line.id}
                   title={item ? itemCodeFor(item, flowType) : "Select an item"}
@@ -828,14 +881,22 @@ export function MultiItemPickListDraft({
                         catalog={catalog}
                         flowType={flowType}
                         selectedItemId={line.itemId}
-                        onSelectItem={(itemId) => updateLine(line.id, { itemId, boxes: "" })}
+                        onSelectItem={(itemId) => {
+                          const selectedItem = catalog.find((candidate) => candidate.itemId === itemId);
+                          updateLine(line.id, {
+                            itemId,
+                            boxes: "",
+                            sourceBalanceId: "",
+                            customerItemCode: selectedItem?.customerItemCode ?? "",
+                          });
+                        }}
                         disabled={!organizationId || !flowType}
                       />
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Boxes)
-                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" disabled={!item} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" max={maxRequestBoxes || undefined} disabled={!item || maxRequestBoxes === 0} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Units)
@@ -847,6 +908,14 @@ export function MultiItemPickListDraft({
                     {item && <p className="font-body text-xs text-slate-500">Enter complete boxes. Units are calculated from SPQ {item.spq}.</p>}
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                       Location
+                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                        <option value="">Auto FIFO / split across locations</option>
+                        {item?.sources.map((source) => (
+                          <option key={source.balanceId} value={source.balanceId}>
+                            {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Supervisor approval"}
+                          </option>
+                        ))}
+                      </select>
                       <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-base text-slate-900">
                         {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
                           <div key={source.balanceId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -856,14 +925,15 @@ export function MultiItemPickListDraft({
                         )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
                       </div>
                     </label>
+                    <p className="font-body text-xs text-slate-500">Maximum for this line: {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across available FIFO locations"}.</p>
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
                       <div><dt className="text-slate-500">Remaining</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes</dd></div>
-                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
+                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{fifoAllocations[0]?.source.manufactureDate ? new Date(fifoAllocations[0].source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
                     </dl>
-                    {item && requestedBoxes !== null && !hasEnoughStock && <p className="text-sm font-medium text-rose-600">Only {totalAvailableBoxes} boxes are available across FIFO locations.</p>}
+                    {selectedSource && selectedSource.priority > 1 && <p className="text-sm font-medium text-amber-700">This location is outside the recommended FIFO/FEFO source and needs supervisor approval.</p>}
                   </div>
                 </MobileDataCard>
               ))}
@@ -917,7 +987,7 @@ export function MultiItemPickListDraft({
                   </td>
                 </tr>
               ) : (
-                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock, totalAvailableBoxes }) => (
+                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource }) => (
                   <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* ITEM CODE */}
                     <td className="py-2.5 px-3 align-middle">
@@ -925,7 +995,15 @@ export function MultiItemPickListDraft({
                         catalog={catalog}
                         flowType={flowType}
                         selectedItemId={line.itemId}
-                        onSelectItem={(itemId) => updateLine(line.id, { itemId, boxes: "" })}
+                        onSelectItem={(itemId) => {
+                          const selectedItem = catalog.find((candidate) => candidate.itemId === itemId);
+                          updateLine(line.id, {
+                            itemId,
+                            boxes: "",
+                            sourceBalanceId: "",
+                            customerItemCode: selectedItem?.customerItemCode ?? "",
+                          });
+                        }}
                         disabled={!organizationId || !flowType}
                       />
                     </td>
@@ -944,7 +1022,8 @@ export function MultiItemPickListDraft({
                         onChange={(event) => handleBoxesChange(line.id, event.target.value)}
                         type="number"
                         min="1"
-                        disabled={!item}
+                        max={maxRequestBoxes || undefined}
+                        disabled={!item || maxRequestBoxes === 0}
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
                         title="Quantity in complete boxes"
@@ -960,6 +1039,14 @@ export function MultiItemPickListDraft({
 
                     {/* LOCATION */}
                     <td className="py-2.5 px-3 align-middle">
+                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!item} className="mb-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                        <option value="">Auto FIFO / split locations</option>
+                        {item?.sources.map((source) => (
+                          <option key={source.balanceId} value={source.balanceId}>
+                            {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Approval"}
+                          </option>
+                        ))}
+                      </select>
                       <div className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-body text-xs text-slate-900">
                         {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
                           <div key={source.balanceId} className="flex items-center justify-between gap-2 leading-5">
@@ -968,6 +1055,8 @@ export function MultiItemPickListDraft({
                           </div>
                         )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
                       </div>
+                      <p className="mt-1 font-body text-[10px] text-slate-500">Max {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across FIFO locations"}.</p>
+                      {selectedSource && selectedSource.priority > 1 && <p className="mt-1 text-[10px] font-semibold text-amber-700">Supervisor approval required for this source.</p>}
                     </td>
 
                     {/* REMAINING (after this FIFO allocation) */}
@@ -977,14 +1066,12 @@ export function MultiItemPickListDraft({
                           <div key={source.balanceId}>{remainingBoxes} boxes</div>
                         )) : <span className="text-slate-400">{item ? `${Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes` : "—"}</span>}
                       </div>
-                      {item && requestedBoxes !== null && !hasEnoughStock && <p className="mt-1 text-[10px] font-semibold text-rose-600">Insufficient</p>}
+                      {item && requestedBoxes !== null && requestedBoxes > maxRequestBoxes && <p className="mt-1 text-[10px] font-semibold text-amber-700">Maximum {maxRequestBoxes} boxes</p>}
                     </td>
 
                     {/* CUST PN */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="block truncate font-mono text-xs text-slate-700" title={item?.customerItemCode ?? undefined}>
-                        {item?.customerItemCode || <span className="text-slate-400">—</span>}
-                      </span>
+                      <input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} title="Customer part number snapshot" className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-xs text-slate-700 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" />
                     </td>
 
                     {/* ITEM DESCRIPTION */}
@@ -1003,7 +1090,7 @@ export function MultiItemPickListDraft({
 
                     {/* MFG DATE */}
                     <td className="py-2.5 px-3 align-middle">
-                      <span className="font-mono text-xs text-slate-600 block">
+                      <span className="font-mono text-xs text-slate-600 block" title="Inherited from the selected inventory lot; correct this on the receiving record.">
                         {fifoAllocations[0]?.source.manufactureDate ? new Date(fifoAllocations[0].source.manufactureDate).toLocaleDateString() : <span className="text-slate-400">—</span>}
                       </span>
                     </td>
@@ -1036,17 +1123,52 @@ export function MultiItemPickListDraft({
             <PackagePlus size={16} aria-hidden="true" />
             Add item line
           </button>
-          <form action={createAction}>
-            <input type="hidden" name="request" value={request} />
-            <button
-              type="submit"
-              disabled={!request}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-            >
-              Generate Pick List
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </form>
+          {overrideDetails.length > 0 ? (
+            <div className="flex flex-wrap items-end justify-end gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <div className="min-w-[260px] max-w-md">
+                <p className="font-label text-xs font-bold text-amber-900">
+                  {overrideDetails.length > 1 ? "Select only one alternate location per approval request." : "FIFO/FEFO override required"}
+                </p>
+                {overrideDetails.length === 1 && (
+                  <input
+                    value={overrideReason}
+                    onChange={(event) => setOverrideReason(event.target.value)}
+                    placeholder="Reason for choosing this location (min. 10 characters)"
+                    className="mt-2 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
+                    minLength={10}
+                  />
+                )}
+              </div>
+              <form action={overrideAction}>
+                <input type="hidden" name="request" value={overrideRequest} />
+                <input type="hidden" name="reason" value={overrideReason} />
+                <button
+                  type="submit"
+                  disabled={!overrideRequest || overrideReason.trim().length < 10}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                >
+                  Request Approval
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-end justify-end gap-3">
+              {!request && generationBlocker && <p className="max-w-sm text-right font-body text-xs text-amber-700">{generationBlocker}</p>}
+              <form action={createAction}>
+              <input type="hidden" name="request" value={request} />
+              <button
+                type="submit"
+                disabled={!request}
+                title={!request ? generationBlocker ?? "Complete the required fields." : undefined}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              >
+                Generate Pick List
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+              </form>
+            </div>
+          )}
         </div>
       </section>
     </div>

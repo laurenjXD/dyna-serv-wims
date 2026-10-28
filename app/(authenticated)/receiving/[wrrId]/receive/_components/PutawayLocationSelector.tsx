@@ -9,10 +9,12 @@ interface PutawayLocationSelectorProps {
   inspectionCandidates?: Array<{ id: string; label: string }>;
   contents: Record<string, LocationStoredItem[]>;
   quantity: number;
+  scannedQuantity?: number;
   unitCbm: number;
   spq?: number;
   uom?: string;
   lotNumber?: string;
+  disposition?: "store" | "inspect";
 }
 
 function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, quantity: number): number {
@@ -24,48 +26,30 @@ function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, q
   return Math.max(0, Math.floor(safeRemaining / safeUnitCbm));
 }
 
-function buildInitialAssignment(
-  candidates: PutawayCandidate[],
-  quantity: number,
-  unitCbm: number,
-): string[] {
-  const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
-  if (safeQuantity === 0) return [];
-
-  const assignments: string[] = [];
-  const orderedCandidates = [...candidates].sort((a, b) =>
-    (a.label ?? "").localeCompare(b.label ?? "", undefined, {
-      numeric: true,
-      sensitivity: "base",
-    }),
-  );
-
-  for (const candidate of orderedCandidates) {
-    const availableBoxes = maxBoxesFor(candidate, unitCbm, safeQuantity - assignments.length);
-    assignments.push(...Array.from({ length: Math.min(availableBoxes, safeQuantity - assignments.length) }, () => candidate.id));
-    if (assignments.length === safeQuantity) break;
-  }
-
-  return assignments.concat(Array.from({ length: safeQuantity - assignments.length }, () => ""));
-}
-
 export function PutawayLocationSelector({
   candidates = [],
   inspectionCandidates = [],
   contents = {},
   quantity = 0,
+  scannedQuantity = quantity,
   unitCbm = 0,
   spq = 1,
   uom = "PCS",
   lotNumber,
+  disposition = "store",
 }: PutawayLocationSelectorProps) {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
+  const safeScannedQuantity = Math.min(
+    safeQuantity,
+    Math.max(0, Math.floor(Number(scannedQuantity) || 0)),
+  );
   const safeUnitCbm = Number(unitCbm) || 0;
   const safeSpq = Math.max(1, Number(spq) || 1);
   const safeUom = (!uom || uom.toLowerCase() === "pallet" || uom.toLowerCase() === "plt") ? "PCS" : uom.toUpperCase();
 
+  const assignmentQuantity = disposition === "inspect" ? safeScannedQuantity : safeQuantity;
   const [locationsBySlot, setLocationsBySlot] = useState<string[]>(() =>
-    buildInitialAssignment(candidates, safeQuantity, safeUnitCbm),
+    Array.from({ length: safeQuantity }, () => ""),
   );
   const [attested, setAttested] = useState(true);
 
@@ -121,18 +105,24 @@ export function PutawayLocationSelector({
   }, [locationsBySlot]);
 
   const assignedBoxesCount = allocations.reduce((sum, a) => sum + a.qty, 0);
-  const missingBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
+  const missingBoxesCount = assignedBoxesCount > 0 ? Math.max(0, safeQuantity - assignedBoxesCount) : 0;
   const readyToStore = assignedBoxesCount > 0 && attested;
 
   const selectedIds = allocations.map((allocation) => allocation.locationId);
   const singleLocationId =
-    selectedIds.length === 1 && allocations[0]?.qty === safeQuantity
+    selectedIds.length === 1 &&
+    allocations[0]?.qty === assignmentQuantity
       ? selectedIds[0]
       : "";
 
   function assignAll(locationId: string) {
     if (!locationId) return;
-    setLocationsBySlot(Array.from({ length: safeQuantity }, () => locationId));
+    setLocationsBySlot(
+      Array.from(
+        { length: safeQuantity },
+        (_, index) => (index < assignmentQuantity ? locationId : ""),
+      ),
+    );
   }
 
   const assignedCounts = useMemo(() => {
@@ -168,10 +158,10 @@ export function PutawayLocationSelector({
           <div>
             <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
             <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
-              Put all {safeQuantity} declared boxes in
+              {disposition === "inspect" ? `Put the ${assignmentQuantity} scanned box${assignmentQuantity === 1 ? "" : "es"} in` : `Put all ${safeQuantity} declared boxes in`}
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
-              Expected: <strong>{safeQuantity} Boxes</strong>{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom}) · SPQ: ${safeSpq} ${safeUom}/Box` : ""} · Mark boxes that did not arrive as <strong>Missing</strong>
+              One valid QR scan identified this line. Assign the whole declared line now{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Scan confirmations: <strong>{safeScannedQuantity}</strong>. Use Step 2 only if boxes are missing or need a split.
             </p>
           </div>
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 font-mono text-mono-sm font-bold text-brand-navy">
@@ -184,7 +174,7 @@ export function PutawayLocationSelector({
             options={allLocationOptions.map((opt) => ({
               id: opt.id,
               label: opt.label,
-              disabled: opt.raw ? maxBoxesFor(opt.raw, safeUnitCbm, safeQuantity) < safeQuantity : false,
+              disabled: opt.raw ? maxBoxesFor(opt.raw, safeUnitCbm, assignmentQuantity) < assignmentQuantity : false,
               capacity: opt.capacity,
             }))}
             value={singleLocationId}
@@ -193,7 +183,7 @@ export function PutawayLocationSelector({
           />
         </div>
         <p className="mt-2.5 font-body text-body-md text-text-grey">
-          Choose a primary storage rack or inspection bay. Use Step 2 below to mark individual boxes as Missing or place them on Hold.
+          Choose a primary storage rack or inspection bay for the whole line. Use Step 2 below only to split locations or mark individual boxes as Missing.
         </p>
       </section>
 
@@ -249,7 +239,7 @@ export function PutawayLocationSelector({
           </div>
         ) : (
           <div className="mt-3 rounded-lg bg-surface-light-grey p-3 font-body text-body-sm text-text-grey">
-            This shipment contains {safeQuantity} boxes{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Assign a primary location above.
+            This shipment contains {safeQuantity} declared boxes{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Assign the whole line to a primary location above.
           </div>
         )}
       </details>
@@ -354,10 +344,10 @@ export function PutawayLocationSelector({
             {assignedBoxesCount > 0 ? (
               <>
                 I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes{safeSpq > 1 ? ` (${(assignedBoxesCount * safeSpq).toLocaleString()} ${safeUom})` : ""} are physically present and assigned.
-                {missingBoxesCount > 0 && ` (${missingBoxesCount} declared box${missingBoxesCount === 1 ? "" : "es"} missing; OS&D will be recorded).`}
+                {missingBoxesCount > 0 && ` ${missingBoxesCount} declared box${missingBoxesCount === 1 ? " is" : "es are"} not present; OS&D will record the shortage.`}
               </>
             ) : (
-              <span className="text-text-grey">
+                <span className="text-text-grey">
                 Select a target location above before attesting and confirming placement.
               </span>
             )}
@@ -367,9 +357,11 @@ export function PutawayLocationSelector({
 
       {!readyToStore && (
         <p role="alert" className="rounded-xl border border-status-pending/40 bg-[#FFF9EB] px-4 py-3 font-body text-body-md text-amber-900">
-          {assignedBoxesCount < safeQuantity
-            ? `${missingBoxesCount} declared carton${missingBoxesCount === 1 ? " is" : "s are"} marked Missing. Only the ${assignedBoxesCount} physically present carton${assignedBoxesCount === 1 ? " will" : "s will"} be stored.`
-            : "Confirm that the assigned cartons are physically present before storing."}
+          {assignedBoxesCount < assignmentQuantity
+            ? `Assign all ${assignmentQuantity} ${disposition === "inspect" ? "scanned" : "declared"} box${assignmentQuantity === 1 ? "" : "es"} before storing, or use Step 2 to record a shortage.`
+            : missingBoxesCount > 0
+              ? `${missingBoxesCount} declared carton${missingBoxesCount === 1 ? " is" : "s are"} marked Missing. Only the ${assignedBoxesCount} physically present carton${assignedBoxesCount === 1 ? " will" : "s will"} be stored.`
+              : "Confirm that the assigned cartons are physically present before storing."}
         </p>
       )}
     </div>

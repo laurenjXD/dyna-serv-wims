@@ -475,7 +475,11 @@ export async function commitWithdrawal(
             ${overridePickListId}::uuid
           )
         `);
-        verifiedLines.push({ ...selected, qty: requestedQty });
+        verifiedLines.push({
+          ...selected,
+          qty: requestedQty,
+          customerItemCode: requestedLine.customerItemCode ?? selected.customerItemCode,
+        });
         continue;
       }
 
@@ -524,7 +528,16 @@ export async function commitWithdrawal(
             row.locationId === allocatedLine.locationId,
         );
         if (!source) throw new Error("unable_to_reserve_stock");
-        verifiedLines.push({ ...source, qty: allocatedLine.qtyAllocated });
+        const requestedLine = data.lines.find((line) =>
+          line.itemId === source.itemId &&
+          line.lotId === source.lotId &&
+          line.locationId === source.locationId,
+        );
+        verifiedLines.push({
+          ...source,
+          qty: allocatedLine.qtyAllocated,
+          customerItemCode: requestedLine?.customerItemCode ?? source.customerItemCode,
+        });
       }
     }
 

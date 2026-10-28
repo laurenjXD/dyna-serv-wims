@@ -46,7 +46,8 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     fireEvent.change(organizationSelect, { target: { value: "party-vmi-owner" } });
 
-    expect(screen.getByRole("option", { name: "VMI (Consignment)" })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Inventory Model" })).toHaveTextContent("VMI (Consignment)");
+    expect(screen.getByText("Inherited from organization")).toBeInTheDocument();
     expect(screen.queryByText("VMI Customer / Stock Owner")).not.toBeInTheDocument();
   });
 
@@ -134,5 +135,72 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
     const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
     expect(JSON.parse(request.value).lines[0].qty).toBe(2000);
+  });
+
+  it("explains why VMI generation stays disabled until an end customer is selected", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+    expect(screen.getByText(/Required: select the downstream End Customer/)).toBeInTheDocument();
+  });
+
+  it("limits quantity to on-hand boxes, exposes source locations, and preserves Customer PN input", () => {
+    const stockWithSources = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
+      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
+    ];
+
+    const { container } = render(
+      <MultiItemPickListDraft
+        stock={stockWithSources}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: "party-end-customer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+
+    const quantityInputs = screen.getAllByLabelText("Qty (Boxes)");
+    fireEvent.change(quantityInputs[0], { target: { value: "20" } });
+    expect(quantityInputs[0]).toHaveValue(15);
+
+    const locationSelectors = Array.from(container.querySelectorAll("select")).filter((select) =>
+      select.textContent?.includes("Auto FIFO / split"),
+    );
+    expect(locationSelectors.length).toBeGreaterThan(0);
+    expect(locationSelectors[0].textContent).toContain("A4-01");
+    expect(locationSelectors[0].textContent).toContain("B2-05");
+
+    fireEvent.change(locationSelectors[0], { target: { value: "balance-2" } });
+    expect(quantityInputs[0]).toHaveValue(5);
+    expect(screen.getAllByText(/Supervisor approval required for this source/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Insufficient/)).not.toBeInTheDocument();
+
+    fireEvent.change(locationSelectors[0], { target: { value: "" } });
+
+    const customerPnInputs = screen.getAllByTitle("Customer part number snapshot");
+    fireEvent.change(customerPnInputs[0], { target: { value: "CUSTOMER-PN-42" } });
+
+    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
+    expect(JSON.parse(request.value).lines[0].customerItemCode).toBe("CUSTOMER-PN-42");
   });
 });

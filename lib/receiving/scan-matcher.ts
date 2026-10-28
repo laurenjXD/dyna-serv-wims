@@ -71,7 +71,8 @@ function normalizeScanIdentity(value: string): string {
  * 6. fully_scanned — matched line's scannedQty equals the derived carton count
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
- * Every accepted QR represents one physical pallet or unit.
+ * A Store-line QR confirms the line and consumes its remaining declared cartons;
+ * an Inspect-line item barcode consumes one carton at a time.
  *
  * `alreadyScannedUnitIds` (added for Spec 18 §2.2's per-unit duplicate
  * detection): when the barcode parses as a `wrr_item_unit` payload and its
@@ -174,11 +175,13 @@ export function matchScan(
       continue;
     }
 
-    // A valid unique carton QR acts as the physical shortcut for its WRR
-    // line: the WRR determines the related carton identities and one scan
-    // receives the entire declared group. The IDs are persisted together so
-    // a later scan of any related label is an exact duplicate.
-    const scanQty = parsedCartonId !== null ? cartonCount - line.scannedQty : 1;
+    // Store lines use one valid QR as the line key. The WRR already knows the
+    // line's declared carton count, so the scan completes the line's scan
+    // step and opens whole-line putaway. Inspection lines retain the
+    // one-carton-at-a-time scan behavior because Hold is location-first.
+    const scanQty = line.disposition === "store"
+      ? cartonCount - line.scannedQty
+      : parsedCartonId !== null ? cartonCount - line.scannedQty : 1;
     const unitIds = parsedCartonId !== null && /^[0-9a-f-]{36}$/i.test(line.id)
       ? Array.from({ length: cartonCount }, (_, index) => {
           const source = line.id.replaceAll("-", "").toLowerCase();

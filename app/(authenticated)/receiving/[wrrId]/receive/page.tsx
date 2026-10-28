@@ -577,11 +577,20 @@ export default async function ReceiveFloorPage({
                       {item.itemName ? ` · ${item.itemName}` : ""}
                     </p>
 
-                    {/* Qty progress in both Boxes and Total Pieces */}
+                    {/* Store lines use one scan to confirm the line, then batch putaway assigns the declared line quantity. */}
                     <p className="mt-1.5 font-body text-body-md text-on-surface">
-                      <strong>{item.scannedQty} / {item.cartonCount} Cartons</strong>
-                      {itemSpq > 1 && (
-                        <> {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {Number(item.expectedQty).toLocaleString()} {itemUom})</span></>
+                      {item.disposition === "store" && !isCommitted && item.scannedQty >= 1 ? (
+                        <>
+                          <strong>Line confirmed · {item.cartonCount} Cartons declared</strong>
+                          <span className="block text-text-grey">Assign the whole line to a location, then Store</span>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{item.scannedQty} / {item.cartonCount} Cartons</strong>
+                          {itemSpq > 1 && (
+                            <> {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {Number(item.expectedQty).toLocaleString()} {itemUom})</span></>
+                          )}
+                        </>
                       )}
                     </p>
 
@@ -711,10 +720,12 @@ export default async function ReceiveFloorPage({
                   inspectionCandidates={inspectionLocations}
                   contents={primaryStoreContents}
                   quantity={primaryReadyLine.cartonCount}
+                  scannedQuantity={primaryReadyLine.scannedQty}
                   unitCbm={Number(primaryReadyLine.unitCbm) || 0}
                   spq={primaryLineSpq}
                   uom={primaryLineUom}
                   lotNumber={primaryReadyLine.lotNumber}
+                  disposition={primaryReadyLine.disposition === "inspect" ? "inspect" : "store"}
                 />
 
                 <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">

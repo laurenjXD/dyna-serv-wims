@@ -138,7 +138,7 @@ describe("matchScan — manual item-code fallback", () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");
     const result = matchScan("ITEM-ALPHA-001", [makeLine()]);
 
-    expect(result).toMatchObject({ matched: true, remainingQty: 9, scanQty: 1 });
+    expect(result).toMatchObject({ matched: true, remainingQty: 0, scanQty: 10 });
   });
 
   it("matches an alphanumeric item barcode regardless of scanner letter casing", async () => {
@@ -166,7 +166,7 @@ describe("matchScan — alternate item identities", () => {
       scannedQty: 0,
     })]);
 
-    expect(result).toMatchObject({ matched: true, scanQty: 1, remainingQty: 2 });
+    expect(result).toMatchObject({ matched: true, scanQty: 3, remainingQty: 0 });
   });
 });
 
@@ -182,7 +182,7 @@ describe("matchScan — successful match (design.md §6, requirements.md R3.1)",
     expect(result.line.id).toBe("line-001");
   });
 
-  it("AC-R3.2: matched result carries correct remainingQty = expectedQty - scannedQty - 1", async () => {
+  it("AC-R3.2: a store-line confirmation scan completes the remaining declared cartons", async () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");
     const line = makeLine({ expectedQty: 10, scannedQty: 3 });
 
@@ -190,8 +190,9 @@ describe("matchScan — successful match (design.md §6, requirements.md R3.1)",
 
     expect(result.matched).toBe(true);
     if (!result.matched) return;
-    // After this scan: scannedQty would be 4 (3 + 1), remaining = 10 - 4 = 6
-    expect(result.remainingQty).toBe(6);
+    // One valid QR identifies the store line; the WRR already knows the remaining cartons.
+    expect(result.remainingQty).toBe(0);
+    expect(result.scanQty).toBe(7);
   });
 });
 

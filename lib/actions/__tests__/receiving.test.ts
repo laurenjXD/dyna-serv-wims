@@ -716,7 +716,7 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
       mockRlsDeps(db).deps,
     );
 
-    expect(result).toEqual({ ok: true, remainingQty: 2, disposition: "store" });
+    expect(result).toEqual({ ok: true, remainingQty: 0, disposition: "store" });
     expect(db.update).toHaveBeenCalled();
   });
 });

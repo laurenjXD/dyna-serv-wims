@@ -777,20 +777,14 @@ function peekWrrItemUnitId(barcode: string): string | null {
 }
 
 /**
- * Records a single barcode scan against a receiving_in_progress WRR.
+ * Records one line-identifying barcode scan against a receiving_in_progress WRR.
+ * For Store lines, one valid QR confirms the line's remaining declared cartons;
+ * Inspect lines continue to advance one carton at a time.
  * Requires receiving.scan capability.
  * Returns remainingQty and disposition on success.
  *
- * Amended 2026-08-20 (design.md §6.2/§9), STORE lines only: does NOT write
- * wrr_items.scanned_qty for a store-disposition line — that column now
- * means "units committed so far" for that disposition and is written
- * exclusively by commitWrrLine's per-unit commit. INSPECT-disposition lines
- * are unaffected by that amendment (design.md §6.3): recordScan still
- * increments wrr_items.scanned_qty for them exactly as before, since
- * the line commit remains a whole-line commit gated on
- * `scanned_qty >= derived carton count` with no other writer of that column. This
- * action still performs the WRR-document-QR check, matchScan matching, and
- * the per-unit duplicate-label (wrr_item_unit_scans) write, all unchanged.
+ * This action performs the WRR-document-QR check, line matching, scanned-quantity
+ * update, and any per-unit duplicate-label write in one transaction.
  */
 export async function recordScan(
   resolver: RequestAuthorizationResolver,
@@ -855,8 +849,8 @@ export async function recordScan(
       return { ok: false, reason: "stale_scan" } satisfies RecordScanResult;
     }
 
-    // 5. Increment scannedQty. Every accepted QR represents exactly one
-    // physical pallet or unit.
+    // 5. Advance the matched line. Store-line scans consume the remaining
+    // declared cartons; inspection scans retain their one-carton behavior.
     const claimedRows = await db
       .update(wrrItems)
       .set({ scannedQty: line.scannedQty + matchResult.scanQty })
