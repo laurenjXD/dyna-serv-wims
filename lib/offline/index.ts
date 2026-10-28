@@ -21,6 +21,10 @@ export type SyncStatus = "idle" | "syncing" | "attention";
 export type OfflineStatus = {
   connectivity: ConnectivityStatus;
   sync: SyncStatus;
+  /** Optional for compatibility with the original connectivity-only shell contract. */
+  pendingCount?: number;
+  attentionCount?: number;
+  lastSyncedAt?: number | null;
 };
 
 export function nextOfflineStatus(
@@ -30,12 +34,20 @@ export function nextOfflineStatus(
   switch (event) {
     case "probe_start": return { ...current, connectivity: "checking" };
     case "probe_online": return { ...current, connectivity: "online" };
-    case "probe_offline": return { connectivity: "offline", sync: current.sync === "syncing" ? "idle" : current.sync };
+    case "probe_offline": return { ...current, connectivity: "offline", sync: current.sync === "syncing" ? "idle" : current.sync };
     case "sync_start": return current.connectivity === "online" ? { ...current, sync: "syncing" } : current;
     case "sync_success": return { ...current, sync: "idle" };
     case "sync_attention": return { ...current, sync: "attention" };
   }
 }
+
+export const EMPTY_OFFLINE_STATUS: OfflineStatus = {
+  connectivity: "checking",
+  sync: "idle",
+  pendingCount: 0,
+  attentionCount: 0,
+  lastSyncedAt: null,
+};
 
 export type OfflineOperationPolicy = {
   operationType: OfflineOperationType;
@@ -70,6 +82,14 @@ function requiredString(payload: Record<string, unknown>, key: string): string |
   return typeof value === "string" && idPattern.test(value) ? value : null;
 }
 
+function requiredStringFrom(payload: Record<string, unknown>, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = requiredString(payload, key);
+    if (value) return value;
+  }
+  return null;
+}
+
 function baseRefs(payload: Record<string, unknown>): string[] {
   return Object.values(payload)
     .filter((value): value is string => typeof value === "string" && idPattern.test(value))
@@ -84,7 +104,7 @@ export const OFFLINE_POLICIES: Record<OfflineOperationType, OfflineOperationPoli
     maxPayloadBytes: MAX_PAYLOAD_BYTES,
     requiredCapability: "receiving.scan",
     resourceRefs: baseRefs,
-    orderingKey: (payload) => requiredString(payload, "wrrItemId") ?? "invalid",
+    orderingKey: (payload) => requiredStringFrom(payload, "wrrItemId", "wrr_item_id", "wrrId", "wrr_id") ?? "invalid",
   },
   pick_list_scan_observation: {
     operationType: "pick_list_scan_observation",
@@ -93,7 +113,7 @@ export const OFFLINE_POLICIES: Record<OfflineOperationType, OfflineOperationPoli
     maxPayloadBytes: MAX_PAYLOAD_BYTES,
     requiredCapability: "pick_list.execute",
     resourceRefs: baseRefs,
-    orderingKey: (payload) => requiredString(payload, "pickListItemId") ?? "invalid",
+    orderingKey: (payload) => requiredStringFrom(payload, "pickListItemId", "pick_list_item_id", "pickListId", "pick_list_id") ?? "invalid",
   },
   inspection_observation: {
     operationType: "inspection_observation",
@@ -149,4 +169,9 @@ export function admitOfflineOperation(input: {
 
 export function isTierTwoOfflineAction(actionType: string): boolean {
   return !Object.prototype.hasOwnProperty.call(OFFLINE_POLICIES, actionType);
+}
+
+export function createOfflineOperationId(): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  return `offline-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }

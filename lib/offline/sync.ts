@@ -1,9 +1,11 @@
 import type { OfflineQueueEnvelope } from "./index";
 import {
   deleteOfflineEntry,
+  listOfflineEntries,
   listPendingOfflineEntries,
   updateOfflineEntry,
 } from "./storage";
+import { storage } from "@/lib/storage";
 
 export type SyncOutcome = "applied" | "duplicate" | "transient" | "rejected" | "conflict";
 export type SyncSubmission = {
@@ -88,11 +90,52 @@ export async function replayStoredOfflineEntries(
     } else {
       const status = submission.outcome === "conflict"
         ? "quarantined_conflict"
-        : "failed";
+        : submission.outcome === "transient"
+          ? "pending"
+          : "failed";
       await updateOfflineEntry({ ...syncing, status });
     }
     results.push({ entry: syncing, outcome: submission.outcome });
   }
 
   return results;
+}
+
+let activeReplay: Promise<StoredReplayResult[]> | null = null;
+
+/** Coalesces reconnect/visibility/manual triggers in this browser tab. */
+export function replayStoredOfflineEntriesOnce(
+  currentUserId: string,
+  submit: SyncSubmitter,
+): Promise<StoredReplayResult[]> {
+  if (activeReplay) return activeReplay;
+  activeReplay = replayStoredOfflineEntries(currentUserId, submit).finally(() => {
+    activeReplay = null;
+  });
+  return activeReplay;
+}
+
+export async function getOfflineQueueCounts(currentUserId: string): Promise<{
+  pendingCount: number;
+  attentionCount: number;
+}> {
+  const rows = await listOfflineEntries();
+  const owned = rows.filter((row) => row.capturedByUserId === currentUserId);
+  return {
+    pendingCount: owned.filter((row) => row.status === "pending" || row.status === "failed" || row.status === "syncing").length,
+    attentionCount: owned.filter((row) => row.status === "failed" || row.status === "quarantined_conflict" || row.status === "quarantined_actor_mismatch").length,
+  };
+}
+
+export function syncLockAvailable(): boolean {
+  const key = "wms-offline-sync-lock";
+  const now = Date.now();
+  const current = Number(storage.local.get(key) ?? 0);
+  if (current > now) return false;
+  storage.local.set(key, String(now + 30_000));
+  return true;
+}
+
+export function releaseSyncLock(): void {
+  storage.local.remove("wms-offline-sync-lock");
 }

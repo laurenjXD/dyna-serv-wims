@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, ChevronRight, MapPin, PackageCheck, ShieldCheck } from "@/components/ui/icons";
+import { useOfflineStatus } from "@/lib/offline/provider";
 
 type Pallet = {
   balanceId: string;
@@ -31,6 +32,8 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
   const [qty, setQty] = useState("");
   const [selectedBalanceId, setSelectedBalanceId] = useState("");
   const [reason, setReason] = useState("");
+  const { connectivity } = useOfflineStatus();
+  const offline = connectivity === "offline";
   const requestedQty = Number(qty);
   const totalAvailable = pallets.reduce((sum, pallet) => sum + pallet.availableQty, 0);
   const selected = pallets.find((pallet) => pallet.balanceId === selectedBalanceId) ?? null;
@@ -84,7 +87,7 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
       <form action={requiresOverride ? overrideAction : createAction} className="mt-5 flex justify-end">
         <input type="hidden" name="request" value={request} />
         {requiresOverride && <input type="hidden" name="reason" value={reason} />}
-        <button type="submit" disabled={requiresOverride ? !isOverrideReady : !request} className="inline-flex h-12 items-center gap-2 rounded bg-primary px-5 font-label text-body-md font-bold text-surface-white disabled:cursor-not-allowed disabled:opacity-45">{requiresOverride ? "Send for Approval" : "Generate Pick List"}<ChevronRight size={18} aria-hidden="true" /></button>
+        <button type="submit" disabled={offline || (requiresOverride ? !isOverrideReady : !request)} title={offline ? "Reconnect to generate or approve a pick list." : undefined} className="inline-flex h-12 items-center gap-2 rounded bg-primary px-5 font-label text-body-md font-bold text-surface-white disabled:cursor-not-allowed disabled:opacity-45">{offline ? "Reconnect to continue" : requiresOverride ? "Send for Approval" : "Generate Pick List"}<ChevronRight size={18} aria-hidden="true" /></button>
       </form>
     </div>
   );

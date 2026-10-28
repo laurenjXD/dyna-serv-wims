@@ -40,6 +40,21 @@ describe("WrrLineItems mobile item selection", () => {
     expect(screen.getByDisplayValue("piece")).toBeInTheDocument();
   });
 
+  it("shows a legacy catalog material with no organization assignment", () => {
+    render(
+      <WrrLineItems
+        flowType="vmi"
+        vendorPartyId="vendor-1"
+        itemOptions={[{ ...assignedItem, defaultSupplierPartyId: null }]}
+      />,
+    );
+
+    fireEvent.focus(screen.getByPlaceholderText(/Type item code/i));
+
+    expect(screen.getByText("SUP-ITEM-1")).toBeInTheDocument();
+    expect(screen.getByText("Legacy item")).toBeInTheDocument();
+  });
+
   it("keeps a typed CIPL code so unresolved lines can be staged for enrollment", () => {
     render(
       <WrrLineItems
@@ -60,7 +75,7 @@ describe("WrrLineItems mobile item selection", () => {
     expect(document.querySelector('input[name="line_0_itemCode"]')).toHaveValue("SUP-NEW-001");
   });
 
-  it("offers a refresh action when no assigned materials are loaded", () => {
+  it("offers a refresh action when no catalog materials are loaded", () => {
     const reload = vi.fn();
 
     render(
@@ -73,7 +88,7 @@ describe("WrrLineItems mobile item selection", () => {
     );
 
     fireEvent.focus(screen.getByPlaceholderText(/Type item code/i));
-    fireEvent.click(screen.getByRole("button", { name: "Refresh assigned materials" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh item catalog" }));
 
     expect(reload).toHaveBeenCalledOnce();
   });

@@ -19,6 +19,7 @@ import { SessionIdleGuard } from "@/components/global/SessionIdleGuard";
 import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/security/actions";
 import { PageRoot } from "@/components/ui/Page";
 import { MobileTableEnhancer } from "@/components/ui/MobileTableEnhancer";
+import { OfflineRuntime } from "@/lib/offline/provider";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +46,13 @@ export default async function AuthenticatedLayout({
           desktopIdleTimeoutMinutes={securitySettings.sessionConfig.desktopIdleTimeoutMinutes}
         >
           <AuthenticatedShellBoundary initialResolution={initialResolution}>
-            <ShellChrome>
-              <PageRoot>{children}</PageRoot>
-            </ShellChrome>
+            <OfflineRuntime
+              currentUserId={initialResolution.kind === "authorized" ? initialResolution.context.userId : null}
+            >
+              <ShellChrome>
+                <PageRoot>{children}</PageRoot>
+              </ShellChrome>
+            </OfflineRuntime>
           </AuthenticatedShellBoundary>
         </SessionIdleGuard>
       </ScannerSettingsProvider>

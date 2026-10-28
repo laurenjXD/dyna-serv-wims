@@ -726,6 +726,7 @@ export async function selectPickUnit(
   pickListId: string,
   rawBarcode: string,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+  expectedPickListItemId?: string,
 ): Promise<SelectPickUnitResult> {
   const perm = await requirePermission(resolver, "dispatch.execute");
   if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
@@ -790,7 +791,7 @@ export async function selectPickUnit(
       // item or lot QR may be scanned repeatedly. When an item appears on
       // multiple lines, scan the lot QR to target a specific lot; otherwise
       // the first incomplete matching line is counted.
-      const matchingLines = lineRows.filter((candidate) => [
+      const matchingLines = lineRows.filter((candidate) => (!expectedPickListItemId || candidate.id === expectedPickListItemId) && [
         candidate.itemBarcode,
         candidate.itemCode,
         candidate.lotId,

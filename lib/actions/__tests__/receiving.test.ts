@@ -428,6 +428,38 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     expect(insertedLines[0].itemId).toBe("resolved-item-uuid");
   });
 
+  it("allows an imported legacy item with no default organization when the WRR supplies the source organization", async () => {
+    const db = makeReceivingDb([], [{
+      id: "legacy-item-uuid",
+      defaultSupplierPartyId: null,
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+      uom: "piece",
+    }]);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      {
+        vendorPartyId: "party-uuid-vendor",
+        flowType: "vmi",
+        lines: [{
+          lotNumber: "LOT-LEGACY-001",
+          expectedQty: 10,
+          unitCbm: 0.5,
+          uom: "CTN",
+          disposition: "store",
+          itemCode: "LEGACY-PART-001",
+        }],
+      },
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    const insertedLines = db._inserted[1] as AnyRecord[];
+    expect(insertedLines[0].itemId).toBe("legacy-item-uuid");
+  });
+
   it("rejects a selected item that is not assigned to the WRR organization", async () => {
     const db = makeReceivingDb([], [{
       id: "item-master-uuid-1",

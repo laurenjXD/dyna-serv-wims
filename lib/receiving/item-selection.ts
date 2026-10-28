@@ -1,9 +1,11 @@
 import type { WrrItemOption } from "@/lib/db/queries/items";
 
 /**
- * WRR lines must use a material enrolled to the selected source Organization.
- * An unassigned catalog item is not a valid receiving-line candidate because
- * it has no Organization relationship from which to inherit the WRR context.
+ * WRR lines are scoped to the selected source Organization when an item has an
+ * assignment. Legacy/imported catalog rows may have no assignment yet; those
+ * rows remain selectable because the WRR itself supplies the source
+ * organization and the line's enrolled item ID is still required for floor
+ * scanning and dispatch.
  */
 export function filterReceivingItemOptions(
   itemOptions: WrrItemOption[],
@@ -14,6 +16,9 @@ export function filterReceivingItemOptions(
   const normalizedVendorPartyId = vendorPartyId.trim().toLowerCase();
 
   return itemOptions.filter(
-    (item) => item.defaultSupplierPartyId?.trim().toLowerCase() === normalizedVendorPartyId,
+    (item) => {
+      const assignedPartyId = item.defaultSupplierPartyId?.trim().toLowerCase();
+      return !assignedPartyId || assignedPartyId === normalizedVendorPartyId;
+    },
   );
 }

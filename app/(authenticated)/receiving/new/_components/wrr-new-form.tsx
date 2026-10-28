@@ -21,6 +21,7 @@ import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items"
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
 import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search } from "@/components/ui/icons";
+import { useOfflineStatus } from "@/lib/offline/provider";
 
 const BUSINESS_ROLE_LABELS: Record<string, string> = {
   supplier: "Supplier",
@@ -56,6 +57,8 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
   const [wrrId] = useState(() => crypto.randomUUID());
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedLines, setImportedLines] = useState<ImportedWrrLine[]>([]);
+  const { connectivity } = useOfflineStatus();
+  const offline = connectivity === "offline";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -373,10 +376,10 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <button
           type="submit"
-          disabled={vendorParties.length === 0}
+          disabled={vendorParties.length === 0 || offline}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
         >
-          Create Staged WRR
+          {offline ? "Reconnect to create WRR" : "Create Staged WRR"}
         </button>
         <Link
           href="/receiving"

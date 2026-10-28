@@ -157,11 +157,15 @@ export function ItemSearchCombobox({
                             (Cust: {item.customerItemCode})
                           </span>
                         )}
-                        {item.defaultSupplierPartyId === vendorPartyId && (
+                        {item.defaultSupplierPartyId === vendorPartyId ? (
                           <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-800">
                             Assigned
                           </span>
-                        )}
+                        ) : !item.defaultSupplierPartyId ? (
+                          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                            Legacy item
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-0.5 truncate font-body text-body-sm text-on-surface">
                         {item.name}
@@ -184,12 +188,12 @@ export function ItemSearchCombobox({
               <div className="p-4 text-center">
                 <AlertCircle className="mx-auto h-8 w-8 text-status-held/70" />
                 <p className="mt-2 font-body text-body-sm font-semibold text-on-surface">
-                  No assigned item found
+                  No active item found
                 </p>
                 <p className="mt-0.5 font-body text-body-xs text-text-grey">
                   {availableItems.length === 0
-                    ? "Assign a material to this organization in Master Data, then refresh this list."
-                    : `No assigned item matches "${inputValue}" for this organization.`}
+                    ? "No active catalog items are available. Refresh the list or enroll the item in Master Data."
+                    : `No active item matches "${inputValue}" for this organization.`}
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
                   {inputValue.trim() && onUseTypedCode && (
@@ -210,7 +214,7 @@ export function ItemSearchCombobox({
                       onClick={onRefresh}
                       className="min-h-11 rounded-lg border border-outline-variant/50 bg-surface-white px-3 py-2 font-label text-label-xs font-bold text-brand-navy"
                     >
-                      Refresh assigned materials
+                      Refresh item catalog
                     </button>
                   )}
                 </div>

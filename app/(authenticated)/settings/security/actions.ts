@@ -64,7 +64,13 @@ export interface SystemAuditEvent {
 
 const DEFAULT_SECURITY_SETTINGS: SecuritySettingsData = {
   network: {
-    wifiEnforcementEnabled: true,
+    // Do not block floor work on a fresh deployment before an administrator
+    // has configured the real warehouse egress ranges. Vercel/mobile traffic
+    // cannot match these example private CIDRs, which otherwise makes every
+    // receiving scan fail with `network_restricted` by default. Once saved in
+    // Security & BYOD Governance, the administrator's policy remains the
+    // authoritative enforcement setting.
+    wifiEnforcementEnabled: false,
     allowedIpRanges: ["192.168.10.0/24", "10.200.0.0/16", "172.16.50.0/24"],
   },
   authRules: {

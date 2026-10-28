@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0F172A" />
+    <title>Dyna-Serv WIMS — Offline</title>
+    <style>
+      :root { color-scheme: light; font-family: Arial, sans-serif; background: #f3f6fc; color: #0f172a; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; box-sizing: border-box; }
+      main { width: min(100%, 420px); border: 1px solid #e2e8f0; border-radius: 24px; background: white; padding: 28px; box-shadow: 0 8px 24px #0f172a14; }
+      img { width: 56px; height: 56px; object-fit: contain; }
+      h1 { margin: 20px 0 8px; font-size: 28px; }
+      p { margin: 0; font-size: 17px; line-height: 1.5; color: #64748b; }
+      button { margin-top: 24px; min-height: 56px; width: 100%; border: 0; border-radius: 12px; background: #2563eb; color: white; font-size: 17px; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/logo-hd.png" alt="Dyna-Serv WIMS" />
+      <h1>Connection unavailable</h1>
+      <p>Previously visited pages remain available when cached. Queued floor scans stay on this device and synchronize when the connection returns. Reconnect to load live warehouse data.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

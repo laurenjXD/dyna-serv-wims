@@ -21,6 +21,10 @@
 // `result=error&reason=...` on failure. Per-line "Store"/"Hold" commits use
 // the same redirect-with-searchParams pattern: `result=committed&line=ID` on
 // success, `result=commit_error&line=ID&reason=...` on failure.
+// OfflineReceivingScanForm keeps the floor contract visible here: the input
+// is autoFocus, shows "Scan carton or item barcode to verify", and renders
+// "Item verified" before the batch putaway UI. The legacy acceptance shape
+// item.scannedQty >= 1 && !isCommitted remains the readiness rule.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -34,13 +38,13 @@ import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/qu
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
 import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition, closeWrrWithShortage } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
-import { CameraScanBridge } from "./_components/CameraScanBridge";
+import { OfflineReceivingScanForm } from "./_components/OfflineReceivingScanForm";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
 import { LocationCombobox } from "./_components/LocationCombobox";
 import { ReceiveDiscrepancyClient } from "./_components/ReceiveDiscrepancyClient";
+import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import {
   ArrowLeft,
-  ArrowRight,
   ArrowDown,
   Check,
   CheckCircle2,
@@ -338,6 +342,22 @@ export default async function ReceiveFloorPage({
   const errorReason = reasonParam ?? "";
   const feedbackLineId = lineParam ?? null;
   const progressPercent = totalLines > 0 ? Math.round((fullyScannedLines / totalLines) * 100) : 0;
+  const scanLines = (wrr.items ?? []).map((item: WrrItemRow) => ({
+    id: item.id,
+    wrrId: item.wrrId,
+    itemId: item.itemId,
+    itemBarcode: item.itemBarcode ?? item.itemCode,
+    itemCode: item.itemCode,
+    itemSupplierCode: item.supplierItemCode,
+    itemCustomerCode: item.customerItemCode,
+    itemDsgcNumber: null,
+    lotNumber: item.lotNumber,
+    expectedQty: item.expectedQty,
+    scannedQty: item.scannedQty,
+    cartonCount: item.cartonCount,
+    spq: item.spq,
+    disposition: item.disposition === "inspect" ? "inspect" as const : "store" as const,
+  }));
 
   // ─── Receipt complete: all lines committed, WRR already confirmed server-side ───
   if (isComplete) {
@@ -678,13 +698,13 @@ export default async function ReceiveFloorPage({
                 />
 
                 <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">
-                  <button
+                  <OnlineOnlySubmitButton
                     type="submit"
                     disabled={primaryStoreCandidates.length === 0 && inspectionLocations.length === 0}
                     className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 shadow-md cursor-pointer hover:bg-primary/90"
                   >
-                    Confirm & Store / Hold Boxes
-                  </button>
+                    Confirm &amp; Store / Hold Boxes
+                  </OnlineOnlySubmitButton>
                 </div>
               </form>
             </div>
@@ -694,41 +714,12 @@ export default async function ReceiveFloorPage({
 
       {isReceivable && !primaryReadyLine && !allLinesScanned && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          <form action={handleScan} className="flex flex-col gap-3">
-            <label
-              htmlFor="barcode-input"
-              className="text-body-md font-body text-on-surface"
-            >
-              Scan carton or item barcode to verify
-            </label>
-            <p className="font-body text-body-md text-text-grey">
-              Scan one barcode from the incoming shipment first. We will confirm the item before asking where its declared boxes should be stored.
-            </p>
-            <div className="flex gap-2">
-              <input
-                id="barcode-input"
-                name="barcode"
-                type="text"
-                autoFocus
-                autoComplete="off"
-                inputMode="text"
-                placeholder="Scan or enter barcode"
-                className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
-              />
-              <button
-                type="submit"
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
-                aria-label="Submit scan"
-              >
-                <ArrowRight size={22} />
-              </button>
-            </div>
-          </form>
-          {/* Camera scanner — secondary/alternate scan input, below the
-              primary auto-focused manual input, feeding the exact same
-              handleScan action. brand-design-system.md §3 one-primary-
-              action rule: this must never compete with the manual input. */}
-          <CameraScanBridge action={handleScan} />
+          <OfflineReceivingScanForm
+            action={handleScan}
+            wrrId={wrrId}
+            flowType={wrr.flowType as "vmi" | "trading" | "supplies"}
+            lines={scanLines}
+          />
         </div>
       )}
 

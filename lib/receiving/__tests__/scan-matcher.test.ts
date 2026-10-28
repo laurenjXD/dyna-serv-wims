@@ -140,6 +140,19 @@ describe("matchScan — manual item-code fallback", () => {
 
     expect(result).toMatchObject({ matched: true, remainingQty: 9, scanQty: 1 });
   });
+
+  it("matches an alphanumeric item barcode regardless of scanner letter casing", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+    const result = matchScan("3cp72687-u", [makeLine({
+      itemBarcode: "3CP72687-U",
+      itemCode: "3CP72687-U",
+      expectedQty: 90,
+      scannedQty: 0,
+      spq: 30,
+    })]);
+
+    expect(result.matched).toBe(true);
+  });
 });
 
 describe("matchScan — alternate item identities", () => {

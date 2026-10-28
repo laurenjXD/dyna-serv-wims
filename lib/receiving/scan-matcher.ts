@@ -55,6 +55,10 @@ export type ScanMatchResult =
         | "duplicate_unit_scan";
     };
 
+function normalizeScanIdentity(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 /**
  * Attempts to match a scanned barcode against the WRR's expected lines.
  *
@@ -83,7 +87,7 @@ export function matchScan(
   wrrFlowType?: "vmi" | "trading" | "supplies",
   alreadyScannedUnitIds?: Set<string>
 ): ScanMatchResult {
-  const normalizedBarcode = barcode.trim();
+  const normalizedBarcode = normalizeScanIdentity(barcode);
 
   // Guard: reject empty or whitespace-only barcodes
   if (normalizedBarcode === "") {
@@ -114,7 +118,7 @@ export function matchScan(
   // Find matching lines by wrr_item_id (JSON payload), itemBarcode, itemId, id, or lotNumber
   const matchingLines = lines.filter((l) => {
     if (parsedWrrItemId) {
-      return l.id === parsedWrrItemId;
+      return normalizeScanIdentity(l.id) === normalizeScanIdentity(parsedWrrItemId);
     }
     return [
       l.itemBarcode,
@@ -125,7 +129,7 @@ export function matchScan(
       l.itemId,
       l.id,
       l.lotNumber,
-    ].some((identity) => identity != null && identity.trim() === normalizedBarcode);
+    ].some((identity) => identity != null && normalizeScanIdentity(identity) === normalizedBarcode);
   });
 
   if (matchingLines.length === 0) {
