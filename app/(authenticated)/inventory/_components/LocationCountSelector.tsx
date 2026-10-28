@@ -6,12 +6,20 @@ type CountLocation = {
   id: string;
   label: string | null;
   zone: string;
+  rack: string | null;
+  level: string | null;
+  position: string | null;
   stockLineCount: number;
   systemQty: number;
   activeSessionCount: number;
 };
 
 type FormAction = (formData: FormData) => void | Promise<void>;
+
+function numericValue(value: number | string | null | undefined): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 export function LocationCountSelector({
   locations,
@@ -33,12 +41,26 @@ export function LocationCountSelector({
   const filteredLocations = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return locations.filter((location) => {
-      const matchesQuery = !normalized || `${location.label ?? ""} ${location.zone}`.toLowerCase().includes(normalized);
+      // Location labels are normally the canonical search value (for example,
+      // A1-01), but keep the component fields in the index too. This also
+      // makes the search resilient to imported/legacy rows whose label is
+      // missing while rack/level/position are present.
+      const searchableLocation = [
+        location.label,
+        location.id,
+        location.zone,
+        location.rack,
+        location.level,
+        location.position,
+      ].filter(Boolean).join(" ").toLowerCase();
+      const matchesQuery = !normalized || searchableLocation.includes(normalized);
       const matchesZone = zone === "all" || location.zone === zone;
+      const activeSessionCount = numericValue(location.activeSessionCount);
+      const stockLineCount = numericValue(location.stockLineCount);
       const matchesCountState = countState === "all"
-        || (countState === "ready" && location.activeSessionCount === 0)
-        || (countState === "active" && location.activeSessionCount > 0);
-      return matchesQuery && matchesZone && location.stockLineCount > 0 && matchesCountState;
+        || (countState === "ready" && activeSessionCount === 0)
+        || (countState === "active" && activeSessionCount > 0);
+      return matchesQuery && matchesZone && stockLineCount > 0 && matchesCountState;
     });
   }, [countState, locations, query, zone]);
   const selected = locations.find((location) => location.id === selectedId) ?? null;

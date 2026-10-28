@@ -37,7 +37,7 @@ export function StockCountTab({
   recountAction,
   postAction,
 }: {
-  locations: Array<{ id: string; label: string | null; zone: string; stockLineCount: number; systemQty: number; activeSessionCount: number }>;
+  locations: Array<{ id: string; label: string | null; zone: string; rack: string | null; level: string | null; position: string | null; stockLineCount: number; systemQty: number; activeSessionCount: number }>;
   sessions: CycleCountSessionRow[];
   active: ActiveCount | null;
   error?: string;

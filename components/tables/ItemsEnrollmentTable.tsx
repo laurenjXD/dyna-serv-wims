@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Package, Plus, Barcode } from "@/components/ui/icons";
+import { Package, Plus, Barcode, Upload } from "@/components/ui/icons";
 import { DataTable } from "./DataTable";
 import type { ItemListRow } from "@/lib/db/queries/items";
 import { ExportDataButton } from "@/components/shared/ExportDataButton";
@@ -158,12 +158,10 @@ export function ItemsEnrollmentTable({
             ]}
           />
           {canManage && (
-            <Link
-              href="/master-data/items/new"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"
-            >
-              <Plus size={14} /> New Material
-            </Link>
+            <>
+              <Link href="/master-data/items/import" className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary px-3 text-xs font-bold text-primary hover:bg-primary/5 transition-all shadow-sm"><Upload size={14} /> Import Materials</Link>
+              <Link href="/master-data/items/new" className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-surface-white hover:bg-primary/90 transition-all shadow-sm"><Plus size={14} /> New Material</Link>
+            </>
           )}
         </div>
       }
