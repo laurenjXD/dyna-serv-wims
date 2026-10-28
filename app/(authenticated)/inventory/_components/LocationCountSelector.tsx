@@ -24,6 +24,7 @@ export function LocationCountSelector({
   const [zone, setZone] = useState("all");
   const [countState, setCountState] = useState<"ready" | "active" | "all">("ready");
   const [selectedId, setSelectedId] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const zones = useMemo(
     () => [...new Set(locations.map((location) => location.zone).filter(Boolean))].sort(),
@@ -41,6 +42,7 @@ export function LocationCountSelector({
     });
   }, [countState, locations, query, zone]);
   const selected = locations.find((location) => location.id === selectedId) ?? null;
+  const suggestions = filteredLocations.slice(0, 8);
 
   useEffect(() => {
     if (selectedId && !filteredLocations.some((location) => location.id === selectedId)) {
@@ -51,18 +53,64 @@ export function LocationCountSelector({
   return (
     <form action={createAction} className="mt-6 space-y-4">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_210px_180px] lg:items-end">
-        <div>
+        <div className="relative">
           <label htmlFor="cycle-count-location-search" className="font-label text-label font-semibold text-text-grey">
             Find a location
           </label>
-          <input
-            id="cycle-count-location-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search code, label, or zone"
-            className="mt-2 h-12 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
-          />
+          <div className="relative">
+            <input
+              id="cycle-count-location-search"
+              type="search"
+              role="combobox"
+              aria-expanded={searchFocused && suggestions.length > 0}
+              aria-controls="cycle-count-location-suggestions"
+              aria-autocomplete="list"
+              value={query}
+              onFocus={() => setSearchFocused(true)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSearchFocused(true);
+              }}
+              onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+              placeholder="Search location code or zone"
+              className="mt-2 h-12 w-full rounded-xl border border-outline-variant bg-surface-white px-3 font-body text-body-md text-on-surface outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
+            />
+            {searchFocused && suggestions.length > 0 && (
+              <div
+                id="cycle-count-location-suggestions"
+                role="listbox"
+                className="absolute z-20 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-outline-variant bg-surface-white p-1 shadow-elevation-2"
+              >
+                {suggestions.map((location) => (
+                  <button
+                    key={location.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selectedId === location.id}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setSelectedId(location.id);
+                      setQuery(location.label ?? location.id);
+                      setSearchFocused(false);
+                    }}
+                    className="flex w-full items-start justify-between gap-4 rounded-lg px-3 py-3 text-left hover:bg-surface-low focus:bg-surface-low focus:outline-none"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-mono text-body-sm font-bold text-on-surface">
+                        {location.label ?? location.id}
+                      </span>
+                      <span className="mt-1 block font-body text-body-xs text-text-grey">
+                        Zone {location.zone} · {location.stockLineCount} item/lot lines · {location.systemQty.toLocaleString()} units
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-label text-body-xs font-semibold text-brand-navy">
+                      {location.activeSessionCount > 0 ? "In progress" : "Ready"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div>
           <label htmlFor="cycle-count-zone" className="font-label text-label font-semibold text-text-grey">Zone</label>
