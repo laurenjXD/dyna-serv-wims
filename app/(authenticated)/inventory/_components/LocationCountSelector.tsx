@@ -38,7 +38,7 @@ export function LocationCountSelector({
     () => [...new Set(locations.map((location) => location.zone).filter(Boolean))].sort(),
     [locations],
   );
-  const filteredLocations = useMemo(() => {
+  const matchingLocations = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return locations.filter((location) => {
       // Location labels are normally the canonical search value (for example,
@@ -56,15 +56,18 @@ export function LocationCountSelector({
       const matchesQuery = !normalized || searchableLocation.includes(normalized);
       const matchesZone = zone === "all" || location.zone === zone;
       const activeSessionCount = numericValue(location.activeSessionCount);
-      const stockLineCount = numericValue(location.stockLineCount);
       const matchesCountState = countState === "all"
         || (countState === "ready" && activeSessionCount === 0)
         || (countState === "active" && activeSessionCount > 0);
-      return matchesQuery && matchesZone && stockLineCount > 0 && matchesCountState;
+      return matchesQuery && matchesZone && matchesCountState;
     });
   }, [countState, locations, query, zone]);
+  const filteredLocations = useMemo(
+    () => matchingLocations.filter((location) => numericValue(location.stockLineCount) > 0),
+    [matchingLocations],
+  );
   const selected = locations.find((location) => location.id === selectedId) ?? null;
-  const suggestions = filteredLocations.slice(0, 8);
+  const suggestions = matchingLocations.slice(0, 8);
 
   useEffect(() => {
     if (selectedId && !filteredLocations.some((location) => location.id === selectedId)) {
@@ -109,8 +112,10 @@ export function LocationCountSelector({
                     type="button"
                     role="option"
                     aria-selected={selectedId === location.id}
+                    disabled={numericValue(location.stockLineCount) === 0}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
+                      if (numericValue(location.stockLineCount) === 0) return;
                       setSelectedId(location.id);
                       setQuery(location.label ?? location.id);
                       setSearchFocused(false);
@@ -126,7 +131,9 @@ export function LocationCountSelector({
                       </span>
                     </span>
                     <span className="shrink-0 font-label text-body-xs font-semibold text-brand-navy">
-                      {location.activeSessionCount > 0 ? "In progress" : "Ready"}
+                      {numericValue(location.stockLineCount) === 0
+                        ? "No stock"
+                        : location.activeSessionCount > 0 ? "In progress" : "Ready"}
                     </span>
                   </button>
                 ))}
