@@ -399,6 +399,17 @@ function rebalanceManualAllocations(
     remaining -= boxes;
   }
 
+  // If demand grew or a selected location was exhausted, continue in the
+  // authoritative FIFO/FEFO order so quantity entry never silently loses demand.
+  for (const source of sortedSources) {
+    if (existingByBalanceId.has(source.balanceId)) continue;
+    if (remaining <= 0) break;
+    const boxes = Math.min(availableBoxesForSource(source), remaining);
+    if (boxes <= 0) continue;
+    allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
+    remaining -= boxes;
+  }
+
   return allocations;
 }
 
@@ -432,7 +443,7 @@ export function MultiItemPickListDraft({
   // rows are added only after the first row becomes available for entry.
   const [lines, setLines] = useState<DraftLine[]>(() => [blankDraftLine("draft-line-1")]);
   const [importingDra, setImportingDra] = useState(false);
-  const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
+  const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string; details?: string[] } | null>(null);
   const visibleCustomers = useMemo(() => customers.filter((customer) =>
     flowType === "vmi"
       ? customer.relationship === "vmi_customer"
@@ -508,9 +519,9 @@ export function MultiItemPickListDraft({
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
-    const requiresOverride = line.manualSplit
+    const requiresOverride = hasEnoughStock && (line.manualSplit
       ? !allocationsMatchFifoPlan(fifoAllocations, fifoPlan)
-      : Boolean(selectedSource && !allocationsMatchFifoPlan(fifoAllocations, fifoPlan));
+      : Boolean(selectedSource && !allocationsMatchFifoPlan(fifoAllocations, fifoPlan)));
     return {
       line,
       item,
@@ -534,9 +545,7 @@ export function MultiItemPickListDraft({
   const handleBoxesChange = (lineId: string, val: string) => {
     const detail = lineDetails.find(({ line }) => line.id === lineId);
     const parsed = Number(val);
-    const nextValue = val !== "" && Number.isFinite(parsed) && parsed > (detail?.maxRequestBoxes ?? Number.MAX_SAFE_INTEGER)
-      ? String(detail?.maxRequestBoxes ?? parsed)
-      : val;
+    const nextValue = val;
     const nextRequestedBoxes = Number(nextValue);
     let manualAllocationsPatch: DraftLine["manualAllocations"] | undefined;
     if (detail?.line.manualSplit && detail.item && Number.isInteger(nextRequestedBoxes) && nextRequestedBoxes > 0) {
@@ -553,13 +562,10 @@ export function MultiItemPickListDraft({
   const handleSourceChange = (lineId: string, sourceBalanceId: string) => {
     const detail = lineDetails.find(({ line }) => line.id === lineId);
     const nextSource = detail?.item?.sources.find((source) => source.balanceId === sourceBalanceId);
-    const maxBoxes = nextSource ? availableBoxesForSource(nextSource) : detail?.totalAvailableBoxes ?? 0;
-    const currentBoxes = Number(detail?.line.boxes ?? "");
     updateLine(lineId, {
       sourceBalanceId,
       manualSplit: false,
       manualAllocations: [],
-      boxes: Number.isInteger(currentBoxes) && currentBoxes > maxBoxes ? String(maxBoxes) : detail?.line.boxes ?? "",
     });
   };
 
@@ -569,13 +575,10 @@ export function MultiItemPickListDraft({
 
     if (detail.line.manualSplit) {
       const fixedSource = detail.item?.sources[0] ?? null;
-      const maxBoxes = fixedSource ? availableBoxesForSource(fixedSource) : detail.totalAvailableBoxes;
-      const currentBoxes = Number(detail.line.boxes);
       updateLine(lineId, {
         manualSplit: false,
         manualAllocations: [],
         sourceBalanceId: fixedSource?.balanceId ?? "",
-        boxes: Number.isInteger(currentBoxes) && currentBoxes > maxBoxes ? String(maxBoxes) : detail.line.boxes,
       });
       return;
     }
@@ -583,10 +586,9 @@ export function MultiItemPickListDraft({
     updateLine(lineId, {
       manualSplit: true,
       sourceBalanceId: "",
-      manualAllocations: detail.fifoAllocations.map(({ source, boxes }) => ({
-        balanceId: source.balanceId,
-        boxes: String(boxes),
-      })),
+      manualAllocations: detail.item
+        ? allocateDefaultFifoLocation(detail.item.sources, detail.requestedBoxes ?? 0, detail.item.isPerishable)
+        : [],
     });
   };
 
@@ -688,10 +690,12 @@ export function MultiItemPickListDraft({
               ? "This item needs its enrolled supplier/DSGC item code before a pick list can be created."
             : lineDetails.some(({ requestedBoxes }) => requestedBoxes === null)
               ? "Enter a positive whole-box quantity for every line."
+              : lineDetails.some(({ requestedBoxes, totalAvailableBoxes }) => requestedBoxes !== null && requestedBoxes > totalAvailableBoxes)
+                ? "One or more lines exceed available stock. Add/receive stock or intentionally adjust the requested quantity; generation stays blocked while any shortage remains."
               : lineDetails.some(({ line, requestedBoxes, allocatedBoxes }) => line.manualSplit && requestedBoxes !== null && allocatedBoxes !== requestedBoxes)
-                ? "In manual split mode, allocate the full line quantity across the selected locations."
+                ? "Some requested boxes still need a location. Add a FIFO/FEFO location or complete the split allocation."
               : lineDetails.some(({ hasEnoughStock }) => !hasEnoughStock)
-                ? "Reduce the quantity to the on-hand boxes shown for this line."
+                ? "Complete each line’s location allocation before generating the pick list."
                 : null;
 
   const addLine = () => setLines((current) => [...current, blankDraftLine(crypto.randomUUID())]);
@@ -732,13 +736,25 @@ export function MultiItemPickListDraft({
     setImportingDra(false);
 
     if (!res.ok || !res.parseResult) {
-      setImportSummary({ type: "error", message: res.error || "Failed to process DRA document." });
+      setImportSummary({
+        type: "error",
+        message: res.error || "Failed to process DRA document.",
+        details: ["Check that the file is a supported Excel, CSV, or PDF DRA and that it is readable, then upload it again."],
+      });
       return;
     }
 
-    const { rows: draRows, header: draHeader } = res.parseResult;
+    const { rows: draRows, header: draHeader, errors: draErrors, warnings: draWarnings } = res.parseResult;
     if (draRows.length === 0) {
-      setImportSummary({ type: "warning", message: "No release line items were extracted from the document." });
+      setImportSummary({
+        type: "warning",
+        message: "No release line items were extracted from the document.",
+        details: [
+          ...draErrors.map((error) => `DRA: ${error} Correct the file and upload it again.`),
+          ...draWarnings.map((warning) => `DRA: ${warning} Review the file, then add the affected lines manually or upload a corrected file.`),
+          ...(draErrors.length === 0 && draWarnings.length === 0 ? ["Check that the DRA has item codes and requested quantities, or add the lines manually."] : []),
+        ],
+      });
       return;
     }
 
@@ -753,6 +769,7 @@ export function MultiItemPickListDraft({
       setImportSummary({
         type: "warning",
         message: "DRA must identify the requesting Organization before items can be imported.",
+        details: ["Select the stock-owning Organization manually, then upload the DRA again."],
       });
       return;
     }
@@ -765,8 +782,8 @@ export function MultiItemPickListDraft({
         setImportSummary({
           type: "warning",
           message: organizationMatches.length === 0
-            ? `The DRA Organization “${requestedOrganization}” is not enrolled or is not present in current stock.`
-            : `The DRA Organization “${requestedOrganization}” matched multiple records. Select the Organization manually before importing.`,
+            ? `The DRA Organization “${requestedOrganization}” is not enrolled or is not present in current stock. Select a valid Organization or complete enrollment.`
+            : `The DRA Organization “${requestedOrganization}” matched multiple records. Select the correct Organization manually before importing.`,
         });
         return;
       }
@@ -785,6 +802,7 @@ export function MultiItemPickListDraft({
         setImportSummary({
           type: "warning",
           message: "The DRA Organization has more than one Inventory Model. Select the correct model before importing its lines.",
+          details: ["Select the VMI, Trading, or Supplies model that owns the requested stock."],
         });
         return;
       }
@@ -794,6 +812,7 @@ export function MultiItemPickListDraft({
       setImportSummary({
         type: "warning",
         message: "Please select Organization and Inventory Model first, or upload a DRA matching active stock.",
+        details: ["Choose the Organization and Inventory Model first, then import the DRA again."],
       });
       return;
     }
@@ -820,11 +839,15 @@ export function MultiItemPickListDraft({
     }
 
     const availableStock = stock.filter((s) => s.organizationId === targetOrgId && s.flowType === targetFlow);
+    const availableItems = [...new Map(availableStock.map((source) => [source.itemId, source])).values()];
 
     const newDraftLines: DraftLine[] = [];
     let mappedCount = 0;
-    let totalBoxesAllocated = 0;
-    const reviewItems: string[] = [];
+    let totalBoxesRequested = 0;
+    const reviewItems: string[] = [
+      ...draErrors.map((error) => `DRA: ${error} Correct the file and re-import the affected rows.`),
+      ...draWarnings.map((warning) => `DRA: ${warning} Check the affected rows before generating the pick list.`),
+    ];
     const importRequests = new Map<string, { itemId: string; spq: number; requestedBoxes: number; labels: string[]; customerItemCode: string }>();
 
     for (const draRow of draRows) {
@@ -832,12 +855,17 @@ export function MultiItemPickListDraft({
       const documentBoxes = draRow.packageCount == null ? null : Number(draRow.packageCount);
       const documentSpq = draRow.spq == null ? null : Number(draRow.spq);
       const rowLabel = draRow.customerItemCode || draRow.itemCode || draRow.itemDescription || "Unknown Item";
+      const requestedQuantityContext = documentBoxes !== null
+        ? `${documentBoxes} boxes requested`
+        : documentQty !== null
+          ? `${documentQty} units requested`
+          : "requested quantity not provided";
       if (documentBoxes !== null && (!Number.isInteger(documentBoxes) || documentBoxes <= 0)) {
-        reviewItems.push(`${rowLabel} (invalid number of boxes)`);
+        reviewItems.push(`${rowLabel}: box quantity is invalid. Correct the DRA quantity and import it again.`);
         continue;
       }
       if (documentQty !== null && (!Number.isInteger(documentQty) || documentQty <= 0)) {
-        reviewItems.push(`${rowLabel} (invalid quantity)`);
+        reviewItems.push(`${rowLabel}: unit quantity is invalid. Correct the DRA quantity and import it again.`);
         continue;
       }
 
@@ -847,7 +875,7 @@ export function MultiItemPickListDraft({
           customerItemCode: draRow.customerItemCode,
           description: draRow.itemDescription,
         },
-        availableStock.map((s) => ({
+        availableItems.map((s) => ({
           id: s.itemId,
           code: s.itemCode,
           name: s.itemName,
@@ -863,7 +891,9 @@ export function MultiItemPickListDraft({
         : [];
       const descriptionOnlyMatch = matchRes.bestMatch?.matchedField === "name";
       if (!matchRes.bestMatch || bestScore < 65 || topCandidates.length > 1 || descriptionOnlyMatch) {
-        reviewItems.push(`${rowLabel} (select the enrolled item manually${descriptionOnlyMatch ? "; description is not a unique identifier" : ""})`);
+        reviewItems.push(availableStock.length === 0
+          ? `${rowLabel} (${requestedQuantityContext}): no pickable stock exists for the selected Organization/model. Confirm the item and organization, then receive or locate stock before creating a pick list.`
+          : `${rowLabel} (${requestedQuantityContext}): no unique enrolled item match${descriptionOnlyMatch ? " (description alone is not a unique identifier)" : ""}. Verify item enrollment/code and add the correct enrolled item manually.`);
         continue;
       }
 
@@ -876,7 +906,7 @@ export function MultiItemPickListDraft({
         : [];
 
       if (candidateSources.length === 0) {
-        reviewItems.push(`${rowLabel} (no available stock for the selected Organization/model)`);
+        reviewItems.push(`${rowLabel} (${requestedQuantityContext}): no pickable stock is available for the selected Organization/model. Confirm the item and organization, then receive or locate stock before creating a pick list.`);
         continue;
       }
 
@@ -887,7 +917,7 @@ export function MultiItemPickListDraft({
         documentQty !== null && documentQty % spq === 0 ? documentQty / spq : null
       );
       if (spqMismatch || quantityBoxMismatch || requestedBoxes === null || !Number.isInteger(requestedBoxes) || requestedBoxes <= 0) {
-        reviewItems.push(`${rowLabel} (QTY, SPQ, and number of boxes do not agree with enrolled SPQ ${spq})`);
+        reviewItems.push(`${rowLabel}: quantity, SPQ, and box count do not agree with enrolled SPQ ${spq}. Correct the DRA or item enrollment, then import again.`);
         continue;
       }
 
@@ -922,8 +952,7 @@ export function MultiItemPickListDraft({
         0,
       );
       if (availableBoxes < request.requestedBoxes) {
-        reviewItems.push(`${request.labels.join(" + ")} (shortage of ${request.requestedBoxes - availableBoxes} boxes)`);
-        continue;
+        reviewItems.push(`${request.labels.join(" + ")}: requested ${request.requestedBoxes}, available ${availableBoxes}, short ${request.requestedBoxes - availableBoxes} boxes. The demand is kept in the draft with a partial FIFO/FEFO allocation; receive/locate stock or intentionally reduce the requested quantity.`);
       }
       newDraftLines.push({
         id: crypto.randomUUID(),
@@ -934,24 +963,23 @@ export function MultiItemPickListDraft({
         manualAllocations: allocateDefaultFifoLocation(orderedCandidateSources, request.requestedBoxes, orderedCandidateSources[0]?.isPerishable ?? false),
         customerItemCode: request.customerItemCode,
       });
-      totalBoxesAllocated += request.requestedBoxes;
+      totalBoxesRequested += request.requestedBoxes;
       mappedCount++;
     }
 
     if (newDraftLines.length > 0) {
       setLines(newDraftLines);
-      let summaryMsg = `Successfully mapped ${mappedCount} line(s) (${totalBoxesAllocated} boxes total) into Pick List draft.`;
-      if (reviewItems.length > 0) {
-        summaryMsg += ` Rows requiring review: ${reviewItems.join(", ")}.`;
-      }
+      const summaryMsg = `Imported ${mappedCount} line(s) with ${totalBoxesRequested} boxes requested. Review the row details below; lines with a shortage remain in the draft and cannot be generated yet.`;
       setImportSummary({
         type: reviewItems.length > 0 ? "warning" : "success",
         message: summaryMsg,
+        details: reviewItems,
       });
     } else {
       setImportSummary({
-        type: "error",
-        message: `No DRA lines were ready to import. Review manually: ${reviewItems.join(", ") || "select the Organization, model, and enrolled item codes first."}`,
+        type: "warning",
+        message: "No valid DRA line could be added yet. Review each row and resolve the stated issue, then add valid items manually or import the corrected DRA again.",
+        details: reviewItems.length > 0 ? reviewItems : ["Select the Organization and Inventory Model, then choose enrolled item codes before importing."],
       });
     }
   }
@@ -963,7 +991,7 @@ export function MultiItemPickListDraft({
         {/* Header with Integrated Compact DRA Import */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-start gap-2">
               <h2 className="font-heading text-base font-bold text-slate-900">Create Pick List</h2>
               <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-600">
                 {lines.length} {lines.length === 1 ? "line" : "lines"}
@@ -1016,7 +1044,14 @@ export function MultiItemPickListDraft({
               ) : (
                 <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
               )}
-              <span>{importSummary.message}</span>
+              <div className="min-w-0">
+                <p>{importSummary.message}</p>
+                {importSummary.details && importSummary.details.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5" aria-label="DRA rows to review">
+                    {importSummary.details.map((detail, index) => <li key={`${index}-${detail}`}>{detail}</li>)}
+                  </ul>
+                )}
+              </div>
             </div>
             <button
               type="button"
@@ -1195,7 +1230,7 @@ export function MultiItemPickListDraft({
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Boxes)
-                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" max={maxRequestBoxes || undefined} disabled={!canEditLines || !item || maxRequestBoxes === 0} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" step="1" disabled={!canEditLines || !item || maxRequestBoxes === 0} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Units)
@@ -1293,10 +1328,18 @@ export function MultiItemPickListDraft({
                         </div>
                       )}
                     </div>
-                    <p className="font-body text-xs text-slate-500">Maximum for this line: {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across available FIFO locations"}.</p>
+                    {requestedBoxes !== null && allocatedBoxes < requestedBoxes && (
+                      <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs leading-5 text-amber-900">
+                        {!line.manualSplit && selectedSource && requestedBoxes > maxRequestBoxes
+                          ? `This location has ${maxRequestBoxes} boxes; ${totalAvailableBoxes} are available across FIFO/FEFO locations${requestedBoxes > totalAvailableBoxes ? `, leaving ${requestedBoxes - totalAvailableBoxes} boxes short` : ""}. Keep the ${requestedBoxes}-box request and split across locations${requestedBoxes > totalAvailableBoxes ? " or receive/locate more stock" : ""}.`
+                          : requestedBoxes > totalAvailableBoxes
+                            ? `Short ${requestedBoxes - allocatedBoxes} boxes: ${requestedBoxes} requested, ${totalAvailableBoxes} available. Add/receive stock or intentionally adjust the request.`
+                            : `${requestedBoxes - allocatedBoxes} requested boxes still need a location. Add a location or complete the split.`}
+                      </p>
+                    )}
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
-                      <div><dt className="text-slate-500">Remaining</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes</dd></div>
+                      <div><dt className="text-slate-500">Remaining after allocation</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - allocatedBoxes)} boxes</dd></div>
                       <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
@@ -1392,7 +1435,7 @@ export function MultiItemPickListDraft({
                         onChange={(event) => handleBoxesChange(line.id, event.target.value)}
                         type="number"
                         min="1"
-                        max={maxRequestBoxes || undefined}
+                        step="1"
                         disabled={!canEditLines || !item || maxRequestBoxes === 0}
                         className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-sm font-semibold text-slate-900 shadow-2xs outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
@@ -1502,7 +1545,15 @@ export function MultiItemPickListDraft({
                           {selectedSource ? "Fixed location selected" : "FIFO allocation ready"}
                         </span>
                       )}
-                      <p className="mt-2 font-body text-[11px] leading-4 text-slate-500">Max {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across FIFO locations"}.</p>
+                      {requestedBoxes !== null && allocatedBoxes < requestedBoxes && (
+                        <p role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 font-body text-[11px] leading-4 text-amber-900">
+                          {!line.manualSplit && selectedSource && requestedBoxes > maxRequestBoxes
+                            ? `This location has ${maxRequestBoxes} boxes; ${totalAvailableBoxes} are available across FIFO/FEFO locations${requestedBoxes > totalAvailableBoxes ? `, leaving ${requestedBoxes - totalAvailableBoxes} boxes short` : ""}. Keep the ${requestedBoxes}-box request and split across locations${requestedBoxes > totalAvailableBoxes ? " or receive/locate more stock" : ""}.`
+                            : requestedBoxes > totalAvailableBoxes
+                              ? `Short ${requestedBoxes - allocatedBoxes} boxes: ${requestedBoxes} requested, ${totalAvailableBoxes} available. Add/receive stock or intentionally adjust the request.`
+                              : `${requestedBoxes - allocatedBoxes} requested boxes still need a location. Add a location or complete the split.`}
+                        </p>
+                      )}
                       {requiresOverride && <p className="mt-1 text-[11px] font-semibold leading-4 text-amber-700">{selectedSource ? "Supervisor approval required for this source." : "Supervisor approval required for one or more selected sources."}</p>}
                     </td>
 
@@ -1511,9 +1562,8 @@ export function MultiItemPickListDraft({
                       <div className="space-y-1 font-mono text-xs text-slate-700">
                         {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, remainingBoxes }) => (
                           <div key={source.balanceId}>{remainingBoxes} boxes</div>
-                        )) : <span className="text-slate-400">{item ? `${Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes` : "—"}</span>}
+                        )) : <span className="text-slate-400">{item ? `${Math.max(0, totalAvailableBoxes - allocatedBoxes)} boxes` : "—"}</span>}
                       </div>
-                      {item && requestedBoxes !== null && requestedBoxes > maxRequestBoxes && <p className="mt-1 text-[10px] font-semibold text-amber-700">Maximum {maxRequestBoxes} boxes</p>}
                     </td>
 
                     {/* CUST PN */}

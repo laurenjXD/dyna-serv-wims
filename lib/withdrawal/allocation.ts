@@ -110,6 +110,9 @@ function compareLots(a: PreparedLot, b: PreparedLot, isPerishable: boolean): num
   const receivedOrder = a.receivedAt.getTime() - b.receivedAt.getTime();
   if (receivedOrder !== 0) return receivedOrder;
 
+  // Lots remain distinct even when their receipt timestamps tie. Lot number is
+  // the stable business tie-breaker; the immutable lot ID breaks duplicate
+  // lot-number ties consistently across clients and server calls.
   const lotNumberOrder = compareText(a.lotNumber, b.lotNumber);
   return lotNumberOrder !== 0 ? lotNumberOrder : compareText(a.lotId, b.lotId);
 }
@@ -151,6 +154,8 @@ function prepareLotGroups(
     .map((lot) => ({
       ...lot,
       locations: [...lot.locations].sort((a, b) => {
+        // The locations model has no dedicated pick-sequence column yet.
+        // Use its label as the numeric-aware warehouse sequence, then ID.
         const labelOrder = compareText(
           text(a.row.locationLabel, a.row.locationId),
           text(b.row.locationLabel, b.row.locationId),

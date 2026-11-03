@@ -124,6 +124,36 @@ describe("lot-first allocation plans", () => {
     expect(plan.lots[1].qtyAllocated).toBe(0);
   });
 
+  it("keeps same-timestamp lots separate and applies stable lot-number then location-label ordering", () => {
+    const receivedAt = new Date("2026-10-20T09:30:00.000Z");
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-b", lotNumber: "LOT-B", locationId: "loc-b", locationLabel: "B1-01", qtyRemaining: 4, receivedAt }),
+      makeRow({ lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-z", locationLabel: "Z1-01", qtyRemaining: 2, receivedAt }),
+      makeRow({ lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a", locationLabel: "A1-01", qtyRemaining: 2, receivedAt }),
+    ], 8, false);
+
+    expect(plan.lots.map(({ lotId, lotNumber }) => [lotId, lotNumber])).toEqual([
+      ["lot-a", "LOT-A"],
+      ["lot-b", "LOT-B"],
+    ]);
+    expect(plan.lines).toEqual([
+      { lotId: "lot-a", locationId: "loc-a", qtyAllocated: 2 },
+      { lotId: "lot-a", locationId: "loc-z", qtyAllocated: 2 },
+      { lotId: "lot-b", locationId: "loc-b", qtyAllocated: 4 },
+    ]);
+  });
+
+  it("uses lot ID as the stable tie-breaker when distinct lots share number and receipt timestamp", () => {
+    const receivedAt = new Date("2026-10-20T09:30:00.000Z");
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-z", lotNumber: "LOT-SAME", locationId: "loc-z", qtyRemaining: 1, receivedAt }),
+      makeRow({ lotId: "lot-a", lotNumber: "LOT-SAME", locationId: "loc-a", qtyRemaining: 1, receivedAt }),
+    ], 2, false);
+
+    expect(plan.lots.map(({ lotId }) => lotId)).toEqual(["lot-a", "lot-z"]);
+    expect(plan.lines.map(({ lotId }) => lotId)).toEqual(["lot-a", "lot-z"]);
+  });
+
   it("moves to the next lot only after every earlier-lot location is exhausted", () => {
     const plan = buildAllocationPlan([
       makeRow({ lotId: "lot-first", lotNumber: "LOT-1", locationId: "loc-2", locationLabel: "B-02", qtyRemaining: 10, receivedAt: new Date("2026-01-01") }),

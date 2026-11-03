@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { parseDraDocumentAction } from "../../_actions";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
 
 vi.mock("../../_actions", () => ({
@@ -169,7 +170,37 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
   });
 
-  it("does not request approval when a split follows the normal FIFO plan", () => {
+  it("allocates FEFO lot-first across locations and only uses the later lot for the remainder", () => {
+    const perishableStock = [
+      { ...stock[0], isPerishable: true, expiryDate: "2026-05-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 2, balanceId: "early-1", lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-z", locationLabel: "Z1-01" },
+      { ...stock[0], isPerishable: true, expiryDate: "2026-05-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 3, balanceId: "early-2", lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-a", locationLabel: "A1-01" },
+      { ...stock[0], isPerishable: true, expiryDate: "2026-06-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 10, balanceId: "late-1", lotId: "lot-late", lotNumber: "LOT-LATE", locationId: "loc-b", locationLabel: "B1-01" },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={perishableStock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "12" } });
+
+    expect(screen.getAllByLabelText("Boxes from A1-01")[0]).toHaveValue(3);
+    expect(screen.getAllByLabelText("Boxes from Z1-01")[0]).toHaveValue(2);
+    expect(screen.getAllByLabelText("Boxes from B1-01")[0]).toHaveValue(7);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+  });
+
+  it("automatically fills the next FIFO location when the requested quantity exceeds the first location", () => {
     const stockWithSplitFifo = [
       { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10" },
       { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11" },
@@ -191,8 +222,6 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "15" } });
-    fireEvent.change(screen.getAllByLabelText("Add location within FIFO lot")[0], { target: { value: "balance-2" } });
-    fireEvent.change(screen.getAllByLabelText("Boxes from C1-11")[0], { target: { value: "5" } });
 
     expect(screen.getAllByLabelText("Boxes from C1-10")[0]).toHaveValue(10);
     expect(screen.getAllByLabelText("Boxes from C1-11")[0]).toHaveValue(5);
@@ -246,7 +275,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByText(/Required: select the downstream End Customer/)).toBeInTheDocument();
   });
 
-  it("limits quantity to on-hand boxes, exposes source locations, and preserves Customer PN input", () => {
+  it("preserves requested quantity when a fixed location is too small and recovers through FIFO split", () => {
     const stockWithSources = [
       { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01" },
       { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05" },
@@ -270,8 +299,8 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
 
     const quantityInputs = screen.getAllByLabelText("Qty (Boxes)");
-    fireEvent.change(quantityInputs[0], { target: { value: "20" } });
-    expect(quantityInputs[0]).toHaveValue(15);
+    fireEvent.change(quantityInputs[0], { target: { value: "12" } });
+    expect(quantityInputs[0]).toHaveValue(12);
 
     expect(screen.getAllByRole("button", { name: "Use fixed location" }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole("button", { name: "Use fixed location" })[0]);
@@ -284,17 +313,25 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(locationSelectors[0].textContent).toContain("B2-05");
 
     fireEvent.change(locationSelectors[0], { target: { value: "balance-2" } });
-    expect(quantityInputs[0]).toHaveValue(5);
-    expect(screen.getAllByText(/Supervisor approval required for this source/).length).toBeGreaterThan(0);
+    expect(quantityInputs[0]).toHaveValue(12);
+    expect(screen.getAllByRole("alert").some((alert) => alert.textContent?.includes("This location has 5 boxes"))).toBe(true);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+    fireEvent.click(screen.getAllByRole("button", { name: "Split quantities manually" })[0]);
+    expect(quantityInputs[0]).toHaveValue(12);
+    expect(screen.getAllByLabelText("Boxes from A4-01")[0]).toHaveValue(10);
+    expect(screen.getAllByLabelText("Boxes from B2-05")[0]).toHaveValue(2);
     expect(screen.queryByText(/Insufficient/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
 
     fireEvent.change(locationSelectors[0], { target: { value: "" } });
 
     const customerPnInputs = screen.getAllByTitle("Customer part number snapshot");
     fireEvent.change(customerPnInputs[0], { target: { value: "CUSTOMER-PN-42" } });
 
+    expect(customerPnInputs[0]).toHaveValue("CUSTOMER-PN-42");
     const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
-    expect(JSON.parse(request.value).lines[0].customerItemCode).toBe("CUSTOMER-PN-42");
+    expect(JSON.parse(request.value).lines.reduce((sum: number, line: { qty: number }) => sum + line.qty, 0)).toBe(12);
+    expect(JSON.parse(request.value).lines.every((line: { customerItemCode: string }) => line.customerItemCode === "CUSTOMER-PN-42")).toBe(true);
   });
 
   it("lets the operator split one line across multiple locations with explicit box quantities", () => {
@@ -332,6 +369,45 @@ describe("MultiItemPickListDraft organization selection", () => {
       ["location-1", 1],
       ["location-2", 1],
     ]);
+  });
+
+  it("keeps a DRA shortage line in the draft and shows a clear resolution", async () => {
+    vi.mocked(parseDraDocumentAction).mockResolvedValue({
+      ok: true,
+      parseResult: {
+        rows: [
+          { itemCode: "SUP-ITEM-1", customerItemCode: "SUP-ITEM-1", itemDescription: "Test item", requestedQty: 20, packageCount: 20, spq: 1 },
+          { itemDescription: "Test item", requestedQty: 1 },
+          { itemCode: "SUP-ITEM-1", requestedQty: 0 },
+        ],
+        header: { requestingOrganization: "VMI Owner Organization" },
+        errors: [],
+        warnings: [],
+        ok: true,
+        fileName: "release.csv",
+      },
+    });
+
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    const file = new File(["dra"], "release.csv", { type: "text/csv" });
+    fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [file] } });
+
+    expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(20);
+    expect(screen.getByText(/requested 20, available 10, short 10 boxes/i)).toBeInTheDocument();
+    expect(screen.getAllByText("10 / 20 boxes")).toHaveLength(2);
+    expect(screen.getByRole("list", { name: "DRA rows to review" })).toHaveTextContent(/description alone is not a unique identifier/i);
+    expect(screen.getByRole("list", { name: "DRA rows to review" })).toHaveTextContent(/unit quantity is invalid/i);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
   });
 
   it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
