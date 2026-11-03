@@ -266,7 +266,11 @@ export async function getTradingMarginReport(): Promise<{
       .innerJoin(pickListItems, eq(tradingInvoiceLines.pickListItemId, pickListItems.id))
       .innerJoin(pickLists, eq(pickListItems.pickListId, pickLists.id))
       .where(and(eq(tradingInvoiceLines.direction, "sale"), eq(pickLists.flowType, "trading"), eq(pickLists.status, "dispatched")))
-      .groupBy(sql`to_char(${tradingInvoiceLines.lockedAt}, 'Mon YYYY')`, sql`extract(month from ${tradingInvoiceLines.lockedAt})`)
+      .groupBy(
+        sql`to_char(${tradingInvoiceLines.lockedAt}, 'Mon YYYY')`,
+        sql`extract(month from ${tradingInvoiceLines.lockedAt})`,
+        sql`date_trunc('month', ${tradingInvoiceLines.lockedAt})`,
+      )
       .orderBy(sql`date_trunc('month', ${tradingInvoiceLines.lockedAt})`);
 
     const marginHistory: TradingMarginRow[] = monthlyAgg.map((m) => {
