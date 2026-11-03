@@ -6,7 +6,8 @@ test.describe("Floor Surface & Responsive Design", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/login");
 
-    await expect(page.locator("text=Dyna-Serv WIMS")).toBeVisible();
+    await expect(page.locator('img[alt="Dyna-Serv"]')).toBeVisible();
+    await expect(page.getByText("DYNA-SERV GLOBAL CORPORATION")).toBeVisible();
     const submitBtn = page.locator('button[type="submit"]');
     await expect(submitBtn).toBeVisible();
 

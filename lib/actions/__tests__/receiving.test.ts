@@ -163,6 +163,13 @@ function makeSelectChain(rows: unknown[]) {
 function makeReceivingDb(
   wrrRows: AnyRecord[],
   wrrItemRows: AnyRecord[] = [],
+  organizationRows: AnyRecord[] = [{
+    id: "party-uuid-vendor",
+    isActive: true,
+    role: "customer",
+    relationship: "vmi_customer",
+    relationshipIsActive: true,
+  }],
 ) {
   const inserted: unknown[] = [];
   const updated: unknown[] = [];
@@ -177,13 +184,7 @@ function makeReceivingDb(
       const chain = makeSelectChain(allRows);
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
         if (table[Symbol.for("drizzle:Name")] === "parties") {
-          return makeSelectChain([{
-            id: "party-uuid-vendor",
-            isActive: true,
-            role: "customer",
-            relationship: "vmi_customer",
-            relationshipIsActive: true,
-          }]);
+          return makeSelectChain(organizationRows);
         }
         if (table[Symbol.for("drizzle:Name")] === "locations") {
           return makeSelectChain([{ id: "location-storage-uuid" }]);
@@ -481,6 +482,51 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       errors: [expect.stringMatching(/not assigned to this organization/i)],
     });
     expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns a recovery message when the selected organization became inactive before submit", async () => {
+    const db = makeReceivingDb([], [], []);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      validCreateWrrInput(),
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringMatching(/inactive|active organization/i)],
+    });
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("does not mislabel a duplicate WRR draft as an inactive organization", async () => {
+    const db = makeReceivingDb([], [{
+      id: "item-master-uuid-1",
+      defaultSupplierPartyId: "party-uuid-vendor",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+      uom: "piece",
+    }]);
+    const databaseError = Object.assign(new Error("duplicate key value violates unique constraint \"wrr_documents_pkey\""), {
+      table_name: "wrr_documents",
+      constraint_name: "wrr_documents_pkey",
+    });
+    db.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("Failed query includes vendor_party_id"), { cause: databaseError });
+    });
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      validCreateWrrInput(),
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringMatching(/already submitted|new form/i)],
+    });
   });
 });
 

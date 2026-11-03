@@ -3,7 +3,7 @@
 // Traceability:
 //   specs/06-party-and-item-enrollment/design.md §6 (Item model), §7
 
-import { eq, ilike, or, and, isNotNull, desc, sql } from "drizzle-orm";
+import { eq, ilike, or, and, isNull, isNotNull, desc, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { items, itemCategories, parties, partyRoles, partyFlowRelationships, lots, wrrItems, inventoryTransactions } from "@/lib/db/schema";
 
@@ -359,9 +359,8 @@ export async function getActiveSupplierParties(
 
 /**
  * Returns the active organizations allowed as the source organization on a
- * WRR. End customers and internal organizations are deliberately excluded:
- * they may exist in the party directory, but they are not inbound source
- * organizations for this form.
+ * WRR. End customers and outbound-only customer relationships are excluded;
+ * Internal Supplies is a valid role-only source for the Supplies flow.
  */
 export async function getActiveWrrOrganizations(
   db: DbLike,
@@ -369,7 +368,7 @@ export async function getActiveWrrOrganizations(
   return listActivePartyOptions(
     db,
     sql`${partyRoles.role}::text IN ('vendor', 'supplier', 'customer', 'internal_warehouse', 'internal_supplies')`,
-    new Set(["supplier", "customer"]),
+    new Set(["supplier", "customer", "internal_supplies"]),
   );
 }
 
@@ -403,7 +402,10 @@ async function listActivePartyOptions(
           // `internal_supplies` value, so binding that string as an enum
           // parameter would fail the whole query before any rows are read.
           roleFilter,
-          sql`${partyFlowRelationships.id} IS NULL OR ${partyFlowRelationships.isActive} = true`,
+          or(
+            isNull(partyFlowRelationships.id),
+            eq(partyFlowRelationships.isActive, true),
+          ),
         ),
       )
       .orderBy(parties.name)) as Array<{
@@ -454,26 +456,48 @@ async function listActivePartyOptions(
     }
   }
 
-  return Array.from(map.values()).map((p) => {
+  return Array.from(map.values()).flatMap<SupplierPartyOption>((p) => {
     // Older lightweight query doubles do not expose the relationship join.
     // Preserve their established option contract while the real query uses
     // explicit relationship metadata for organization-scoped selectors.
-    const fallbackModel = p.roles?.includes("customer") ? "vmi" : "trading";
+    const fallbackModel = p.roles?.includes("internal_supplies")
+      ? "supplies"
+      : p.roles?.includes("customer")
+        ? "vmi"
+        : "trading";
     if (!hasRelationshipJoin) {
-      return {
+      return [{
         id: p.id,
         code: p.code,
         name: p.name,
         roles: p.roles,
-        defaultInventoryModel: fallbackModel as "vmi" | "trading",
-      };
+        defaultInventoryModel: fallbackModel as "vmi" | "trading" | "supplies",
+      }];
     }
-    return {
+
+    // The receiving form must not offer an organization that the create
+    // command will reject. A trading customer relationship is outbound-only;
+    // a VMI customer is inbound-receivable, and a supplier is inbound by
+    // default. Multiple active receiving relationships are intentionally
+    // omitted because the server cannot safely infer one inventory model.
+    const receivingRelationships = (p.relationships ?? []).filter((relationship) =>
+      relationship === "vmi_customer" ||
+      relationship === "trading_supplier" ||
+      relationship === "internal_supplies",
+    );
+    if (receivingRelationships.length !== 1) return [];
+
+    const receivingRelationship = receivingRelationships[0];
+    return [{
       ...p,
-      defaultInventoryModel: p.relationships?.length === 1
-        ? p.relationships[0] === "vmi_customer" ? "vmi" : p.relationships[0] === "internal_supplies" ? "supplies" : "trading"
-        : undefined,
-    };
+      relationship: receivingRelationship,
+      relationships: [receivingRelationship],
+      defaultInventoryModel: receivingRelationship === "vmi_customer"
+        ? "vmi"
+        : receivingRelationship === "internal_supplies"
+          ? "supplies"
+          : "trading",
+    }];
   });
 }
 
