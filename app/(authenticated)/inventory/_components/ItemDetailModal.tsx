@@ -203,11 +203,11 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
       role="dialog"
       aria-modal="true"
       aria-labelledby="item-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/60 p-3 sm:p-5 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex min-w-0 items-center justify-center overflow-x-hidden bg-brand-navy/60 p-2 sm:p-5 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-2xl">
+      <div className="flex h-[min(90dvh,900px)] w-full min-w-0 max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-surface-white shadow-2xl [&_*]:!text-[11px]">
         {/* ── Modal Header ── */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#F8FAFF] px-6 py-4">
+        <div className="flex min-w-0 items-center justify-between gap-2 border-b border-slate-200 bg-[#F8FAFF] px-3 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-navy text-surface-white shadow-sm">
               <Package size={22} />
@@ -256,11 +256,11 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
         </div>
 
         {/* ── Tab Navigation ── */}
-        <div className="flex border-b border-slate-200 bg-surface-white px-6">
+        <div className="flex min-w-0 snap-x snap-mandatory overflow-x-auto overscroll-x-contain border-b border-slate-200 bg-surface-white px-2 sm:px-6">
           <button
             type="button"
             onClick={() => setActiveTab("specs")}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+            className={`flex shrink-0 snap-start items-center gap-2 border-b-2 px-3 py-3 text-[10px] font-bold uppercase tracking-wide transition-colors sm:px-4 sm:text-xs sm:tracking-wider ${
               activeTab === "specs"
                 ? "border-brand-navy text-brand-navy"
                 : "border-transparent text-text-grey hover:text-slate-800"
@@ -271,7 +271,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
           <button
             type="button"
             onClick={() => setActiveTab("stock")}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+            className={`flex shrink-0 snap-start items-center gap-2 border-b-2 px-3 py-3 text-[10px] font-bold uppercase tracking-wide transition-colors sm:px-4 sm:text-xs sm:tracking-wider ${
               activeTab === "stock"
                 ? "border-brand-navy text-brand-navy"
                 : "border-transparent text-text-grey hover:text-slate-800"
@@ -282,7 +282,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
           <button
             type="button"
             onClick={() => setActiveTab("movements")}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+            className={`flex shrink-0 snap-start items-center gap-2 border-b-2 px-3 py-3 text-[10px] font-bold uppercase tracking-wide transition-colors sm:px-4 sm:text-xs sm:tracking-wider ${
               activeTab === "movements"
                 ? "border-brand-navy text-brand-navy"
                 : "border-transparent text-text-grey hover:text-slate-800"
@@ -293,7 +293,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
         </div>
 
         {/* ── Modal Body Content ── */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFA]/60">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-6 bg-[#FAFAFA]/60">
           {loading ? (
             <div className="flex h-64 flex-col items-center justify-center gap-3 text-text-grey">
               <RefreshCw size={24} className="animate-spin text-brand-navy" />
@@ -313,11 +313,11 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
               {activeTab === "specs" && (
                 <div className="space-y-6">
                   {/* Identifiers Grid */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm space-y-4">
+                  <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-surface-white p-3 shadow-sm space-y-4 sm:p-5">
                     <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-brand-navy flex items-center gap-2">
                       <Barcode size={15} /> Master Identifiers & Hierarchy
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-3 text-xs sm:gap-4 md:grid-cols-4 [&>*]:min-w-0 [&_p]:break-words">
                       <div>
                         <span className="text-text-grey font-medium">Dyna-Serv Item Code</span>
                         <p className="font-mono font-bold text-slate-900 mt-0.5">{itemDetail?.code || groupedItem.itemCode}</p>
@@ -366,11 +366,11 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                   </div>
 
                   {/* Packaging & Volumetric Dimensions */}
-                  <div className="rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm space-y-4">
+                  <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-surface-white p-3 shadow-sm space-y-4 sm:p-5">
                     <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-brand-navy flex items-center gap-2">
                       <Package size={15} /> Packaging, Dimensions & Weight
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-3 text-xs sm:gap-4 md:grid-cols-4 [&>*]:min-w-0 [&_p]:break-words">
                       <div>
                         <span className="text-text-grey font-medium">Enrolled Unit of Measure (UOM)</span>
                         <p className="font-mono font-bold text-brand-navy mt-0.5 uppercase">{uom}</p>
@@ -1209,8 +1209,8 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
         </div>
 
         {/* ── Modal Footer ── */}
-        <div className="flex items-center justify-between border-t border-slate-200 bg-surface-white px-6 py-3.5">
-          <span className="text-xs text-text-grey">
+        <div className="flex min-w-0 items-center justify-between gap-3 border-t border-slate-200 bg-surface-white px-3 py-3.5 sm:px-6">
+          <span className="min-w-0 break-all text-[10px] text-text-grey sm:text-xs">
             Item ID: <span className="font-mono">{groupedItem.itemId}</span>
           </span>
           <button
