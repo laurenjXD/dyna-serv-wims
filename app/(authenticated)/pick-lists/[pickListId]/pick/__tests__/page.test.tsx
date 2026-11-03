@@ -1,4 +1,5 @@
-// Retired pick-execution route — retained only to redirect old bookmarks.
+// Pick-list review/approval route. Physical barcode scanning remains on the
+// separate Dispatch route after the allocated list becomes picked.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
@@ -25,23 +26,22 @@ import { dirname, resolve } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pageSource = () => readFileSync(resolve(__dirname, "../page.tsx"), "utf8");
 
-describe("Retired pick route (app/(authenticated)/pick-lists/[pickListId]/pick/page.tsx)", () => {
-  it("AC R7.1/R7.2: exports a default component", async () => {
+describe("Pick-list approval route (app/(authenticated)/pick-lists/[pickListId]/pick/page.tsx)", () => {
+  it("exports a default component", async () => {
     const mod = await import("../page");
     expect(typeof mod.default).toBe("function");
   });
 
-  // R7.1 — the component must be named (not anonymous) so server error
-  // boundaries surface it correctly on the floor where errors need fast triage.
-  it("AC R7.1: default export has a non-empty function name", async () => {
+  it("has a named default export", async () => {
     const mod = await import("../page");
     expect(mod.default.name.length).toBeGreaterThan(0);
   });
 
-  it("redirects legacy pick URLs to the direct Dispatch route", () => {
+  it("keeps approval and dispatch as separate phases", () => {
     const source = pageSource();
-    expect(source).toContain('redirect(`/pick-lists/${pickListId}/dispatch`)');
-    expect(source).not.toContain("Stage pick list");
-    expect(source).not.toContain("Confirm boxes staged");
+    expect(source).toContain("Pick List Approval Gate");
+    expect(source).toContain("approvePickList");
+    expect(source).toContain("Approve &amp; Move to Dispatch");
+    expect(source).not.toContain("Scan QR for dispatch");
   });
 });

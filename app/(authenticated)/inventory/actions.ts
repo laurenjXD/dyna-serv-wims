@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
-import { commitWithdrawal, markPickListPicked, requestFifoOverride } from "@/lib/actions/withdrawals";
+import { commitWithdrawal, requestFifoOverride } from "@/lib/actions/withdrawals";
 import { approveCycleCount, createCycleCount, postCycleCount, recordCycleCount, rejectCycleCount, requestCycleCountRecount, submitCycleCount } from "@/lib/actions/cycle-count";
 
 export async function createPickList(formData: FormData): Promise<void> {
@@ -82,19 +82,10 @@ export async function markPickListReadyForDispatch(formData: FormData): Promise<
     redirect("/inventory?tab=pick-lists&pickListError=invalid_pick_list");
   }
 
-  const result = await markPickListPicked(
-    await createPageResolver(),
-    pickListId,
-    [],
-  );
-  if (!result.ok) {
-    redirect(`/inventory?tab=pick-lists&pickListError=${encodeURIComponent(result.errors.join(","))}`);
-  }
-
-  revalidatePath("/inventory");
-  revalidatePath("/outgoing");
-  revalidatePath("/pick-lists");
-  redirect(`/inventory?tab=pick-lists&pickListPicked=${encodeURIComponent(pickListId)}`);
+  // Kept as a compatibility action for older rendered forms/bookmarks. The
+  // old implementation changed allocated -> picked directly, which bypassed
+  // the approval gate. Approval now owns that transition.
+  redirect(`/pick-lists/${pickListId}/pick`);
 }
 
 function cycleCountRedirect(result: { ok: boolean; sessionId?: string; reason?: string }): never {

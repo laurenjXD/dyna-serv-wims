@@ -60,8 +60,6 @@ import {
   Truck,
   CheckCircle2,
   ScanLine,
-  ShieldCheck,
-  Trash2,
 } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -69,7 +67,6 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList, selectPickUnit, reportLocationShortage } from "@/lib/actions/withdrawals";
-import { approvePickList, deletePickList } from "../../_actions";
 import { OfflineDispatchScanForm } from "./_components/OfflineDispatchScanForm";
 import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
@@ -124,6 +121,11 @@ export default async function DispatchConfirmationPage({
   if (!pickList) {
     notFound();
   }
+  // Allocated lists belong to the To Pick queue. Keep the approval gate out
+  // of the dispatch surface so this route can only be used after approval.
+  if (pickList.status === "allocated") {
+    redirect(`/pick-lists/${pickListId}/pick`);
+  }
 
   const [items, selections] = await Promise.all([
     getPickListItems(db, pickListId),
@@ -142,7 +144,6 @@ export default async function DispatchConfirmationPage({
   const partyName = partyRows[0]?.name ?? (pickList.flowType === "vmi" ? "Unknown End Customer" : "Unknown Customer");
 
   const alreadyDispatched = pickList.status === "dispatched";
-  const awaitingPickCompletion = pickList.status === "allocated";
 
   const totalLines = items.length;
   const totalRequiredBoxes = items.reduce((sum, item) => sum + item.numberOfBoxes, 0);
@@ -288,23 +289,6 @@ export default async function DispatchConfirmationPage({
           </div>
         )}
 
-        {/* Approval Success Banner */}
-        {result === "approved" && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mb-3 flex items-center gap-3 rounded-xl bg-status-available/15 border border-status-available/40 px-4 py-3"
-          >
-            <CheckCircle2 size={22} className="shrink-0 text-status-available" aria-hidden="true" />
-            <div>
-              <p className="font-heading text-body-md font-bold text-on-surface">Pick List Approved</p>
-              <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Approved by Supervisor. You may now proceed with physical barcode scanning and final dispatch.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Already dispatched state */}
         {alreadyDispatched && (
           <div
@@ -318,62 +302,6 @@ export default async function DispatchConfirmationPage({
             <p className="mt-1 font-body text-body-md text-text-grey">
               This pick list has already been dispatched.
             </p>
-          </div>
-        )}
-
-        {awaitingPickCompletion && (
-          <div className="mb-3 rounded-xl border border-status-pending/40 bg-status-pending/10 p-5 shadow-elevation-1">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-6 w-6 text-brand-navy" />
-                  <p className="font-heading text-headline-sm font-bold text-on-surface">
-                    Pick List Approval Gate
-                  </p>
-                </div>
-                <p className="mt-2 font-body text-body-md text-text-grey">
-                  This pick list is currently allocated. Per warehouse protocol, a Supervisor or Administrator must review and approve this list before Dispatch scanning can begin.
-                </p>
-                <p className="mt-2 font-body text-body-md font-semibold text-status-pending">
-                  Scanning will appear after approval. Use “Approve Pick List for Dispatch” to unlock the scanner.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <form action={approvePickList}>
-                <input type="hidden" name="pickListId" value={pickListId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-label text-body-md font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
-                >
-                  <ShieldCheck className="h-5 w-5" />
-                  Approve Pick List for Dispatch
-                </button>
-              </form>
-              <span
-                aria-disabled="true"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-light-grey px-4 font-label text-body-md font-semibold text-text-grey"
-              >
-                Line Items Locked After Reservation
-              </span>
-              <Link
-                href={`/pick-lists/${pickListId}/print`}
-                target="_blank"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-4 font-label text-body-md font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-              >
-                Review Pick List PDF &rarr;
-              </Link>
-              <form action={deletePickList}>
-                <input type="hidden" name="pickListId" value={pickListId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-status-held/40 bg-surface-white px-4 font-label text-body-md font-semibold text-status-held hover:bg-status-held/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Pick List
-                </button>
-              </form>
-            </div>
           </div>
         )}
 
@@ -553,9 +481,7 @@ export default async function DispatchConfirmationPage({
                   className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
                 >
                   <Truck size={24} strokeWidth={2} aria-hidden="true" />
-                  {awaitingPickCompletion
-                    ? "Approve Pick List Before Scanning"
-                    : allBoxesScanned
+                  {allBoxesScanned
                       ? "Confirm Dispatch"
                       : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
                 </OnlineOnlySubmitButton>

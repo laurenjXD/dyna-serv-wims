@@ -186,7 +186,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                 )}
               </div>
               <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Physical picking queue for allocated stock — review PDF, pull cartons from storage racks, and proceed to dispatch.
+                Review allocated stock, edit it if needed, then approve it before it moves to Dispatch.
               </p>
             </div>
           </div>
@@ -256,7 +256,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                 Dispatch Scan
               </h4>
               <p className="mt-1 font-body text-body-xs text-text-grey">
-                Mark as picked and scan cartons in Dispatch to issue the delivery receipt.
+                Approve the list here, then scan cartons in Dispatch to issue the delivery receipt.
               </p>
             </div>
           </div>
@@ -317,10 +317,16 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                       <span>PDF</span>
                     </Link>
                     <Link
-                      href={`/pick-lists/${row.id}/dispatch`}
+                      href={`/pick-lists/${row.id}/edit`}
+                      className="inline-flex min-h-11 min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-brand-navy/25 bg-brand-navy/5 px-4 font-label text-sm font-bold text-brand-navy"
+                    >
+                      <span>Edit</span>
+                    </Link>
+                    <Link
+                      href={`/pick-lists/${row.id}/pick`}
                       className="inline-flex min-h-11 min-w-0 flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand-navy px-4 font-label text-sm font-bold text-white"
                     >
-                      <span>Pick &amp; Dispatch</span>
+                      <span>Review &amp; Approve</span>
                       <ArrowRight size={15} />
                     </Link>
                   </>}
@@ -367,7 +373,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                       {/* Pick List Number */}
                       <td className="px-5 py-4">
                         <Link
-                          href={`/pick-lists/${row.id}/dispatch`}
+                          href={`/pick-lists/${row.id}/pick`}
                           className="font-mono text-mono-md font-bold text-brand-navy group-hover:text-primary transition-colors inline-flex items-center gap-1.5"
                         >
                           <span>{row.pickListNumber}</span>
@@ -423,10 +429,16 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                           </Link>
 
                           <Link
-                            href={`/pick-lists/${row.id}/dispatch`}
+                            href={`/pick-lists/${row.id}/edit`}
+                            className="inline-flex h-10 min-w-[4.5rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-brand-navy/25 bg-brand-navy/5 px-3 font-label text-label-xs font-bold text-brand-navy shadow-sm transition-all hover:bg-brand-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
+                          >
+                            <span>Edit</span>
+                          </Link>
+                          <Link
+                            href={`/pick-lists/${row.id}/pick`}
                             className="inline-flex h-10 min-w-[9.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-brand-navy px-3.5 font-label text-label-xs font-bold text-surface-white shadow-sm transition-all hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
                           >
-                            <span>Pick &amp; Dispatch</span>
+                            <span>Review &amp; Approve</span>
                             <ArrowRight size={13} />
                           </Link>
                         </div>

@@ -12,6 +12,8 @@ import { getStorageClient } from "@/lib/supabase/storage";
 import {
   completeExactPick,
   reportLocationShortage,
+  updateCommittedPickListLineItems,
+  type UpdateCommittedPickListLine,
 } from "@/lib/actions/withdrawals";
 
 function validReceipt(file: File) {
@@ -77,9 +79,11 @@ export async function approvePickList(formData: FormData) {
     redirect(`/inventory?tab=pick-lists&error=${encodeURIComponent(result.errors[0] ?? "invalid_transition")}`);
   }
   revalidatePath("/inventory");
+  revalidatePath("/pick-lists");
   revalidatePath("/outgoing");
+  revalidatePath(`/pick-lists/${pickListId}/pick`);
   revalidatePath(`/pick-lists/${pickListId}/dispatch`);
-  redirect(`/pick-lists/${pickListId}/dispatch?result=approved`);
+  redirect("/outgoing");
 }
 
 export async function updateQueuedPickListLineItems(formData: FormData) {
@@ -93,12 +97,25 @@ export async function updateQueuedPickListLineItems(formData: FormData) {
     redirect(`/pick-lists/${pickListId}/edit?error=invalid_payload`);
   }
 
-  // Stage 1 already reserved the authoritative quantities when this pick list
-  // was created. Mutating line quantities here would orphan the reservation
-  // unless the caller performs a dedicated, audited reallocation. Keep the
-  // committed snapshot immutable and direct operators to the shortage/
-  // reallocation workflow instead.
-  redirect(`/pick-lists/${pickListId}/edit?error=pick_list_locked`);
+  let updates: UpdateCommittedPickListLine[];
+  try {
+    const parsed = JSON.parse(payload) as unknown;
+    if (!Array.isArray(parsed)) throw new Error("invalid_payload");
+    updates = parsed as UpdateCommittedPickListLine[];
+  } catch {
+    redirect(`/pick-lists/${pickListId}/edit?error=invalid_payload`);
+  }
+
+  const result = await updateCommittedPickListLineItems(resolver, pickListId, updates!);
+  if (!result.ok) {
+    redirect(`/pick-lists/${pickListId}/edit?error=${encodeURIComponent(result.errors[0] ?? "unable_to_update_pick_list")}`);
+  }
+
+  revalidatePath(`/pick-lists/${pickListId}/edit`);
+  revalidatePath(`/pick-lists/${pickListId}/pick`);
+  revalidatePath("/pick-lists");
+  revalidatePath("/inventory");
+  redirect(`/pick-lists/${pickListId}/pick?result=updated`);
 }
 
 export async function reportPickListShortage(formData: FormData) {

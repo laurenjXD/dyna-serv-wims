@@ -149,6 +149,17 @@ export type MarkPickListPickedResult =
   | { ok: true }
   | { ok: false; errors: string[] };
 
+export type UpdateCommittedPickListLine = {
+  lineId: string;
+  qty: number;
+  spq: number;
+  numberOfBoxes: number;
+};
+
+export type UpdateCommittedPickListResult =
+  | { ok: true }
+  | { ok: false; errors: string[] };
+
 export type SelectPickUnitResult =
   | { ok: true; selectedCount: number; requiredCount: number }
   | { ok: false; errors: string[] };
@@ -559,8 +570,8 @@ export async function commitWithdrawal(
         endCustomerPartyId: recipientPartyId,
         flowType: data.flowType,
         // Commitment reserves the stock but does not certify that warehouse
-        // picking is complete. The explicit Mark as Picked command is the
-        // only path from allocated into the Dispatch queue.
+        // picking is complete. Explicit approval is the only path from
+        // allocated into the Dispatch queue.
         status: "allocated",
       })
       .returning();
@@ -988,6 +999,181 @@ export async function markPickListPicked(
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<MarkPickListPickedResult> {
   return completeExactPick(resolver, pickListId, rlsDeps);
+}
+
+/**
+ * Updates an allocated pick-list snapshot and its matching reservation.
+ *
+ * This is intentionally limited to the pre-approval `allocated` phase. The
+ * source lot/location does not change here; changing source requires a new
+ * allocation so the FIFO/FEFO and approval rules are re-run by Stage 1.
+ */
+export async function updateCommittedPickListLineItems(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  updates: UpdateCommittedPickListLine[],
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<UpdateCommittedPickListResult> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!pickListId || updates.length === 0) {
+    return { ok: false, errors: ["invalid_payload"] };
+  }
+
+  const seen = new Set<string>();
+  for (const update of updates) {
+    if (
+      !update.lineId ||
+      seen.has(update.lineId) ||
+      !Number.isInteger(update.qty) ||
+      !Number.isInteger(update.spq) ||
+      !Number.isInteger(update.numberOfBoxes) ||
+      update.qty < 1 ||
+      update.spq < 1 ||
+      update.numberOfBoxes < 1 ||
+      update.qty !== update.spq * update.numberOfBoxes
+    ) {
+      return { ok: false, errors: ["invalid_line_quantity"] };
+    }
+    seen.add(update.lineId);
+  }
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const database = tx.db as DbLike;
+      const [pickList] = (await database
+        .select({ status: pickLists.status })
+        .from(pickLists)
+        .where(eq(pickLists.id, pickListId))
+        .limit(1)) as Array<{ status: string }>;
+      if (!pickList) return { ok: false as const, errors: ["not_found"] };
+      if (pickList.status !== "allocated") {
+        return { ok: false as const, errors: ["pick_list_locked"] };
+      }
+
+      const [commitment] = (await database
+        .select({ id: inventoryCommitments.id, status: inventoryCommitments.status })
+        .from(inventoryCommitments)
+        .where(eq(inventoryCommitments.pickListId, pickListId))
+        .limit(1)) as Array<{ id: string; status: string }>;
+      if (!commitment || commitment.status !== "active") {
+        return { ok: false as const, errors: ["commitment_not_active"] };
+      }
+
+      const currentItems = (await database
+        .select({
+          id: pickListItems.id,
+          qty: pickListItems.qty,
+          spq: pickListItems.spq,
+          numberOfBoxes: pickListItems.numberOfBoxes,
+        })
+        .from(pickListItems)
+        .where(eq(pickListItems.pickListId, pickListId))) as Array<{
+        id: string;
+        qty: number;
+        spq: number;
+        numberOfBoxes: number;
+      }>;
+      if (currentItems.length !== updates.length || currentItems.some((item) => !seen.has(item.id))) {
+        return { ok: false as const, errors: ["invalid_payload"] };
+      }
+
+      const commitmentLines = (await database
+        .select({
+          id: inventoryCommitmentLines.id,
+          pickListItemId: inventoryCommitmentLines.pickListItemId,
+          balanceId: inventoryCommitmentLines.lotLocationBalanceId,
+          qtyCommitted: inventoryCommitmentLines.qtyCommitted,
+        })
+        .from(inventoryCommitmentLines)
+        .where(eq(inventoryCommitmentLines.commitmentId, commitment.id))) as Array<{
+        id: string;
+        pickListItemId: string;
+        balanceId: string;
+        qtyCommitted: number;
+      }>;
+      if (commitmentLines.length !== currentItems.length) {
+        return { ok: false as const, errors: ["commitment_mismatch"] };
+      }
+
+      const balances = (await database
+        .select({
+          id: lotLocationBalances.id,
+          qtyRemaining: lotLocationBalances.qtyRemaining,
+          qtyCommitted: lotLocationBalances.qtyCommitted,
+        })
+        .from(lotLocationBalances)
+        .where(inArray(lotLocationBalances.id, commitmentLines.map((line) => line.balanceId)))) as Array<{
+        id: string;
+        qtyRemaining: number;
+        qtyCommitted: number;
+      }>;
+      const balanceById = new Map(balances.map((balance) => [balance.id, balance]));
+      const itemById = new Map(currentItems.map((item) => [item.id, item]));
+
+      for (const line of commitmentLines) {
+        const current = itemById.get(line.pickListItemId);
+        const next = updates.find((update) => update.lineId === line.pickListItemId);
+        const balance = balanceById.get(line.balanceId);
+        if (!current || !next || !balance || line.qtyCommitted !== current.qty) {
+          return { ok: false as const, errors: ["commitment_mismatch"] };
+        }
+
+        const delta = next.qty - current.qty;
+        if (delta > 0) {
+          const updated = await database
+            .update(lotLocationBalances)
+            .set({
+              qtyCommitted: sql`${lotLocationBalances.qtyCommitted} + ${delta}`,
+              version: sql`${lotLocationBalances.version} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(lotLocationBalances.id, line.balanceId),
+              sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} >= ${delta}`,
+            ))
+            .returning({ id: lotLocationBalances.id });
+          if (updated.length !== 1) return { ok: false as const, errors: ["insufficient_stock"] };
+        } else if (delta < 0) {
+          const updated = await database
+            .update(lotLocationBalances)
+            .set({
+              qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${Math.abs(delta)}`,
+              version: sql`${lotLocationBalances.version} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(lotLocationBalances.id, line.balanceId),
+              sql`${lotLocationBalances.qtyCommitted} >= ${Math.abs(delta)}`,
+            ))
+            .returning({ id: lotLocationBalances.id });
+          if (updated.length !== 1) return { ok: false as const, errors: ["reservation_mismatch"] };
+        }
+
+        await database
+          .update(inventoryCommitmentLines)
+          .set({ qtyCommitted: next.qty, updatedAt: new Date() })
+          .where(eq(inventoryCommitmentLines.id, line.id));
+        await database
+          .update(pickListItems)
+          .set({ qty: next.qty, spq: next.spq, numberOfBoxes: next.numberOfBoxes })
+          .where(eq(pickListItems.id, line.pickListItemId));
+      }
+
+      await database
+        .update(pickLists)
+        .set({ updatedAt: new Date() })
+        .where(eq(pickLists.id, pickListId));
+
+      return { ok: true as const };
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Allocated pick-list update failed", error);
+    return { ok: false, errors: ["unable_to_update_pick_list"] };
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Save, ShieldCheck } from "@/components/ui/icons";
+import { ChevronLeft, Save } from "@/components/ui/icons";
 import { updateQueuedPickListLineItems } from "../../../_actions";
 import { TablePagination } from "@/components/ui/TablePagination";
 
@@ -23,11 +23,13 @@ export function EditPickListClient({
   pickListId,
   pickListNumber,
   status,
+  error,
   initialItems,
 }: {
   pickListId: string;
   pickListNumber: string;
   status: string;
+  error?: string;
   initialItems: EditablePickListItem[];
 }) {
   const [items, setItems] = useState<EditablePickListItem[]>(initialItems);
@@ -85,7 +87,7 @@ export function EditPickListClient({
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant/30 pb-6">
         <div className="flex items-center gap-3">
           <Link
-            href={`/pick-lists/${pickListId}/dispatch`}
+            href={`/pick-lists/${pickListId}/pick`}
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
             aria-label="Back to Pick List"
           >
@@ -104,7 +106,7 @@ export function EditPickListClient({
               </span>
             </div>
             <p className="mt-1 font-body text-body-sm text-text-grey">
-              Modify QTY, SPQ, or Box counts before dispatch. Changes update physical picking verification.
+              Modify QTY, SPQ, or box counts before approval. The reservation is adjusted with the saved values.
             </p>
           </div>
         </div>
@@ -113,7 +115,7 @@ export function EditPickListClient({
           <input type="hidden" name="pickListId" value={pickListId} />
           <input type="hidden" name="lineItemsPayload" value={lineItemsPayload} />
           <Link
-            href={`/pick-lists/${pickListId}/dispatch`}
+            href={`/pick-lists/${pickListId}/pick`}
             className="inline-flex h-11 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey"
           >
             Cancel
@@ -129,6 +131,18 @@ export function EditPickListClient({
       </div>
 
       {/* Summary Chips */}
+      {error && (
+        <div role="alert" className="mt-5 rounded-xl border border-status-held/40 bg-status-held/10 px-4 py-3 font-body text-body-sm text-status-held">
+          {error === "invalid_line_quantity"
+            ? "Each line must have a positive quantity made up of complete boxes (units = SPQ × boxes)."
+            : error === "insufficient_stock"
+              ? "There is not enough available stock for that increase. Refresh the list and try again."
+              : error === "pick_list_locked"
+                ? "This pick list has already moved out of To Pick and can no longer be edited."
+                : "The pick list could not be updated. Refresh and try again."}
+        </div>
+      )}
+
       <div className="mt-6 flex flex-wrap gap-4">
         <div className="rounded-xl border border-outline-variant/30 bg-surface-white px-4 py-3 shadow-elevation-1">
           <p className="font-label text-label-xs uppercase text-text-grey">Total Packages (Boxes)</p>
