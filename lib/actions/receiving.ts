@@ -71,6 +71,52 @@ function canonicalItemUom(uom: string): string {
   return uom.toLowerCase() === "pallet" ? "piece" : uom.toLowerCase();
 }
 
+function organizationValidationMessage(error: string): string {
+  switch (error) {
+    case "organization_inactive_or_not_found":
+      return "The selected organization is inactive or no longer exists. Refresh the page and choose an active organization.";
+    case "organization_relationship_required":
+      return "The selected organization has no active receiving relationship. Configure VMI Customer, Trading Supplier, or Internal Supplies in Master Data.";
+    case "organization_inventory_model_ambiguous":
+      return "The selected organization has multiple active receiving relationships. Keep exactly one receiving relationship in Master Data before creating the WRR.";
+    case "inventory_model_must_match_organization":
+      return "The selected Inventory Model does not match the organization’s active receiving relationship. Refresh the page and select the organization again.";
+    default:
+      return error;
+  }
+}
+
+function createWrrDatabaseErrorMessage(error: unknown): string {
+  const rootError = error instanceof Error && error.cause instanceof Error
+    ? error.cause
+    : error;
+  const databaseError = rootError as {
+    message?: unknown;
+    constraint_name?: unknown;
+    table_name?: unknown;
+  };
+  const normalized = [
+    typeof databaseError.message === "string" ? databaseError.message : String(error),
+    typeof databaseError.constraint_name === "string" ? databaseError.constraint_name : "",
+    typeof databaseError.table_name === "string" ? databaseError.table_name : "",
+  ].join(" ").toLowerCase();
+
+  if (normalized.includes("row-level security") || normalized.includes("permission denied")) {
+    return "The WRR could not be created because your receiving permission or database access is not active. Sign in again or ask an administrator to verify receiving.confirm.";
+  }
+  if (normalized.includes("wrr_documents_vendor_party_id") || normalized.includes("wrr_documents") && normalized.includes("foreign key")) {
+    return "The selected organization is no longer available. Refresh the page and choose an active receiving organization.";
+  }
+  if (normalized.includes("wrr_items_item_id") || normalized.includes("foreign key") && normalized.includes("items")) {
+    return "One selected item is no longer enrolled or active. Refresh the page and choose the item again from Master Data.";
+  }
+  if (normalized.includes("duplicate key") && normalized.includes("wrr_documents")) {
+    return "This WRR draft was already submitted. Refresh the page and create it again from a new form.";
+  }
+
+  return "The WRR could not be created because the selected organization or line data changed. Refresh the page, reselect the organization and items, then try again.";
+}
+
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
 // that PostgresJsDatabase, which has no index signature, is assignable here.
@@ -130,7 +176,7 @@ async function fetchWrrForAction(
   id: string;
   wrrNumber: string;
   status: string;
-  flowType: string;
+  flowType: "vmi" | "trading" | "supplies";
   vendorPartyId: string;
   stagedByUserId: string;
   commercialInvoiceNo: string | null;
@@ -169,6 +215,9 @@ async function fetchWrrForAction(
       // Preserve the item code separately so it can be entered manually when
       // a camera or hardware scanner is unavailable.
       itemCode: (enrolledItem?.code ?? line.itemCode ?? null) as string | null,
+      itemSupplierCode: (enrolledItem?.supplierItemCode ?? null) as string | null,
+      itemCustomerCode: (enrolledItem?.customerItemCode ?? null) as string | null,
+      itemDsgcNumber: (enrolledItem?.dsgcItemNumber ?? null) as string | null,
       lotNumber: line.lotNumber as string,
       spq: enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq),
       cartonCount: exactCartonCount(Number(line.expectedQty ?? 0), enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq)) ?? 0,
@@ -186,7 +235,7 @@ async function fetchWrrForAction(
     id: first.id as string,
     wrrNumber: first.wrrNumber as string,
     status: first.status as string,
-    flowType: first.flowType as string,
+    flowType: first.flowType as "vmi" | "trading" | "supplies",
     vendorPartyId: first.vendorPartyId as string,
     stagedByUserId: first.stagedByUserId as string,
     commercialInvoiceNo: (first.commercialInvoiceNo ?? null) as string | null,
@@ -277,7 +326,7 @@ export async function createWrr(
         data.flowType,
       );
       if (!organizationValidation.ok) {
-        return { ok: false, errors: [organizationValidation.error] } satisfies CreateWrrActionResult;
+        return { ok: false, errors: [organizationValidationMessage(organizationValidation.error)] } satisfies CreateWrrActionResult;
       }
       const resolvedModel = resolveReceivingInventoryModel(
         organizationRows as Array<{
@@ -290,7 +339,7 @@ export async function createWrr(
         data.vendorPartyId,
       );
       if (!resolvedModel.ok || resolvedModel.inventoryModel !== data.flowType) {
-        return { ok: false, errors: [resolvedModel.ok ? "inventory_model_must_match_organization" : resolvedModel.error] } satisfies CreateWrrActionResult;
+        return { ok: false, errors: [resolvedModel.ok ? organizationValidationMessage("inventory_model_must_match_organization") : organizationValidationMessage(resolvedModel.error)] } satisfies CreateWrrActionResult;
       }
 
       const assignmentErrors: string[] = [];
@@ -312,6 +361,7 @@ export async function createWrr(
           ))
           .limit(1);
         const match = catalogMatches[0] as { id: string; defaultSupplierPartyId: string | null } | undefined;
+        // Unassigned imports need enrollment repair before new receiving writes.
         if (match && match.defaultSupplierPartyId !== data.vendorPartyId) {
           assignmentErrors.push("The selected item is not assigned to this organization. Assign the material in Master Data before staging the WRR.");
           resolvedLines.push(line);
@@ -382,7 +432,7 @@ export async function createWrr(
         }
       }
 
-      const [inserted] = await db
+      const insertedRows = await db
         .insert(wrrDocuments)
         .values({
           // Reuses the client-generated id (see CreateWrrInput's doc comment
@@ -402,7 +452,31 @@ export async function createWrr(
           ipNumber: data.ipNumber ?? null,
           mawbMblNumber: data.mawbMblNumber ?? null,
         })
+        // The form generates a stable client-side WRR id so an uploaded CIPL
+        // can be associated with the eventual document. Treat a repeated
+        // submit of that same id as an idempotent retry instead of surfacing
+        // a duplicate-key error after the first request already committed.
+        .onConflictDoNothing({ target: wrrDocuments.id })
         .returning({ id: wrrDocuments.id });
+
+      if (insertedRows.length === 0) {
+        if (!data.id) {
+          return { ok: false, errors: ["The WRR could not be created. Refresh the page and try again."] } satisfies CreateWrrActionResult;
+        }
+
+        const existingRows = await db
+          .select({ id: wrrDocuments.id, stagedByUserId: wrrDocuments.stagedByUserId, status: wrrDocuments.status })
+          .from(wrrDocuments)
+          .where(eq(wrrDocuments.id, data.id))
+          .limit(1);
+        const existing = existingRows[0] as { id: string; stagedByUserId: string; status: string } | undefined;
+        if (existing?.stagedByUserId === userId && existing.status !== "cancelled") {
+          return { ok: true, wrrId: existing.id } satisfies CreateWrrActionResult;
+        }
+        return { ok: false, errors: ["This WRR draft already exists. Refresh the page and create a new form."] } satisfies CreateWrrActionResult;
+      }
+
+      const [inserted] = insertedRows;
 
       // A line's itemCode is a free-text field on the create-WRR form — it is
       // never checked against the items catalog at entry time. Without this
@@ -437,12 +511,7 @@ export async function createWrr(
     // application-error page. Keep the detailed error server-side while
     // returning a recovery path to the operator.
     console.error("Unable to create WRR", error);
-    return {
-      ok: false,
-      errors: [
-        "Unable to create the WRR. Confirm the selected vendor is active and try again.",
-      ],
-    };
+    return { ok: false, errors: [createWrrDatabaseErrorMessage(error)] };
   }
 
   if (rlsResult.kind === "unauthenticated") {
@@ -771,26 +840,21 @@ function peekWrrItemUnitId(barcode: string): string | null {
 }
 
 /**
- * Records a single barcode scan against a receiving_in_progress WRR.
+ * Records one line-identifying barcode scan against a receiving_in_progress WRR.
+ * For Store lines, one valid QR confirms the line's remaining declared cartons;
+ * Inspect lines continue to advance one carton at a time.
  * Requires receiving.scan capability.
  * Returns remainingQty and disposition on success.
  *
- * Amended 2026-08-20 (design.md §6.2/§9), STORE lines only: does NOT write
- * wrr_items.scanned_qty for a store-disposition line — that column now
- * means "units committed so far" for that disposition and is written
- * exclusively by commitWrrLine's per-unit commit. INSPECT-disposition lines
- * are unaffected by that amendment (design.md §6.3): recordScan still
- * increments wrr_items.scanned_qty for them exactly as before, since
- * the line commit remains a whole-line commit gated on
- * `scanned_qty >= derived carton count` with no other writer of that column. This
- * action still performs the WRR-document-QR check, matchScan matching, and
- * the per-unit duplicate-label (wrr_item_unit_scans) write, all unchanged.
+ * This action performs the WRR-document-QR check, line matching, scanned-quantity
+ * update, and any per-unit duplicate-label write in one transaction.
  */
 export async function recordScan(
   resolver: RequestAuthorizationResolver,
   wrrId: string,
   barcode: string,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+  expectedWrrItemId?: string,
 ): Promise<RecordScanResult> {
   // 1. Authorization
   const perm = await requirePermission(resolver, "receiving.scan");
@@ -838,15 +902,18 @@ export async function recordScan(
     }
 
     // 4. Match barcode against expected lines
-    const matchResult = matchScan(barcode, doc.items, undefined, alreadyScannedUnitIds);
+    const matchResult = matchScan(barcode, doc.items, doc.flowType, alreadyScannedUnitIds);
     if (!matchResult.matched) {
       return { ok: false, reason: matchResult.reason } satisfies RecordScanResult;
     }
 
     const line = matchResult.line;
+    if (expectedWrrItemId && line.id !== expectedWrrItemId) {
+      return { ok: false, reason: "stale_scan" } satisfies RecordScanResult;
+    }
 
-    // 5. Increment scannedQty. Every accepted QR represents exactly one
-    // physical pallet or unit.
+    // 5. Advance the matched line. Store-line scans consume the remaining
+    // declared cartons; inspection scans retain their one-carton behavior.
     const claimedRows = await db
       .update(wrrItems)
       .set({ scannedQty: line.scannedQty + matchResult.scanQty })

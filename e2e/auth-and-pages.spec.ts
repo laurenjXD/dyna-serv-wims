@@ -4,9 +4,10 @@ test.describe("Authentication & Public Pages", () => {
   test("login page renders Dyna-Serv WIMS brand, inputs, and submit button", async ({ page }) => {
     await page.goto("/login");
 
-    // Brand and Heading
-    await expect(page.locator("text=Dyna-Serv WIMS")).toBeVisible();
-    await expect(page.locator("h1")).toContainText(/Sign in/i);
+    // Current brand contract: logo alt text plus the legal company name.
+    await expect(page.locator('img[alt="Dyna-Serv"]')).toBeVisible();
+    await expect(page.getByText("DYNA-SERV GLOBAL CORPORATION")).toBeVisible();
+    await expect(page.locator("h1")).toContainText(/Welcome/i);
 
     // Form inputs
     const emailInput = page.locator('input[type="email"]');

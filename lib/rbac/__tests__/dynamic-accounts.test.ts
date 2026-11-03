@@ -102,4 +102,3 @@ describe("dynamic per-account capability isolation", () => {
     expect(b).toMatchObject({ kind: "authorized", context: { userId: "finance", grants: [finance] } });
   });
 });
-

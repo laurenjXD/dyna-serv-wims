@@ -153,3 +153,15 @@ Testing: Type-check/build contracts; E2E smoke flows for representative floor an
 - [x] `offline-sync-reviewer` confirms no Tier 2 action leaks into the queue — confirmed PASS on 2026-08-05 after the `wrr_scan_capture`/`pick_scan_capture` rewrite closed a real leak (three of four originally-designed Tier 1 actions actually contradicted `07`'s Tier 2 boundary).
 - [x] Product owner approval — Name: Lauren Date: 2026-08-05
 - [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
+
+## Pre-integration safety repair ? 2026-11-03
+
+Status: Approved
+
+- [x] Product Owner: User, explicit request to fix reviewed `bam` blockers before merging, 2026-11-03.
+- [x] Second approver: System, standing approval convention, 2026-11-03.
+- [x] Restrict SW caching to public assets and purge legacy private caches; regression tests execute the worker.
+- [x] Wire actor-bound durable replay receipts to owning scan commands in one transaction.
+- [x] Verify lost responses, duplicate/concurrent requests, fingerprint mismatch, rollback, and authorization with unit/real-Postgres coverage.
+
+Verification: 2,364 unit/component tests, seven disposable PostgreSQL 16 tests, scoped lint, typecheck, production build, and independent integration/RBAC review pass. Additional regressions cover actor changes on a shared receiving device, exact queued target validation for carton QRs, malformed envelopes, and inherited policy keys. No production migration or branch merge was performed.

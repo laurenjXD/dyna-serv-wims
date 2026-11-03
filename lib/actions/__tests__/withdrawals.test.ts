@@ -1051,6 +1051,16 @@ describe("markPickListPicked — physical pick completion", () => {
 });
 
 describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
+  it("rejects an inventory-unit QR from a different queued target line without mutation", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-b", itemCode: "ITEM", lotId: "lot-b", locationId: "loc-b", numberOfBoxes: 1, pickListStatus: "picked" }],
+      [{ id: "unit-b", lotId: "lot-b", locationId: "loc-b", status: "available", pickListItemId: null }],
+    ]);
+    const result = await selectPickUnit(pickerResolver(), "pick-list", JSON.stringify({ type: "inventory_unit", unit_id: "unit-b" }), mockRlsDeps(db).deps, "line-a");
+    expect(result).toEqual({ ok: false, errors: ["stale_scan"] });
+    expect(db.update).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+  });
   const sharedItemQr = "ITEM-1";
 
   it("rejects a QR that does not match any Pick List item or lot", async () => {

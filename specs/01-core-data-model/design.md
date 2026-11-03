@@ -855,3 +855,11 @@ On replay, the stored completed result is returned; no quantity, status, or
 ledger mutation is repeated. Any schema support for these records belongs in a
 dedicated approved migration with RLS and retention rules reviewed by `02` and
 `04`.
+
+## Offline scan replay receipts (2026-11-03)
+
+Canonical model: `offline_internal.scan_replay_receipts` contains `actor_user_id` UUID, `operation_id` text (1?128 characters), `action_type` (receiving/pick scan observations only), `payload_hash` (SHA-256 hex), `result` JSONB, and `created_at`. The composite primary key is `(actor_user_id, operation_id)`. Rows are immutable, retained permanently, and contain only the owning action's minimal success response; no tokens or full barcode payloads are retained.
+
+`offline_internal` is a non-PostgREST-exposed internal schema. No `anon`/`authenticated` table privileges are granted. Narrow SECURITY DEFINER receipt functions run as a NOLOGIN writer with SELECT/INSERT only, fixed empty search_path, current active actor/capability checks, and a transaction-scoped advisory lock keyed by actor/operation. The read function rejects a changed fingerprint/type; the write function persists only a successful result. These functions are called only by the backend SQL transaction, and this schema must never be added to exposed API schemas. Owning scan commands retain RLS and their existing authoritative validations; receipt functions do not mutate inventory.
+
+Migration `0072_offline_scan_replay_receipts.sql` follows `0071_dynamic_rbac_administration.sql`. The unapproved `0071_remove_approval_reason_min_length.sql` is removed from the integration candidate, restoring the approved minimum-reason constraint instead of renumbering an unauthorized policy relaxation. Verification must use disposable real PostgreSQL for duplicate/lost-response/concurrent retry, rollback, current authorization, cross-actor isolation, and denied direct table access.

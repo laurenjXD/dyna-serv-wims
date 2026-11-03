@@ -18,7 +18,7 @@ const item = (id: string, defaultSupplierPartyId: string | null): WrrItemOption 
 });
 
 describe("filterReceivingItemOptions", () => {
-  it("keeps only items assigned to the selected organization", () => {
+  it("excludes unassigned and other-organization materials", () => {
     const result = filterReceivingItemOptions([
       item("assigned", "vendor-1"),
       item("other-vendor", "vendor-2"),

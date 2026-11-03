@@ -24,6 +24,10 @@ export type WrrLine = {
   itemBarcode: string | null;
   /** Visible item code accepted as the camera-free manual fallback. */
   itemCode?: string | null;
+  /** Alternate item identities printed on supplier/customer/DSGC labels. */
+  itemSupplierCode?: string | null;
+  itemCustomerCode?: string | null;
+  itemDsgcNumber?: string | null;
   lotNumber: string;
   manufactureDate?: string | null;
   expiryDate?: string | null;
@@ -51,6 +55,10 @@ export type ScanMatchResult =
         | "duplicate_unit_scan";
     };
 
+function normalizeScanIdentity(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 /**
  * Attempts to match a scanned barcode against the WRR's expected lines.
  *
@@ -63,7 +71,8 @@ export type ScanMatchResult =
  * 6. fully_scanned — matched line's scannedQty equals the derived carton count
  *
  * When multiple lines share the same barcode, the first non-exhausted line is selected.
- * Every accepted QR represents one physical pallet or unit.
+ * A Store-line QR confirms the line and consumes its remaining declared cartons;
+ * an Inspect-line item barcode consumes one carton at a time.
  *
  * `alreadyScannedUnitIds` (added for Spec 18 §2.2's per-unit duplicate
  * detection): when the barcode parses as a `wrr_item_unit` payload and its
@@ -79,8 +88,10 @@ export function matchScan(
   wrrFlowType?: "vmi" | "trading" | "supplies",
   alreadyScannedUnitIds?: Set<string>
 ): ScanMatchResult {
+  const normalizedBarcode = normalizeScanIdentity(barcode);
+
   // Guard: reject empty or whitespace-only barcodes
-  if (barcode.trim() === "") {
+  if (normalizedBarcode === "") {
     return { matched: false, reason: "invalid_barcode" };
   }
 
@@ -88,9 +99,9 @@ export function matchScan(
   let parsedWrrItemId: string | null = null;
   let parsedUnitId: string | null = null;
   let parsedCartonId: string | null = null;
-  if (barcode.trim().startsWith("{")) {
+  if (normalizedBarcode.startsWith("{")) {
     try {
-      const parsed = JSON.parse(barcode.trim());
+      const parsed = JSON.parse(normalizedBarcode);
       if (parsed?.type === "wrr_item_unit" && typeof parsed?.wrr_item_id === "string") {
         parsedWrrItemId = parsed.wrr_item_id;
         if (typeof parsed?.unit_id === "string") {
@@ -108,15 +119,18 @@ export function matchScan(
   // Find matching lines by wrr_item_id (JSON payload), itemBarcode, itemId, id, or lotNumber
   const matchingLines = lines.filter((l) => {
     if (parsedWrrItemId) {
-      return l.id === parsedWrrItemId;
+      return normalizeScanIdentity(l.id) === normalizeScanIdentity(parsedWrrItemId);
     }
-    return (
-      l.itemBarcode === barcode ||
-      l.itemCode === barcode ||
-      l.itemId === barcode ||
-      l.id === barcode ||
-      l.lotNumber === barcode
-    );
+    return [
+      l.itemBarcode,
+      l.itemCode,
+      l.itemSupplierCode,
+      l.itemCustomerCode,
+      l.itemDsgcNumber,
+      l.itemId,
+      l.id,
+      l.lotNumber,
+    ].some((identity) => identity != null && normalizeScanIdentity(identity) === normalizedBarcode);
   });
 
   if (matchingLines.length === 0) {
@@ -161,11 +175,13 @@ export function matchScan(
       continue;
     }
 
-    // A valid unique carton QR acts as the physical shortcut for its WRR
-    // line: the WRR determines the related carton identities and one scan
-    // receives the entire declared group. The IDs are persisted together so
-    // a later scan of any related label is an exact duplicate.
-    const scanQty = parsedCartonId !== null ? cartonCount - line.scannedQty : 1;
+    // Store lines use one valid QR as the line key. The WRR already knows the
+    // line's declared carton count, so the scan completes the line's scan
+    // step and opens whole-line putaway. Inspection lines retain the
+    // one-carton-at-a-time scan behavior because Hold is location-first.
+    const scanQty = line.disposition === "store"
+      ? cartonCount - line.scannedQty
+      : parsedCartonId !== null ? cartonCount - line.scannedQty : 1;
     const unitIds = parsedCartonId !== null && /^[0-9a-f-]{36}$/i.test(line.id)
       ? Array.from({ length: cartonCount }, (_, index) => {
           const source = line.id.replaceAll("-", "").toLowerCase();

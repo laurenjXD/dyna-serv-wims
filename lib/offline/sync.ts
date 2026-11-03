@@ -1,9 +1,11 @@
 import type { OfflineQueueEnvelope } from "./index";
 import {
   deleteOfflineEntry,
+  listOfflineEntries,
   listPendingOfflineEntries,
   updateOfflineEntry,
 } from "./storage";
+import { storage } from "@/lib/storage";
 
 export type SyncOutcome = "applied" | "duplicate" | "transient" | "rejected" | "conflict";
 export type SyncSubmission = {
@@ -51,24 +53,16 @@ export async function replayOfflineEntries(
 export async function replayStoredOfflineEntries(
   currentUserId: string,
   submit: SyncSubmitter,
+  isCurrentActor: () => boolean = () => true,
 ): Promise<StoredReplayResult[]> {
-  // Load all pending entries so observations captured under a revoked or
-  // changed session can be quarantined explicitly instead of disappearing
-  // from the replay scan.
-  const entries = await listPendingOfflineEntries();
+  // Other users' pending observations are private work, not conflicts.
+  const entries = await listPendingOfflineEntries(currentUserId);
   const ordered = [...entries].sort((a, b) => a.createdAt - b.createdAt);
   const results: StoredReplayResult[] = [];
 
   for (const entry of ordered) {
-    if (entry.capturedByUserId !== currentUserId) {
-      const quarantined: OfflineQueueEnvelope = {
-        ...entry,
-        status: "quarantined_actor_mismatch",
-      };
-      await updateOfflineEntry(quarantined);
-      results.push({ entry: quarantined, outcome: "conflict" });
-      continue;
-    }
+    if (!isCurrentActor()) break;
+    if (entry.capturedByUserId !== currentUserId) continue;
     const syncing: OfflineQueueEnvelope = {
       ...entry,
       status: "syncing",
@@ -76,6 +70,10 @@ export async function replayStoredOfflineEntries(
     };
     await updateOfflineEntry(syncing);
 
+    if (!isCurrentActor()) {
+      await updateOfflineEntry({ ...syncing, status: "pending" });
+      break;
+    }
     let submission: SyncSubmission;
     try {
       submission = await submit(syncing);
@@ -83,16 +81,66 @@ export async function replayStoredOfflineEntries(
       submission = { outcome: "transient" };
     }
 
+    if (!isCurrentActor()) {
+      // The request might have committed. Preserve the operation identity;
+      // its original actor will receive a durable duplicate acknowledgement.
+      await updateOfflineEntry({ ...syncing, status: "pending" });
+      break;
+    }
     if (submission.outcome === "applied" || submission.outcome === "duplicate") {
       await deleteOfflineEntry(entry.id);
     } else {
       const status = submission.outcome === "conflict"
         ? "quarantined_conflict"
-        : "failed";
+        : submission.outcome === "transient"
+          ? "pending"
+          : "failed";
       await updateOfflineEntry({ ...syncing, status });
     }
     results.push({ entry: syncing, outcome: submission.outcome });
   }
 
   return results;
+}
+
+const activeReplays = new Map<string, Promise<StoredReplayResult[]>>();
+
+/** Coalesce triggers only within the same authenticated actor. */
+export function replayStoredOfflineEntriesOnce(
+  currentUserId: string,
+  submit: SyncSubmitter,
+  isCurrentActor: () => boolean = () => true,
+): Promise<StoredReplayResult[]> {
+  const active = activeReplays.get(currentUserId);
+  if (active) return active;
+  const replay = replayStoredOfflineEntries(currentUserId, submit, isCurrentActor).finally(() => {
+    activeReplays.delete(currentUserId);
+  });
+  activeReplays.set(currentUserId, replay);
+  return replay;
+}
+
+export async function getOfflineQueueCounts(currentUserId: string): Promise<{
+  pendingCount: number;
+  attentionCount: number;
+}> {
+  const rows = await listOfflineEntries();
+  const owned = rows.filter((row) => row.capturedByUserId === currentUserId);
+  return {
+    pendingCount: owned.filter((row) => row.status === "pending" || row.status === "failed" || row.status === "syncing").length,
+    attentionCount: owned.filter((row) => row.status === "failed" || row.status === "quarantined_conflict" || row.status === "quarantined_actor_mismatch").length,
+  };
+}
+
+export function syncLockAvailable(): boolean {
+  const key = "wms-offline-sync-lock";
+  const now = Date.now();
+  const current = Number(storage.local.get(key) ?? 0);
+  if (current > now) return false;
+  storage.local.set(key, String(now + 30_000));
+  return true;
+}
+
+export function releaseSyncLock(): void {
+  storage.local.remove("wms-offline-sync-lock");
 }

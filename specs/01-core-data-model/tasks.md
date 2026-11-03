@@ -149,3 +149,12 @@ feature-specific reservation ledger is permitted.
   VMI Customer.
 - [ ] Add real-Postgres and RLS verification for amended source selection and
   stale or mismatched submissions.
+
+## Offline scan receipt repair ? 2026-11-03
+
+Status: Approved
+
+- [x] Product Owner approval: User, explicit instruction to fix the reviewed `bam` blockers before merging, 2026-11-03.
+- [x] Second approver: System, standing auto-sign-off convention, 2026-11-03.
+- [x] Add migration 0072 with immutable backend-only receipts and narrow internal functions.
+- [x] Verify real PostgreSQL atomicity, concurrent retry, actor/capability isolation, and privilege restrictions: seven PostgreSQL 16 tests pass with the real Drizzle transaction adapter shape; independent integration/RBAC review passes, including direct privilege/function-owner/search-path queries.

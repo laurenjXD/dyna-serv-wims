@@ -1,121 +1,138 @@
-# Dyna-Serv WIMS — Inventory & Withdrawals Companion Guide
+# Master Inventory and pick-list preparation ? detailed operating procedure
 
-**Canonical manual:** [Unified User Manual](../USER_MANUAL.md)  
-**Status:** Companion chapter; reconcile with the unified manual whenever workflow rules change.  
-**Last reconciled:** 2026-10-27
+**Last reconciled:** 2026-11-03  
+**Audience:** Authorized inventory, release-preparation, and supervisory users  
+**Evidence:** Reviewed implementation and approved workflow specifications; actual access depends on deployed grants.
 
-## Chapter: Master Inventory, Inventory Models & Withdrawal Protocols
+[Unified User Manual](../USER_MANUAL.md) ? [Guide library](README.md) ? [System Documentation](../System_Documentation.md)
 
----
+## 1. Understand the quantity before promising stock
 
-### 1. Inventory Counting Fundamentals
+Master Inventory at `/inventory` is the starting point for stock review, release preparation, inspection/count work, and traceability. Physical stock, reserved stock, and available stock are different.
 
-In Dyna-Serv WIMS, physical warehouse stock is governed by a strict hierarchy of packaging and units:
+| Quantity | Meaning | Example before dispatch |
+|---|---|---|
+| Physical/on hand | Goods still recorded at the location | 500 pieces remain physically on hand |
+| Committed/reserved | Part promised by active Pick Lists | 150 pieces reserved for an earlier release |
+| Available | Eligible physical quantity not committed elsewhere | 350 pieces available for another release |
+| Held/quarantined | Physically present goods under restriction | Not ordinary available release stock |
 
-$$\mathbf{Total\ Quantity\ (Available\ Balance)} = \mathbf{Boxes\ On\ Hand} \times \mathbf{Standard\ Pack\ Quantity\ (SPQ)}$$
+For eligible stock, **available = on hand ? committed**. Status restrictions still matter: this arithmetic does not make a held lot selectable. A report's total is not permission to reserve all of it.
 
-* **Base Unit of Measure (UOM)**: The smallest physical counting unit enrolled in Master Data (e.g., `PCS`, `ROLL`, `KG`, `METER`).
-* **Standard Pack Quantity (SPQ)**: The number of base units packed into a standard master carton / box (e.g. `50 PCS/box`).
-* **Boxes On Hand**: The physical carton / box count currently located in warehouse storage locations.
-* **Current Net Balance**: Displayed across all inventory cards as the **Total Quantity** (in base UOM) as the primary headline metric, with the **Box Count** and **SPQ factor** underneath as the descriptive subtitle.
+## 2. Boxes, pieces, and SPQ
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ CURRENT NET BALANCE                                     📦 │
-│ 500 PCS                                                     │
-│ 10 boxes · SPQ: 50 PCS/box                                  │
-└─────────────────────────────────────────────────────────────┘
-```
+SPQ is the enrolled number of base units per box. The current multi-item draft asks for **Qty (Boxes)** and derives **Qty (Units)**.
 
----
+| Entered boxes | Enrolled SPQ | Derived quantity |
+|---|---|---|
+| 3 | 50 pieces/box | 150 pieces |
+| 10 | 50 pieces/box | 500 pieces |
+| 2 | 100 pieces/box | 200 pieces |
 
-### 2. The Three Inventory Models
+If a request says 150 pieces and SPQ is 50, enter **3 boxes**. Entering 150 in the boxes field asks for 7,500 pieces. Do not multiply twice or use a fractional box to disguise an incompatible request.
 
-Every item enrolled in Dyna-Serv WIMS belongs to one of three authoritative Inventory Models:
+This draft uses box-based entry for **VMI, Trading, and Supplies**. It does not provide the previously described loose-piece Supplies quick-issue form or a separate internal issue slip. If an internal request cannot be expressed by the current screen, ask the supervisor for the approved supported process; do not alter SPQ solely to make it pass.
 
-```mermaid
-graph TD
-    A[Dyna-Serv Master Inventory] --> B[Trading]
-    A --> C[VMI]
-    A --> D[Supplies]
-    
-    B --> B1[Commercial Sales / Resale]
-    B --> B2[Strict Whole Box / SPQ Rule]
-    B --> B3[Sales Invoices & Priced DR]
-    
-    C --> C1[Consignment Stock / Vendor-Owned]
-    C --> C2[Strict Whole Box / SPQ Rule]
-    C --> C3[Consignment Aging & Periodic Settlement]
-    
-    D --> D1[Internal Consumables / Tools / PPE]
-    D --> D2[Loose Piece Withdrawal Allowed]
-    D --> D3[Internal Issue Slip / No Commercial Markup]
-```
+## 3. Find and review the stock
 
-| Dimension | 1. Trading | 2. VMI (Vendor-Managed) | 3. Supplies (Internal) |
-| :--- | :--- | :--- | :--- |
-| **Ownership** | Dyna-Serv / Client Commercial Stock | Consignor / Vendor (Consignment) | Internal Dyna-Serv Operations |
-| **Withdrawal Rule** | **Strict SPQ (Whole Boxes Only)** | **Strict SPQ (Whole Boxes Only)** | **Loose Pieces Permitted** (Per piece) |
-| **Min. Order Unit** | $1\text{ box } (1 \times \text{SPQ})$ | $1\text{ box } (1 \times \text{SPQ})$ | $1\text{ piece / unit}$ |
-| **Pricing Nature** | Commercial Selling Price (Contracted) | Reference Consignment Release Price | Non-Commercial / Cost Tracking Only |
-| **Outbound Document** | Priced Delivery Receipt / AR | Priced Delivery Receipt / AR | Internal Material Issue Slip |
-| **DRA Matching** | Required for customer orders | Required for VMI releases | **None required** |
+1. Open **Master Inventory** and the stock/lot view available to your account.
+2. Search a distinctive item code/name. Use Organization and Inventory Model filters where offered.
+3. Open the matching item and compare code, description, UOM/SPQ, Organization, lot, location, and available quantity.
+4. Review expiry/received order and held/inspection status. Perishable stock follows FEFO; non-perishable stock follows FIFO under the server's authoritative ordering.
+5. Use lot/location breakdown and movement history to explain a balance. A transfer changes placement; a commitment changes availability; dispatch changes physical stock.
 
----
+Historical material can remain visible even when it cannot create a new release. Missing required enrolled codes, inactive status, held stock, stale/expired commitments, and unauthorized relationships can block a command.
 
-### 3. Outbound Withdrawal Protocols
+## 4. Prepare a Pick List
 
-#### Protocol A: Commercial Outbound (Trading & VMI)
-Commercial withdrawals protect manufacturer carton seals, contractual minimum order quantities, and customer billing:
+Open **Master Inventory ? Pick Lists** at `/inventory?tab=pick-lists`; choose the visible **Create Pick List Draft** action where offered. Multiple materials can share one draft, but its Organization/model context must remain consistent.
 
-1. **Initiation**: Operator initiates a pick list from `/inventory?tab=pick-lists`.
-2. **DRA Matching (Optional / Automated)**: The system can parse customer Delivery Release Advice (DRA) files in Excel/PDF.
-3. **SPQ Validation**: The requested quantity must be an exact multiple of the item's SPQ ($N \times \text{SPQ}$). Requests for partial boxes are rejected by the server.
-4. **Stage 1 (Allocation & Commitment)**: System selects lots via **FEFO** (perishable) or **FIFO** (non-perishable) and increments `qty_committed` without decrementing physical stock.
-5. **Physical Picking**: Floor staff picks boxes and marks document as **Picked** (`/outgoing`).
-6. **Stage 2 (Dispatch Confirmation)**: Floor operator scans the item/lot QR codes at `/pick-lists/[id]/dispatch`. Upon completion, physical stock decrements and the priced **Delivery Receipt / Acknowledgement Receipt** is generated.
+### 4.1 Complete the controlling context
 
----
+1. Select the **Organization** linked to the stock.
+2. Confirm its displayed/inherited **Inventory Model**.
+3. Complete the required recipient selection.
 
-#### Protocol B: Internal Supplies Withdrawal (Fast Quick-Issue)
-Supplies are internal consumables used for warehouse operations (e.g. bubble wrap, stretch film, packaging tape, barcode ribbon, gloves, cutter blades, pens).
+| Model | Release context | Frequent mistake |
+|---|---|---|
+| VMI | VMI Customer/stock owner plus **End Customer / Recipient** | Owner selected, actual recipient blank |
+| Trading | Eligible Trading Customer recipient for Trading stock | Using a supplier or VMI End Customer as the Trading customer |
+| Supplies | Eligible Internal Supplies context | Using an unrelated customer because internal setup is absent |
 
-To withdraw supplies without commercial overhead:
+The starter line stays disabled until the required context is complete. **Add item line** becomes usable afterward. Changing a controlling selection clears invalid dependent data; review the rebuilt draft before continuing.
 
-1. Navigate to **Master Inventory** $\rightarrow$ **Pick Lists** (`/inventory?tab=pick-lists`).
-2. Set **Destination Organization** to `Dyna-Serv Warehouse` / `Internal Operations`.
-3. Set **Inventory Model** to **`Supplies`**.
-4. Select the supply item and enter the **exact loose quantity** needed (e.g., `3 pcs` from a 100-pc box).
-5. Click **Generate Pick List**.
-6. Mark as **Picked $\rightarrow$ Dispatched**.
-7. The system immediately decrements the inventory balance and records an audit log entry tied to the Person in Charge.
+### 4.2 Select materials and quantities
 
----
+1. Use **Search item code**. Compare enrolled code, description, SPQ, UOM, and available boxes in the recommendation.
+2. Select the exact material. **Needs item code** means it is visible but cannot generate a Pick List until the required enrolled supplier/DSGC code is repaired.
+3. Enter **Qty (Boxes)** and check the derived **Qty (Units)** immediately.
+4. Review source locations, available boxes, lot, and manufacture-date information.
+5. Enter **Customer PN** only when a customer part-number snapshot is needed. It is optional; leaving it blank is permitted.
+6. Add further materials if needed. Do not duplicate demand or use extra rows to bypass availability.
 
-### 4. Master Inventory Item View & Movement History Audit
+### 4.3 Review the source plan
 
-When inspecting any item from the Master Inventory register via the **View** action:
+Default allocation follows FIFO/FEFO. If the first source cannot cover the request, the prepared flow allocates the remainder from subsequent valid sources. Review each location's allocated boxes. In manual split mode, **Add another location?** and the per-location inputs let you distribute the line, but the sum must equal the requested boxes.
 
-* **Tab 1: Master Specifications**: Item codes, category/subcategory hierarchy, enrolled UOM, SPQ standard, dimensions, and financial pricing.
-* **Tab 2: Live Stock & Lots**: Real-time lot-by-lot breakdown with storage locations, expiration dates, and printable lot QR labels.
-* **Tab 3: Movement History Trail**:
-  * **Date Filter Toolbar**: Filter movements for **Today**, **All Time**, or any specific date picker value.
-  * **Movement Type Filter**: Filter by `Inbound / Received`, `Outbound / Dispatched`, or `Internal Transfers`.
-  * **Daily Trail View**: Groups transactions day-by-day with daily KPI summaries (`Received: +X bx`, `Dispatched: -Y bx`, `Net: ±Z bx`).
-  * **Accountability Audit**: Every transaction displays the exact transaction ID, source/destination locations, reference documents (WRR #, Pick List #, CI #), and the **Person in Charge (Audit Snapshot)**.
+**Use fixed location** changes source-selection mode. A fixed location needs enough stock for the requested boxes; an out-of-sequence choice requires approval. Normal FIFO allocation across two locations does not require an override just because a second source appears. The server rechecks live availability and the plan when generating the list.
 
----
+### 4.4 Generate and verify
 
-### 5. Stock Count & Reconciliation
+1. Ensure every material has its required enrolled code, positive whole-box quantity, sufficient eligible stock, and complete allocation.
+2. Select **Generate Pick List** while online.
+3. Wait for the result. If the response is uncertain, find the existing record before creating another request.
+4. Verify Pick List number, model, recipient, material/lot/location lines, quantities, and document prices.
+5. Confirm that it appears in the allocated/committed queue.
 
-Stock Count is the physical verification workflow for existing inventory. It is separate from inbound Receiving and opening-stock Migration.
+**Result:** availability is reserved, but on-hand stock is not yet decremented. Proceed to [Physical picking and dispatch](outgoing-picking-and-dispatch.md).
 
-1. Select **Stock Count** in Master Inventory.
-2. Search by location label or structural fields and use the zone/state filters.
-3. Review the selected location's line count, system quantity, and active-session state.
-4. Start a count and enter the physical result. Zero is a valid result.
-5. Submit the count and review the immutable snapshot/variance.
-6. Explain positive variances and request a recount when required.
-7. Wait for supervisor review. Only an approved reconciliation posts to canonical inventory and the audit ledger.
+## 5. Worked FIFO case
 
-The system quantity is never edited directly. A recount preserves the earlier event history and replaces only the pending count result.
+**Fictional case:** `VMI-100`, SPQ 50, has two eligible FIFO sources: `A1-01` has two boxes; the next location `A1-02` has eight. The recipient requests five boxes.
+
+1. Select the VMI owner and its End Customer/Recipient.
+2. Select `VMI-100` and enter **5 boxes**.
+3. Verify **250 pieces** in the derived quantity.
+4. Review **2 boxes from A1-01 + 3 from A1-02 = 5 boxes**.
+5. Confirm the full **5 / 5 boxes** is allocated, then generate online.
+
+If the item had 500 pieces on hand and no other commitment, it remains 500 on hand and becomes 250 committed/250 available. After this exact release is successfully dispatched, it becomes 250 on hand and the executed 250-piece commitment is released. Other live transactions can change actual totals.
+
+## 6. Request a genuine FIFO/FEFO exception
+
+1. Select the actual alternate source and confirm available stock.
+2. Read **FIFO/FEFO override required** and verify the precise lot/location/quantity.
+3. Enter **Reason for FIFO override** with at least 10 meaningful characters. Explain the operational need, not a filler phrase.
+4. Select **Request Approval** when enabled.
+5. Wait for an authorized independent reviewer. Pending or rejected approval is not authority to release.
+6. Refresh before proceeding. Changed quantity/source/recipient, stale state, or expired approval requires revalidation.
+
+The draft supports **one alternate location per approval request**. An out-of-sequence split with multiple locations is not represented by one supported request; the screen explains the limitation and leaves it disabled. Do not request one source while physically using a different multi-source plan.
+
+## 7. DRA import
+
+Use **Import DRA (Excel/PDF)** when the document is supported. Review requesting Organization, recipient, item matches, quantity units, and all review/shortage messages. Parsing does not reserve live stock by itself.
+
+Repeated demand for one material can be consolidated. Compare combined quantity against the original document; do not manually add rows already mapped successfully. Unmatched, ambiguous, insufficient, or provisional materials need review rather than a guessed match.
+
+## 8. Audit, stock count, and inspection
+
+Item detail separates enrolled specifications, live stock/lots, and movement history. Use its filters to identify the event behind a difference. Record the lot, location, source document, timestamp, and actor when escalating.
+
+**Stock Count & Reconciliation** is separate from receiving and opening-stock migration. Select a location; review its overview and active session; start the count; enter the true physical quantity (including zero); submit; review variance/recount requirements; obtain the authorized decision. Only approved reconciliation posts a change. Do not create a false receipt/dispatch to force a balance to match a count.
+
+Held goods require the owning inspection decision and movement before ordinary availability returns. Use Master Inventory's inspection area. Legacy `/inspection` and `/transfers` paths are not separate new destinations to teach as a parallel workflow.
+
+## 9. Blockers and recovery
+
+| Blocker | Check | Safe next action |
+|---|---|---|
+| Starter line disabled | Organization/model/recipient | Complete the controlling context |
+| Code warning | Required supplier/DSGC code | Correct actual material enrollment, then refresh |
+| Allocated total below requested | Manual split and eligible whole-box stock | Complete a valid allocation or reduce demand |
+| Source changed after preview | Other reservations/stock movements | Refresh and rebuild; live server state is authoritative |
+| Override disabled | Reason length and single-alternate-location boundary | Complete the supported exact request |
+| Blank Customer PN | Whether the source actually supplied one | Leave it blank when absent; never invent a code |
+| Expired/cancelled list | Current commitment status | Return to the queue and obtain a current valid allocation |
+
+Continue with [Dispatch](outgoing-picking-and-dispatch.md), [Offline recovery](offline-and-sync.md), or [Troubleshooting](edge-cases-and-troubleshooting.md) as needed.
