@@ -172,8 +172,8 @@ describe("request-validation — unknown policy type returns a closed-failure er
   });
 });
 
-describe("request-validation — reason must satisfy policy minimum length (design.md §3 reason ≥10 chars)", () => {
-  it("returns { ok: false } when reason is fewer than 10 characters for fifo_override", async () => {
+describe("request-validation — approval reason/comment is optional", () => {
+  it("returns { ok: true } when reason is shorter than 10 characters for fifo_override", async () => {
     const { validateCreateRequest } = await import(
       "@/lib/approval/request-validation"
     );
@@ -183,7 +183,21 @@ describe("request-validation — reason must satisfy policy minimum length (desi
       reason: "Short",
     });
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+  });
+
+  it("returns { ok: true } when reason is omitted", async () => {
+    const { validateCreateRequest } = await import(
+      "@/lib/approval/request-validation"
+    );
+
+    const input = { ...VALID_CREATE_REQUEST };
+    delete (input as Record<string, unknown>)["reason"];
+
+    const result = validateCreateRequest(input);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.validated.reason).toBe("");
   });
 });
 

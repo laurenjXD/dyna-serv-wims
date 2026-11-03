@@ -8,6 +8,9 @@ import {
   ArrowUp,
   ArrowDown,
   X,
+  FileText,
+  Pencil,
+  ArrowRight,
 } from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { TablePagination } from "@/components/ui/TablePagination";
@@ -31,7 +34,7 @@ function statusLabel(status: string) {
 
 function PickListAction({
   row,
-  canExecute: _canExecute,
+  canExecute,
   deleted,
 }: {
   row: PickListRow;
@@ -41,13 +44,41 @@ function PickListAction({
   if (deleted) return <span className="font-body text-body-sm text-text-grey">Deleted</span>;
 
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-wrap justify-end gap-2">
       <Link
-        href={`/pick-lists/${row.id}/dispatch`}
-        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-white px-4 font-label text-body-sm font-semibold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        href={`/pick-lists/${row.id}/print`}
+        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-white px-3 font-label text-label-xs font-bold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
       >
-        Actions &rarr;
+        <FileText size={14} aria-hidden="true" />
+        PDF
       </Link>
+      {row.status === "allocated" && canExecute && (
+        <>
+          <Link
+            href={`/pick-lists/${row.id}/edit`}
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-brand-navy/25 bg-brand-navy/5 px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          >
+            <Pencil size={14} aria-hidden="true" />
+            Edit
+          </Link>
+          <Link
+            href={`/pick-lists/${row.id}/pick`}
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-brand-navy px-3 font-label text-label-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+          >
+            Review &amp; Approve
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </>
+      )}
+      {row.status === "picked" && (
+        <Link
+          href={`/pick-lists/${row.id}/dispatch`}
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-brand-navy px-3 font-label text-label-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        >
+          Dispatch
+          <ArrowRight size={14} aria-hidden="true" />
+        </Link>
+      )}
     </div>
   );
 }
@@ -76,7 +107,6 @@ export function PickListsFilterableTable({
 }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFlow, setSelectedFlow] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [pageIndex, setPageIndex] = useState(0);
@@ -99,11 +129,6 @@ export function PickListsFilterableTable({
           return false;
         }
 
-        // Status filter
-        if (selectedStatus !== "all" && row.status !== selectedStatus) {
-          return false;
-        }
-
         // Omni search
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase().trim();
@@ -121,7 +146,7 @@ export function PickListsFilterableTable({
         const valB = ((b[sortField] as string) || "").toLowerCase();
         return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
       });
-  }, [rows, searchQuery, selectedFlow, selectedStatus, sortField, sortDir]);
+  }, [rows, searchQuery, selectedFlow, sortField, sortDir]);
 
   const totalCount = filteredAndSortedRows.length;
   const pageCount = Math.ceil(totalCount / pageSize) || 1;
@@ -194,29 +219,12 @@ export function PickListsFilterableTable({
             ]}
           />
 
-          {/* Status Filter */}
-          <FilterSelect
-            label="Status"
-            value={selectedStatus}
-            onChange={(value) => {
-              setSelectedStatus(value);
-              setPageIndex(0);
-            }}
-            options={[
-              { value: "all", label: "All Statuses" },
-              { value: "allocated", label: "Allocated" },
-              { value: "picked", label: "Picked" },
-              { value: "dispatched", label: "Dispatched" },
-            ]}
-          />
-
-          {(searchQuery || selectedFlow !== "all" || selectedStatus !== "all") && (
+          {(searchQuery || selectedFlow !== "all") && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery("");
                 setSelectedFlow("all");
-                setSelectedStatus("all");
                 setPageIndex(0);
               }}
               className="inline-flex h-9 items-center gap-1 rounded-lg px-2.5 font-label text-label-xs font-bold text-status-held hover:bg-status-held/10"

@@ -47,7 +47,7 @@ export function PutawayLocationSelector({
   const safeSpq = Math.max(1, Number(spq) || 1);
   const safeUom = (!uom || uom.toLowerCase() === "pallet" || uom.toLowerCase() === "plt") ? "PCS" : uom.toUpperCase();
 
-  const assignmentQuantity = safeQuantity;
+  const assignmentQuantity = disposition === "inspect" ? safeScannedQuantity : safeQuantity;
   const [locationsBySlot, setLocationsBySlot] = useState<string[]>(() =>
     Array.from({ length: safeQuantity }, () => ""),
   );
@@ -148,7 +148,7 @@ export function PutawayLocationSelector({
           <div>
             <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
             <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
-              {`Put all ${safeQuantity} declared boxes in`}
+              {disposition === "inspect" ? `Put the ${assignmentQuantity} scanned box${assignmentQuantity === 1 ? "" : "es"} in` : `Put all ${safeQuantity} declared boxes in`}
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
               One valid QR scan identified this line. Assign the whole declared line now{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Scan confirmations: <strong>{safeScannedQuantity}</strong>. Use Step 2 only if boxes are missing or need a split.

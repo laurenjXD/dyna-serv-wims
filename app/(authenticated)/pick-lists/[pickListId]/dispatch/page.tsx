@@ -55,13 +55,11 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import {
-  ChevronLeft,
+  ArrowLeft,
   AlertTriangle,
   Truck,
   CheckCircle2,
   ScanLine,
-  ShieldCheck,
-  Trash2,
 } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -69,11 +67,11 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList, selectPickUnit, reportLocationShortage } from "@/lib/actions/withdrawals";
-import { approvePickList, deletePickList } from "../../_actions";
 import { OfflineDispatchScanForm } from "./_components/OfflineDispatchScanForm";
 import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
 import { PickListInteractiveChecklist } from "./_components/PickListInteractiveChecklist";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -112,7 +110,7 @@ export default async function DispatchConfirmationPage({
           href="/outgoing"
           className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
         >
-          <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
+          <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" />
           Return to Outgoing
         </Link>
       </div>
@@ -122,6 +120,11 @@ export default async function DispatchConfirmationPage({
   const pickList = await getPickList(db, pickListId);
   if (!pickList) {
     notFound();
+  }
+  // Allocated lists belong to the To Pick queue. Keep the approval gate out
+  // of the dispatch surface so this route can only be used after approval.
+  if (pickList.status === "allocated") {
+    redirect(`/pick-lists/${pickListId}/pick`);
   }
 
   const [items, selections] = await Promise.all([
@@ -141,15 +144,15 @@ export default async function DispatchConfirmationPage({
   const partyName = partyRows[0]?.name ?? (pickList.flowType === "vmi" ? "Unknown End Customer" : "Unknown Customer");
 
   const alreadyDispatched = pickList.status === "dispatched";
-  const awaitingPickCompletion = pickList.status === "allocated";
 
   const totalLines = items.length;
   const totalRequiredBoxes = items.reduce((sum, item) => sum + item.numberOfBoxes, 0);
   const selectedBoxCount = selections.length;
-  const activeItem = pickList.status === "picked"
+  const scanReady = pickList.status === "picked";
+  const activeItem = scanReady
     ? items.find((item) => (selectionCountByLine.get(item.id) ?? 0) < item.numberOfBoxes)
     : undefined;
-  const allBoxesScanned = items.length > 0 && !activeItem;
+  const allBoxesScanned = scanReady && items.length > 0 && !activeItem;
 
   async function handleBoxScan(formData: FormData): Promise<void> {
     "use server";
@@ -197,7 +200,10 @@ export default async function DispatchConfirmationPage({
       pickListId,
       items.map((item) => item.id),
     );
-    if (dispatchResult.ok) {
+    // A duplicate submit means the first request already completed. Treat it
+    // as success for navigation so the operator is never left on a stale
+    // dispatch error screen after the stock has moved.
+    if (dispatchResult.ok || dispatchResult.errors[0] === "already_dispatched") {
       // Return to outgoing queue — dispatch is complete.
       revalidatePath("/outgoing");
       redirect("/outgoing");
@@ -209,7 +215,9 @@ export default async function DispatchConfirmationPage({
     );
   }
 
-  const dispatchError = result === "error";
+  // Do not show a stale error query alongside the authoritative dispatched
+  // state. This can happen when a duplicate request follows a successful one.
+  const dispatchError = result === "error" && !alreadyDispatched;
   const errorReason = reasonParam ?? "";
   const isDispatchError = dispatchError;
 
@@ -227,24 +235,22 @@ export default async function DispatchConfirmationPage({
     <div className="flex min-h-screen flex-col bg-surface-white">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 pb-3 pt-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Back link — h-14 (56px) floor touch target per §3 */}
-            <Link
-              href="/inventory?tab=pick-lists"
-              className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-              aria-label="Back to Pick Lists"
-            >
-              <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
-            </Link>
+      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 py-3 shadow-sm">
+        <div className="mx-auto w-full max-w-5xl">
+          <PageBreadcrumb
+            backHref="/outgoing"
+            backLabel="Outgoing"
+            currentLabel="Dispatch"
+            className="mb-2"
+          />
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              {/* "Dispatch" heading — Fira Sans Bold, text-headline-lg */}
-              <h1 className="font-heading text-headline-lg font-extrabold text-on-surface">
+              {/* Compact heading scale consistent with other floor flows. */}
+              <h1 className="font-heading text-headline-sm font-extrabold text-on-surface">
                 Dispatch
               </h1>
               {/* Pick list reference — Roboto Mono, secondary text */}
-              <p className="font-mono text-mono-lg text-text-grey">
+              <p className="font-mono text-mono-md text-text-grey">
                 {pickList.pickListNumber}
               </p>
             </div>
@@ -264,7 +270,7 @@ export default async function DispatchConfirmationPage({
       </div>
 
       {/* ── Main content (scrollable) ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-5 pb-8">
 
         {/* Updated Banner */}
         {result === "updated" && (
@@ -283,23 +289,6 @@ export default async function DispatchConfirmationPage({
           </div>
         )}
 
-        {/* Approval Success Banner */}
-        {result === "approved" && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mb-3 flex items-center gap-3 rounded-xl bg-status-available/15 border border-status-available/40 px-4 py-3"
-          >
-            <CheckCircle2 size={22} className="shrink-0 text-status-available" aria-hidden="true" />
-            <div>
-              <p className="font-heading text-body-md font-bold text-on-surface">Pick List Approved</p>
-              <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Approved by Supervisor. You may now proceed with physical barcode scanning and final dispatch.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Already dispatched state */}
         {alreadyDispatched && (
           <div
@@ -307,65 +296,12 @@ export default async function DispatchConfirmationPage({
             aria-live="polite"
             className="mb-3 rounded-xl bg-status-available/20 border border-status-available/40 px-4 py-4"
           >
-            <p className="font-heading text-headline-md font-bold text-on-surface">
+            <p className="font-heading text-headline-sm font-bold text-on-surface">
               Already Dispatched
             </p>
             <p className="mt-1 font-body text-body-md text-text-grey">
               This pick list has already been dispatched.
             </p>
-          </div>
-        )}
-
-        {awaitingPickCompletion && (
-          <div className="mb-3 rounded-xl border border-status-pending/40 bg-status-pending/10 p-5 shadow-elevation-1">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-6 w-6 text-brand-navy" />
-                  <p className="font-heading text-headline-md font-bold text-on-surface">
-                    Pick List Approval Gate
-                  </p>
-                </div>
-                <p className="mt-2 font-body text-body-md text-text-grey">
-                  This pick list is currently allocated. Per warehouse protocol, a Supervisor or Administrator must review and approve this list before Dispatch scanning can begin.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <form action={approvePickList}>
-                <input type="hidden" name="pickListId" value={pickListId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-label text-body-md font-bold text-surface-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
-                >
-                  <ShieldCheck className="h-5 w-5" />
-                  Approve Pick List for Dispatch
-                </button>
-              </form>
-              <span
-                aria-disabled="true"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-light-grey px-4 font-label text-body-md font-semibold text-text-grey"
-              >
-                Line Items Locked After Reservation
-              </span>
-              <Link
-                href={`/pick-lists/${pickListId}/print`}
-                target="_blank"
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-white px-4 font-label text-body-md font-semibold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-              >
-                Review Pick List PDF &rarr;
-              </Link>
-              <form action={deletePickList}>
-                <input type="hidden" name="pickListId" value={pickListId} />
-                <button
-                  type="submit"
-                  className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-status-held/40 bg-surface-white px-4 font-label text-body-md font-semibold text-status-held hover:bg-status-held/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete Pick List
-                </button>
-              </form>
-            </div>
           </div>
         )}
 
@@ -383,7 +319,7 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <div>
-              <p className="font-heading text-headline-md font-bold text-on-surface">
+              <p className="font-heading text-headline-sm font-bold text-on-surface">
                 Dispatch Failed
               </p>
               <p className="mt-1 font-body text-body-md text-text-grey">
@@ -415,7 +351,7 @@ export default async function DispatchConfirmationPage({
 
         {/* ── Summary card ─────────────────────────────────────────────── */}
         {/* Floor card: solid bg-surface-white, no glassmorphism.          */}
-        <div className="mb-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-2">
+        <div className="mb-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2 sm:p-5">
           {/* Party name — Fira Sans SemiBold heading, floor minimum text */}
           <div className="flex items-start gap-3">
             <Truck
@@ -425,7 +361,7 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-text-grey"
             />
             <div className="min-w-0">
-              <p className="font-heading text-headline-md font-semibold text-on-surface">
+              <p className="font-heading text-headline-sm font-semibold text-on-surface">
                 {partyName}
               </p>
               <div className="mt-1 flex items-center gap-2">
@@ -463,16 +399,20 @@ export default async function DispatchConfirmationPage({
           scannedBarcode={barcodeParam}
         />
 
-        {!alreadyDispatched && !awaitingPickCompletion && activeItem && (
+        {!alreadyDispatched && scanReady && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
-            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
+            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-headline-sm font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
             <OfflineDispatchScanForm
               action={handleBoxScan}
               pickListId={pickListId}
               lines={items.map((item) => ({
-                id: item.id, itemCode: item.itemCode, itemBarcode: item.itemBarcode,
-                lotId: item.lotId, lotNumber: item.lotNumber,
-                locationId: item.locationId, locationLabel: item.locationLabel,
+                id: item.id,
+                itemCode: item.itemCode,
+                itemBarcode: item.itemBarcode,
+                lotId: item.lotId,
+                lotNumber: item.lotNumber,
+                locationId: item.locationId,
+                locationLabel: item.locationLabel,
                 numberOfBoxes: item.numberOfBoxes,
                 selectedCount: selectionCountByLine.get(item.id) ?? 0,
               }))}
@@ -541,40 +481,47 @@ export default async function DispatchConfirmationPage({
       {/* Exact boxes are scanned here, immediately before the final dispatch. */}
       {!alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          {totalLines > 0 ? (
-            <form action={handleDispatch}>
-              <OnlineOnlySubmitButton
-                type="submit"
-                disabled={!allBoxesScanned}
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+          <div className="mx-auto w-full max-w-5xl">
+            {totalLines > 0 ? (
+              <form action={handleDispatch}>
+                <OnlineOnlySubmitButton
+                  type="submit"
+                  disabled={!scanReady || !allBoxesScanned}
+                  className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                >
+                  <Truck size={24} strokeWidth={2} aria-hidden="true" />
+                  {allBoxesScanned
+                      ? "Confirm Dispatch"
+                      : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
+                </OnlineOnlySubmitButton>
+              </form>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                className="flex h-16 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
               >
                 <Truck size={24} strokeWidth={2} aria-hidden="true" />
-                {allBoxesScanned ? "Confirm Dispatch" : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
-              </OnlineOnlySubmitButton>
-            </form>
-          ) : (
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="flex h-16 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
-            >
-              <Truck size={24} strokeWidth={2} aria-hidden="true" />
-              No Items to Dispatch
-            </button>
-          )}
+                No Items to Dispatch
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Post-dispatch navigation back to queue */}
       {alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          <Link
-            href="/outgoing"
-            className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border-2 border-outline-variant/30 bg-surface-white font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-          >
-            Return to Outgoing
-          </Link>
+          <div className="mx-auto w-full max-w-5xl">
+            <Link
+              href="/outgoing"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy font-label text-body-md font-bold text-surface-white transition-colors hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 motion-safe:active:scale-[0.98]"
+            >
+              <ArrowLeft size={20} aria-hidden="true" />
+              Return to Outgoing
+            </Link>
+          </div>
         </div>
       )}
     </div>

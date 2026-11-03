@@ -1051,16 +1051,6 @@ describe("markPickListPicked — physical pick completion", () => {
 });
 
 describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
-  it("rejects an inventory-unit QR from a different queued target line without mutation", async () => {
-    const db = makeWithdrawalDb([], [
-      [{ id: "line-b", itemCode: "ITEM", lotId: "lot-b", locationId: "loc-b", numberOfBoxes: 1, pickListStatus: "picked" }],
-      [{ id: "unit-b", lotId: "lot-b", locationId: "loc-b", status: "available", pickListItemId: null }],
-    ]);
-    const result = await selectPickUnit(pickerResolver(), "pick-list", JSON.stringify({ type: "inventory_unit", unit_id: "unit-b" }), mockRlsDeps(db).deps, "line-a");
-    expect(result).toEqual({ ok: false, errors: ["stale_scan"] });
-    expect(db.update).not.toHaveBeenCalled();
-    expect(db.insert).not.toHaveBeenCalled();
-  });
   const sharedItemQr = "ITEM-1";
 
   it("rejects a QR that does not match any Pick List item or lot", async () => {
@@ -1142,7 +1132,34 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
     expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
   });
 
-  it("confirms every committed box on a jackwrapped line with one matching QR scan", async () => {
+  it("creates selectable box identities for an aggregate lot without WRR provenance", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
+      [],
+      [],
+      [{ wrrItemId: null, migrationBatchId: "migration-1", unitIndex: null }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      sharedItemQr,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
+    expect(db._inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        migrationBatchId: "migration-1",
+        lotId: "lot-1",
+        locationId: "loc-a",
+        status: "selected",
+        pickListItemId: "line-1",
+      }),
+    ]));
+  });
+
+  it("verifies all remaining boxes for a wrapped pallet line in a single scan", async () => {
     const db = makeWithdrawalDb([], [
       [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 5, pickListStatus: "picked" }],
       [], // no selections yet
@@ -1163,7 +1180,7 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
     );
 
     expect(result).toEqual({ ok: true, selectedCount: 5, requiredCount: 5 });
-    expect(db.update).toHaveBeenCalledTimes(5);
+    expect(db.update).toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
@@ -54,6 +55,30 @@ function blankDraftLine(id: string): DraftLine {
   };
 }
 
+function PendingActionButton({
+  children,
+  pendingLabel,
+  disabled = false,
+  className,
+}: {
+  children: ReactNode;
+  pendingLabel: string;
+  disabled?: boolean;
+  className: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+      className={className}
+    >
+      {pending ? pendingLabel : children}
+    </button>
+  );
+}
+
 type FifoBoxAllocation = {
   source: StockSource;
   boxes: number;
@@ -80,7 +105,7 @@ function itemCodeFor(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "
 }
 
 function hasRequiredItemCode(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "dsgcItemNumber">, flowType: string): boolean {
-  const requiredCode = flowType === "vmi" ? item.supplierItemCode : item.dsgcItemNumber;
+  const requiredCode = flowType === "vmi" ? (item.supplierItemCode?.trim() || item.itemCode) : item.dsgcItemNumber;
   return Boolean(requiredCode?.trim());
 }
 
@@ -299,11 +324,39 @@ function allocateFifoBoxes(sources: StockSource[], requestedBoxes: number): Fifo
   return allocations;
 }
 
+function allocateDefaultFifoLocation(
+  sources: StockSource[],
+  requestedBoxes: number,
+): DraftLine["manualAllocations"] {
+  const firstSource = [...sources].sort((a, b) => a.priority - b.priority)[0];
+  if (!firstSource || !Number.isInteger(requestedBoxes) || requestedBoxes <= 0) return [];
+  return [{
+    balanceId: firstSource.balanceId,
+    boxes: String(Math.min(requestedBoxes, availableBoxesForSource(firstSource))),
+  }];
+}
+
+function allocationsMatchFifoPlan(
+  selected: FifoBoxAllocation[],
+  fifoPlan: FifoBoxAllocation[],
+): boolean {
+  const selectedByBalance = new Map(selected.map(({ source, boxes }) => [source.balanceId, boxes]));
+  const fifoByBalance = new Map(fifoPlan.map(({ source, boxes }) => [source.balanceId, boxes]));
+  const balanceIds = new Set([...selectedByBalance.keys(), ...fifoByBalance.keys()]);
+  return [...balanceIds].every((balanceId) => (
+    selectedByBalance.get(balanceId) ?? 0
+  ) === (
+    fifoByBalance.get(balanceId) ?? 0
+  ));
+}
+
 function rebalanceManualAllocations(
   sources: StockSource[],
   existing: DraftLine["manualAllocations"],
   requestedBoxes: number,
 ): DraftLine["manualAllocations"] {
+  if (existing.length === 0) return allocateDefaultFifoLocation(sources, requestedBoxes);
+
   let remaining = requestedBoxes;
   const existingByBalanceId = new Map(existing.map((allocation) => [allocation.balanceId, allocation]));
   const sortedSources = [...sources].sort((a, b) => a.priority - b.priority);
@@ -319,18 +372,6 @@ function rebalanceManualAllocations(
     const boxes = Number.isInteger(parsedBoxes)
       ? Math.min(Math.max(0, parsedBoxes), availableBoxes, Math.max(0, remaining))
       : 0;
-    allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
-    remaining -= boxes;
-  }
-
-  // If the requested line is larger than the first FIFO location, append the
-  // next FIFO locations automatically instead of leaving the line partially
-  // allocated for the operator to repair manually.
-  for (const source of sortedSources) {
-    if (remaining <= 0) break;
-    if (existingByBalanceId.has(source.balanceId)) continue;
-    const boxes = Math.min(remaining, availableBoxesForSource(source));
-    if (boxes <= 0) continue;
     allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
     remaining -= boxes;
   }
@@ -411,6 +452,7 @@ export function MultiItemPickListDraft({
     const requestedBoxes = item && Number.isInteger(Number(line.boxes)) && Number(line.boxes) > 0
       ? Number(line.boxes)
       : null;
+    const requestedUnits = requestedBoxes !== null ? boxesToPieces(requestedBoxes, effectiveSpq) : null;
     const totalAvailableBoxes = item?.sources.reduce(
       (sum, source) => sum + availableBoxesForSource(source),
       0,
@@ -432,21 +474,19 @@ export function MultiItemPickListDraft({
           }];
         })
       : null;
+    const fifoPlan = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
     const fifoAllocations = manualAllocations ?? (item && requestedBoxes ? allocateFifoBoxes(allocationSources, requestedBoxes) : []);
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
-    const standardAllocations = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
-    const actualBySource = new Map(fifoAllocations.map(({ source, boxes }) => [source.balanceId, boxes]));
-    const requiresOverride = Boolean(hasEnoughStock && (
-      standardAllocations.length !== fifoAllocations.length ||
-      standardAllocations.some(({ source, boxes }) => actualBySource.get(source.balanceId) !== boxes)
-    ));
+    const requiresOverride = line.manualSplit
+      ? !allocationsMatchFifoPlan(fifoAllocations, fifoPlan)
+      : Boolean(selectedSource && selectedSource.priority > 1);
     return {
       line,
       item,
       effectiveSpq,
-      requestedUnits: requestedBoxes === null ? null : boxesToPieces(requestedBoxes, effectiveSpq),
+      requestedUnits,
       requestedBoxes,
       fifoAllocations,
       allocatedBoxes,
@@ -565,7 +605,7 @@ export function MultiItemPickListDraft({
         lotId: source.lotId,
         locationId: source.locationId,
         qty: boxesToPieces(boxes, item?.spq ?? 1),
-        ...(line.customerItemCode.trim() || source.customerItemCode ? { customerItemCode: line.customerItemCode.trim() || source.customerItemCode } : {}),
+        customerItemCode: line.customerItemCode.trim() || source.customerItemCode || null,
         itemCodeIsProvisional: false,
         valid: Boolean(item && itemHasRequiredCode && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
       })),
@@ -588,12 +628,17 @@ export function MultiItemPickListDraft({
     });
   };
 
-  const request = lineDetails.some(({ requiresOverride }) => requiresOverride) ? "" : buildRequest(lineDetails);
+  const request = useMemo(
+    () => lineDetails.some(({ requiresOverride }) => requiresOverride) ? "" : buildRequest(lineDetails),
+    [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId],
+  );
 
   const overrideDetails = lineDetails.filter(({ requiresOverride }) => requiresOverride);
   const overrideDetail = overrideDetails[0] ?? null;
-  const overrideRequest = overrideDetails.length === 1 && overrideDetail?.fifoAllocations.length === 1
-    ? buildRequest([overrideDetail]) : "";
+  const overrideRequest = useMemo(
+    () => overrideDetails.length === 1 && overrideDetail ? buildRequest([overrideDetail]) : "",
+    [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId, overrideDetail, overrideDetails.length],
+  );
   const [overrideReason, setOverrideReason] = useState("");
   const generationBlocker = !organizationId
     ? "Select an organization."
@@ -852,10 +897,7 @@ export function MultiItemPickListDraft({
         boxes: String(request.requestedBoxes),
         sourceBalanceId: "",
         manualSplit: true,
-        manualAllocations: allocateFifoBoxes(candidateSources, request.requestedBoxes).map(({ source, boxes }) => ({
-          balanceId: source.balanceId,
-          boxes: String(boxes),
-        })),
+        manualAllocations: allocateDefaultFifoLocation(candidateSources, request.requestedBoxes),
         customerItemCode: request.customerItemCode,
       });
       totalBoxesAllocated += request.requestedBoxes;
@@ -1217,6 +1259,7 @@ export function MultiItemPickListDraft({
                     </div>
                     <p className="font-body text-xs text-slate-500">Maximum for this line: {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across available FIFO locations"}.</p>
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
+                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
                       <div><dt className="text-slate-500">Remaining</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes</dd></div>
                       <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
@@ -1265,7 +1308,7 @@ export function MultiItemPickListDraft({
             <tbody className="divide-y divide-slate-100">
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center">
+                  <td colSpan={11} className="py-12 px-4 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3">
                       <FileSpreadsheet className="h-6 w-6" />
                     </div>
@@ -1297,10 +1340,6 @@ export function MultiItemPickListDraft({
                         }}
                         disabled={!canEditLines}
                       />
-                      {item && <div className="mt-1 min-w-0">
-                        <span className="block truncate font-body text-[11px] text-slate-700" title={item.itemName}>{item.itemName}</span>
-                        {flowType !== "supplies" && item.customerItemCode && <span className="block truncate font-mono text-[10px] text-slate-500" title={item.customerItemCode}>PN {item.customerItemCode}</span>}
-                      </div>}
                     </td>
 
                     {/* SPQ (inherited from item enrollment; never manually adjusted) */}
@@ -1500,16 +1539,13 @@ export function MultiItemPickListDraft({
             <div className="flex flex-wrap items-end justify-end gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <div className="min-w-[260px] max-w-md">
                 <p className="font-label text-xs font-bold text-amber-900">
-                  {overrideDetails.length > 1 || (overrideDetail?.fifoAllocations.length ?? 0) > 1 ? "Select one alternate location per approval request." : "FIFO/FEFO override required"}
+                  {overrideDetails.length > 1 ? "Select only one alternate location per approval request." : "FIFO/FEFO override required"}
                 </p>
                 {overrideDetails.length === 1 && (
                   <input
                     value={overrideReason}
                     onChange={(event) => setOverrideReason(event.target.value)}
-                    aria-label="Reason for FIFO override"
-                    required
-                    minLength={10}
-                    placeholder="Reason for choosing this location (at least 10 characters)"
+                    placeholder="Optional reason for choosing this location"
                     className="mt-2 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
                   />
                 )}
@@ -1517,14 +1553,14 @@ export function MultiItemPickListDraft({
               <form action={overrideAction}>
                 <input type="hidden" name="request" value={overrideRequest} />
                 <input type="hidden" name="reason" value={overrideReason} />
-                <button
-                  type="submit"
-                  disabled={!overrideRequest || overrideReason.trim().length < 10}
+                <PendingActionButton
+                  pendingLabel="Sending…"
+                  disabled={!overrideRequest}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                 >
                   Request Approval
                   <ChevronRight size={16} aria-hidden="true" />
-                </button>
+                </PendingActionButton>
               </form>
             </div>
           ) : (
@@ -1532,15 +1568,14 @@ export function MultiItemPickListDraft({
               {!request && generationBlocker && <p className="max-w-sm text-right font-body text-xs text-amber-700">{generationBlocker}</p>}
               <form action={createAction}>
               <input type="hidden" name="request" value={request} />
-              <button
-                type="submit"
+              <PendingActionButton
+                pendingLabel="Creating…"
                 disabled={!request}
-                title={!request ? generationBlocker ?? "Complete the required fields." : undefined}
                 className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
               >
                 Generate Pick List
                 <ChevronRight size={16} aria-hidden="true" />
-              </button>
+              </PendingActionButton>
               </form>
             </div>
           )}

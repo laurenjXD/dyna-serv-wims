@@ -3,7 +3,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
-import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
 
 vi.mock("../../_actions", () => ({
   parseDraDocumentAction: vi.fn(),
@@ -111,7 +110,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(itemSearch).toHaveValue("SUP-ITEM-1");
   });
 
-  it("blocks a provisional VMI code until its supplier code is enrolled", () => {
+  it("uses the displayed VMI item code when no separate supplier code is enrolled", () => {
     const stockWithoutSupplierCode = [{ ...stock[0], supplierItemCode: null }];
 
     render(
@@ -132,17 +131,17 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     const recommendation = screen.getByRole("button", { name: /ITEM-1/ });
     expect(recommendation).toBeEnabled();
-    expect(within(recommendation).getByText("Needs item code")).toBeInTheDocument();
+    expect(within(recommendation).getByText("Available")).toBeInTheDocument();
 
     fireEvent.click(recommendation);
     expect(itemSearch).toHaveValue("ITEM-1");
     fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "1" } });
-    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
   });
 
-  it("fills the requested boxes across FIFO locations by default", () => {
+  it("defaults the requested boxes to the first FIFO location", () => {
     const stockWithSplitFifo = [
-      { ...stock[0], availableQty: 2, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
       { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
     ];
 
@@ -163,15 +162,40 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "5" } });
 
-    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "2")).toBe(true);
-    expect(screen.getAllByLabelText("Boxes from C1-11").every((input) => (input as HTMLInputElement).value === "3")).toBe(true);
+    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "5")).toBe(true);
+    expect(screen.queryByLabelText("Boxes from C1-11")).not.toBeInTheDocument();
     expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
-    const generate = screen.getByRole("button", { name: /Generate Pick List/i });
-    expect(generate).toBeEnabled();
-    const payload = JSON.parse(generate.closest("form")!.querySelector<HTMLInputElement>('input[name="request"]')!.value);
-    expect(payload.lines.map((line: { qty: number }) => line.qty)).toEqual([2, 3]);
-    expect(payload.lines.every((line: { customerItemCode?: string }) => line.customerItemCode === undefined)).toBe(true);
-    expect(validateWithdrawal(payload).ok).toBe(true);
+  });
+
+  it("does not request approval when a split follows the normal FIFO plan", () => {
+    const stockWithSplitFifo = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithSplitFifo}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "15" } });
+    fireEvent.change(screen.getAllByLabelText("Add location to split")[0], { target: { value: "balance-2" } });
+    fireEvent.change(screen.getAllByLabelText("Boxes from C1-11")[0], { target: { value: "5" } });
+
+    expect(screen.getAllByLabelText("Boxes from C1-10")[0]).toHaveValue(10);
+    expect(screen.getAllByLabelText("Boxes from C1-11")[0]).toHaveValue(5);
+    expect(screen.queryByText(/Supervisor approval required/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
   });
 
   it("accepts boxes and derives the base-unit quantity from SPQ", () => {
@@ -301,8 +325,11 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(firstLocationBoxes, { target: { value: "1" } });
     fireEvent.change(secondLocationBoxes, { target: { value: "1" } });
 
-    expect(screen.getByRole("button", { name: "Request Approval" })).toBeDisabled();
-    expect(screen.getByText("Select one alternate location per approval request.")).toBeInTheDocument();
+    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
+    expect(JSON.parse(request.value).lines.map((line: { locationId: string; qty: number }) => [line.locationId, line.qty])).toEqual([
+      ["location-1", 1],
+      ["location-2", 1],
+    ]);
   });
 
   it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {

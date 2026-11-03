@@ -40,11 +40,6 @@ const SNAPSHOT_VALIDATORS: Record<
   },
 };
 
-// Minimum reason length per policy type
-const POLICY_REASON_MIN_LENGTH: Record<string, number> = {
-  fifo_override: 10,
-};
-
 // ---------------------------------------------------------------------------
 // validateCreateRequest
 //
@@ -109,13 +104,7 @@ export function validateCreateRequest(input: unknown): CreateRequestResult {
 
   // Step 3: Validate reason
   const rawReason = raw["reason"];
-  const minLength = POLICY_REASON_MIN_LENGTH[rawType] ?? 10;
-  if (typeof rawReason !== "string" || rawReason.length < minLength) {
-    addFieldError(
-      "reason",
-      `reason must be at least ${minLength} characters for policy type '${rawType}'.`,
-    );
-  }
+  const normalizedReason = typeof rawReason === "string" ? rawReason : "";
 
   // Step 4: Validate target_snapshot against policy-specific schema
   const rawSnapshot = raw["target_snapshot"];
@@ -151,7 +140,7 @@ export function validateCreateRequest(input: unknown): CreateRequestResult {
     validated: {
       type: rawType,
       idempotency_key: rawIdempotencyKey as string,
-      reason: rawReason as string,
+      reason: normalizedReason,
       target_snapshot: rawSnapshot,
     },
   };

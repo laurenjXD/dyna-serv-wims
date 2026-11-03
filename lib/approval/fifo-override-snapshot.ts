@@ -25,7 +25,7 @@ export const FifoOverrideSnapshotSchema = z.object({
   available_qty_at_request: nonNegativeDecimalString,
   flow_type: z.enum(["vmi", "trading", "supplies"]),
   actor_user_id: z.string().min(1),
-  reason: z.string().min(10, { message: "reason must be at least 10 characters" }),
+  reason: z.string().optional().default(""),
   // allocation_version is a positive integer — zero and negatives are invalid, decimals are invalid.
   allocation_version: z
     .number()

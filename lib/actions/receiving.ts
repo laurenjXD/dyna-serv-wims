@@ -361,8 +361,10 @@ export async function createWrr(
           ))
           .limit(1);
         const match = catalogMatches[0] as { id: string; defaultSupplierPartyId: string | null } | undefined;
-        // Unassigned imports need enrollment repair before new receiving writes.
-        if (match && match.defaultSupplierPartyId !== data.vendorPartyId) {
+        // Imported catalog rows may have no default organization yet. The WRR
+        // source organization is authoritative for that receipt; only reject
+        // an item that is explicitly assigned to a different organization.
+        if (match && match.defaultSupplierPartyId && match.defaultSupplierPartyId !== data.vendorPartyId) {
           assignmentErrors.push("The selected item is not assigned to this organization. Assign the material in Master Data before staging the WRR.");
           resolvedLines.push(line);
           continue;
@@ -410,7 +412,7 @@ export async function createWrr(
           if (catalogItem.isActive === false) {
             return { ok: false, errors: ["The selected item is inactive. Choose an active material in Master Data."] } satisfies CreateWrrActionResult;
           }
-          if (catalogItem.defaultSupplierPartyId !== data.vendorPartyId) {
+          if (catalogItem.defaultSupplierPartyId && catalogItem.defaultSupplierPartyId !== data.vendorPartyId) {
             return { ok: false, errors: ["The selected item is not assigned to this organization. Assign the material in Master Data before staging the WRR."] } satisfies CreateWrrActionResult;
           }
         }

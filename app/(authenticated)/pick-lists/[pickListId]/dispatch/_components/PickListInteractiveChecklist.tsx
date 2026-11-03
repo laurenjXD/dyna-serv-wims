@@ -117,7 +117,7 @@ export function PickListInteractiveChecklist({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-title-md font-bold text-on-surface">
+                    <span className="font-mono text-headline-sm font-bold text-on-surface">
                       {item.itemCode}
                     </span>
                     {item.customerItemCode && (

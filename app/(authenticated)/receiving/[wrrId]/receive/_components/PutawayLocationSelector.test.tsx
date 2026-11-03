@@ -7,13 +7,6 @@ import { PutawayLocationSelector } from "./PutawayLocationSelector";
 afterEach(() => cleanup());
 
 describe("PutawayLocationSelector whole-line receiving", () => {
-  it("holds the whole declared line without inventing shortage from its single QR", () => {
-    const { container } = render(<PutawayLocationSelector candidates={[]} inspectionCandidates={[{ id: "hold", label: "Inspection Bay" }]} quantity={10} scannedQuantity={1} unitCbm={1} disposition="inspect" />);
-    fireEvent.focus(screen.getByLabelText("Put all 10 declared boxes in"));
-    fireEvent.click(screen.getByRole("button", { name: /Inspection Bay/ }));
-    expect(JSON.parse(container.querySelector<HTMLInputElement>('input[name="allocations"]')!.value)).toEqual([{ locationId: "hold", qty: 10 }]);
-    expect(screen.queryByText(/9 declared cartons are marked Missing/)).not.toBeInTheDocument();
-  });
   it("assigns the entire declared store line after one confirmation scan", () => {
     const { container } = render(
       <PutawayLocationSelector

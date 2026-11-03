@@ -8,7 +8,6 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "./_components/PickListPrintButton";
-import { WrrBarcode } from "../../../receiving/[wrrId]/print/_components/WrrBarcode";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
@@ -125,11 +124,8 @@ export default async function PickListPrintPage({
           titleAlignment={template.titleAlignment}
           orientation="portrait"
           showPrintButton={false}
+          documentQrValue={pickList.pickListNumber}
         />
-
-        <div className="flex justify-end mb-2 print:hidden">
-          <WrrBarcode wrrNumber={pickList.pickListNumber} />
-        </div>
 
         <header className="border-b-2 border-slate-800 pb-3">
 

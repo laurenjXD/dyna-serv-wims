@@ -21,13 +21,12 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, ChevronDown, ChevronRight, Download, ArrowLeftRight, FileText, Check, ArrowRight } from "@/components/ui/icons";
+import { CheckCircle2, Download, ArrowLeftRight, FileText, Check, ShieldCheck } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
-import type { PickListRow } from "@/lib/db/queries/withdrawals";
 import { listActiveEndCustomers, listActiveCustomerFlowParties } from "@/lib/db/queries/parties";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { WorkflowState } from "@/components/ui/WorkflowState";
@@ -35,20 +34,13 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { ToPickQueue } from "./_components/ToPickQueue";
-import { LotQrViewer } from "./_components/LotQrViewer";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
-import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, markPickListReadyForDispatch, requestPickListOverride } from "./actions";
-import { deletePickList } from "../pick-lists/_actions";
+import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, requestPickListOverride } from "./actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
 import { StockCountTab } from "./_components/StockCountTab";
+import { AutoDismissNotice } from "./_components/AutoDismissNotice";
 import { getCycleCountSession, listCountLocations, listCycleCountSessions } from "@/lib/db/queries/cycle-count";
-
-const FLOW_LABELS: Record<string, string> = {
-  vmi: "VMI",
-  trading: "Trading",
-  supplies: "Supplies",
-};
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "stock-view", label: "Stock View" },
@@ -60,11 +52,11 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
-  searchParams: Promise<{ tab?: string; q?: string; count?: string; error?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string; pickListPicked?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; count?: string; error?: string; pickListView?: string; pickListError?: string; overrideRequested?: string; pickListCreated?: string }>;
 }
 
 export default async function InventoryPage({ searchParams }: PageProps) {
-  const { tab: tabParam, q, count: countId, error: countError, pickListView, pickListError, overrideRequested, pickListCreated, pickListPicked } = await searchParams;
+  const { tab: tabParam, q, count: countId, error: countError, pickListView, pickListError, overrideRequested, pickListCreated } = await searchParams;
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
@@ -76,6 +68,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
     fifo_override_required: {
       primary: "The selected location is not the current FIFO/FEFO source.",
       next: "Choose the recommended source or submit the required override request.",
+    },
+    override_single_pallet_required: {
+      primary: "Supervisor approval can cover only one alternate pallet/location per request.",
+      next: "Keep the recommended FIFO/FEFO locations in the split, or submit approval for one alternate location at a time.",
     },
     provisional_item_code: {
       primary: "This item is missing its enrolled supplier/DSGC item code.",
@@ -96,6 +92,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
     insufficient_stock: {
       primary: "The available stock changed before the reservation completed.",
       next: "Refresh the inventory and choose a new allocation.",
+    },
+    unable_to_reserve_stock: {
+      primary: "The selected stock is no longer available for this Organization and location.",
+      next: "Refresh inventory, select the current FIFO location, and try again.",
     },
     quantity_must_match_spq: {
       primary: "The requested quantity must make complete boxes.",
@@ -183,10 +183,12 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       )}
 
       {overrideRequested && (
-        <div role="status" className="mt-4 flex items-start gap-3 rounded border border-status-available/40 bg-status-available/10 p-4">
-          <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-status-available" aria-hidden="true" />
-          <div><p className="font-heading text-body-md font-bold text-on-surface">Override sent for approval</p><p className="mt-1 font-body text-body-sm text-text-grey">{overrideRequested} is waiting for another supervisor. Return here after approval to generate the locked pick list.</p></div>
-        </div>
+        <AutoDismissNotice>
+          <div role="status" className="mt-4 flex items-start gap-2.5 rounded-lg border border-status-available/40 bg-status-available/10 p-3">
+            <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-status-available" aria-hidden="true" />
+            <div><p className="font-heading text-body-sm font-bold text-on-surface">Override sent for approval</p><p className="mt-0.5 font-body text-body-xs text-text-grey">{overrideRequested} is waiting for another supervisor. Return here after approval to generate the locked pick list.</p></div>
+          </div>
+        </AutoDismissNotice>
       )}
 
       {activeTab === "stock-view" ? (
@@ -194,7 +196,6 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       ) : activeTab === "pick-lists" ? (
         <PickListsTab
           createdPickListId={pickListCreated}
-          pickedPickListId={pickListPicked}
           view={pickListView === "deleted" ? "deleted" : "open"}
         />
       ) : activeTab === "stock-count" ? (
@@ -372,7 +373,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
-async function PickListsTab({ createdPickListId, pickedPickListId, view }: { createdPickListId?: string; pickedPickListId?: string; view: "open" | "deleted" }) {
+async function PickListsTab({ createdPickListId, view }: { createdPickListId?: string; view: "open" | "deleted" }) {
   const isDeleted = view === "deleted";
   // Only allocated lists belong in this To Pick view. Picked lists move to the
   // Dispatch queue and dispatched records remain in the Outgoing Ledger.
@@ -421,71 +422,42 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
       ) : (
         <>
           {createdPickListId && (
-            <section
-              role="status"
-              className="rounded-2xl border border-status-available/40 bg-status-available/5 p-5 shadow-sm"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white shadow-sm">
-                  <Check size={20} strokeWidth={3} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-heading text-title-md font-bold text-on-surface">
-                    Pick list generated successfully
-                  </h3>
-                  <p className="mt-1 font-body text-body-sm text-text-grey">
-                    The list is now active in the To Pick Queue. Review or print its PDF, physically pull the boxes from storage racks, then mark it as picked to proceed with dispatch.
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <Link
-                      href={`/pick-lists/${createdPickListId}/print`}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-outline-variant/60 bg-surface-white px-4 font-label text-label-sm font-bold text-on-surface shadow-sm hover:bg-surface-light-grey"
-                    >
-                      <FileText size={15} />
-                      <span>View Pick List PDF</span>
-                    </Link>
-                    <form action={markPickListReadyForDispatch}>
-                      <input type="hidden" name="pickListId" value={createdPickListId} />
-                      <button
-                        type="submit"
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-label text-label-sm font-bold text-surface-white shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
+            <AutoDismissNotice>
+              <section
+                role="status"
+                className="rounded-xl border border-status-available/40 bg-status-available/5 p-3 shadow-sm"
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white shadow-sm">
+                    <Check size={16} strokeWidth={3} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-heading text-body-md font-bold text-on-surface">
+                      Pick list generated successfully
+                    </h3>
+                    <p className="mt-0.5 font-body text-body-xs text-text-grey">
+                      The list is active in the To Pick Queue. Review or print the PDF, edit it if needed, then approve it to move it to Dispatch.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/pick-lists/${createdPickListId}/print`}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-outline-variant/60 bg-surface-white px-3 font-label text-label-sm font-bold text-on-surface shadow-sm hover:bg-surface-light-grey"
                       >
-                        <Check size={15} />
-                        <span>Mark as Picked</span>
-                      </button>
-                    </form>
+                        <FileText size={14} />
+                        <span>View PDF</span>
+                      </Link>
+                      <Link
+                        href={`/pick-lists/${createdPickListId}/pick`}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 font-label text-label-sm font-bold text-surface-white shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
+                      >
+                        <ShieldCheck size={14} />
+                        <span>Review &amp; Approve</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
-          )}
-
-          {pickedPickListId && (
-            <section
-              role="status"
-              className="rounded-2xl border border-status-available/40 bg-status-available/5 p-5 shadow-sm"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-status-available text-surface-white shadow-sm">
-                  <Check size={20} strokeWidth={3} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-heading text-title-md font-bold text-on-surface">
-                    Pick list marked as Picked &amp; Ready for Dispatch
-                  </h3>
-                  <p className="mt-1 font-body text-body-sm text-text-grey">
-                    Physical carton picking is confirmed. Open the Dispatch Queue to scan barcodes and finalize the delivery receipt.
-                  </p>
-                  <Link
-                    href="/outgoing"
-                    className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-5 font-label text-label-sm font-bold text-surface-white shadow-sm hover:bg-primary/90 transition-all active:scale-[0.98]"
-                  >
-                    <span>Open Dispatch Queue</span>
-                    <ArrowRight size={15} />
-                  </Link>
-                </div>
-              </div>
-            </section>
+              </section>
+            </AutoDismissNotice>
           )}
 
           <div id="draft-generator">

@@ -9,18 +9,38 @@ import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
-import { PDF_FONT_SIZE, PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
+import { PDF_PAGE, PDF_THEME } from "@/lib/documents/pdf-theme";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = PDF_PAGE.landscape;
 const { margin: MARGIN, ink: INK, muted: MUTED, grid: GRID, headerFill: HEADER_FILL } = PDF_THEME;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const RECEIPT_FONT_SIZE = 9;
+const RECEIPT_LINE_HEIGHT = 11;
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
   for (const word of words) {
+    if (font.widthOfTextAtSize(word, size) > maxWidth) {
+      if (line) {
+        lines.push(line);
+        line = "";
+      }
+      let chunk = "";
+      for (const character of word) {
+        const candidate = `${chunk}${character}`;
+        if (chunk && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+          lines.push(chunk);
+          chunk = character;
+        } else {
+          chunk = candidate;
+        }
+      }
+      line = chunk;
+      continue;
+    }
     const candidate = line ? `${line} ${word}` : word;
     if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
       line = candidate;
@@ -41,7 +61,7 @@ function drawCell(
   width: number,
   height: number,
   font: PDFFont,
-  _size: number,
+  size: number,
   align: "left" | "center" = "left",
   fillColor?: ReturnType<typeof rgb>,
 ) {
@@ -55,18 +75,18 @@ function drawCell(
     color: fillColor,
   });
 
-  const lines = wrapText(text, font, PDF_FONT_SIZE, width - 6);
-  const lineHeight = PDF_FONT_SIZE + 2;
+  const lines = wrapText(text, font, size, width - 8);
+  const lineHeight = Math.min(RECEIPT_LINE_HEIGHT, size + 2);
   const blockHeight = lines.length * lineHeight;
-  const startY = yTop - (height - blockHeight) / 2 - PDF_FONT_SIZE;
+  const startY = yTop - (height - blockHeight) / 2 - size;
 
   lines.slice(0, 3).forEach((line, index) => {
-    const textWidth = font.widthOfTextAtSize(line, PDF_FONT_SIZE);
-    const textX = align === "center" ? x + (width - textWidth) / 2 : x + 3;
+    const textWidth = font.widthOfTextAtSize(line, size);
+    const textX = align === "center" ? x + (width - textWidth) / 2 : x + 4;
     page.drawText(line, {
       x: textX,
       y: startY - index * lineHeight,
-      size: PDF_FONT_SIZE,
+      size,
       font,
       color: INK,
     });
@@ -123,11 +143,11 @@ export async function GET(
   // Helper to draw standard document header & table header
   function renderDocumentHeader(page: PDFPage, pageNum: number, totalPages: number): number {
     if (logoImage) {
-      page.drawImage(logoImage, { x: MARGIN, y: 520, width: 34, height: 34 });
+      page.drawImage(logoImage, { x: MARGIN, y: 522, width: 30, height: 30 });
     }
-    const headerX = MARGIN + (logoImage ? 44 : 0);
-    page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 540, size: PDF_FONT_SIZE, font: bold, color: INK });
-    page.drawText(`${template.companyName} — ${template.subtitle}`, { x: headerX, y: 526, size: PDF_FONT_SIZE, font: bold, color: MUTED });
+    const headerX = MARGIN + (logoImage ? 38 : 0);
+    page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 540, size: 10, font: bold, color: INK });
+    page.drawText(`${template.companyName} — ${template.subtitle}`, { x: headerX, y: 526, size: RECEIPT_FONT_SIZE, font: bold, color: MUTED });
 
     const meta = [
       ["DELIVERY RECEIPT NO.", drNumber],
@@ -136,24 +156,24 @@ export async function GET(
       ["DELIVERY DATE", nonNullPickList.createdAt.toLocaleDateString()],
     ];
     meta.forEach(([label, value], index) => {
-      page.drawText(label, { x: 580, y: 544 - index * 12, size: PDF_FONT_SIZE, font: bold, color: INK });
-      page.drawText(value, { x: 705, y: 544 - index * 12, size: PDF_FONT_SIZE, font: bold, color: INK });
+      page.drawText(label, { x: 580, y: 544 - index * 11, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
+      page.drawText(value, { x: 705, y: 544 - index * 11, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
     });
 
     if (totalPages > 1) {
-      page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 730, y: 562, size: PDF_FONT_SIZE, font: bold, color: MUTED });
+      page.drawText(`PAGE ${pageNum} OF ${totalPages}`, { x: 730, y: 562, size: RECEIPT_FONT_SIZE, font: bold, color: MUTED });
     }
 
-    page.drawText("DELIVERY TO (END CUSTOMER):", { x: MARGIN, y: 486, size: PDF_FONT_SIZE, font: bold, color: INK });
-    page.drawText(party?.name ?? nonNullPickList.endCustomerPartyId, { x: MARGIN, y: 474, size: PDF_FONT_SIZE, font: bold, color: INK });
-    page.drawText([party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file", { x: MARGIN, y: 462, size: PDF_FONT_SIZE, font: regular, color: MUTED });
-    page.drawText(`Inventory Model: ${nonNullPickList.flowType.toUpperCase()}`, { x: 630, y: 474, size: PDF_FONT_SIZE, font: bold, color: INK });
+    page.drawText("DELIVERY TO (END CUSTOMER):", { x: MARGIN, y: 486, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
+    page.drawText(party?.name ?? nonNullPickList.endCustomerPartyId, { x: MARGIN, y: 474, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
+    page.drawText([party?.address1, party?.address2].filter(Boolean).join(", ") || "Address on file", { x: MARGIN, y: 462, size: RECEIPT_FONT_SIZE, font: regular, color: MUTED });
+    page.drawText(`Inventory Model: ${nonNullPickList.flowType.toUpperCase()}`, { x: 630, y: 474, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
     page.drawLine({ start: { x: MARGIN, y: 450 }, end: { x: PAGE_WIDTH - MARGIN, y: 450 }, thickness: 1, color: GRID });
 
     // Table Column Headers
     let x = MARGIN;
     headings.forEach((heading, index) => {
-      drawCell(page, heading, x, 442, widths[index], 22, bold, PDF_FONT_SIZE, "center", HEADER_FILL);
+      drawCell(page, heading, x, 442, widths[index], 22, bold, 8, "center", HEADER_FILL);
       x += widths[index];
     });
 
@@ -161,7 +181,6 @@ export async function GET(
   }
 
   const ROW_HEIGHT = 18;
-  const FOOTER_REQUIRED_SPACE = 135; // Total row (20) + Delivery Remarks (46) + Signatures (56) + margins
   const ROWS_PER_PAGE_FULL = 18;
   const ROWS_PER_PAGE_WITH_FOOTER = 11;
 
@@ -211,7 +230,7 @@ export async function GET(
           widths[column],
           ROW_HEIGHT,
           column === 4 ? bold : regular,
-          PDF_FONT_SIZE,
+          RECEIPT_FONT_SIZE,
           column < 4 || column === 5 ? "center" : "left"
         );
         x += widths[column];
@@ -231,22 +250,22 @@ export async function GET(
         ? ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", referenceTotal == null ? "—" : referenceTotal.toFixed(2), ""]
         : ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", ""];
       totals.forEach((value, column) => {
-        drawCell(page, value, x, rowTop, widths[column], 20, bold, PDF_FONT_SIZE, column < 4 ? "center" : "left", HEADER_FILL);
+        drawCell(page, value, x, rowTop, widths[column], 20, bold, RECEIPT_FONT_SIZE, column < 4 ? "center" : "left", HEADER_FILL);
         x += widths[column];
       });
 
       if (nonNullPickList.flowType === "vmi") {
         page.drawText("Unit prices are per-release reference values only. Authoritative billing is the period VMI statement.", {
-          x: MARGIN, y: rowTop - 32, size: PDF_FONT_SIZE, font: regular, color: MUTED,
+          x: MARGIN, y: rowTop - 32, size: RECEIPT_FONT_SIZE, font: regular, color: MUTED,
         });
       }
 
       // Delivery Remarks Box
-      const instructionTop = rowTop - 20 - 10;
+      const instructionTop = rowTop - 20 - (nonNullPickList.flowType === "vmi" ? 30 : 10);
       page.drawRectangle({ x: MARGIN, y: instructionTop - 36, width: CONTENT_WIDTH, height: 36, borderColor: GRID, borderWidth: 0.6 });
       page.drawRectangle({ x: MARGIN, y: instructionTop - 14, width: CONTENT_WIDTH, height: 14, color: HEADER_FILL, borderColor: GRID, borderWidth: 0.6 });
-      page.drawText("DELIVERY INSTRUCTIONS / REMARKS", { x: MARGIN + 6, y: instructionTop - 10, size: PDF_FONT_SIZE, font: bold, color: INK });
-      page.drawText("Goods delivered in good condition. Certified under ISO 9001:2015 Dyna-Serv logistics standard.", { x: MARGIN + 6, y: instructionTop - 26, size: PDF_FONT_SIZE, font: regular, color: MUTED });
+      page.drawText("DELIVERY INSTRUCTIONS / REMARKS", { x: MARGIN + 6, y: instructionTop - 10, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
+      page.drawText("Goods delivered in good condition. Certified under ISO 9001:2015 Dyna-Serv logistics standard.", { x: MARGIN + 6, y: instructionTop - 26, size: RECEIPT_FONT_SIZE, font: regular, color: MUTED });
 
       // Triple Sign-Off Footer
       const footerTop = instructionTop - 46;
@@ -254,8 +273,8 @@ export async function GET(
       ["CHECKED & VERIFIED BY:", "LOADED & DISPATCHED BY:", "ACKNOWLEDGED & RECEIVED BY:"].forEach((label, index) => {
         const footerX = MARGIN + footerWidths.slice(0, index).reduce((sum, width) => sum + width, 0);
         page.drawRectangle({ x: footerX, y: footerTop - 48, width: footerWidths[index], height: 48, borderColor: GRID, borderWidth: 0.6 });
-        page.drawText(label, { x: footerX + 6, y: footerTop - 12, size: PDF_FONT_SIZE, font: bold, color: INK });
-        page.drawText("Signature / Printed Name / Date", { x: footerX + 6, y: footerTop - 40, size: PDF_FONT_SIZE, font: regular, color: MUTED });
+        page.drawText(label, { x: footerX + 6, y: footerTop - 12, size: RECEIPT_FONT_SIZE, font: bold, color: INK });
+        page.drawText("Signature / Printed Name / Date", { x: footerX + 6, y: footerTop - 40, size: RECEIPT_FONT_SIZE, font: regular, color: MUTED });
       });
       break;
     }

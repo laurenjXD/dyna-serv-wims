@@ -30,9 +30,13 @@ describe("PickQueueSection", () => {
 
     expect(screen.getByRole("heading", { name: "To Pick" })).toBeInTheDocument();
     expect(screen.getByText("1 waiting")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /start pick/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /review & approve/i })).toHaveAttribute(
       "href",
       "/pick-lists/pick-allocated/pick",
+    );
+    expect(screen.getByRole("link", { name: /^edit$/i })).toHaveAttribute(
+      "href",
+      "/pick-lists/pick-allocated/edit",
     );
     expect(screen.queryByRole("link", { name: /^dispatch/i })).not.toBeInTheDocument();
   });

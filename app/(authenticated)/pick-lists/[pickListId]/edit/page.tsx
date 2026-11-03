@@ -9,10 +9,12 @@ import { EditPickListClient } from "./_components/EditPickListClient";
 
 interface PageProps {
   params: Promise<{ pickListId: string }>;
+  searchParams: Promise<{ error?: string }>;
 }
 
-export default async function EditPickListPage({ params }: PageProps) {
+export default async function EditPickListPage({ params, searchParams }: PageProps) {
   const { pickListId } = await params;
+  const { error } = await searchParams;
   const resolver = await createPageResolver();
 
   const permResult = await requirePermission(resolver, "pick_list.execute");
@@ -21,7 +23,7 @@ export default async function EditPickListPage({ params }: PageProps) {
   }
 
   const pickList = await getPickList(db, pickListId);
-  if (!pickList || pickList.status === "dispatched") {
+  if (!pickList || pickList.status !== "allocated") {
     notFound();
   }
 
@@ -45,6 +47,7 @@ export default async function EditPickListPage({ params }: PageProps) {
       pickListId={pickListId}
       pickListNumber={pickList.pickListNumber}
       status={pickList.status}
+      error={error}
       initialItems={initialItems}
     />
   );

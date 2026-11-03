@@ -99,6 +99,10 @@ function stockOrganizationId(row: AnyRecord): string | null {
   return row.organizationPartyId ?? row.defaultSupplierPartyId ?? null;
 }
 
+function stockOrganizationCondition(partyId: string) {
+  return sql`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId}) = ${partyId}`;
+}
+
 function hashSnapshot(data: unknown): string {
   return createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
@@ -145,6 +149,17 @@ export type MarkPickListPickedResult =
   | { ok: true }
   | { ok: false; errors: string[] };
 
+export type UpdateCommittedPickListLine = {
+  lineId: string;
+  qty: number;
+  spq: number;
+  numberOfBoxes: number;
+};
+
+export type UpdateCommittedPickListResult =
+  | { ok: true }
+  | { ok: false; errors: string[] };
+
 export type SelectPickUnitResult =
   | { ok: true; selectedCount: number; requiredCount: number }
   | { ok: false; errors: string[] };
@@ -171,7 +186,6 @@ export async function requestFifoOverride(
   if (!validation.ok) return { ok: false, errors: validation.errors };
   const data = validation.data;
   const trimmedReason = reason.trim();
-  if (trimmedReason.length < 10) return { ok: false, errors: ["override_reason_too_short"] };
   if (data.lines.length !== 1) return { ok: false, errors: ["override_single_pallet_required"] };
 
   try {
@@ -207,6 +221,7 @@ export async function requestFifoOverride(
           eq(lots.itemId, requested.itemId),
           eq(lots.status, "available"),
           eq(lots.flowType, data.flowType),
+          stockOrganizationCondition(data.partyId),
           sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
         ))
         .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
@@ -434,6 +449,7 @@ export async function commitWithdrawal(
           eq(lots.itemId, itemId),
           eq(lots.status, "available"),
           eq(lots.flowType, data.flowType),
+          stockOrganizationCondition(data.partyId),
           sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
         ))
         .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
@@ -445,7 +461,7 @@ export async function commitWithdrawal(
       const itemCodeIsProvisional =
         (data.flowType === "trading" || data.flowType === "supplies")
           ? !item.dsgcItemNumber?.trim()
-          : !item.supplierItemCode?.trim();
+          : !item.supplierItemCode?.trim() && !item.itemCode?.trim();
       if (itemCodeIsProvisional) {
         throw new Error("provisional_item_code");
       }
@@ -554,8 +570,8 @@ export async function commitWithdrawal(
         endCustomerPartyId: recipientPartyId,
         flowType: data.flowType,
         // Commitment reserves the stock but does not certify that warehouse
-        // picking is complete. The explicit Mark as Picked command is the
-        // only path from allocated into the Dispatch queue.
+        // picking is complete. Explicit approval is the only path from
+        // allocated into the Dispatch queue.
         status: "allocated",
       })
       .returning();
@@ -728,10 +744,11 @@ export async function commitWithdrawal(
 // ---------------------------------------------------------------------------
 
 /**
- * A matching carton/item/lot QR identifies the committed dispatch line, as in
- * batch receiving. One scan confirms the complete jackwrapped line at that
- * location. A physical inventory-unit row is assigned server-side for every
- * committed box; unit IDs are never supplied by the scanner as authority.
+ * Counts one shared item/lot QR scan for its matching committed dispatch line.
+ * Like WRR receiving, the same matching QR may be scanned repeatedly until
+ * the line's required box count is reached. A physical inventory-unit row is
+ * assigned server-side only to retain the existing commitment/accounting
+ * invariant; its individual ID is never supplied or validated by the scanner.
  */
 export async function selectPickUnit(
   resolver: RequestAuthorizationResolver,
@@ -766,97 +783,12 @@ export async function selectPickUnit(
         .from(pickListItems)
         .leftJoin(items, eq(items.id, pickListItems.itemId))
         .innerJoin(pickLists, eq(pickLists.id, pickListItems.pickListId))
-        .where(eq(pickLists.id, pickListId))
-        .for("update", { of: pickListItems })) as AnyRecord[];
+        .where(eq(pickLists.id, pickListId))) as AnyRecord[];
 
       if (lineRows.length === 0) return { ok: false as const, errors: ["line_not_found"] };
       if (lineRows[0].pickListStatus !== "picked") {
         return { ok: false as const, errors: ["invalid_status"] };
       }
-
-      const selectWholeLine = async (
-        line: AnyRecord,
-        priorSelections?: AnyRecord[],
-      ): Promise<SelectPickUnitResult> => {
-        const requiredCount = Number(line.numberOfBoxes);
-        const selectedRows = priorSelections ?? (await db
-          .select({ id: inventoryUnits.id })
-          .from(inventoryUnits)
-          .where(and(
-            eq(inventoryUnits.pickListItemId, line.id),
-            eq(inventoryUnits.status, "selected"),
-          ))) as AnyRecord[];
-        if (selectedRows.length >= requiredCount) {
-          return { ok: false, errors: ["line_complete"] };
-        }
-
-        const neededCount = requiredCount - selectedRows.length;
-        const unitRows = (await db
-          .select({ id: inventoryUnits.id, unitIndex: inventoryUnits.unitIndex })
-          .from(inventoryUnits)
-          .where(and(
-            eq(inventoryUnits.lotId, line.lotId),
-            eq(inventoryUnits.locationId, line.locationId),
-            eq(inventoryUnits.status, "available"),
-            sql`${inventoryUnits.pickListItemId} IS NULL`,
-          ))
-          .limit(neededCount)) as Array<{ id: string; unitIndex: number }>;
-        const missingCount = neededCount - unitRows.length;
-
-        let wrrItemId: string | null = null;
-        let nextUnitIndex = 1;
-        if (missingCount > 0) {
-          // Legacy aggregate receipts may have fewer internal unit rows than
-          // their authoritative committed box count. Reconstruct only the
-          // missing rows for this line, never more than its committed quantity.
-          const sourceRows = (await db
-            .select({
-              wrrItemId: lots.wrrItemId,
-              unitIndex: inventoryUnits.unitIndex,
-            })
-            .from(lots)
-            .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
-            .where(eq(lots.id, line.lotId))) as Array<{
-            wrrItemId: string;
-            unitIndex: number | null;
-          }>;
-          wrrItemId = sourceRows[0]?.wrrItemId ?? null;
-          if (!wrrItemId) return { ok: false, errors: ["box_unavailable"] };
-          nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
-        }
-
-        for (const unit of unitRows) {
-          const claimed = (await db
-            .update(inventoryUnits)
-            .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
-            .where(and(
-              eq(inventoryUnits.id, unit.id),
-              eq(inventoryUnits.status, "available"),
-              sql`${inventoryUnits.pickListItemId} IS NULL`,
-            ))
-            .returning({ id: inventoryUnits.id })) as AnyRecord[];
-          if (claimed.length !== 1) throw new Error("stale_scan");
-        }
-
-        if (missingCount > 0 && wrrItemId) {
-          const missingUnits = Array.from({ length: missingCount }, () => {
-            const unitId = randomUUID();
-            return {
-              unitId,
-              cartonId: cartonIdFromUnitId(unitId),
-              unitIndex: nextUnitIndex++,
-              wrrItemId: wrrItemId!,
-              lotId: line.lotId,
-              locationId: line.locationId,
-              status: "selected" as const,
-              pickListItemId: line.id,
-            };
-          });
-          await db.insert(inventoryUnits).values(missingUnits);
-        }
-
-        return { ok: true, selectedCount: requiredCount, requiredCount };
-      };
 
       // Migration-origin carton labels carry the durable inventory-unit ID.
       // Resolve and reserve that exact carton instead of falling back to the
@@ -878,8 +810,10 @@ export async function selectPickUnit(
         if (unit.status !== "available" || unit.pickListItemId) return { ok: false as const, errors: ["box_already_selected"] };
         const line = lineRows.find((candidate) => candidate.lotId === unit.lotId && candidate.locationId === unit.locationId);
         if (!line) return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
-        if (expectedPickListItemId && line.id !== expectedPickListItemId) return { ok: false as const, errors: ["stale_scan"] };
-        return await selectWholeLine(line);
+        const selectedRows = (await db.select({ id: inventoryUnits.id }).from(inventoryUnits).where(and(eq(inventoryUnits.pickListItemId, line.id), eq(inventoryUnits.status, "selected")))) as AnyRecord[];
+        if (selectedRows.length >= Number(line.numberOfBoxes)) return { ok: false as const, errors: ["line_complete"] };
+        await db.update(inventoryUnits).set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() }).where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
+        return { ok: true as const, selectedCount: selectedRows.length + 1, requiredCount: Number(line.numberOfBoxes) };
       }
 
       // The scan determines the target line. Like WRR receiving, one shared
@@ -913,15 +847,91 @@ export async function selectPickUnit(
         }
       }
       if (!line) return { ok: false as const, errors: ["line_complete"] };
-      return await selectWholeLine(line, selectedRows);
+      const requiredCount = Number(line.numberOfBoxes);
+
+      const neededCount = requiredCount - selectedRows.length;
+      if (neededCount <= 0) return { ok: false as const, errors: ["line_complete"] };
+
+      // Shared QR labels verify the line on the pallet. Assign all remaining
+      // physical units for this line from this committed lot/location.
+      const unitRows = (await db
+        .select({
+          id: inventoryUnits.id,
+          lotId: inventoryUnits.lotId,
+          locationId: inventoryUnits.locationId,
+          status: inventoryUnits.status,
+          pickListItemId: inventoryUnits.pickListItemId,
+        })
+        .from(inventoryUnits)
+        .where(and(
+          eq(inventoryUnits.lotId, line.lotId),
+          eq(inventoryUnits.locationId, line.locationId),
+          eq(inventoryUnits.status, "available"),
+          sql`${inventoryUnits.pickListItemId} IS NULL`,
+        ))
+        .limit(neededCount)) as AnyRecord[];
+
+      for (const unit of unitRows) {
+        await db
+          .update(inventoryUnits)
+          .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
+          .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
+      }
+
+      const stillMissingCount = neededCount - unitRows.length;
+      if (stillMissingCount > 0) {
+        // Older aggregate receipts can have a confirmed lot balance but fewer
+        // internal unit rows than physical boxes. A shared QR still represents
+        // the committed boxes, so reconstruct any missing internal accounting
+        // rows from the authoritative lot source rather than rejecting a valid scan.
+        const sourceRows = (await db
+          .select({
+            wrrItemId: lots.wrrItemId,
+            migrationBatchId: lots.migrationBatchId,
+            unitIndex: inventoryUnits.unitIndex,
+          })
+          .from(lots)
+          .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
+          .where(eq(lots.id, line.lotId))) as Array<{
+            wrrItemId: string | null;
+            migrationBatchId: string | null;
+            unitIndex: number | null;
+          }>;
+        // Older aggregate and migration lots may not have a WRR source line.
+        // The lot/location commitment is still authoritative, so create
+        // durable box identities with whichever provenance is available.
+        const wrrItemId = sourceRows[0]?.wrrItemId ?? null;
+        const migrationBatchId = sourceRows[0]?.migrationBatchId ?? null;
+        let nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
+
+        for (let i = 0; i < stillMissingCount; i++) {
+          const unitId = randomUUID();
+          await db
+            .insert(inventoryUnits)
+            .values({
+              unitId,
+              cartonId: cartonIdFromUnitId(unitId),
+              unitIndex: nextUnitIndex++,
+              wrrItemId,
+              migrationBatchId,
+              lotId: line.lotId,
+              locationId: line.locationId,
+              status: "selected",
+              pickListItemId: line.id,
+            });
+        }
+      }
+
+      return {
+        ok: true as const,
+        selectedCount: requiredCount,
+        requiredCount,
+      };
     });
 
     if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
     return rlsResult.value;
   } catch (error) {
-    if (error instanceof Error && error.message === "stale_scan") {
-      return { ok: false, errors: ["stale_scan"] };
-    }
     console.error("Shared QR dispatch count failed", error);
     return { ok: false, errors: ["unable_to_select_box"] };
   }
@@ -989,6 +999,181 @@ export async function markPickListPicked(
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<MarkPickListPickedResult> {
   return completeExactPick(resolver, pickListId, rlsDeps);
+}
+
+/**
+ * Updates an allocated pick-list snapshot and its matching reservation.
+ *
+ * This is intentionally limited to the pre-approval `allocated` phase. The
+ * source lot/location does not change here; changing source requires a new
+ * allocation so the FIFO/FEFO and approval rules are re-run by Stage 1.
+ */
+export async function updateCommittedPickListLineItems(
+  resolver: RequestAuthorizationResolver,
+  pickListId: string,
+  updates: UpdateCommittedPickListLine[],
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<UpdateCommittedPickListResult> {
+  const perm = await requirePermission(resolver, "pick_list.execute");
+  if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!pickListId || updates.length === 0) {
+    return { ok: false, errors: ["invalid_payload"] };
+  }
+
+  const seen = new Set<string>();
+  for (const update of updates) {
+    if (
+      !update.lineId ||
+      seen.has(update.lineId) ||
+      !Number.isInteger(update.qty) ||
+      !Number.isInteger(update.spq) ||
+      !Number.isInteger(update.numberOfBoxes) ||
+      update.qty < 1 ||
+      update.spq < 1 ||
+      update.numberOfBoxes < 1 ||
+      update.qty !== update.spq * update.numberOfBoxes
+    ) {
+      return { ok: false, errors: ["invalid_line_quantity"] };
+    }
+    seen.add(update.lineId);
+  }
+
+  try {
+    const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
+      const database = tx.db as DbLike;
+      const [pickList] = (await database
+        .select({ status: pickLists.status })
+        .from(pickLists)
+        .where(eq(pickLists.id, pickListId))
+        .limit(1)) as Array<{ status: string }>;
+      if (!pickList) return { ok: false as const, errors: ["not_found"] };
+      if (pickList.status !== "allocated") {
+        return { ok: false as const, errors: ["pick_list_locked"] };
+      }
+
+      const [commitment] = (await database
+        .select({ id: inventoryCommitments.id, status: inventoryCommitments.status })
+        .from(inventoryCommitments)
+        .where(eq(inventoryCommitments.pickListId, pickListId))
+        .limit(1)) as Array<{ id: string; status: string }>;
+      if (!commitment || commitment.status !== "active") {
+        return { ok: false as const, errors: ["commitment_not_active"] };
+      }
+
+      const currentItems = (await database
+        .select({
+          id: pickListItems.id,
+          qty: pickListItems.qty,
+          spq: pickListItems.spq,
+          numberOfBoxes: pickListItems.numberOfBoxes,
+        })
+        .from(pickListItems)
+        .where(eq(pickListItems.pickListId, pickListId))) as Array<{
+        id: string;
+        qty: number;
+        spq: number;
+        numberOfBoxes: number;
+      }>;
+      if (currentItems.length !== updates.length || currentItems.some((item) => !seen.has(item.id))) {
+        return { ok: false as const, errors: ["invalid_payload"] };
+      }
+
+      const commitmentLines = (await database
+        .select({
+          id: inventoryCommitmentLines.id,
+          pickListItemId: inventoryCommitmentLines.pickListItemId,
+          balanceId: inventoryCommitmentLines.lotLocationBalanceId,
+          qtyCommitted: inventoryCommitmentLines.qtyCommitted,
+        })
+        .from(inventoryCommitmentLines)
+        .where(eq(inventoryCommitmentLines.commitmentId, commitment.id))) as Array<{
+        id: string;
+        pickListItemId: string;
+        balanceId: string;
+        qtyCommitted: number;
+      }>;
+      if (commitmentLines.length !== currentItems.length) {
+        return { ok: false as const, errors: ["commitment_mismatch"] };
+      }
+
+      const balances = (await database
+        .select({
+          id: lotLocationBalances.id,
+          qtyRemaining: lotLocationBalances.qtyRemaining,
+          qtyCommitted: lotLocationBalances.qtyCommitted,
+        })
+        .from(lotLocationBalances)
+        .where(inArray(lotLocationBalances.id, commitmentLines.map((line) => line.balanceId)))) as Array<{
+        id: string;
+        qtyRemaining: number;
+        qtyCommitted: number;
+      }>;
+      const balanceById = new Map(balances.map((balance) => [balance.id, balance]));
+      const itemById = new Map(currentItems.map((item) => [item.id, item]));
+
+      for (const line of commitmentLines) {
+        const current = itemById.get(line.pickListItemId);
+        const next = updates.find((update) => update.lineId === line.pickListItemId);
+        const balance = balanceById.get(line.balanceId);
+        if (!current || !next || !balance || line.qtyCommitted !== current.qty) {
+          return { ok: false as const, errors: ["commitment_mismatch"] };
+        }
+
+        const delta = next.qty - current.qty;
+        if (delta > 0) {
+          const updated = await database
+            .update(lotLocationBalances)
+            .set({
+              qtyCommitted: sql`${lotLocationBalances.qtyCommitted} + ${delta}`,
+              version: sql`${lotLocationBalances.version} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(lotLocationBalances.id, line.balanceId),
+              sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} >= ${delta}`,
+            ))
+            .returning({ id: lotLocationBalances.id });
+          if (updated.length !== 1) return { ok: false as const, errors: ["insufficient_stock"] };
+        } else if (delta < 0) {
+          const updated = await database
+            .update(lotLocationBalances)
+            .set({
+              qtyCommitted: sql`${lotLocationBalances.qtyCommitted} - ${Math.abs(delta)}`,
+              version: sql`${lotLocationBalances.version} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(lotLocationBalances.id, line.balanceId),
+              sql`${lotLocationBalances.qtyCommitted} >= ${Math.abs(delta)}`,
+            ))
+            .returning({ id: lotLocationBalances.id });
+          if (updated.length !== 1) return { ok: false as const, errors: ["reservation_mismatch"] };
+        }
+
+        await database
+          .update(inventoryCommitmentLines)
+          .set({ qtyCommitted: next.qty, updatedAt: new Date() })
+          .where(eq(inventoryCommitmentLines.id, line.id));
+        await database
+          .update(pickListItems)
+          .set({ qty: next.qty, spq: next.spq, numberOfBoxes: next.numberOfBoxes })
+          .where(eq(pickListItems.id, line.pickListItemId));
+      }
+
+      await database
+        .update(pickLists)
+        .set({ updatedAt: new Date() })
+        .where(eq(pickLists.id, pickListId));
+
+      return { ok: true as const };
+    });
+
+    if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
+    return rlsResult.value;
+  } catch (error) {
+    console.error("Allocated pick-list update failed", error);
+    return { ok: false, errors: ["unable_to_update_pick_list"] };
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -56,7 +56,6 @@ describe("FifoOverrideSnapshot — missing required fields fail with field-level
     "available_qty_at_request",
     "flow_type",
     "actor_user_id",
-    "reason",
     "allocation_version",
     "requested_at",
   ] as const;
@@ -80,8 +79,8 @@ describe("FifoOverrideSnapshot — missing required fields fail with field-level
   }
 });
 
-describe("FifoOverrideSnapshot — reason must be at least 10 characters (design.md §3)", () => {
-  it("fails when reason has fewer than 10 characters", async () => {
+describe("FifoOverrideSnapshot — reason/comment is optional", () => {
+  it("accepts a reason with fewer than 10 characters", async () => {
     const { FifoOverrideSnapshotSchema } = await import(
       "@/lib/approval/fifo-override-snapshot"
     );
@@ -91,23 +90,21 @@ describe("FifoOverrideSnapshot — reason must be at least 10 characters (design
       reason: "Too short",
     });
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    const paths = result.error.issues.map((i) => i.path[0]);
-    expect(paths).toContain("reason");
+    expect(result.success).toBe(true);
   });
 
-  it("accepts reason with exactly 10 characters", async () => {
+  it("defaults an omitted reason to an empty string", async () => {
     const { FifoOverrideSnapshotSchema } = await import(
       "@/lib/approval/fifo-override-snapshot"
     );
 
+    const { reason: _reason, ...snapshotWithoutReason } = VALID_SNAPSHOT;
     const result = FifoOverrideSnapshotSchema.safeParse({
-      ...VALID_SNAPSHOT,
-      reason: "1234567890",
+      ...snapshotWithoutReason,
     });
 
     expect(result.success).toBe(true);
+    if (result.success) expect(result.data.reason).toBe("");
   });
 });
 

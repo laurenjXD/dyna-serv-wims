@@ -1,4 +1,4 @@
-// RED test — DispatchConfirmationPage does not exist yet.
+// DispatchConfirmationPage contract tests.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
@@ -60,5 +60,15 @@ describe("DispatchConfirmationPage (app/(authenticated)/pick-lists/[pickListId]/
     expect(source).toContain("matching unfinished line is counted automatically");
     expect(source).not.toContain('name="pickListItemId"');
     expect(source).toContain("Confirm Dispatch");
+  });
+
+  it("keeps allocated approval out of the dispatch surface", () => {
+    const source = pageSource();
+    expect(source).toContain('const scanReady = pickList.status === "picked";');
+    expect(source).toContain("const allBoxesScanned = scanReady && items.length > 0 && !activeItem;");
+    expect(source).toContain('if (pickList.status === "allocated")');
+    expect(source).toContain('redirect(`/pick-lists/${pickListId}/pick`)');
+    expect(source).not.toContain("Line Items Locked After Reservation");
+    expect(source).not.toContain("Approve Pick List Before Scanning");
   });
 });

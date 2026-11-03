@@ -53,7 +53,7 @@ export const approvalRequests = pgTable(
     partyId: uuid("party_id").references(() => parties.id),
     // auth.users UID of the requesting user.
     requesterUserId: uuid("requester_user_id").notNull(),
-    // Business justification; minimum 10 chars (CHECK in SQL migration).
+    // Optional business justification; empty string is allowed when no comment is provided.
     reason: text("reason").notNull(),
     status: approvalRequestStatusEnum("status").default("pending").notNull(),
     // Set to now() + 30 min at creation time per design.md §5.
@@ -72,13 +72,7 @@ export const approvalRequests = pgTable(
     // Soft archive only; request and decision history remain durable.
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     deletedByUserId: uuid("deleted_by_user_id"),
-  },
-  (table) => ({
-    reasonMinLength: check(
-      "reason_min_length",
-      sql`char_length(${table.reason}) >= 10`
-    ),
-  })
+  }
 );
 
 export const approvalDecisions = pgTable(
