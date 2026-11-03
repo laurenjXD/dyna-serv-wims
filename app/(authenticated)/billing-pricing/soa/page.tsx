@@ -34,7 +34,7 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <FileText size={40} className="mx-auto mb-3 text-text-grey" />
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view Statement of Account documents.
+          You do not have permission to view Statement of Account documents. Ask an administrator for access.
         </p>
       </div>
     );

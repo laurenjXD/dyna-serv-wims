@@ -122,7 +122,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
 
     await user.type(screen.getByTestId("team-search-input"), "nobody-matches-this");
 
-    expect(screen.getByText("No team members match your search.")).toBeInTheDocument();
+    expect(screen.getByText("No team members match your search. Clear the search or change the filters.")).toBeInTheDocument();
   });
 
   it("opens the Invite User modal from the header button", async () => {
@@ -215,7 +215,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
 
     await waitFor(() => expect(resendInvite).toHaveBeenCalledWith("u2"));
     expect(
-      screen.getByText(/Invitation link successfully resent to vendor@example\.com/i),
+      screen.getByText(/Invitation sent to vendor@example\.com/i),
     ).toBeInTheDocument();
   });
 

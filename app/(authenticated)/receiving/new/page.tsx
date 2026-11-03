@@ -9,6 +9,7 @@
 // Surface: Office. Permission gate: receiving.confirm.
 // The createWrr action stages the WRR header and every expected line together.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -119,7 +120,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   ]);
 
   const errors = encodedErrors
-    ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
+    ? [...new Set(encodedErrors.split("|").filter(Boolean).map((error) => toUserMessage(error, "Review the Organization and expected item details, then try again.")))]
     : [];
 
   return (
@@ -141,7 +142,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
           className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
-            Validation errors
+            WRR was not created.
           </p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {errors.map((err) => (

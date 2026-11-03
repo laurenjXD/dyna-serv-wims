@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import type { CycleCountLineRow, CycleCountSessionRow } from "@/lib/db/queries/cycle-count";
 import { LocationCountSelector } from "./LocationCountSelector";
@@ -69,7 +70,7 @@ export function StockCountTab({
               ? "A zero count needs explicit confirmation that the line was checked and is physically empty."
               : error === "missing_lines_confirmation_required"
               ? "Confirm that every preloaded line was checked before submitting this count."
-              : `The count could not be started (${error.replaceAll("_", " ")}). Refresh and try again.`}
+              : toUserMessage(error, "The count could not be updated. Refresh the page and review its current status.")}
           </p>
         </div>
       )}

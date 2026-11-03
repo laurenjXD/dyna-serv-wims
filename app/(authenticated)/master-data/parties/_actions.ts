@@ -346,7 +346,7 @@ export async function contactPartyAction(
   const cc = nullableString(formData.get("cc"));
   const ccRecipients = cc ? cc.split(",").map((s) => s.trim()).filter(Boolean) : [];
   if (ccRecipients.some((recipient) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))) {
-    return { error: "Every CC recipient must be a valid email address." };
+    return { error: "A CC email address is invalid. Check each CC address and try again." };
   }
   const templateKey = (formData.get("templateKey") as string | null) ?? "custom_message";
   const templateCategory = (formData.get("templateCategory") as string | null) ?? "general";

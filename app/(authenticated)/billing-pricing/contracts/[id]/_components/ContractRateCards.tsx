@@ -383,7 +383,7 @@ export function ContractRateCards({
                 ) : (
                   <div className="rounded-xl border border-outline-variant/20 bg-surface-light-grey/40 p-6 text-center text-text-grey">
                     <FileCheck size={28} className="mx-auto mb-2 opacity-50" />
-                    <p className="font-body text-body-sm">No trading SKUs configured yet.</p>
+                    <p className="font-body text-body-sm">No Trading rate cards are configured yet. Ask an administrator to configure rates for this Organization and its materials.</p>
                   </div>
                 )}
               </div>

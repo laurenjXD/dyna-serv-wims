@@ -14,6 +14,7 @@
 //   completed    → (read-only, no action)
 //   cancelled    → (read-only, no action)
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -125,7 +126,7 @@ export default async function TransferDetailPage({
 
   // Parse action error if present
   const actionErrorMsg = actionError
-    ? decodeURIComponent(actionError)
+    ? toUserMessage(actionError, "The transfer could not be updated. Refresh the request and try again. If it happens again, contact a supervisor.")
     : null;
 
   return (
@@ -163,7 +164,7 @@ export default async function TransferDetailPage({
           className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
-            Action failed
+            Transfer was not updated.
           </p>
           <p className="mt-1 font-body text-body-md text-status-held">
             {actionErrorMsg}
@@ -293,7 +294,7 @@ export default async function TransferDetailPage({
         {transfer.lines.length === 0 ? (
           <div className="px-6 pb-8 text-center">
             <p className="font-body text-body-md text-text-grey">
-              No lines on this transfer.
+              This transfer has no items. Return to the queue and open another transfer, or ask a supervisor to review this request.
             </p>
           </div>
         ) : (

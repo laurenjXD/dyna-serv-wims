@@ -268,7 +268,7 @@ export function VmiDailyBalanceLedgerTable({
       <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {filteredAndSortedRows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md font-semibold text-on-surface">No ledger rows match your filter.</p>
+            <p className="font-body text-body-md font-semibold text-on-surface">No ledger rows match your filter. Change or clear the filter.</p>
             <p className="mt-1 font-body text-body-sm text-text-grey">Try clearing search terms or selecting &quot;All Days&quot;.</p>
           </div>
         ) : (

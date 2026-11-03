@@ -197,13 +197,13 @@ export default async function PortalNotificationsPage({ searchParams }: PageProp
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-status-held/30 bg-status-held/5 px-6 py-12 text-center shadow-elevation-1">
             <AlertTriangle size={40} className="text-status-held" aria-hidden="true" />
             <p className="font-body text-body-md text-on-surface">Notifications are temporarily unavailable.</p>
-            <p className="font-body text-body-sm text-text-grey">Refresh the page to try the authoritative notification query again.</p>
+            <p className="font-body text-body-sm text-text-grey">Refresh the page to try again. If it happens again, contact an administrator.</p>
           </div>
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
             <Bell size={40} className="text-text-grey" aria-hidden="true" />
             <p className="font-body text-body-md text-text-grey">
-              {activeFilter === "unread" ? "No unread notifications." : "No notifications yet."}
+              {activeFilter === "unread" ? "No unread notifications. Choose All to review earlier notifications." : "No notifications yet. Check again after your organization receives an update."}
             </p>
           </div>
         ) : (
@@ -262,9 +262,7 @@ function PermissionDenied() {
         You do not have permission to view notifications.
       </p>
       <p className="mt-2 font-body text-body-sm text-text-grey">
-        This page requires the{" "}
-        <span className="font-mono text-mono-md">notifications.read</span>{" "}
-        capability.
+        Ask an administrator for access to this page.
       </p>
     </div>
   );

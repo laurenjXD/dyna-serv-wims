@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +17,7 @@ export function MarkAllNotificationsReadButton({ disabled }: { disabled: boolean
     try {
       const result = await markAllNotificationsReadAction();
       if (!result.ok) {
-        setError(result.error);
+        setError(toUserMessage(result.error, "Notifications could not be marked as read. Try again."));
         return;
       }
       router.refresh();

@@ -83,7 +83,7 @@ describe("invitation onboarding", () => {
   it("keeps setup disabled when the link has no authenticated session", async () => {
     getUser.mockResolvedValue({ data: { user: null }, error: null });
     render(<AcceptInvitePage />);
-    expect(await screen.findByText(/Open the invitation link from your email/)).toBeInTheDocument();
+    expect(await screen.findByText(/The invitation link could not be opened/)).toBeInTheDocument();
     expect(screen.getByTestId("accept-invite-submit")).toBeDisabled();
   });
 
@@ -91,7 +91,8 @@ describe("invitation onboarding", () => {
     window.history.replaceState(null, "", "/accept-invite?token_hash=expired&type=invite");
     verifyOtp.mockResolvedValue({ error: new Error("Token has expired") });
     render(<AcceptInvitePage />);
-    expect(await screen.findByText(/Token has expired/)).toBeInTheDocument();
+    expect(await screen.findByText(/The invitation link could not be opened/)).toBeInTheDocument();
+    expect(screen.queryByText(/Token has expired/)).not.toBeInTheDocument();
     expect(getUser).not.toHaveBeenCalled();
     expect(screen.getByTestId("accept-invite-submit")).toBeDisabled();
   });

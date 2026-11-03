@@ -50,6 +50,7 @@
 // The child retains the established "Scan item or lot QR" prompt and the
 // "matching unfinished line is counted automatically" behavior.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -104,7 +105,7 @@ export default async function DispatchConfirmationPage({
           Access denied
         </p>
         <p className="mt-2 font-body text-body-md text-text-grey">
-          You do not have permission to dispatch pick lists.
+          You do not have permission to dispatch pick lists. Ask an administrator for access.
         </p>
         <Link
           href="/outgoing"
@@ -320,7 +321,7 @@ export default async function DispatchConfirmationPage({
             />
             <div>
               <p className="font-heading text-headline-sm font-bold text-on-surface">
-                Dispatch Failed
+                Dispatch was not completed.
               </p>
               <p className="mt-1 font-body text-body-md text-text-grey">
                 {errorReason === "already_dispatched"
@@ -334,16 +335,16 @@ export default async function DispatchConfirmationPage({
                         : errorReason === "shortage_after_selection"
                           ? "This line already has selected boxes. Complete or reset the selection before reporting a shortage."
                           : errorReason === "shortage_quantity_exceeds_requested"
-                            ? "The found quantity cannot exceed the quantity reserved on this pick list."
+                            ? "The found quantity cannot exceed the reserved quantity. Reduce it to match the boxes found, then try again."
                             : errorReason === "stale_record"
                               ? "This record changed in another session. Refresh to see the current state."
                               : errorReason === "wrong_item_or_lot_qr"
-                        ? "This QR does not match an unfinished item or lot on this Pick List."
+                        ? "This QR does not match an unfinished item or lot on this Pick List. Scan the label for the current item and lot."
                           : errorReason === "network_restricted"
                           ? "Dispatch is restricted to the configured warehouse network. Connect to approved warehouse Wi-Fi and try again; no stock was moved."
                           : errorReason === "line_complete"
                           ? "This item has already reached its required box count. Continue with the next line."
-                          : `Error: ${errorReason}. Contact a supervisor if this persists.`}
+                          : toUserMessage(errorReason, "The dispatch action could not be completed. Refresh the pick list and review its status before trying again.")}
               </p>
             </div>
           </div>

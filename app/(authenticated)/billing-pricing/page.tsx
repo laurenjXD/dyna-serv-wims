@@ -94,14 +94,10 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
           aria-hidden="true"
         />
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view billing and pricing.
+          You do not have permission to view billing and pricing. Ask an administrator for access.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">
-            reporting.financial_read
-          </span>{" "}
-          capability.
+          Ask an administrator for access to this page.
         </p>
       </div>
     );
@@ -132,6 +128,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
   let tradingRows: TradingMarginRow[] = [];
   let billingPeriods: VmiBillingPeriodRow[] = [];
   let contracts: Awaited<ReturnType<typeof listContracts>> = [];
+  let contractsUnavailable = false;
   let vmiContractRows: VmiContractTermsRow[] = [];
   let policyRows: TradingPolicyRow[] = [];
   let itemOptions: { id: string; name: string; code: string }[] = [];
@@ -172,6 +169,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
     if (contractsResult.status === "fulfilled") {
       contracts = contractsResult.value;
     } else {
+      contractsUnavailable = true;
       console.warn("Billing configuration: contracts unavailable", contractsResult.reason);
     }
     if (vmiResult.status === "fulfilled") vmiContractRows = vmiResult.value;
@@ -415,6 +413,7 @@ export default async function BillingPricingPage({ searchParams }: PageProps) {
         <div className="mt-6">
           <ConfigurationTab
             contracts={contracts}
+            contractsUnavailable={contractsUnavailable}
             parties={partyOptions}
             items={itemOptions}
             initialSubTab={configurationSubtab}

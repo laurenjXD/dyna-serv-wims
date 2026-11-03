@@ -141,7 +141,7 @@ export function ContractPricingRulesTable({ contractId, rules, currency }: Contr
               {filteredRules.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-text-grey font-body text-body-sm">
-                    No pricing rules match your search or filter criteria.
+                    No pricing rules match your search or filters. Clear the search or change the filters.
                   </td>
                 </tr>
               ) : (

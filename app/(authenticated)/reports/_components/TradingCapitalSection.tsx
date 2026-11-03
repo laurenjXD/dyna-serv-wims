@@ -198,7 +198,7 @@ export function TradingCapitalSection({
           </div>
           <div className="h-72 w-full">
             <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-center font-body text-sm text-text-grey">
-              No landed-cost ledger data is available for this period.
+              No landed-cost data is available for this period. Choose another reporting period to compare.
             </div>
           </div>
         </div>
@@ -291,7 +291,7 @@ export function TradingCapitalSection({
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="py-6 text-center text-text-grey italic">
-                    No stagnant inventory detected in this bracket.
+                    No stagnant inventory was found in this bracket. Choose another aging bracket to compare.
                   </td>
                 </tr>
               ) : (

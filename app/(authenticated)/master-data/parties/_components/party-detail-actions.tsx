@@ -10,6 +10,7 @@
 //   specs/06-party-and-item-enrollment/design.md §5 (party_roles), §5a (Contact Party)
 //   specs/00-steering/brand-design-system.md §9 (buttons, modals)
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState } from "react";
 import {
   addPartyRoleAction,
@@ -73,8 +74,8 @@ function RoleTag({
         </form>
       )}
       {state.error && (
-        <span className="sr-only" role="alert">
-          {state.error}
+        <span className="font-body text-body-sm text-brand-red" role="alert">
+          {toUserMessage(state.error, "The Organization request could not be completed. Try again. If it happens again, contact an administrator.")}
         </span>
       )}
     </span>
@@ -132,7 +133,7 @@ function AddRoleForm({
       </button>
       {state.error && (
         <p role="alert" className="font-body text-body-sm text-brand-red">
-          {state.error}
+          {toUserMessage(state.error, "The Organization request could not be completed. Try again. If it happens again, contact an administrator.")}
         </p>
       )}
     </form>
@@ -392,8 +393,8 @@ function ContactPartyModal({
             >
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <div>
-                <strong className="block font-semibold">Delivery Warning</strong>
-                <span>{state.error}</span>
+                <strong className="block font-semibold">Email delivery could not be confirmed</strong>
+                <span>{toUserMessage(state.error, "The Organization request could not be completed. Try again. If it happens again, contact an administrator.")}</span>
               </div>
             </div>
           )}
@@ -826,7 +827,7 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
       )}
       {state.error && (
         <p role="alert" className="mt-2 font-body text-body-sm text-brand-red">
-          {state.error}
+          {toUserMessage(state.error, "The Organization request could not be completed. Try again. If it happens again, contact an administrator.")}
         </p>
       )}
     </div>

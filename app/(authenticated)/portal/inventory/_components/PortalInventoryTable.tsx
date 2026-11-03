@@ -54,7 +54,7 @@ export function PortalInventoryTable({ rows }: PortalInventoryTableProps) {
       <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
         <Package size={40} className="text-text-grey" aria-hidden="true" />
         <p className="font-body text-body-md text-text-grey">
-          No inventory items found.
+          No inventory items found. Clear filters to check all stock for your organization.
         </p>
       </div>
     );

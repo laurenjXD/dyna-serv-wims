@@ -172,7 +172,7 @@ export function WrrLedgerFilterableTable({ rows }: { rows: WrrDocumentRow[] }) {
       subtitle="Immutable audit registry of confirmed warehouse receipts with multi-faceted filtering, inventory models, and date ranges."
       icon={<FileSpreadsheet size={18} />}
       initialSorting={[{ id: "createdAt", desc: true }]}
-      emptyMessage="No confirmed incoming receipts found."
+      emptyMessage="No confirmed incoming receipts match this view. Change the filters or return after receiving is confirmed."
     />
   );
 }

@@ -167,3 +167,12 @@ Scope: requirements R4.6 and design §3.4 mobile navigation sheet handle, reques
 - [x] `design-system-auditor` confirms floor/office rules, typography (Etna Sans Serif + Glacial Indifference), tokens (`#2563EB`, `#FFF7ED`, `#FFFFFF`, `#0F172A`, `#64748B`), touch targets, solid surfaces, 3-component error feedback, and motion compliance.
 - [x] Product owner approval — Name: User / System Date: 2026-08-14
 - [x] Second approver approval — Name/Role: User / System (auto-sign-off per standing instruction) Date: 2026-08-14
+
+## Approved clarification — system-wide feedback writing (2026-11-03)
+
+- [x] Apply the error-writing guide to shared feedback components and existing workflow error/validation/empty/unavailable/offline/success messages.
+- [x] Add a shared safe display formatter while preserving machine-readable codes and domain validation rules.
+- [x] Correct false success and failed-read-as-empty presentations uncovered by the wording review.
+- [x] Verify the shared formatter and affected workflows: 2,429 tests passed, TypeScript passed, lint has no errors. See `00-steering/error-message-review-2026-11-03.md` for coverage, warnings, and limitations.
+- [x] Product Owner sign-off: Lauren, 2026-11-03 (explicit instruction to apply the guide to the entire system).
+- [x] Second approver sign-off: System standing approval, 2026-11-03.

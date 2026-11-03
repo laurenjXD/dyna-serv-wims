@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 // Approval Queue — pending/review queue list.
 //
 // Traceability:
@@ -337,7 +338,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           className="flex items-start gap-3 rounded-xl border border-status-held/30 bg-status-held/10 p-4 font-body text-body-sm text-status-held"
         >
           <span className="font-bold">Error:</span>
-          <span>{actionError}</span>
+          <span>{toUserMessage(actionError, "The approval request could not be updated. Refresh the page and try again.")}</span>
         </div>
       )}
 

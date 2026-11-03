@@ -1,5 +1,8 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
+
+
 import React, { useState, useMemo, type ReactNode } from "react";
 import {
   useReactTable,
@@ -440,7 +443,7 @@ export function DataTable<TData>({
                     colSpan={columns.length}
                     className="px-4 py-12 text-center text-sm text-text-grey italic"
                   >
-                    {emptyMessage}
+                    {toUserMessage(emptyMessage, "There are no records to show. Change the search or filters.")}
                   </td>
                 </tr>
               ) : (
@@ -517,7 +520,7 @@ export function DataTable<TData>({
       <div className="space-y-3 block lg:hidden">
         {table.getRowModel().rows.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-surface-white p-8 text-center text-sm text-text-grey italic">
-            {emptyMessage}
+            {toUserMessage(emptyMessage, "There are no records to show. Change the search or filters.")}
           </div>
         ) : (
           table.getRowModel().rows.map((row) => {

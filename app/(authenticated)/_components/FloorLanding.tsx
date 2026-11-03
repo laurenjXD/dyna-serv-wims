@@ -70,7 +70,7 @@ export function FloorLanding({
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-5 sm:px-6 sm:py-6">
       {dataUnavailable && (
         <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900">
-          Some live work counts are unavailable. Values are withheld until the warehouse data source responds.
+          Some work counts could not be loaded. Refresh the page to try again.
         </div>
       )}
       {/* ── Header: Greeting & Status ───────────────────────────────────────── */}

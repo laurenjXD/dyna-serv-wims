@@ -327,7 +327,7 @@ export function VmiConsignmentSection({
         </div>
         <MobileDataCardList className="md:hidden -mx-1">
           {liabilityTable.getRowModel().rows.length === 0 ? (
-            <p className="p-4 text-center font-body text-sm italic text-text-secondary">No active consignment liabilities recorded.</p>
+            <p className="p-4 text-center font-body text-sm italic text-text-secondary">No active consignment liabilities are recorded for this period. Choose another reporting period to compare.</p>
           ) : liabilityTable.getRowModel().rows.map((row) => {
             const item = row.original;
             return <MobileDataCard key={row.id} title={item.vendorName} fields={[
@@ -369,7 +369,7 @@ export function VmiConsignmentSection({
               {liabilityTable.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={liabilityColumns.length} className="py-6 text-center text-text-grey italic">
-                    No active consignment liabilities recorded.
+                    No active consignment liabilities are recorded for this period. Choose another reporting period to compare.
                   </td>
                 </tr>
               ) : (
@@ -403,7 +403,7 @@ export function VmiConsignmentSection({
         </div>
         <MobileDataCardList className="md:hidden -mx-1">
           {scorecardTable.getRowModel().rows.length === 0 ? (
-            <p className="p-4 text-center font-body text-sm italic text-text-secondary">No vendor scorecard data available.</p>
+            <p className="p-4 text-center font-body text-sm italic text-text-secondary">No Organization scorecard data is available for this period. Choose another reporting period to compare.</p>
           ) : scorecardTable.getRowModel().rows.map((row) => {
             const item = row.original;
             return <MobileDataCard key={row.id} title={item.vendorName} fields={[
@@ -445,7 +445,7 @@ export function VmiConsignmentSection({
               {scorecardTable.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={scorecardColumns.length} className="py-6 text-center text-text-grey italic">
-                    No vendor scorecard data available.
+                    No Organization scorecard data is available for this period. Choose another reporting period to compare.
                   </td>
                 </tr>
               ) : (

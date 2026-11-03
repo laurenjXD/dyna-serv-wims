@@ -121,7 +121,7 @@ export async function completeInvitationAcceptance(input: {
     .maybeSingle();
 
   if (profileError || !profile || profile.status !== "invited") {
-    return { ok: false, error: "This invitation has already been used or is not valid." };
+    return { ok: false, error: "This invitation cannot activate your account. Try signing in, or ask an administrator for a new invitation." };
   }
 
   const { error: passwordError } = await supabase.auth.updateUser({
@@ -132,7 +132,7 @@ export async function completeInvitationAcceptance(input: {
     },
   });
   if (passwordError) {
-    return { ok: false, error: passwordError.message };
+    return { ok: false, error: "Your password could not be saved. Review Password and try again. If it happens again, contact an administrator." };
   }
 
   const { data: activatedProfile, error: profileUpdateError } = await admin

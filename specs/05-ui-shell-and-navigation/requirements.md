@@ -90,6 +90,8 @@ A feature declares its surface when registering a route. The shell must not infe
 4. Error messages SHALL not expose secrets, access tokens, SQL, stack traces, provider topology, or protected record data. Diagnostic context with a correlation ID SHALL be sent to Sentry.
 5. Shell errors SHALL distinguish initial session checking, route loading, retrying, timeout, retry-exhausted, not-found, forbidden, and unexpected-error states.
 6. Error recovery SHALL distinguish retryable failures from failures requiring sign-in, an online connection, administrator assistance, or navigation away.
+7. Every user-facing error and feedback state SHALL follow `00-steering/error-message-writing-guide.md`: visible field labels, concise known cause, relevant next action, safe handling of unknown errors, and deduplicated repeated validation messages.
+8. Feedback SHALL distinguish loading, empty results, failed reads, local/offline observations, partial saves, and server-confirmed success. A failed read SHALL NOT appear as zero/empty data, and failed or partial writes SHALL NOT announce complete success.
 
 ### R7. Floor interaction and accessibility
 

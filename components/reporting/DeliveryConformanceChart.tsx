@@ -78,7 +78,7 @@ export function DeliveryConformanceChart({
       <div className="mt-4 h-64 w-full">
         {formattedData.length === 0 ? (
           <div className="flex h-full items-center justify-center font-body text-body-sm text-text-grey">
-            No outbound delivery data in this time period.
+            No outbound deliveries were found in this period. Choose another reporting period to compare.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

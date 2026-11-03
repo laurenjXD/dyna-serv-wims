@@ -26,6 +26,7 @@ export function ExportDataButton<T extends object>({
   buttonLabel = "Export",
 }: ExportDataButtonProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export function ExportDataButton<T extends object>({
   }
 
   function handleExportExcel() {
+    setExportError(null);
     try {
       const exportRows = formatDataForExport();
       const ws = XLSX.utils.json_to_sheet(exportRows);
@@ -87,12 +89,14 @@ export function ExportDataButton<T extends object>({
       XLSX.writeFile(wb, `${filename}.xlsx`, { bookType: "xlsx" });
     } catch (err) {
       console.error("Failed to export Excel file:", err);
+      setExportError("The Excel file could not be prepared. Try exporting it again.");
     } finally {
       setIsOpen(false);
     }
   }
 
   function handleExportCsv() {
+    setExportError(null);
     try {
       const exportRows = formatDataForExport();
       const ws = XLSX.utils.json_to_sheet(exportRows);
@@ -101,6 +105,7 @@ export function ExportDataButton<T extends object>({
       XLSX.writeFile(wb, `${filename}.csv`, { bookType: "csv" });
     } catch (err) {
       console.error("Failed to export CSV file:", err);
+      setExportError("The CSV file could not be prepared. Try exporting it again.");
     } finally {
       setIsOpen(false);
     }
@@ -121,6 +126,7 @@ export function ExportDataButton<T extends object>({
         <ChevronDown size={13} className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
+      {exportError && <p role="alert" className="mt-2 max-w-xs text-xs text-status-held">{exportError}</p>}
       {isOpen && (
         <div className="absolute right-0 z-50 mt-1.5 w-48 origin-top-right rounded-xl border border-slate-200 bg-white py-1.5 shadow-elevation-2 animate-in fade-in zoom-in-95">
           <div className="px-3 py-1 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">

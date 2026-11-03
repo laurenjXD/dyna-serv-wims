@@ -67,3 +67,7 @@ For the full build → review → verify sequence per feature, use the `/impleme
 ## Cross-tool compatibility
 
 `AGENTS.md` at the repo root mirrors the critical parts of this file for any non-Claude-Code agent that reads that convention instead. If you ever edit one, edit both — `AGENTS.md` states this explicitly and points back here as canonical.
+
+## User-facing messages
+
+Use `specs/00-steering/error-message-writing-guide.md` for every error, validation message, warning, loading/empty/unavailable/offline state, and success statement. Use plain visible field names, accurate outcomes, and a concrete next step. Route dynamic failures through `lib/ui/user-messages.ts` with a workflow-specific fallback; never display raw exception text, validator paths, SQL, or internal capability codes. Failed reads must not look like empty data, and partial or failed writes must not announce full success.

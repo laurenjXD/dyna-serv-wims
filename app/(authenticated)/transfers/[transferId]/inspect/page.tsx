@@ -19,6 +19,7 @@
 //   result=resolved            — inspection case resolved successfully
 //   result=error&reason=...    — action failed
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -156,7 +157,7 @@ export default async function InspectTransferPage({
   const caseResolved = result === "resolved";
   const actionFailed = result === "error";
   const errorMessages = reasonParam
-    ? decodeURIComponent(reasonParam).split("|").filter(Boolean)
+    ? [toUserMessage(reasonParam.split("|"), "The inspection could not be updated. Review the inspection details and try again.")]
     : [];
 
   return (
@@ -234,7 +235,7 @@ export default async function InspectTransferPage({
           className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
-            Action Failed
+            Inspection was not updated.
           </p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {errorMessages.map((msg) => (
@@ -305,7 +306,7 @@ export default async function InspectTransferPage({
             </label>
             {transfer.lines.length === 0 ? (
               <p className="mt-1 font-body text-body-md text-status-neutral">
-                No lines available on this transfer.
+                This transfer has no items to inspect. Return to the transfer request and review its status.
               </p>
             ) : (
               <select

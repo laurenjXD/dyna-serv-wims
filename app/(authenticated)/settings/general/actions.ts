@@ -2,6 +2,7 @@
 
 // Server Actions backing `/settings/general` — Facility, Scanner Engine, and Floor Alert configurations.
 
+import { readSettings } from "../_lib/read-settings";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { auditLog, systemSettings } from "@/lib/db/schema";
@@ -119,18 +120,21 @@ function mergeGeneralSettings(value: unknown): GeneralSettingsData {
   };
 }
 
-export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSettingsData } | { ok: false; error: string }> {
+export async function getGeneralSettings(): Promise<{ ok: true; data: GeneralSettingsData; isDefault: boolean } | { ok: false; error: string; reason: "forbidden" | "unavailable" }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access restricted to administrators." };
+    return { ok: false, error: "Access restricted to administrators.", reason: "forbidden" };
   }
 
-  const [stored] = await withSettingsTimeout(
-    db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general")),
-    [],
-  );
-  return { ok: true, data: mergeGeneralSettings(stored?.value) };
+  try {
+    const [stored] = await readSettings(
+      db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "general")),
+    );
+    return { ok: true, data: mergeGeneralSettings(stored?.value), isDefault: !stored };
+  } catch {
+    return { ok: false, reason: "unavailable", error: "General settings could not be loaded. Refresh the page to try again. If it happens again, contact an administrator." };
+  }
 }
 
 /** Effective non-admin settings consumed by authenticated workflows. */

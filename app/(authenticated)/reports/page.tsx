@@ -69,10 +69,7 @@ export default async function ReportsPage() {
           You do not have permission to view reports.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">reporting.read</span> or{" "}
-          <span className="font-mono text-mono-md">reporting.financial_read</span>{" "}
-          capability.
+          Ask an administrator for access to reports.
         </p>
       </div>
     );

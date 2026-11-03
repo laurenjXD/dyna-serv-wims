@@ -261,7 +261,7 @@ export function TradingMarginLedgerTable({ rows, hasMarginView }: Props) {
       <div className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-white shadow-elevation-1">
         {filteredAndSortedRows.length === 0 ? (
           <div className="px-6 py-12 text-center">
-            <p className="font-body text-body-md font-semibold text-on-surface">No transactions match your filter.</p>
+            <p className="font-body text-body-md font-semibold text-on-surface">No transactions match your filter. Change or clear the filter.</p>
             <p className="mt-1 font-body text-body-sm text-text-grey">Try adjusting search terms or resetting filters.</p>
           </div>
         ) : (

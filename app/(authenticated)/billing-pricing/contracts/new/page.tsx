@@ -19,7 +19,7 @@ export default async function NewContractPage() {
     return (
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to create contracts.
+          You do not have permission to create contracts. Ask an administrator for access.
         </p>
       </div>
     );

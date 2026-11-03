@@ -6,6 +6,7 @@
 // independently re-check the same capability server-side (defense in
 // depth, per 02 design.md §8's stated requirement).
 
+import { SettingsUnavailable } from "../_components/SettingsUnavailable";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { UserManagementGrid } from "@/components/settings/UserManagementGrid";
@@ -31,7 +32,8 @@ export default async function SettingsTeamPage() {
   ]);
 
   if (!membersResult.ok || !partiesResult.ok) {
-    return <ShellStateView state={{ kind: "forbidden" }} />;
+    const failure = !membersResult.ok ? membersResult : !partiesResult.ok ? partiesResult : null;
+    return failure?.reason === "forbidden" ? <ShellStateView state={{ kind: "forbidden" }} /> : <SettingsUnavailable title="The Team directory could not be loaded." error={failure?.error ?? "Refresh the page to try again."} href="/settings/team" />;
   }
 
   return (

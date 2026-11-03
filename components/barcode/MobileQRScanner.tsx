@@ -250,15 +250,15 @@ export function MobileQRScanner({
               );
             } else if (/secure|https|insecure/i.test(errText)) {
               setErrorMessage(
-                "Camera access requires a secure connection (HTTPS) or localhost.",
+                "Camera access needs a secure connection. Open the secure website address and try again.",
               );
             } else if (/notfound|overconstrained|no camera/i.test(errText)) {
               setErrorMessage(
-                "No camera device was detected on this device.",
+                "No camera was found. Connect a camera or enter the barcode manually.",
               );
             } else {
               setErrorMessage(
-                "Could not start video stream. Please check camera permissions and tap Retry.",
+                "The camera could not be started. Check camera access in your browser and tap Retry.",
               );
             }
           }
@@ -266,7 +266,7 @@ export function MobileQRScanner({
       } catch {
         if (!isMounted) return;
         setIsLoading(false);
-        setErrorMessage("Scanner initialization error.");
+        setErrorMessage("The scanner could not be opened. Tap Retry or enter the barcode manually.");
       }
     }
 

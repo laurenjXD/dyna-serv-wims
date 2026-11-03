@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import {
   ShieldAlert,
@@ -60,12 +61,18 @@ export function SecuritySettingsView({
     e.preventDefault();
     setIsSaving(true);
     setSaveStatus(null);
-    const res = await saveSecuritySettings(settings);
-    setIsSaving(false);
-    if (res.ok) {
-      setSaveStatus({ type: "success", message: "Security, authentication, and BYOD policies saved successfully." });
-    } else {
-      setSaveStatus({ type: "error", message: res.error || "Failed to save security policies." });
+    try {
+      const res = await saveSecuritySettings(settings);
+      setIsSaving(false);
+      if (res.ok) {
+        setSaveStatus({ type: "success", message: "Security policies saved." });
+      } else {
+        setSaveStatus({ type: "error", message: toUserMessage(res.error, "Security policies could not be saved. Review your changes and try again.") });
+      }
+    } catch {
+      setSaveStatus({ type: "error", message: "Security policies could not be saved. Try again. If it happens again, contact an administrator." });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -96,11 +103,17 @@ export function SecuritySettingsView({
     if (confirm("EMERGENCY ACTION: Immediately terminate ALL connected BYOD mobile web sessions across the warehouse floor?")) {
       setKillSwitchLoading(true);
       setKillSwitchMessage(null);
-      const res = await terminateAllMobileSessions();
-      setKillSwitchLoading(false);
-      if (res.ok) {
-        setKillSwitchMessage(`Emergency termination complete. ${res.count} active mobile session(s) disconnected.`);
-        setSessions((prev) => prev.filter((s) => !s.deviceAlias.toLowerCase().includes("mobile")));
+      try {
+        const res = await terminateAllMobileSessions();
+        if (res.ok) {
+          setKillSwitchMessage(res.count === 0 ? "No mobile sessions needed termination. Reload the page to review current sessions." : `${res.count} mobile session${res.count === 1 ? "" : "s"} ended. Reload the page to review current sessions.`);
+        } else {
+          setKillSwitchMessage(toUserMessage(res.error, "Mobile sessions could not be ended. Reload the page to review current sessions before trying again."));
+        }
+      } catch {
+        setKillSwitchMessage("Mobile session termination could not be confirmed. Reload the page to review current sessions before trying again.");
+      } finally {
+        setKillSwitchLoading(false);
       }
     }
   }
@@ -620,7 +633,7 @@ export function SecuritySettingsView({
               {filteredEvents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-10 text-center text-slate-500">
-                    No system audit events match your query.
+                    No system audit events match your query. Clear the search or change the filters.
                   </td>
                 </tr>
               ) : (

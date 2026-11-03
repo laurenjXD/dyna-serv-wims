@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState } from "react";
 import { addSampleData, type SampleDataState } from "../_actions";
 
@@ -44,7 +45,7 @@ export function SampleDataButton() {
           className="mt-3 font-body text-body-sm text-status-alert"
           role="alert"
         >
-          {state.error}
+          {toUserMessage(state.error, "Sample data could not be created. Try again. If it happens again, contact an administrator.")}
         </p>
       )}
     </div>

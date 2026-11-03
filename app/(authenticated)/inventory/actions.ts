@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { normalizePickListErrors } from "@/lib/withdrawal/error-messages";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -19,7 +20,7 @@ export async function createPickList(formData: FormData): Promise<void> {
   }
 
   if (!result.ok) {
-    redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
+    redirect(`/inventory?pickListError=${encodeURIComponent(normalizePickListErrors(result.errors))}`);
   }
 
   // Refresh the queues before returning to the Pick Lists confirmation. The
@@ -48,7 +49,7 @@ export async function requestPickListOverride(formData: FormData): Promise<void>
     redirect("/inventory?pickListError=override_request_failed");
   }
   if (!result.ok) {
-    redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
+    redirect(`/inventory?pickListError=${encodeURIComponent(normalizePickListErrors(result.errors))}`);
   }
 
   revalidatePath("/inventory");
@@ -67,7 +68,7 @@ export async function createApprovedPickList(formData: FormData): Promise<void> 
     redirect("/inventory?pickListError=approval_unavailable");
   }
   if (!result.ok) {
-    redirect(`/inventory?pickListError=${encodeURIComponent(result.errors.join(","))}`);
+    redirect(`/inventory?pickListError=${encodeURIComponent(normalizePickListErrors(result.errors))}`);
   }
 
   revalidatePath("/inventory");

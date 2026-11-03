@@ -88,7 +88,7 @@ export function SoaDirectoryClient({
               {displayedParties.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-text-grey">
-                    No customer accounts found.
+                    No customer accounts are available for this selection. Choose another Organization or ask an administrator to review its enrollment.
                   </td>
                 </tr>
               ) : (

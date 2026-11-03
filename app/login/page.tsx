@@ -13,6 +13,7 @@
 
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState, useEffect, type FormEvent } from "react";
 import Image from "next/image";
 import { signInAction } from "./actions";
@@ -62,7 +63,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   // Detect invite link tokens, hash parameters, or invited user sessions
@@ -71,13 +71,10 @@ export default function LoginPage() {
 
     // 1. Check URL query parameters (e.g. ?code=... or ?error=...)
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get("activated") === "1") {
-      setSuccess("Your account was created successfully. You can now sign in.");
-    }
     const code = searchParams.get("code");
     const errParam = searchParams.get("error_description") || searchParams.get("error");
     if (errParam) {
-      setError(errParam);
+      setError("The sign-in link could not be opened. Open the latest link from your email, or ask an administrator for a new one.");
     }
 
     if (code) {
@@ -144,7 +141,7 @@ export default function LoginPage() {
       });
 
       if (!result.ok) {
-        setError(result.error);
+        setError(toUserMessage(result.error, "You could not be signed in. Try again. If it happens again, contact an administrator."));
         setPending(false);
         return;
       }
@@ -153,7 +150,7 @@ export default function LoginPage() {
       // button shows feedback while the browser executes the navigation.
       window.location.replace("/");
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("You could not be signed in. Try again. If it happens again, contact an administrator.");
       setPending(false);
     }
   }
@@ -192,14 +189,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          {success && (
-            <div
-              role="status"
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3 font-body text-sm text-emerald-700"
-            >
-              {success}
-            </div>
-          )}
+
 
           <div className="flex flex-col gap-1">
             <label

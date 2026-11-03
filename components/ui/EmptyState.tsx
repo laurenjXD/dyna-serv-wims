@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React from "react";
 import { Inbox } from "@/components/ui/icons";
 import { Button, ButtonProps } from "./Button";
@@ -58,7 +59,7 @@ export function EmptyState({
           isFloor ? "text-white" : "text-text-primary"
         }`}
       >
-        {title}
+        {toUserMessage(title, "No records to show")}
       </h3>
 
       {description && (
@@ -67,7 +68,7 @@ export function EmptyState({
             isFloor ? "text-white/70" : "text-text-secondary"
           }`}
         >
-          {description}
+          {toUserMessage(description, "There are no records to show yet.")}
         </p>
       )}
 

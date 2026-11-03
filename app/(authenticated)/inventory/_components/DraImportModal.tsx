@@ -1,5 +1,8 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
+
+
 import { useState } from "react";
 import { Upload, FileSpreadsheet, AlertTriangle, X, Check, CheckCircle2, Sparkles } from "@/components/ui/icons";
 import type { DraParseResult } from "@/lib/parsers/dra-parser";
@@ -140,7 +143,7 @@ export function DraImportModal({ itemCode, availableStock, onClose, onApplyQuant
               {error && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-status-alert/10 p-3 text-status-alert font-body text-body-xs">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>{error}</span>
+                  <span>{toUserMessage(error, "The DRA file could not be read. Check the file and upload it again.")}</span>
                 </div>
               )}
             </div>

@@ -11,9 +11,9 @@ type ReceiptUploadNoticeProps = {
 function getReceiptUploadMessage(status: string) {
   if (status === "success") return "Delivery Receipt uploaded.";
   if (status === "removed") return "Delivery Receipt removed.";
-  if (status === "invalid") return "Upload a PDF, PNG, or JPEG up to 10 MB.";
-  if (status === "forbidden") return "You do not have permission to manage Delivery Receipts.";
-  return "Delivery Receipt action failed. Please try again.";
+  if (status === "invalid") return "Delivery Receipt was not uploaded. Choose a PDF, PNG, or JPEG up to 10 MB, then try again.";
+  if (status === "forbidden") return "You do not have permission to manage Delivery Receipts. Ask an administrator for access.";
+  return "The Delivery Receipt could not be updated. Try again. If it happens again, contact an administrator.";
 }
 
 export function ReceiptUploadNotice({ status }: ReceiptUploadNoticeProps) {

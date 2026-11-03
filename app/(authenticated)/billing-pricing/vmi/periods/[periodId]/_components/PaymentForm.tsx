@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState } from "react";
 import { recordVmiPaymentAction, type VmiPaymentState } from "../../_actions";
 
@@ -23,7 +24,7 @@ export function PaymentForm({ partyId, periodId }: Props) {
       </div>
       {state.error && (
         <div className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">
-          What happened: Payment was not recorded. Why it failed: {state.error}. Next action: Correct the fields and try again.
+          {toUserMessage(state.error, "Payment was not recorded. Check the payment history before trying again. Contact an administrator if the result is unclear.")}
         </div>
       )}
       {state.ok && (

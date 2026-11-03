@@ -83,9 +83,9 @@ export function EffectivePermissionsModal({
             {modules.length === 0 ? (
               <div className="rounded-xl border border-slate-200 p-6 text-center">
                 <Lock className="mx-auto mb-2 h-6 w-6 text-slate-400" />
-                <p className="font-heading text-sm font-bold text-slate-700">Standard Floor View Access</p>
+                <p className="font-heading text-sm font-bold text-slate-700">No permissions to display</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  You have essential floor scanning, receiving intake, and picking permissions.
+                  No effective permissions are available to display. Ask an administrator to review your access.
                 </p>
               </div>
             ) : (

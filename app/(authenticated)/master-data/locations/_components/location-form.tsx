@@ -10,6 +10,7 @@
 //   specs/06-party-and-item-enrollment/design.md §6a
 //   lib/enrollment/location-schema.ts — generateLocationLabel, parseLocationInput
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import type { LocationFormState } from "../_actions";
@@ -90,7 +91,7 @@ export function LocationForm({
         role="alert"
         className="mt-1 font-body text-body-sm text-brand-red"
       >
-        {state.fieldErrors[name]}
+        {toUserMessage(state.fieldErrors[name], "Review this field and try again.")}
       </p>
     ) : null;
 
@@ -125,7 +126,7 @@ export function LocationForm({
           role="alert"
           className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
         >
-          {state.error}
+          {toUserMessage(state.error, "Location was not saved. Try again. If it happens again, contact an administrator.")}
         </div>
       )}
 
@@ -350,7 +351,7 @@ export function LocationForm({
         )}
         {state.fieldErrors?.label && (
           <p role="alert" className="mt-1 font-body text-body-sm text-brand-red">
-            {state.fieldErrors.label}
+            {toUserMessage(state.fieldErrors.label, "Location label is not valid. Review the location fields and try again.")}
           </p>
         )}
         {isStorage && (

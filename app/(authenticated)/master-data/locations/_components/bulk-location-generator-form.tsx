@@ -14,6 +14,7 @@
 //   lib/enrollment/location-schema.ts — parseBulkLocationGeneratorInput,
 //     expandBulkLocationCandidates, BULK_LOCATION_MAX_CANDIDATES
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import type { BulkGenerateFormState } from "../_actions";
@@ -85,7 +86,7 @@ export function BulkLocationGeneratorForm({
         role="alert"
         className="mt-1 font-body text-body-sm text-brand-red"
       >
-        {state.fieldErrors[name]}
+        {toUserMessage(state.fieldErrors[name], "Review this field and try again.")}
       </p>
     ) : null;
 
@@ -148,7 +149,7 @@ export function BulkLocationGeneratorForm({
           role="alert"
           className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
         >
-          {state.error}
+          {toUserMessage(state.error, "Locations were not generated. Try again. If it happens again, contact an administrator.")}
         </div>
       )}
 

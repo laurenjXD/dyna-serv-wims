@@ -1,3 +1,4 @@
+import { SettingsUnavailable } from "../_components/SettingsUnavailable";
 import { getSecuritySettings, listActiveSessions, getSystemAuditEvents } from "./actions";
 import { SecuritySettingsView } from "@/components/settings/SecuritySettingsView";
 import { ShellStateView } from "@/components/global/ShellStateView";
@@ -10,7 +11,8 @@ export default async function SettingsSecurityPage() {
   ]);
 
   if (!settingsRes.ok || !sessionsRes.ok || !eventsRes.ok) {
-    return <ShellStateView state={{ kind: "forbidden" }} />;
+    const failure = !settingsRes.ok ? settingsRes : !sessionsRes.ok ? sessionsRes : !eventsRes.ok ? eventsRes : null;
+    return failure?.reason === "forbidden" ? <ShellStateView state={{ kind: "forbidden" }} /> : <SettingsUnavailable title="Security settings could not be loaded." error={failure?.error ?? "Refresh the page to try again."} href="/settings/security" />;
   }
 
   return (
@@ -24,6 +26,7 @@ export default async function SettingsSecurityPage() {
         </p>
       </div>
 
+      {settingsRes.isDefault && <p role="status" className="font-body text-body-md text-on-surface">No security settings have been saved. The form shows initial defaults. Review them before saving.</p>}
       <SecuritySettingsView
         initialSettings={settingsRes.data}
         initialSessions={sessionsRes.data}

@@ -113,7 +113,7 @@ export function OfficeLanding({
     <div className="space-y-6">
       {dataUnavailable && (
         <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900">
-          Some live dashboard data is unavailable. Affected values are withheld until the warehouse data source responds.
+          Some dashboard totals could not be loaded. Refresh the page to try again.
         </div>
       )}
       {/* ── Direct WMS Operations Dashboard Suite ─────────────────────────────── */}

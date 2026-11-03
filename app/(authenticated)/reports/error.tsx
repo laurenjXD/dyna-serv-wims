@@ -20,7 +20,7 @@ export default function ReportsError({
           Reports could not be loaded
         </h1>
         <p className="mt-2 font-body text-sm text-text-grey">
-          The reports data did not finish loading. Your other workspace pages are still available.
+          The reports data did not finish loading. Select Try again. If it happens again, contact an administrator.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <button

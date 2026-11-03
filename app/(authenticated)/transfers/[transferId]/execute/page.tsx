@@ -17,6 +17,7 @@
 // with `result=completed` on success or `result=error&reason=...` on failure.
 // Page reads search params to display the result.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -39,13 +40,13 @@ import {
 function getExecuteErrorMessage(reason: string): string {
   switch (reason) {
     case "forbidden":
-      return "You do not have permission to execute transfers.";
+      return "You do not have permission to execute transfers. Ask an administrator for access.";
     case "not_found":
-      return "Transfer request not found.";
+      return "This transfer request is unavailable. Return to the transfer queue and select it again.";
     case "invalid_status":
-      return "This transfer cannot be executed in its current state.";
+      return "This transfer cannot be executed in its current state. Refresh the request and review its status.";
     default:
-      return `Action failed: ${reason}. Contact a supervisor if this persists.`;
+      return toUserMessage(reason, "The transfer could not be completed. Refresh the request and try again. If it happens again, contact a supervisor.");
   }
 }
 
@@ -207,7 +208,7 @@ export default async function ExecuteTransferPage({
           >
             {/* Icon paired with color per §1.3 floor color-blind rule */}
             <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
-              <AlertCircle size={22} className="text-status-held" aria-hidden="true" /> Action Failed
+              <AlertCircle size={22} className="text-status-held" aria-hidden="true" /> Transfer was not completed.
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
               {getExecuteErrorMessage(errorReason)}

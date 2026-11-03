@@ -44,7 +44,7 @@ export function PickListsTab({ docs }: { docs: DocRow[] }) {
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-white px-6 py-12 text-center shadow-elevation-1">
         <Package size={40} className="text-text-grey" aria-hidden="true" />
         <p className="font-body text-body-md text-text-grey">
-          No pick lists yet.
+          No pick lists yet. Check again after the warehouse creates a pick list for your organization.
         </p>
       </div>
     );
@@ -138,7 +138,7 @@ export function AcknowledgementReceiptsTab({ docs }: { docs: DocRow[] }) {
           aria-hidden="true"
         />
         <p className="font-body text-body-md text-text-grey">
-          No acknowledgement receipts yet.
+          No delivery receipts yet. Check again after the warehouse confirms a dispatch for your organization.
         </p>
       </div>
     );

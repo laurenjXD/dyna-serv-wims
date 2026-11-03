@@ -157,7 +157,7 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-mono">
                   {dailyAuditRows.length === 0 ? (
-                    <tr><td colSpan={7} className="px-3 py-8 text-center font-body text-sm text-text-grey">No VMI ledger rows are available for this organization.</td></tr>
+                    <tr><td colSpan={7} className="px-3 py-8 text-center font-body text-sm text-text-grey">No VMI ledger rows are available for this Organization. Close this view and choose another Organization.</td></tr>
                   ) : dailyAuditRows.map((d) => (
                     <tr key={d.date} className="hover:bg-blue-50/40 transition-colors">
                       <td className="px-3 py-2 font-bold text-slate-800">{d.date}</td>

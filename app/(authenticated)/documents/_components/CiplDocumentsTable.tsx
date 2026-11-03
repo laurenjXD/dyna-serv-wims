@@ -22,11 +22,17 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (row: CiplArchiveRow) => {
-    const url = row.ciplFileUrl || (typeof window !== "undefined" ? `${window.location.origin}/receiving/${row.id}` : "");
-    if (url && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(url);
-      alert(`Document link for ${row.commercialInvoiceNo || row.wrrNumber} copied to clipboard!`);
+  const handleShare = async (row: CiplArchiveRow) => {
+    const url = row.ciplFileUrl || `${window.location.origin}/receiving/${row.id}`;
+    try {
+      if (!navigator.clipboard?.writeText) {
+        alert("The link could not be copied in this browser. Open the document and copy its address from the browser address bar.");
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      alert(`Document link for ${row.commercialInvoiceNo || row.wrrNumber} copied. You can paste it to share.`);
+    } catch {
+      alert("The link could not be copied. Open the document and copy its address from the browser address bar.");
     }
   };
 
@@ -53,7 +59,7 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
         </div>
         <h3 className="font-heading text-title-sm font-bold text-on-surface">No Supplier CI/PL Documents</h3>
         <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
-          No imported commercial invoices or packing lists match your search. Uploaded supplier files will appear here automatically once attached during receiving.
+          No commercial invoices or packing lists match your search. Change the search, or attach the source file to a WRR in Receiving.
         </p>
       </div>
     );

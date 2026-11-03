@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const resolver = await createPageResolver();
   const capability = tab === "items" ? "items.read" : tab === "locations" ? "locations.read" : "parties.read";
   const permission = await requirePermission(resolver, capability);
-  if (permission.kind !== "authorized") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (permission.kind !== "authorized") return NextResponse.json({ error: "You do not have permission to export these records. Ask an administrator for access." }, { status: 403 });
 
   let rows: Array<Record<string, unknown>>;
   if (tab === "items") {
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
         return NextResponse.json(
           {
             error:
-              "Organization export is temporarily unavailable because the canonical RBE classification table is not installed. Apply the approved enrollment migration before exporting party data.",
+              "Organization export is not set up yet. Ask an administrator to complete the export setup.",
           },
           { status: 503 },
         );

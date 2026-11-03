@@ -31,7 +31,7 @@ function messageFor(state: ShellState): string {
     case "revoked_session":
       return "Your session has ended. Sign in again to continue.";
     case "deep_link_pending":
-      return `Preparing your destination (${state.destination})…`;
+      return "Opening the requested page…";
     case "sign_out_transition":
       return state.status === "failed"
         ? "We couldn't sign you out. Please try again."
@@ -65,7 +65,7 @@ function messageFor(state: ShellState): string {
       if (state.status === "attention") return "Some queued work needs your attention.";
       return "Sync is idle.";
     case "storage_attention":
-      return "Local storage is unavailable. Some offline features are disabled.";
+      return "This device cannot save offline work. Stay online and ask a supervisor for help.";
     case "online_required":
       return `An internet connection is required to complete "${state.action}".`;
     case "navigation_transition":
@@ -97,16 +97,16 @@ function threePartFor(state: ShellState): ThreePartMessage | null {
       return {
         what: "Something went wrong on this page.",
         why: state.correlationId
-          ? `An unexpected error occurred. Reference: ${state.correlationId}`
-          : "An unexpected error occurred and no reference ID is available.",
-        next: "Try again, return home, or sign out and back in.",
+          ? `The page could not finish loading. Reference: ${state.correlationId}`
+          : "The page could not finish loading.",
+        next: "Reload the page. If it still fails, return to the dashboard and contact an administrator.",
         Icon: AlertTriangle,
       };
     case "not_found":
       return {
         what: "We couldn't find that page or resource.",
         why: "The link may be outdated, mistyped, or the item may have been moved or removed.",
-        next: "Go back, return to the dashboard, or check the URL for typos.",
+        next: "Check the link or return to the dashboard.",
         Icon: SearchX,
       };
     case "forbidden":
@@ -128,7 +128,7 @@ function threePartFor(state: ShellState): ThreePartMessage | null {
     case "revoked_session":
       return {
         what: "Your session has ended.",
-        why: "You were signed out, either by yourself elsewhere or by an administrator.",
+        why: "This session is no longer active.",
         next: "Sign in again to continue.",
         Icon: LogOut,
       };
@@ -148,16 +148,16 @@ function threePartFor(state: ShellState): ThreePartMessage | null {
       };
     case "storage_attention":
       return {
-        what: "Local storage is unavailable.",
-        why: "The device couldn't access on-device storage, so offline features are disabled.",
-        next: "Check your device's storage settings, then reload this page.",
+        what: "Offline saving is unavailable.",
+        why: "This device cannot save work while offline.",
+        next: "Stay online and ask a supervisor to check the device settings.",
         Icon: SaveOff,
       };
     case "sign_out_transition":
       return state.status === "failed"
         ? {
             what: "We couldn't sign you out.",
-            why: "The sign-out request didn't complete successfully.",
+            why: "Your session may still be active.",
             next: "Please try signing out again.",
             Icon: XCircle,
           }

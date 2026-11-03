@@ -209,9 +209,8 @@ function NotYetAvailable() {
           Pre-ship labeling is not available yet.
         </p>
         <p className="max-w-md font-body text-body-sm text-text-grey">
-          This feature is pending backend approval across several dependent
-          systems. It will become available here automatically once that
-          work is complete — no action is needed on your part.
+          Shipment labels cannot be created here yet. Contact the warehouse
+          for help labeling your shipment before it arrives.
         </p>
       </div>
     </div>

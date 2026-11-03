@@ -26,7 +26,7 @@ describe("offline receiving shared-device isolation", () => {
     const view = render(form());
     await act(async () => {});
     submit();
-    expect(await screen.findByText(/fully scanned/i)).toBeInTheDocument();
+    expect(await screen.findByText(/already has all expected scans/i)).toBeInTheDocument();
     expect(queue).not.toHaveBeenCalled();
     state.currentUserId = "user-b";
     pending.mockReturnValue(new Promise(() => {}));

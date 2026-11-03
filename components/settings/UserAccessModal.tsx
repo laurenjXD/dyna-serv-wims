@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useEffect, useState } from "react";
 import { getUserAccess, replaceUserRoles, type DynamicRole, type EffectiveGrant, type TeamMember } from "@/app/(authenticated)/settings/team/actions";
 import { AccessDialog, GrantList } from "./RoleManagementModal";
@@ -34,7 +35,7 @@ function AccountAccessEditor({ member, roles, onClose, onSaved }: Omit<UserAcces
         setRoleIds(result.data.roleIds);
         setCurrentGrants(member.status === "active" ? result.data.grants : []);
       }
-      else setLoadError(result.error);
+      else setLoadError(toUserMessage(result.error, "Account access could not be loaded. Close and reopen the editor."));
     }).catch(() => { if (active) setLoadError("Account access could not be loaded. Check your connection and reopen the editor."); });
     return () => { active = false; };
   }, [member.id, member.status]);
@@ -53,7 +54,7 @@ function AccountAccessEditor({ member, roles, onClose, onSaved }: Omit<UserAcces
     try {
       const result = await replaceUserRoles({ userId: member.id, roleIds, reason: reason.trim() });
       if (result.ok) { onSaved(); onClose(); }
-      else setError(result.error);
+      else setError(toUserMessage(result.error, "Account access could not be saved. Review your changes and try again."));
     } catch { setError("Account access could not be saved. Check your connection and try again."); }
     finally { setPending(false); }
   }

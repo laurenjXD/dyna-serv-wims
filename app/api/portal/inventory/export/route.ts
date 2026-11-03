@@ -8,11 +8,11 @@ import { listPartyVmiInventory } from "@/lib/db/queries/inventory";
 export async function GET(request: Request) {
   const resolver = await createPageResolver();
   const context = await resolver.getContext();
-  if (context.kind !== "authorized") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (context.kind !== "authorized") return NextResponse.json({ error: "You do not have permission to export this inventory. Ask your administrator for access." }, { status: 403 });
   const scope = resolveActivePartyScope(context.context);
-  if (!scope) return NextResponse.json({ error: "No organization scope" }, { status: 403 });
+  if (!scope) return NextResponse.json({ error: "Your account is not linked to an Organization. Ask your administrator to check your access." }, { status: 403 });
   const permission = await requirePermission(resolver, "reporting.read", { partyId: scope.partyId, flowType: "vmi" });
-  if (permission.kind !== "authorized") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (permission.kind !== "authorized") return NextResponse.json({ error: "You do not have permission to export this inventory. Ask your administrator for access." }, { status: 403 });
 
   const url = new URL(request.url);
   const rows = await listPartyVmiInventory(db, scope.partyId, {

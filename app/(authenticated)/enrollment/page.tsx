@@ -79,12 +79,10 @@ export default async function EnrollmentPage({ searchParams }: PageProps) {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to access this Data Management section.
+          You do not have permission to access this Data Management section. Ask an administrator for access.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
-          This page requires the{" "}
-          <span className="font-mono text-mono-md">{readCapability}</span>{" "}
-          capability.
+          Ask an administrator for access to this page.
         </p>
       </div>
     );
@@ -217,7 +215,7 @@ async function ItemsTab({
     return (
       <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view items.
+          You do not have permission to view items. Ask an administrator for access.
         </p>
       </div>
     );
@@ -255,7 +253,7 @@ async function LocationsTab({
     return (
       <div className="mt-6 rounded-xl bg-surface-white shadow-elevation-1 px-6 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view locations.
+          You do not have permission to view locations. Ask an administrator for access.
         </p>
       </div>
     );

@@ -204,7 +204,7 @@ export function TradingRateCardsTable({ rows, parties, items }: Props) {
         {filteredAndSortedRows.length === 0 ? (
           <div className="p-12 text-center">
             <p className="font-body text-body-md text-text-grey">
-              No Trading rate cards match your search/filter.
+              No Trading rate cards match your search or filters. Clear the search or change the filters.
             </p>
             <p className="mt-1 font-body text-body-sm text-text-grey">
               Click <strong>&quot;Configure Rate Card&quot;</strong> above to define buy cost and sell price for a Customer and Item pair.

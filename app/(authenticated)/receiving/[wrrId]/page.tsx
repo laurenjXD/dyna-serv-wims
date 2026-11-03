@@ -73,10 +73,10 @@ interface PageProps {
 }
 
 const START_RECEIVING_ERRORS: Record<string, string> = {
-  forbidden: "Your account is not authorized to start receiving.",
-  network_restricted: "Receiving is restricted to the configured warehouse Wi‑Fi network.",
-  not_found: "This WRR could not be found.",
-  invalid_status: "This WRR is no longer waiting to start receiving.",
+  forbidden: "You do not have permission to start receiving. Ask an administrator for access.",
+  network_restricted: "Receiving requires the approved warehouse Wi-Fi network. Connect to it and try again.",
+  not_found: "This WRR is unavailable. Return to the Receiving queue and open it again.",
+  invalid_status: "This WRR is no longer waiting to start receiving. Refresh the WRR and review its current status.",
   stale_record: "The WRR changed before receiving could start. Refresh and try again.",
 };
 
@@ -462,7 +462,7 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
             {wrr.items.length === 0 ? (
               <div className="px-6 pb-8 text-center">
                 <p className="font-body text-body-md text-text-grey">
-                  No line items on this WRR.
+                  This WRR has no expected items. Edit the staged WRR to add items, or ask a supervisor to review it.
                 </p>
               </div>
             ) : (<>

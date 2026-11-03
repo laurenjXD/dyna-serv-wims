@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   useReactTable,
@@ -80,18 +81,19 @@ export function UserManagementGrid({
   useEffect(() => {
     listRoles().then((res) => {
       if (res.ok) setRoles(res.data);
-      else setFeedback({ type: "error", message: res.error });
-    });
+      else setFeedback({ type: "error", message: toUserMessage(res.error, "Team information could not be loaded. Refresh the page and try again.") });
+    }).catch(() => setFeedback({ type: "error", message: "Team information could not be loaded. Refresh the page and try again." }));
   }, []);
 
   function refreshData() {
     listTeamMembers().then((res) => {
       if (res.ok) setMembers(res.data);
-    });
+      else setFeedback({ type: "error", message: toUserMessage(res.error, "The Team directory could not be refreshed. Try again.") });
+    }).catch(() => setFeedback({ type: "error", message: "The Team directory could not be refreshed. Try again." }));
     listRoles().then((res) => {
       if (res.ok) setRoles(res.data);
-      else setFeedback({ type: "error", message: res.error });
-    });
+      else setFeedback({ type: "error", message: toUserMessage(res.error, "Team information could not be loaded. Refresh the page and try again.") });
+    }).catch(() => setFeedback({ type: "error", message: "Team information could not be loaded. Refresh the page and try again." }));
   }
 
   const handleReactivate = useCallback(async (member: TeamMember) => {
@@ -102,9 +104,9 @@ export function UserManagementGrid({
         setMembers((curr) =>
           curr.map((m) => (m.id === member.id ? { ...m, status: "active" } : m)),
         );
-        setFeedback({ type: "success", message: `${member.displayName} was reactivated.` });
+        setFeedback({ type: "success", message: `${member.displayName}’s account reactivated.` });
       } else {
-        setFeedback({ type: "error", message: res.error ?? "The user could not be reactivated. Refresh and try again." });
+        setFeedback({ type: "error", message: toUserMessage(res.error, "The account could not be reactivated. Refresh the page and try again.") });
       }
     } catch {
       setFeedback({ type: "error", message: "The reactivation request failed. Check the connection and try again." });
@@ -119,18 +121,18 @@ export function UserManagementGrid({
       if (res.ok) {
         setFeedback({
           type: "success",
-          message: `Invitation link successfully resent to ${member.email || member.displayName}.`,
+          message: `Invitation sent to ${member.email || member.displayName}. Ask the team member to check their inbox and spam folder.`,
         });
       } else {
         setFeedback({
           type: "error",
-          message: res.error ?? "Failed to resend invitation link.",
+          message: toUserMessage(res.error, "The invitation could not be resent. Try again. If it happens again, contact an administrator."),
         });
       }
     } catch {
       setFeedback({
         type: "error",
-        message: "An unexpected error occurred while resending the invite.",
+        message: "The invitation could not be resent. Try again. If it happens again, contact an administrator.",
       });
     } finally {
       setResendingId(null);
@@ -434,7 +436,7 @@ export function UserManagementGrid({
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="py-10 text-center text-xs text-slate-500">
-                    No team members match your search.
+                    No team members match your search. Clear the search or change the filters.
                   </td>
                 </tr>
               ) : (

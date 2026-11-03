@@ -1,5 +1,8 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
+
+
 import { useActionState, useMemo, useState } from "react";
 import { generatePickList, type GeneratePickListState } from "../_actions";
 import { DraImportModal } from "./DraImportModal";
@@ -95,7 +98,7 @@ export function GeneratePickListForm({ itemCode, itemId, defaultSupplierPartyId,
             {itemCode} needs an organization in Item Enrollment before it can be picked.
           </p>
         )}
-        {state?.ok === false && <p role="alert" className="basis-full font-body text-body-sm text-status-alert">{state.error}</p>}
+        {state?.ok === false && <p role="alert" className="basis-full font-body text-body-sm text-status-alert">{toUserMessage(state.error, "The pick list could not be created. Review the items, boxes, and locations, then try again.")}</p>}
       </form>
 
       {showDraModal && (

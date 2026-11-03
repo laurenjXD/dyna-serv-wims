@@ -1,5 +1,6 @@
 "use server";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { createTradingPolicy, updateTradingPolicy } from "@/lib/actions/trading-policies";
@@ -29,9 +30,9 @@ export async function createTradingPolicyAction(
 
   if (!partyId) return { ok: false, error: "Please select an Organization." };
   if (!itemId) return { ok: false, error: "Please select an Item." };
-  if (!buyCost) return { ok: false, error: "Buy cost is required." };
-  if (!marginValue) return { ok: false, error: "Margin value is required." };
-  if (!sellPrice) return { ok: false, error: "Sell price is required." };
+  if (!buyCost) return { ok: false, error: "Enter a Buy Cost, then save the rate card again." };
+  if (!marginValue) return { ok: false, error: "Enter a Margin Value, then save the rate card again." };
+  if (!sellPrice) return { ok: false, error: "Enter a Sell Price, then save the rate card again." };
 
   const result = await createTradingPolicy(resolver, {
     partyId,
@@ -49,7 +50,7 @@ export async function createTradingPolicyAction(
   if (!result.ok) {
     return {
       ok: false,
-      error: `Could not save rate card: ${result.errors.join(", ")}`,
+      error: toUserMessage(result.errors, "Trading rate card was not saved. Review the form and try again."),
     };
   }
 
@@ -90,7 +91,7 @@ export async function updateTradingPolicyAction(
   if (!result.ok) {
     return {
       ok: false,
-      error: `Could not update rate card: ${result.errors.join(", ")}`,
+      error: toUserMessage(result.errors, "Trading rate card was not saved. Review the form and try again."),
     };
   }
 

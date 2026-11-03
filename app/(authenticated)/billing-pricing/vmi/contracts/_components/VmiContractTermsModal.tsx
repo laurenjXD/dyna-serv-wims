@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState, useEffect } from "react";
 import { X, Save, AlertCircle } from "@/components/ui/icons";
 import { createVmiContractTermsAction } from "../_actions";
@@ -50,7 +51,7 @@ export function VmiContractTermsModal({ isOpen, onClose, parties }: Props) {
         {state.error && (
           <div className="mt-4 flex items-center gap-2 rounded-lg bg-status-held/10 p-3 text-status-held font-body text-body-sm">
             <AlertCircle size={18} />
-            <span>{state.error}</span>
+            <span>{toUserMessage(state.error, "VMI contract terms were not saved. Try again. If it happens again, contact an administrator.")}</span>
           </div>
         )}
 

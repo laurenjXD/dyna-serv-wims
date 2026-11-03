@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, Circle, FileSpreadsheet, Loader2, LockKeyhole, Upload } from "@/components/ui/icons";
@@ -40,6 +41,7 @@ export function MigrationUploadForm() {
   const [isCommitted, setIsCommitted] = useState(false);
   const [reviewOnly, setReviewOnly] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const commitMessageIsSuccess = commitMessage === "Migration report approved. It is ready to commit.";
   const activeStep = workflowIndex(file, result, isCommitted, isPending);
 
   async function refreshPreviousBatches() {
@@ -49,7 +51,7 @@ export function MigrationUploadForm() {
         setPreviousBatches(response.batches);
         setPreviousBatchesError(null);
       } else {
-        setPreviousBatchesError(response.error);
+        setPreviousBatchesError(toUserMessage(response.error, "The saved migration stage could not be loaded or updated. Refresh the page and try again."));
       }
     } catch (error) {
       // Previous-stage history is optional. A failed authorization/database
@@ -66,34 +68,42 @@ export function MigrationUploadForm() {
 
   function openPreviousBatch(batch: MigrationBatchListItem) {
     startTransition(async () => {
-      const summary = await getMigrationSummary(batch.id);
-      if (!summary.ok) {
-        setPreviousBatchesError(summary.error);
-        return;
+      try {
+        const summary = await getMigrationSummary(batch.id);
+        if (!summary.ok) {
+          setPreviousBatchesError(toUserMessage(summary.error, "The saved migration could not be opened. Refresh the page and try again."));
+          return;
+        }
+        const blockingIssues = summary.exceptions.filter((exception) => exception.severity === "blocking" && exception.resolutionStatus === "open").length;
+        const warningIssues = summary.exceptions.filter((exception) => exception.severity === "warning").length;
+        if (inputRef.current) inputRef.current.value = "";
+        setFile(null);
+        setReviewOnly(true);
+        setResult({ ok: true, batchId: summary.batch.id, status: summary.batch.status, blockingIssues, warningIssues, sourceRows: summary.batch.sourceRows });
+        setExceptions(summary.exceptions);
+        setResolutionNotes({});
+        setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
+        setCommitMessage(null);
+        setIsCommitted(summary.batch.status === "committed");
+      } catch {
+        setPreviousBatchesError("The saved migration could not be opened. Refresh the page and try again.");
       }
-      const blockingIssues = summary.exceptions.filter((exception) => exception.severity === "blocking" && exception.resolutionStatus === "open").length;
-      const warningIssues = summary.exceptions.filter((exception) => exception.severity === "warning").length;
-      if (inputRef.current) inputRef.current.value = "";
-      setFile(null);
-      setReviewOnly(true);
-      setResult({ ok: true, batchId: summary.batch.id, status: summary.batch.status, blockingIssues, warningIssues, sourceRows: summary.batch.sourceRows });
-      setExceptions(summary.exceptions);
-      setResolutionNotes({});
-      setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
-      setCommitMessage(null);
-      setIsCommitted(summary.batch.status === "committed");
     });
   }
 
   function cancelPreviousBatch(batch: MigrationBatchListItem) {
     if (!window.confirm(`Cancel this saved migration stage?\n\n${batch.sourceFileName}\n\nIt will be removed from Previous stages and kept only for audit history.`)) return;
     startTransition(async () => {
-      const response = await cancelMigrationBatch(batch.id);
-      if (response.ok) {
-        setPreviousBatches((current) => current.filter((item) => item.id !== batch.id));
-        setPreviousBatchesError(null);
-      } else {
-        setPreviousBatchesError(response.error);
+      try {
+        const response = await cancelMigrationBatch(batch.id);
+        if (response.ok) {
+          setPreviousBatches((current) => current.filter((item) => item.id !== batch.id));
+          setPreviousBatchesError(null);
+        } else {
+          setPreviousBatchesError(toUserMessage(response.error, "The saved migration stage could not be loaded or updated. Refresh the page and try again."));
+        }
+      } catch {
+        setPreviousBatchesError("The saved migration stage could not be cancelled. Refresh the page and try again.");
       }
     });
   }
@@ -102,12 +112,16 @@ export function MigrationUploadForm() {
     if (!result?.ok) return;
     if (!window.confirm("Cancel this migration stage?\n\nIt will be removed from Previous stages and kept only for audit history.")) return;
     startTransition(async () => {
-      const response = await cancelMigrationBatch(result.batchId);
-      if (response.ok) {
-        leaveReview();
-        await refreshPreviousBatches();
-      } else {
-        setCommitMessage(response.error);
+      try {
+        const response = await cancelMigrationBatch(result.batchId);
+        if (response.ok) {
+          leaveReview();
+          await refreshPreviousBatches();
+        } else {
+          setCommitMessage(toUserMessage(response.error, "The migration change could not be saved. Refresh the review and try again."));
+        }
+      } catch {
+        setCommitMessage("The migration stage could not be cancelled. Refresh the review and try again.");
       }
     });
   }
@@ -124,7 +138,7 @@ export function MigrationUploadForm() {
         const sourcePath = `ubot-vmi-v1/${crypto.randomUUID()}/${safeFileName}`;
         const supabase = createSupabaseBrowserClient();
         const upload = await supabase.storage.from("migration-source-files").upload(sourcePath, file, { contentType: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", upsert: false });
-        if (upload.error) throw new Error(`The workbook could not be uploaded: ${upload.error.message}`);
+        if (upload.error) throw new Error("The workbook could not be uploaded. Check your connection and try again.");
         formData.set("sourcePath", sourcePath);
         formData.set("sourceFileName", file.name);
         const response = await fetch("/api/migration/ubot", { method: "POST", body: formData });
@@ -133,7 +147,7 @@ export function MigrationUploadForm() {
         try {
           staged = JSON.parse(responseText) as MigrationResult;
         } catch {
-          throw new Error(responseText.trim() || `The migration upload failed (${response.status}).`);
+          throw new Error("The workbook response could not be read. Try uploading it again. If it happens again, contact an administrator.");
         }
         if (!response.ok && !("error" in staged)) throw new Error("The migration upload failed.");
         setResult(staged);
@@ -143,7 +157,7 @@ export function MigrationUploadForm() {
           await refreshPreviousBatches();
         }
       } catch (error) {
-        setResult({ ok: false, error: error instanceof Error ? error.message : "The workbook could not be staged." });
+        setResult({ ok: false, error: toUserMessage(error, "The workbook could not be staged. Try uploading it again. If it happens again, contact an administrator.") });
       }
     });
   }
@@ -151,11 +165,15 @@ export function MigrationUploadForm() {
   function commit() {
     if (!result || !result.ok || result.status !== "approved") return;
     startTransition(async () => {
-      const response = await commitUbotMigration(result.batchId);
-      if (response.ok) {
-        router.push(`/migration/success?rows=${response.committedRows}&batch=${encodeURIComponent(response.batchId)}`);
-      } else {
-        setCommitMessage(response.error);
+      try {
+        const response = await commitUbotMigration(result.batchId);
+        if (response.ok) {
+          router.push(`/migration/success?rows=${response.committedRows}&batch=${encodeURIComponent(response.batchId)}`);
+        } else {
+          setCommitMessage(toUserMessage(response.error, "The migration change could not be saved. Refresh the review and try again."));
+        }
+      } catch {
+        setCommitMessage("Opening stock could not be confirmed. Refresh the review to check the migration status before trying again.");
       }
     });
   }
@@ -163,32 +181,40 @@ export function MigrationUploadForm() {
   function approve() {
     if (!result || !result.ok || result.status !== "staged" || result.blockingIssues !== 0) return;
     startTransition(async () => {
-      const response = await approveUbotMigration(result.batchId);
-      if (response.ok) {
-        setResult((current) => current?.ok ? { ...current, status: "approved" } : current);
-        setCommitMessage("Migration report approved. It is ready to commit.");
-        await refreshPreviousBatches();
-      } else {
-        setCommitMessage(response.error);
+      try {
+        const response = await approveUbotMigration(result.batchId);
+        if (response.ok) {
+          setResult((current) => current?.ok ? { ...current, status: "approved" } : current);
+          setCommitMessage("Migration report approved. It is ready to commit.");
+          await refreshPreviousBatches();
+        } else {
+          setCommitMessage(toUserMessage(response.error, "The migration change could not be saved. Refresh the review and try again."));
+        }
+      } catch {
+        setCommitMessage("The migration report could not be approved. Refresh the review and try again.");
       }
     });
   }
 
   function resolve(exceptionId: string) {
     startTransition(async () => {
-      const response = await resolveMigrationException(exceptionId, resolutionCategories[exceptionId] ?? "", resolutionNotes[exceptionId] ?? "");
-      if (!response.ok) {
-        setCommitMessage(response.error);
-        return;
-      }
-      if (result?.ok) {
-        const summary = await getMigrationSummary(result.batchId);
-        if (summary.ok) {
-          setExceptions(summary.exceptions);
-          setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
-          setResult((current) => current?.ok ? { ...current, status: summary.batch.status, blockingIssues: summary.exceptions.filter((item) => item.severity === "blocking" && item.resolutionStatus === "open").length } : current);
-          await refreshPreviousBatches();
+      try {
+        const response = await resolveMigrationException(exceptionId, resolutionCategories[exceptionId] ?? "", resolutionNotes[exceptionId] ?? "");
+        if (!response.ok) {
+          setCommitMessage(toUserMessage(response.error, "The migration change could not be saved. Refresh the review and try again."));
+          return;
         }
+        if (result?.ok) {
+          const summary = await getMigrationSummary(result.batchId);
+          if (summary.ok) {
+            setExceptions(summary.exceptions);
+            setResolutionCategories(Object.fromEntries(summary.exceptions.filter((exception) => exception.resolutionCategory).map((exception) => [exception.id, exception.resolutionCategory ?? ""])));
+            setResult((current) => current?.ok ? { ...current, status: summary.batch.status, blockingIssues: summary.exceptions.filter((item) => item.severity === "blocking" && item.resolutionStatus === "open").length } : current);
+            await refreshPreviousBatches();
+          }
+        }
+      } catch {
+        setCommitMessage("The warning could not be accepted. Refresh the review and try again.");
       }
     });
   }
@@ -246,7 +272,7 @@ export function MigrationUploadForm() {
           <button type="button" onClick={() => { void refreshPreviousBatches(); }} disabled={isPending} className="inline-flex min-h-10 items-center justify-center rounded-full border border-brand-blue px-4 font-label text-label font-bold text-brand-blue disabled:opacity-50">Refresh</button>
         </div>
         {previousBatchesError && <p className="mt-4 rounded-lg bg-error/5 p-3 font-body text-body-sm text-error" role="alert">{previousBatchesError}</p>}
-        {previousBatches.length === 0 ? <p className="mt-5 font-body text-body-sm text-text-grey">No saved migration stages found.</p> : <div className="mt-5 space-y-3">{previousBatches.map((batch) => <div key={batch.id} className="flex flex-col gap-4 rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="break-all font-label text-label font-bold text-on-surface">{batch.sourceFileName}</p><span className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-label text-label font-bold text-brand-blue">{statusLabel(batch.status)}</span></div><p className="mt-1 font-body text-body-sm text-text-grey">{batch.sourceRows} source rows · {batch.blockingIssues} open blocking · {batch.warningIssues} warning(s)</p><p className="mt-1 font-mono text-mono-sm text-text-grey">Saved {new Date(batch.createdAt).toLocaleString()}</p></div><div className="flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => openPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">Open review</button><button type="button" onClick={() => cancelPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-error/60 px-5 font-label text-label font-bold text-error disabled:opacity-50"><Ban size={16} /> Cancel stage</button></div></div>)}</div>}
+        {previousBatches.length === 0 ? <p className="mt-5 font-body text-body-sm text-text-grey">No saved migration stages found. Choose a workbook to start an import.</p> : <div className="mt-5 space-y-3">{previousBatches.map((batch) => <div key={batch.id} className="flex flex-col gap-4 rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="break-all font-label text-label font-bold text-on-surface">{batch.sourceFileName}</p><span className="rounded-full bg-brand-blue/10 px-2.5 py-1 font-label text-label font-bold text-brand-blue">{statusLabel(batch.status)}</span></div><p className="mt-1 font-body text-body-sm text-text-grey">{batch.sourceRows} source rows · {batch.blockingIssues} open blocking · {batch.warningIssues} warning(s)</p><p className="mt-1 font-mono text-mono-sm text-text-grey">Saved {new Date(batch.createdAt).toLocaleString()}</p></div><div className="flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => openPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">Open review</button><button type="button" onClick={() => cancelPreviousBatch(batch)} disabled={isPending} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-error/60 px-5 font-label text-label font-bold text-error disabled:opacity-50"><Ban size={16} /> Cancel stage</button></div></div>)}</div>}
       </section>}
 
       {!reviewOnly && <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-6 shadow-elevation-1 sm:p-8">
@@ -272,12 +298,12 @@ export function MigrationUploadForm() {
           <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${openBlocking > 0 ? "bg-warning/15 text-warning" : "bg-success/15 text-success"}`}>{openBlocking > 0 ? <AlertTriangle size={22} /> : <CheckCircle2 size={22} />}</span>
           <div className="min-w-0 flex-1"><p className="font-label text-label font-bold uppercase text-brand-blue">Step 3 · Stage</p><h2 className="mt-1 font-heading text-title-md font-bold text-on-surface">{isCommitted ? "Opening seed confirmed" : openBlocking > 0 ? "Review before approval" : result.status === "approved" ? "Approved for confirmation" : "Ready for approval"}</h2><p className="mt-2 font-body text-body-md text-text-grey">{result.sourceRows} source rows {isCommitted ? "committed" : "staged"} · {openBlocking} blocking issue(s) open · {result.warningIssues} warning(s)</p><p className="mt-2 truncate font-mono text-mono-sm text-text-grey">Batch {result.batchId}</p></div>
         </div>
-        {exceptions.length > 0 && <div className="mt-6 border-t border-outline-variant/40 pt-6"><div className="flex items-center justify-between gap-3"><h3 className="font-heading text-title-sm font-bold text-on-surface">Review queue</h3><span className="rounded-full bg-warning/15 px-3 py-1 font-label text-label font-bold text-warning">{openBlocking} open blocking · {openWarnings} open warning(s)</span></div><div className="mt-4 max-h-[38rem] space-y-3 overflow-y-auto pr-2">{exceptions.map((exception) => <div key={exception.id} className="rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="font-label text-label font-bold uppercase text-on-surface">{exception.severity} · {exception.code}</p><p className="mt-1 break-all font-body text-body-sm text-text-grey">{exception.message}</p></div><span className="shrink-0 font-label text-label text-text-grey">{exception.severity === "warning" ? "informational" : exception.resolutionStatus}</span></div>{exception.severity === "blocking" && exception.resolutionStatus === "open" && <p className="mt-3 rounded-lg bg-error/5 p-3 font-body text-body-sm text-error">Blocking error: fix this row in Excel and upload the workbook again. It cannot be approved here.</p>}{exception.severity === "warning" && exception.resolutionStatus === "open" && <div className="mt-3 space-y-2"><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"><label className="sr-only" htmlFor={`resolution-category-${exception.id}`}>What should happen?</label><select id={`resolution-category-${exception.id}`} required value={resolutionCategories[exception.id] ?? ""} onChange={(event) => setResolutionCategories((current) => ({ ...current, [exception.id]: event.target.value }))} className="min-h-11 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"><option value="">Choose what to do</option>{MIGRATION_RESOLUTION_CATEGORIES.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}</select><label className="sr-only" htmlFor={`resolution-note-${exception.id}`}>Optional note</label><input id={`resolution-note-${exception.id}`} value={resolutionNotes[exception.id] ?? ""} onChange={(event) => setResolutionNotes((current) => ({ ...current, [exception.id]: event.target.value }))} placeholder="Optional note" className="min-h-11 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue" /><button type="button" onClick={() => resolve(exception.id)} disabled={isPending || !resolutionCategories[exception.id]} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand-blue px-4 font-label text-label font-bold text-brand-blue disabled:opacity-50">Accept warning</button></div>{resolutionCategories[exception.id] && <p className="font-body text-body-sm text-text-grey">{MIGRATION_RESOLUTION_CATEGORIES.find((category) => category.value === resolutionCategories[exception.id])?.effect ?? "The selected choice will be recorded with this migration."}</p>}</div>}</div>)}</div></div>}
+        {exceptions.length > 0 && <div className="mt-6 border-t border-outline-variant/40 pt-6"><div className="flex items-center justify-between gap-3"><h3 className="font-heading text-title-sm font-bold text-on-surface">Review queue</h3><span className="rounded-full bg-warning/15 px-3 py-1 font-label text-label font-bold text-warning">{openBlocking} open blocking · {openWarnings} open warning(s)</span></div><div className="mt-4 max-h-[38rem] space-y-3 overflow-y-auto pr-2">{exceptions.map((exception) => <div key={exception.id} className="rounded-xl border border-outline-variant/40 bg-surface-grey/40 p-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="font-label text-label font-bold uppercase text-on-surface">{exception.severity} · {exception.code}</p><p className="mt-1 break-all font-body text-body-sm text-text-grey">{toUserMessage(exception.message, "This workbook row needs review. Check the source row and correct it before importing again.")}</p></div><span className="shrink-0 font-label text-label text-text-grey">{exception.severity === "warning" ? "informational" : exception.resolutionStatus}</span></div>{exception.severity === "blocking" && exception.resolutionStatus === "open" && <p className="mt-3 rounded-lg bg-error/5 p-3 font-body text-body-sm text-error">Blocking error: fix this row in Excel and upload the workbook again. It cannot be approved here.</p>}{exception.severity === "warning" && exception.resolutionStatus === "open" && <div className="mt-3 space-y-2"><div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"><label className="sr-only" htmlFor={`resolution-category-${exception.id}`}>What should happen?</label><select id={`resolution-category-${exception.id}`} required value={resolutionCategories[exception.id] ?? ""} onChange={(event) => setResolutionCategories((current) => ({ ...current, [exception.id]: event.target.value }))} className="min-h-11 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"><option value="">Choose what to do</option>{MIGRATION_RESOLUTION_CATEGORIES.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}</select><label className="sr-only" htmlFor={`resolution-note-${exception.id}`}>Optional note</label><input id={`resolution-note-${exception.id}`} value={resolutionNotes[exception.id] ?? ""} onChange={(event) => setResolutionNotes((current) => ({ ...current, [exception.id]: event.target.value }))} placeholder="Optional note" className="min-h-11 rounded-lg border border-outline px-3 font-body text-body-sm focus:outline-none focus:ring-2 focus:ring-brand-blue" /><button type="button" onClick={() => resolve(exception.id)} disabled={isPending || !resolutionCategories[exception.id]} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand-blue px-4 font-label text-label font-bold text-brand-blue disabled:opacity-50">Accept warning</button></div>{resolutionCategories[exception.id] && <p className="font-body text-body-sm text-text-grey">{MIGRATION_RESOLUTION_CATEGORIES.find((category) => category.value === resolutionCategories[exception.id])?.effect ?? "The selected choice will be recorded with this migration."}</p>}</div>}</div>)}</div></div>}
         {!isCommitted && <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-outline-variant/40 pt-6"><LockKeyhole size={18} className="text-text-grey" /><p className="font-body text-body-sm text-text-grey">{canApprove ? openWarnings > 0 ? `Approval will keep ${openWarnings} warning(s) and apply only the documented fallback choices.` : "Approval is required before the opening seed can be committed." : canCommit ? "The migration report is approved and ready to commit." : "Confirmation stays locked until the migration report is approved."}</p>{canApprove && <button type="button" onClick={approve} disabled={isPending} className="ml-auto inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-brand-blue px-5 font-label text-label font-bold text-brand-blue disabled:opacity-50">{isPending && <Loader2 size={18} className="animate-spin" />} Approve migration</button>}{canCommit && <button type="button" onClick={commit} disabled={isPending} className="ml-auto inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-success px-5 font-label text-label font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{isPending && <Loader2 size={18} className="animate-spin" />} Confirm opening seed</button>}</div>}
       </section>}
 
-      {!result?.ok && result?.error && <section className="rounded-2xl border border-error/30 bg-error/5 p-6" role="alert"><p className="font-label text-label font-bold uppercase text-error">Workbook rejected</p><p className="mt-2 whitespace-pre-line font-body text-body-md text-error">{result.error}</p><p className="mt-2 font-body text-body-sm text-text-grey">Fix the listed Excel rows and upload the workbook again.</p></section>}
-      {commitMessage && <section className={`rounded-2xl border p-6 ${isCommitted ? "border-success/30 bg-success/5" : "border-error/30 bg-error/5"}`} role="status"><div className="flex items-start gap-3">{isCommitted ? <CheckCircle2 className="text-success" size={22} /> : <AlertTriangle className="text-error" size={22} />}<p className={`font-body text-body-md ${isCommitted ? "text-success" : "text-error"}`}>{commitMessage}</p></div></section>}
+      {!result?.ok && result?.error && <section className="rounded-2xl border border-error/30 bg-error/5 p-6" role="alert"><p className="font-label text-label font-bold uppercase text-error">Workbook rejected</p><p className="mt-2 whitespace-pre-line font-body text-body-md text-error">{toUserMessage(result.error, "The workbook could not be staged. Try uploading it again. If it happens again, contact an administrator.")}</p><p className="mt-2 font-body text-body-sm text-text-grey">If row issues are listed, fix those Excel rows and upload the workbook again. Otherwise, retry the upload.</p></section>}
+      {commitMessage && <section className={`rounded-2xl border p-6 ${commitMessageIsSuccess ? "border-success/30 bg-success/5" : "border-error/30 bg-error/5"}`} role="status"><div className="flex items-start gap-3">{commitMessageIsSuccess ? <CheckCircle2 className="text-success" size={22} /> : <AlertTriangle className="text-error" size={22} />}<p className={`font-body text-body-md ${commitMessageIsSuccess ? "text-success" : "text-error"}`}>{commitMessage}</p></div></section>}
     </div>
   );
 }

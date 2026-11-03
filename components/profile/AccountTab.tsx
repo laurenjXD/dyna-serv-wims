@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import {
   Camera,
@@ -38,20 +39,26 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
     setIsSaving(true);
     setSaveStatus(null);
 
-    const res = await updateProfileDetails({
-      displayName,
-      phone,
-      employeeId: profile.employeeId,
-      avatarUrl: profile.avatarUrl || undefined,
-      avatarFile,
-    });
+    try {
+      const res = await updateProfileDetails({
+        displayName,
+        phone,
+        employeeId: profile.employeeId,
+        avatarUrl: profile.avatarUrl || undefined,
+        avatarFile,
+      });
 
-    setIsSaving(false);
-    if (res.ok) {
-      setAvatarFile(null);
-      setSaveStatus({ type: "success", message: "Profile details updated successfully." });
-    } else {
-      setSaveStatus({ type: "error", message: res.error || "Failed to update profile." });
+      setIsSaving(false);
+      if (res.ok) {
+        setAvatarFile(null);
+        setSaveStatus({ type: "success", message: "Profile details saved." });
+      } else {
+        setSaveStatus({ type: "error", message: toUserMessage(res.error, "Profile details could not be saved. Review your changes and try again.") });
+      }
+    } catch {
+      setSaveStatus({ type: "error", message: "Profile details could not be saved. Try again. If it happens again, contact an administrator." });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -68,10 +75,17 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
   }
 
   async function handleDisconnect() {
-    if (confirm("Disconnect this BYOD device and log out of the active shift session?")) {
+    if (confirm("Sign out of this account?")) {
       setIsDisconnecting(true);
-      await disconnectCurrentDevice();
-      window.location.href = "/login";
+      try {
+        const result = await disconnectCurrentDevice();
+        if (result.ok) window.location.href = "/login";
+        else setSaveStatus({ type: "error", message: toUserMessage(result.error, "You could not be signed out. Try again.") });
+      } catch {
+        setSaveStatus({ type: "error", message: "You could not be signed out. Try again." });
+      } finally {
+        setIsDisconnecting(false);
+      }
     }
   }
 
@@ -267,7 +281,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
             className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 font-label text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors shadow-2xs"
           >
             <LogOut className="h-3.5 w-3.5" />
-            {isDisconnecting ? "Disconnecting..." : "Disconnect Device"}
+            {isDisconnecting ? "Signing out…" : "Sign out"}
           </button>
         </div>
 

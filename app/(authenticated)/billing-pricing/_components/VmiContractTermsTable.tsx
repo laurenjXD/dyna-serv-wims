@@ -207,7 +207,7 @@ export function VmiContractTermsTable({ rows, parties }: Props) {
         {filteredAndSortedRows.length === 0 ? (
           <div className="p-12 text-center">
             <p className="font-body text-body-md text-text-grey">
-              No VMI Contract Terms match your search/filter.
+              No VMI contract terms match your search or filters. Clear the search or change the filters.
             </p>
             <p className="mt-1 font-body text-body-sm text-text-grey">
               Click <strong>&quot;Configure VMI Contract&quot;</strong> above to define storage and handling rates for a VMI Organization.

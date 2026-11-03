@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { X } from "@/components/ui/icons";
 import {
@@ -118,7 +119,7 @@ function RoleEditor({ role, canManageAccess, onBusy, onSaved }: { role: DynamicR
     listPermissionCatalog().then((result) => {
       if (!active) return;
       if (result.ok) setCatalog(result.data);
-      else setCatalogError(result.error);
+      else setCatalogError(toUserMessage(result.error, "Permissions could not be loaded. Close and reopen the role editor."));
     }).catch(() => { if (active) setCatalogError("Permission catalog could not be loaded. Check your connection and reopen the editor."); });
     return () => { active = false; };
   }, [editable]);
@@ -130,7 +131,7 @@ function RoleEditor({ role, canManageAccess, onBusy, onSaved }: { role: DynamicR
     try {
       const result = deactivate && role ? await deleteDynamicRole(role.id, reason.trim()) : await saveDynamicRole({ ...(role ? { id: role.id } : {}), key, name, description, grants, reason: reason.trim() });
       if (result.ok) onSaved();
-      else setError(result.error);
+      else setError(toUserMessage(result.error, "The role could not be saved. Review your changes and try again."));
     } catch { setError("The change could not be saved. Check your connection and try again."); }
     finally { setPending(false); onBusy(false); }
   }

@@ -43,14 +43,13 @@ export function StatementsOfAccountTable({
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-status-held/30 bg-status-held/10 px-6 py-12 text-center shadow-elevation-1">
         <Lock size={44} className="text-status-held" aria-hidden="true" />
         <h3 className="font-heading text-headline-sm font-bold text-status-held">
-          Financial Access Clearance Required
+          Statements of account are unavailable
         </h3>
         <p className="max-w-md font-body text-body-md text-on-surface">
-          Viewing Statements of Account and commercial billing summaries requires the{" "}
-          <span className="font-mono text-mono-md font-bold">reporting.financial_read</span> capability.
+          You do not have permission to view statements of account or billing summaries.
         </p>
         <p className="font-body text-body-sm text-text-grey">
-          Please contact a warehouse supervisor or system administrator to request access.
+          Ask an administrator for access.
         </p>
       </div>
     );
@@ -64,7 +63,7 @@ export function StatementsOfAccountTable({
         </div>
         <h3 className="font-heading text-title-sm font-bold text-on-surface">No Statements of Account</h3>
         <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
-          No monthly or periodic billing statements match the active filters. Generated statements from Billing &amp; Pricing will populate here.
+          No billing statements match the filters. Change the filters, or open Billing &amp; Pricing to review available statements.
         </p>
       </div>
     );

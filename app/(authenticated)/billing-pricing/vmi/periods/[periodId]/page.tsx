@@ -29,7 +29,7 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "reporting.financial_read");
   if (permission.kind !== "authorized") {
-    return <div className="mx-auto max-w-container px-8 py-12 text-center font-body text-body-md text-text-grey">You do not have permission to view billing periods.</div>;
+    return <div className="mx-auto max-w-container px-8 py-12 text-center font-body text-body-md text-text-grey">You do not have permission to view billing periods. Ask an administrator for access.</div>;
   }
 
   const [period] = await db

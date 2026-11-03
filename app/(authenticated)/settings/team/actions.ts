@@ -3,6 +3,7 @@
 // Server Actions backing `/settings/team` — Team directory, Dynamic RBAC roles,
 // granular permission matrix, and per-user audit trails.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { eq, isNull, and, desc, sql, gt, lte, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
@@ -20,7 +21,7 @@ import { inviteUserSchema, suspendUserSchema, type InviteUserInput } from "@/lib
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { parseUserAgentDevice } from "@/lib/user-settings/device-parser";
-import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
+import { readSettings } from "../_lib/read-settings";
 import { Resend } from "resend";
 import { generateTeamInvitationEmailHtml } from "@/lib/notifications/email-composer-templates";
 import { roleLabel } from "@/lib/user-settings/roles";
@@ -31,7 +32,7 @@ export type { EffectiveGrant, PermissionOption } from "@/lib/rbac/admin-types";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; reason?: "forbidden" | "unavailable" };
 
 type InvitationEmailProvider = "supabase" | "resend";
 
@@ -73,15 +74,15 @@ async function getInviteRedirectUrl(): Promise<string> {
 
 function getInvitationConfigurationError(): string | null {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY === "placeholder-service-key") {
-    return "Invitation email is not configured on the server. Add SUPABASE_SERVICE_ROLE_KEY in the deployment environment.";
+    return "Invitations cannot be sent because account setup is not configured. Ask an administrator to complete the invitation configuration.";
   }
 
   if (!process.env.DATABASE_URL_RUNTIME && !process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
-    return "Invitation setup is not configured on the server. Add DATABASE_URL_RUNTIME, DATABASE_URL, or POSTGRES_URL in the deployment environment.";
+    return "Invitations cannot be sent because account setup is not configured. Ask an administrator to complete the invitation configuration.";
   }
 
   if (getInvitationEmailProvider() === "resend" && (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL)) {
-    return "Invitation email is not configured on the server. Add RESEND_API_KEY and RESEND_FROM_EMAIL in the deployment environment.";
+    return "Invitations cannot be sent because email delivery is not configured. Ask an administrator to complete the invitation configuration.";
   }
 
   return null;
@@ -110,7 +111,7 @@ async function generateAndSendInvitationEmail({
 
   const actionLink = linkData?.properties?.action_link;
   if (linkError || !actionLink) {
-    return { ok: false as const, error: linkError?.message ?? "Failed to generate the invitation link." };
+    return { ok: false as const, error: "The invitation link could not be created. Try again. If it happens again, contact an administrator." };
   }
 
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -131,7 +132,7 @@ async function generateAndSendInvitationEmail({
     }),
   });
 
-  if (sendError) return { ok: false as const, error: sendError.message };
+  if (sendError) return { ok: false as const, error: "The invitation email could not be sent. Try again. If it happens again, contact an administrator." };
   return { ok: true as const };
 }
 
@@ -188,79 +189,73 @@ export interface ActivePartyOption {
 export async function listActiveParties(): Promise<ActionResult<ActivePartyOption[]>> {
   const permission = await requireUsersCapability("read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
+    return { ok: false, reason: "forbidden", error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   }
 
   try {
-    const rows = await withSettingsTimeout(
+    const rows = await readSettings(
       db
         .select({ id: parties.id, name: parties.name })
         .from(parties)
         .where(eq(parties.isActive, true)),
-      [],
     );
 
     return { ok: true, data: rows };
   } catch (err) {
     console.error("Failed to list active parties:", err);
-    return { ok: true, data: [] };
+    return { ok: false, reason: "unavailable", error: "Organizations could not be loaded. Refresh the page to try again." };
   }
 }
 
 export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
   const permission = await requireUsersCapability("read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "You don't have access to view team members." };
+    return { ok: false, reason: "forbidden", error: "You don't have access to view team members." };
   }
 
   try {
     const serviceClient = createServiceRoleClient();
-    // Keep the profile directory independent from optional enrichment. A
-    // slow Auth admin request or an unavailable auth.sessions view must not
-    // turn a populated directory into an empty one.
+    // Required reads distinguish unavailable identity/access/session details
+    // from a genuinely empty directory or accounts without active sessions.
     const [profiles, activeRoleRows, activeScopeRows, authUsersRes, sessionRows] = await Promise.all([
-      withSettingsTimeout(
+      readSettings(
         db.select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status }).from(userProfiles),
-        [],
       ),
-      withSettingsTimeout(
+      readSettings(
         db
           .select({ userId: userRoles.userId, roleKey: roles.key })
           .from(userRoles)
           .innerJoin(roles, eq(userRoles.roleId, roles.id))
           .where(and(isNull(userRoles.revokedAt), lte(userRoles.validFrom, new Date()), or(isNull(userRoles.validUntil), gt(userRoles.validUntil, new Date())), eq(roles.isActive, true))),
-        [],
       ),
-      withSettingsTimeout(
+      readSettings(
         db
           .select({ userId: userPartyScopes.userId, partyName: parties.name })
           .from(userPartyScopes)
           .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
           .where(and(isNull(userPartyScopes.revokedAt), lte(userPartyScopes.validFrom, new Date()), or(isNull(userPartyScopes.validUntil), gt(userPartyScopes.validUntil, new Date())), eq(parties.isActive, true))),
-        [],
       ),
-      withSettingsTimeout(
-        serviceClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
-        { data: { users: [] } },
+      readSettings(
+        serviceClient.auth.admin.listUsers(),
         5000,
       ),
-      withSettingsTimeout(
+      readSettings(
         db.execute(sql`
           SELECT DISTINCT ON (user_id)
             id, user_id, updated_at, user_agent, ip::text as ip_address
           FROM auth.sessions
           ORDER BY user_id, updated_at DESC;
-        `).catch(() => []) as Promise<Array<{
+        `) as Promise<Array<{
           id: string;
           user_id: string;
           updated_at: string | Date;
           user_agent: string | null;
           ip_address: string | null;
         }>>,
-        [],
       ),
     ]);
 
+    if (authUsersRes.error) return { ok: false, reason: "unavailable", error: "Team account details could not be loaded. Refresh the page to try again." };
     const authUserMap = new Map((authUsersRes?.data?.users ?? []).map((u) => [u.id, u]));
     const sessionMap = new Map((sessionRows as Array<{ user_id: string; id: string; updated_at: string | Date; user_agent: string | null }>).map((s) => [s.user_id, s]));
     const now = Date.now();
@@ -309,7 +304,7 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
     return { ok: true, data: members };
   } catch (err) {
     console.error("Failed to list team members:", err);
-    return { ok: false, error: "Unable to load the team directory. Refresh and try again." };
+    return { ok: false, reason: "unavailable", error: "The Team directory could not be loaded. Refresh the page to try again." };
   }
 }
 
@@ -342,7 +337,7 @@ function rbacError(error: unknown): string {
   // PostgreSQL exception messages from these controlled functions are deliberately
   // user-safe. Never send query text, parameters, stack traces or connection data.
   const message = error instanceof Error ? error.message : "";
-  if (/^(Access denied|Only an active|Only existing active|Only pending|System roles|System-defined roles|Role not found|User not found|Account not found|Unsupported permission|Unsupported or inactive|Invalid |Duplicate |The last |Cannot |Organization|An Organization-scoped|Scoped |Global |A role cannot|A saved role|A role with|A change reason|A status|A reason|Too many|Role key|Role name|Role is |Permission |Selected |Custom role)/i.test(message)) return message;
+  if (/^(Access denied|Only an active|Only existing active|Only pending|System roles|System-defined roles|Role not found|User not found|Account not found|Unsupported permission|Unsupported or inactive|Invalid |Duplicate |The last |Cannot |Organization|An Organization-scoped|Scoped |Global |A role cannot|A saved role|A role with|A change reason|A status|A reason|Too many|Role key|Role name|Role is |Permission |Selected |Custom role)/i.test(message)) return toUserMessage(message, "Access settings could not be updated or loaded. Refresh the page and try again.");
   return "Unable to update or read access settings. Refresh and try again. If this continues, contact an administrator.";
 }
 
@@ -353,7 +348,7 @@ function refreshAccessViews() {
 
 export async function listPermissionCatalog(): Promise<ActionResult<PermissionOption[]>> {
   const permission = await requireAccessAdministration(false);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   try {
     const rows = await runRbacCommand<Array<{ permission_id: string; resource: string; action: string; description: string | null; scope_kind: "global" | "assigned_party" }>>(
       permission.context.userId, sql`select * from rbac_internal.admin_permission_catalog()`,
@@ -364,7 +359,7 @@ export async function listPermissionCatalog(): Promise<ActionResult<PermissionOp
 
 export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
   const permission = await requireAccessAdministration(false);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   try {
     const rows = await runRbacCommand<Array<{ data: Array<Omit<DynamicRole, "color" | "capabilities">> }>>(
       permission.context.userId, sql`select rbac_internal.admin_list_roles() as data`,
@@ -375,7 +370,7 @@ export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
 
 export async function saveDynamicRole(input: SaveRoleInput): Promise<ActionResult> {
   const permission = await requireAccessAdministration(true);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   const parsed = saveRoleSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role" };
   const role = parsed.data;
@@ -390,7 +385,7 @@ export async function saveDynamicRole(input: SaveRoleInput): Promise<ActionResul
 
 export async function deleteDynamicRole(roleId: string, reason: string): Promise<ActionResult> {
   const permission = await requireAccessAdministration(true);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   const parsed = roleChangeSchema.safeParse({ roleId, reason });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role change" };
   try {
@@ -402,18 +397,18 @@ export async function deleteDynamicRole(roleId: string, reason: string): Promise
 
 export async function getUserAccess(userId: string): Promise<ActionResult<UserAccess>> {
   const permission = await requireAccessAdministration(false);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
-  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Invalid account" };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "The account could not be identified. Refresh the Team directory and select the account again." };
   try {
     const rows = await runRbacCommand<Array<{ data: UserAccess }>>(permission.context.userId, sql`select rbac_internal.admin_get_user_access(${userId}::uuid) as data`);
-    if (!rows[0]?.data) return { ok: false, error: "User not found." };
+    if (!rows[0]?.data) return { ok: false, error: "The account could not be found. Refresh the Team directory and select the account again." };
     return { ok: true, data: rows[0].data };
   } catch (error) { return { ok: false, error: rbacError(error) }; }
 }
 
 export async function replaceUserRoles(input: { userId: string; roleIds: string[]; reason: string }): Promise<ActionResult> {
   const permission = await requireAccessAdministration(true);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   const parsed = replaceUserRolesSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role assignment" };
   try {
@@ -444,11 +439,11 @@ function formatTeamActionLabel(rawAction: string): string {
 export async function getUserAuditTrail(userId: string): Promise<ActionResult<UserAuditItem[]>> {
   const permission = await requireUsersCapability("read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
+    return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   }
 
   try {
-    const rows = await db
+    const rows = await readSettings(db
       .select({
         id: auditLog.id,
         action: auditLog.action,
@@ -460,7 +455,7 @@ export async function getUserAuditTrail(userId: string): Promise<ActionResult<Us
       .from(auditLog)
       .where(eq(auditLog.actorUserId, userId))
       .orderBy(desc(auditLog.createdAt))
-      .limit(20);
+      .limit(20));
 
     if (rows.length > 0) {
       return {
@@ -494,14 +489,13 @@ export async function getUserAuditTrail(userId: string): Promise<ActionResult<Us
     }
     return { ok: true, data: [] };
   } catch {
-    // Never fabricate audit activity when the database is empty or unavailable.
-    return { ok: true, data: [] };
+    return { ok: false, reason: "unavailable", error: "User activity could not be loaded. Close and reopen the activity panel." };
   }
 }
 
 export async function revokeUserSession(userId: string): Promise<ActionResult> {
   const permission = await requireUsersCapability("deactivate");
-  if (permission.kind !== "authorized" || !z.string().uuid().safeParse(userId).success) return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized" || !z.string().uuid().safeParse(userId).success) return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   // Supabase's admin signOut accepts an access token, not an account ID.
   // Never claim successful revocation for a request that cannot perform it.
   return { ok: false, error: "Session-only revocation is unavailable. Suspend the account to block its next protected request." };
@@ -540,7 +534,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   try {
     redirectTo = await getInviteRedirectUrl();
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
+    return { ok: false, error: "The invitation link could not be created. Ask an administrator to check the application address configuration, then try again." };
   }
 
   const serviceClient = createServiceRoleClient();
@@ -562,7 +556,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   const { data: authData, error: authError } = inviteResult;
 
   if (authError || !authData?.user) {
-    return { ok: false, error: authError?.message ?? "Failed to create the invited account." };
+    return { ok: false, error: "The invited account could not be created. Check Email and try again. If it happens again, contact an administrator." };
   }
 
   if (provider === "resend") {
@@ -609,7 +603,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
       await tx.execute(sql`select rbac_internal.admin_replace_user_roles(${newUserId}::uuid, ARRAY[${roleRow.id}::uuid], ${"Initial administrator invitation assignment"})`);
     });  } catch (error) {
     await serviceClient.auth.admin.deleteUser(newUserId).catch(() => {});
-    return { ok: false, error: error instanceof Error ? error.message : "Unable to finish setting up the invited account." };
+    return { ok: false, error: "The invited account could not be set up. Refresh the Team directory and try again. If it happens again, contact an administrator." };
   }
 
   revalidatePath("/settings/team");
@@ -618,7 +612,7 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
 
 export async function suspendUser(input: { userId: string; reason: string }): Promise<ActionResult> {
   const permission = await requireUsersCapability("deactivate");
-  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Access denied." };
+  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
   const parsed = suspendUserSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   try {
@@ -632,8 +626,8 @@ export async function suspendUser(input: { userId: string; reason: string }): Pr
 
 export async function reactivateUser(userId: string): Promise<ActionResult> {
   const permission = await requireUsersCapability("activate");
-  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Access denied." };
-  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Invalid account" };
+  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "The account could not be identified. Refresh the Team directory and select the account again." };
   try {
     await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_set_user_active(${userId}::uuid, true, ${"Administrator reactivated account"})`);
     refreshAccessViews();
@@ -656,20 +650,20 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
     .limit(1);
 
   if (!profile || profile.status !== "invited") {
-    return { ok: false, error: "Only pending invitations can be resent." };
+    return { ok: false, error: "This invitation cannot be resent because it is no longer pending. Refresh the Team directory to check the account status." };
   }
 
   const serviceClient = createServiceRoleClient();
   const { data: authUser, error: getUserError } = await serviceClient.auth.admin.getUserById(userId);
   if (getUserError || !authUser?.user?.email) {
-    return { ok: false, error: "Could not locate user account to resend invite." };
+    return { ok: false, error: "The invitation could not be resent because the account or Email could not be found. Refresh the Team directory and check the account." };
   }
 
   let redirectTo: string;
   try {
     redirectTo = await getInviteRedirectUrl();
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "The invitation redirect URL is invalid." };
+    return { ok: false, error: "The invitation link could not be created. Ask an administrator to check the application address configuration, then try again." };
   }
 
   // If Supabase has already confirmed the email, use a recovery action link
@@ -687,7 +681,7 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
           },
           redirectTo,
         });
-    if (emailError) return { ok: false, error: emailError.message };
+    if (emailError) return { ok: false, error: "The invitation email could not be resent. Try again. If it happens again, contact an administrator." };
   } else {
     const inviteEmail = await generateAndSendInvitationEmail({
       serviceClient,
@@ -720,8 +714,8 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
 
 export async function cancelInvite(userId: string): Promise<ActionResult> {
   const permission = await requireAccessAdministration(true);
-  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
-  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Invalid account" };
+  if (permission.kind !== "authorized") return { ok: false, error: "You do not have permission to manage these account settings. Ask an administrator for access." };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "The account could not be identified. Refresh the Team directory and select the account again." };
   try {
     await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_cancel_invite(${userId}::uuid, ${"Administrator cancelled pending invitation"})`);
     refreshAccessViews();

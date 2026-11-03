@@ -40,7 +40,7 @@ describe("InviteUserModal (design.md §2.1, FR-4.2/FR-4.3)", () => {
     await user.selectOptions(screen.getByTestId("invite-role-select"), "party_user");
     await user.click(screen.getByTestId("invite-submit"));
 
-    expect(await screen.findByText(/must be assigned to a specific Organization/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Select an Organization for this Organization Client/i)).toBeInTheDocument();
     expect(onInvite).not.toHaveBeenCalled();
   });
 

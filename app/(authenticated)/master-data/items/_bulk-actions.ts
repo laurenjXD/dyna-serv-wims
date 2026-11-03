@@ -27,7 +27,7 @@ export async function importMaterialsAction(
 ): Promise<BulkImportState> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "items.manage");
-  if (permission.kind !== "authorized") return { error: "You do not have permission to enroll materials." };
+  if (permission.kind !== "authorized") return { error: "You do not have permission to enroll materials. Ask an administrator for access." };
 
   const partyId = String(formData.get("partyId") ?? "").trim();
   const file = formData.get("file");
@@ -36,7 +36,7 @@ export async function importMaterialsAction(
 
   const parsed = parseMaterialImport(Buffer.from(await file.arrayBuffer()));
   if (parsed.error) return { error: parsed.error };
-  if (parsed.rows.length === 0) return { error: "No material rows were found." };
+  if (parsed.rows.length === 0) return { error: "No material rows were found. Check that the file has an ITEM CODE column and material rows, then upload it again." };
 
   const result = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as typeof defaultDb;
@@ -56,9 +56,9 @@ export async function importMaterialsAction(
 
     const codes = parsed.rows.map((row) => row.code);
     const duplicateCodes = [...new Set(codes.filter((code, index) => codes.indexOf(code) !== index))];
-    if (duplicateCodes.length > 0) return { ok: false as const, error: `Duplicate item codes in the file: ${duplicateCodes.slice(0, 8).join(", ")}${duplicateCodes.length > 8 ? "…" : ""}.` };
+    if (duplicateCodes.length > 0) return { ok: false as const, error: `Duplicate item codes in the file: ${duplicateCodes.slice(0, 8).join(", ")}${duplicateCodes.length > 8 ? "…" : ""}. Remove duplicate rows or give each material a unique code, then upload the file again.` };
     const existing = await db.select({ code: items.code }).from(items).where(inArray(items.code, codes));
-    if (existing.length > 0) return { ok: false as const, error: `These item codes already exist: ${existing.slice(0, 8).map((row) => row.code).join(", ")}${existing.length > 8 ? "…" : ""}.` };
+    if (existing.length > 0) return { ok: false as const, error: `These item codes already exist: ${existing.slice(0, 8).map((row) => row.code).join(", ")}${existing.length > 8 ? "…" : ""}. Remove these rows from the file, then upload it again. Edit existing materials in Data Management.` };
 
     const categoryRows = await db.select({ id: itemCategories.id, name: itemCategories.name }).from(itemCategories);
     const categoryByName = new Map(categoryRows.map((category) => [category.name.trim().toLowerCase(), category.id]));
@@ -86,7 +86,7 @@ export async function importMaterialsAction(
     return { ok: true as const, imported: parsed.rows.length };
   });
 
-  if (result.kind === "unauthenticated") return { error: "Your session is no longer authenticated." };
+  if (result.kind === "unauthenticated") return { error: "Your session has ended. Sign in again, then upload the file." };
   if (!result.value.ok) return { error: result.value.error };
   revalidatePath("/enrollment");
   revalidatePath("/master-data/items");

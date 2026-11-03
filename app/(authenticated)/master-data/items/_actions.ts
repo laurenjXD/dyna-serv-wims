@@ -6,6 +6,7 @@
 //   lib/actions/items.ts — pure action functions
 //   specs/06-party-and-item-enrollment/design.md §4, §6
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -185,12 +186,12 @@ export async function createCategoryAction(data: {
   const { requirePermission } = await import("@/lib/rbac/guard");
   const perm = await requirePermission(resolver, "items.manage");
   if (perm.kind !== "authorized") {
-    return { ok: false, error: "You do not have permission to manage categories." };
+    return { ok: false, error: "You do not have permission to manage categories. Ask an administrator for access." };
   }
 
   const trimmed = data.name.trim();
   if (!trimmed) {
-    return { ok: false, error: "Category name is required." };
+    return { ok: false, error: "Enter a Category Name, then save the category again." };
   }
 
   try {
@@ -215,8 +216,7 @@ export async function createCategoryAction(data: {
 
     return { ok: true, category: created };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: `Failed to create category: ${errorMsg}` };
+    return { ok: false, error: toUserMessage(err, "Category was not created. Try again. If it happens again, contact an administrator.") };
   }
 }
 
@@ -229,12 +229,12 @@ export async function updateCategoryAction(data: {
   const { requirePermission } = await import("@/lib/rbac/guard");
   const perm = await requirePermission(resolver, "items.manage");
   if (perm.kind !== "authorized") {
-    return { ok: false, error: "You do not have permission to manage categories." };
+    return { ok: false, error: "You do not have permission to manage categories. Ask an administrator for access." };
   }
 
   const trimmed = data.name.trim();
   if (!trimmed) {
-    return { ok: false, error: "Category name is required." };
+    return { ok: false, error: "Enter a Category Name, then save the category again." };
   }
 
   try {
@@ -259,7 +259,6 @@ export async function updateCategoryAction(data: {
 
     return { ok: true, category: updated };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: `Failed to update category: ${errorMsg}` };
+    return { ok: false, error: toUserMessage(err, "Category was not updated. Try again. If it happens again, contact an administrator.") };
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
@@ -745,9 +746,9 @@ export function MultiItemPickListDraft({
         lotId: source.lotId,
         locationId: source.locationId,
         qty: boxesToPieces(boxes, item?.spq ?? 1),
-        customerItemCode: line.customerItemCode.trim() || source.customerItemCode || null,
+        customerItemCode: line.customerItemCode.trim() || source.customerItemCode?.trim() || undefined,
         itemCodeIsProvisional: false,
-        valid: Boolean(item && itemHasRequiredCode && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
+        valid: Boolean(item && itemHasRequiredCode && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock && (line.customerItemCode.trim() || source.customerItemCode?.trim() || "").length <= 100),
       })),
     );
     if (
@@ -796,14 +797,16 @@ export function MultiItemPickListDraft({
             ? "Choose an item code for every line."
             : lineDetails.some(({ itemHasRequiredCode }) => !itemHasRequiredCode)
               ? "This item needs its enrolled supplier/DSGC item code before a pick list can be created."
+            : lineDetails.some(({ line, fifoAllocations }) => fifoAllocations.some(({ source }) => (line.customerItemCode.trim() || source.customerItemCode?.trim() || "").length > 100))
+              ? "Customer PN must be 100 characters or fewer. Shorten it or leave it blank."
             : lineDetails.some(({ requestedBoxes }) => requestedBoxes === null)
-              ? "Enter a positive whole-box quantity for every line."
+              ? "Enter a whole number of boxes greater than zero for every item."
               : lineDetails.some(({ stockShortageBoxes }) => stockShortageBoxes > 0)
-                ? "One or more lines exceed available stock. Add/receive stock or intentionally adjust the requested quantity; generation stays blocked while any shortage remains."
+                ? "There is not enough stock for one or more items. Receive more stock or change the requested boxes."
               : lineDetails.some(({ line, allocationShortageBoxes }) => line.manualSplit && allocationShortageBoxes > 0)
-                ? "Some requested boxes still need a location. Add a FIFO/FEFO location or complete the split allocation."
+                ? "Some boxes have no location. Select a location and enter the remaining boxes."
               : lineDetails.some(({ allocationShortageBoxes }) => allocationShortageBoxes > 0)
-                ? "The selected location cannot cover the request. Switch to multi-location allocation or choose a location with enough boxes."
+                ? "This location has too few boxes. Choose another location or split the request across locations."
                 : null;
 
   const addLine = () => setLines((current) => [...current, blankDraftLine(crypto.randomUUID())]);
@@ -846,7 +849,7 @@ export function MultiItemPickListDraft({
     if (!res.ok || !res.parseResult) {
       setImportSummary({
         type: "error",
-        message: res.error || "Failed to process DRA document.",
+        message: toUserMessage(res.error, "The DRA file could not be read. Check the file and upload it again."),
         details: ["Check that the file is a supported Excel, CSV, or PDF DRA and that it is readable, then upload it again."],
       });
       return;
@@ -858,7 +861,7 @@ export function MultiItemPickListDraft({
         type: "warning",
         message: "No release line items were extracted from the document.",
         details: [
-          ...draErrors.map((error) => `DRA: ${error} Correct the file and upload it again.`),
+          ...draErrors.map((error) => toUserMessage(error, "The DRA file has invalid details. Correct the file and upload it again.")),
           ...draWarnings.map((warning) => `DRA: ${warning} Review the file, then add the affected lines manually or upload a corrected file.`),
           ...(draErrors.length === 0 && draWarnings.length === 0 ? ["Check that the DRA has item codes and requested quantities, or add the lines manually."] : []),
         ],
@@ -954,7 +957,7 @@ export function MultiItemPickListDraft({
     let totalBoxesRequested = 0;
     let totalBoxesAllocated = 0;
     const reviewItems: string[] = [
-      ...draErrors.map((error) => `DRA: ${error} Correct the file and re-import the affected rows.`),
+      ...draErrors.map((error) => toUserMessage(error, "The DRA file has invalid rows. Correct the file and import those rows again.")),
       ...draWarnings.map((warning) => `DRA: ${warning} Check the affected rows before generating the pick list.`),
     ];
     const importRequests = new Map<string, { itemId: string; spq: number; requestedBoxes: number; labels: string[]; customerItemCode: string }>();
@@ -1429,7 +1432,7 @@ export function MultiItemPickListDraft({
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
                       <div><dt className="text-slate-500">Remaining after allocation</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - allocatedBoxes)} boxes</dd></div>
-                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
+                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input maxLength={100} aria-invalid={line.customerItemCode.trim().length > 100 || undefined} value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
                     </dl>
@@ -1572,7 +1575,7 @@ export function MultiItemPickListDraft({
                               <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
                               <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{boxes} boxes from {source.locationLabel} · Lot {source.lotNumber}</span>
                               </div>
-                            )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
+                            )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Enter a whole number of boxes, such as 1 or 2.` : "No FIFO source"}</span>}
                           </div>
                         </>
                       ) : (
@@ -1619,7 +1622,7 @@ export function MultiItemPickListDraft({
 
                     {/* CUST PN */}
                     <td className="px-4 py-4 align-top">
-                      <input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} title="Customer part number snapshot" className="h-10 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-mono text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" />
+                      <input maxLength={100} aria-invalid={line.customerItemCode.trim().length > 100 || undefined} value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} title="Customer part number snapshot" className="h-10 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-mono text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" />
                     </td>
 
                     {/* ITEM DESCRIPTION */}

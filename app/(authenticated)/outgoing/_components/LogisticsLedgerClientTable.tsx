@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import { Edit3, Check, DollarSign, Truck, FileText, RefreshCw, Zap } from "@/components/ui/icons";
 import { syncLiveBspRateAction } from "@/lib/actions/forex";
@@ -72,10 +73,10 @@ export function LogisticsLedgerClientTable() {
         setFxRate(res.rate);
         setFxSourceLabel(`BSP Live Market API (${res.date})`);
       } else {
-        alert(`Failed to fetch live BSP rate: ${res.error}`);
+        alert(toUserMessage(res.error, "The current BSP exchange rate could not be loaded. Try again or enter the rate manually."));
       }
     } catch {
-      alert("Error contacting live BSP Forex server.");
+      alert("The current BSP exchange rate could not be loaded. Check your connection and try again, or enter the rate manually.");
     } finally {
       setIsSyncingFx(false);
     }
@@ -278,7 +279,7 @@ export function LogisticsLedgerClientTable() {
               {pagedRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-text-grey">
-                    No delivery receipt runs match &quot;{searchQuery}&quot;.
+                    No delivery receipts match &quot;{searchQuery}&quot;. Change or clear the search.
                   </td>
                 </tr>
               ) : (

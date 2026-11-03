@@ -45,7 +45,7 @@ export function PickListsTable({ rows }: PickListsTableProps) {
         </div>
         <h3 className="font-heading text-title-sm font-bold text-on-surface">No Pick Lists or DRA Documents</h3>
         <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
-          No outbound pick lists or delivery receipts match your active filters. Generate new pick lists in Outgoing Withdrawal to view them here.
+          No pick lists or DRA documents match your filters. Change the filters, or create a pick list from Stock View.
         </p>
       </div>
     );

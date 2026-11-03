@@ -150,8 +150,8 @@ export function OperationsDashboard({
       ) : (
         <WorkflowState
           kind="unavailable"
-          title="Live KPI data is unavailable"
-          description="The dashboard could not load current totals. No placeholder values are being shown. Refresh and retry, or continue with the available operational views."
+          title="Dashboard totals could not be loaded"
+          description="Current totals could not be loaded. Refresh the page to try again, or open a workflow to continue working."
           actionLabel="Refresh dashboard"
           onAction={() => router.refresh()}
           testId="dashboard-kpis-unavailable"

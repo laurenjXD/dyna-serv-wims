@@ -5,6 +5,7 @@
 
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState, type FormEvent } from "react";
 
 export function SuspendUserDialog({
@@ -23,15 +24,21 @@ export function SuspendUserDialog({
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!reason.trim()) {
-      setError("A reason is required to suspend a user.");
+      setError("Enter a Reason, then try again.");
       return;
     }
     setError(null);
     setSubmitting(true);
-    const result = await onConfirm(reason.trim());
-    setSubmitting(false);
-    if (!result.ok) {
-      setError(result.error ?? "Failed to suspend user.");
+    try {
+      const result = await onConfirm(reason.trim());
+      setSubmitting(false);
+      if (!result.ok) {
+        setError(toUserMessage(result.error, "The account could not be suspended. Try again. If it happens again, contact an administrator."));
+      }
+    } catch {
+      setError("The account could not be suspended. Try again. If it happens again, contact an administrator.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -51,7 +58,7 @@ export function SuspendUserDialog({
           Suspend {displayName}?
         </h2>
         <p className="mt-2 font-body text-body-md text-text-grey">
-          This immediately revokes their access and active sessions. This action is logged.
+          This blocks the account’s next protected request. The suspension and reason are recorded.
         </p>
 
         <form onSubmit={handleSubmit} noValidate className="mt-4 flex flex-col gap-3">

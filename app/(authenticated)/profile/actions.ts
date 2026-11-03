@@ -278,7 +278,7 @@ export async function updateDisplayName(input: { displayName: string }): Promise
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
-    return { ok: false, error: "Not authenticated" };
+    return { ok: false, error: "Your session could not be verified. Sign in again, then retry your changes." };
   }
 
   const rlsResult = await withRlsTransaction(
@@ -313,7 +313,7 @@ export async function updateProfileDetails(input: {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
-    return { ok: false, error: "Not authenticated" };
+    return { ok: false, error: "Your session could not be verified. Sign in again, then retry your changes." };
   }
 
   const metadata: Record<string, string | null> = {
@@ -324,10 +324,10 @@ export async function updateProfileDetails(input: {
 
   if (input.avatarFile) {
     if (!input.avatarFile.type.match(/^image\/(jpeg|png|webp)$/i)) {
-      return { ok: false, error: "Profile pictures must be JPG, PNG, or WebP." };
+      return { ok: false, error: "Your profile picture was not saved. Choose a JPG, PNG, or WebP image." };
     }
     if (input.avatarFile.size > 2 * 1024 * 1024) {
-      return { ok: false, error: "Profile pictures must be 2 MB or smaller." };
+      return { ok: false, error: "Your profile picture was not saved. Choose an image that is 2 MB or smaller." };
     }
 
     const extension = input.avatarFile.type === "image/jpeg" ? "jpg" : input.avatarFile.type.split("/")[1];
@@ -336,7 +336,7 @@ export async function updateProfileDetails(input: {
       contentType: input.avatarFile.type,
       upsert: true,
     });
-    if (upload.error) return { ok: false, error: upload.error.message };
+    if (upload.error) return { ok: false, error: "Your profile picture could not be uploaded. Try again. If it happens again, contact an administrator." };
     metadata.avatar_url = avatarPath;
   } else if (input.avatarUrl?.startsWith("data:")) {
     // Clean up the legacy implementation's oversized Auth metadata.
@@ -348,20 +348,30 @@ export async function updateProfileDetails(input: {
   });
 
   if (metaError) {
-    return { ok: false, error: metaError.message };
+    return { ok: false, error: "Profile details could not be saved. Try again. If it happens again, contact an administrator." };
   }
 
-  await withRlsTransaction(
-    { getAuthenticatedSession, pool: rlsPool },
-    async (tx) => {
-      const rlsDb = tx.db as typeof db;
-      await rlsDb
-        .update(userProfiles)
-        .set({ displayName: input.displayName, updatedAt: new Date() })
-        .where(eq(userProfiles.id, data.user.id));
-      return true;
-    },
-  ).catch(() => {});
+  try {
+    const profileWrite = await withRlsTransaction(
+      { getAuthenticatedSession, pool: rlsPool },
+      async (tx) => {
+        const rlsDb = tx.db as typeof db;
+        const [updated] = await rlsDb
+          .update(userProfiles)
+          .set({ displayName: input.displayName, updatedAt: new Date() })
+          .where(eq(userProfiles.id, data.user.id))
+          .returning({ id: userProfiles.id });
+        return updated ?? null;
+      },
+    );
+    if (profileWrite.kind !== "ok" || !profileWrite.value) {
+      revalidatePath("/profile");
+      return { ok: false, error: "Your account details were saved, but your profile name could not be updated everywhere. Keep your changes and save again. If it happens again, contact an administrator." };
+    }
+  } catch {
+    revalidatePath("/profile");
+    return { ok: false, error: "Your account details were saved, but your profile name could not be updated everywhere. Keep your changes and save again. If it happens again, contact an administrator." };
+  }
 
   // Record to auditLog
   try {
@@ -405,7 +415,7 @@ export async function changePassword(input: {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.updateUser({ password: parsed.data.newPassword });
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: "Your password could not be updated. Try again. If it happens again, contact an administrator." };
   }
 
   if (user) {
@@ -428,7 +438,12 @@ export async function changePassword(input: {
 }
 
 export async function disconnectCurrentDevice(): Promise<ActionResult> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  return { ok: true };
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) return { ok: false, error: "You could not be signed out. Try again. If it happens again, contact an administrator." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "You could not be signed out. Try again. If it happens again, contact an administrator." };
+  }
 }

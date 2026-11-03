@@ -45,7 +45,7 @@ export function PortalOrdersTable({ orders }: PortalOrdersTableProps) {
     return (
       <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
         <ListChecks size={40} className="text-text-grey" aria-hidden="true" />
-        <p className="font-body text-body-md text-text-grey">No orders found.</p>
+        <p className="font-body text-body-md text-text-grey">No orders found. Clear filters to check all orders for your organization.</p>
         <p className="font-body text-body-sm text-text-grey">
           Orders appear here once pick lists have been committed for your account.
         </p>

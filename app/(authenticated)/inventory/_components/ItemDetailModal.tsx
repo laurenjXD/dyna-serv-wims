@@ -1,5 +1,8 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
+
+
 import React, { useState, useEffect } from "react";
 import {
   X,
@@ -69,7 +72,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
           }
         })
         .catch((err) => {
-          setError(err?.message || "Failed to fetch item data");
+          setError("Item details could not be loaded. Close this panel and try again.");
         })
         .finally(() => {
           setLoading(false);
@@ -304,7 +307,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
               <AlertTriangle size={20} className="shrink-0 text-rose-600" />
               <div>
                 <p className="font-bold text-sm">Error Loading Details</p>
-                <p className="text-xs">{error}</p>
+                <p className="text-xs">{toUserMessage(error, "Item details could not be loaded. Close this panel and try again.")}</p>
               </div>
             </div>
           ) : (

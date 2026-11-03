@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import { RotateCw, X, AlertCircle } from "@/components/ui/icons";
 import { requestDocumentReprintAction } from "../_actions";
@@ -38,10 +39,10 @@ export function DocumentReprintDialog({
           documentNumber: res.data.documentNumber,
         });
       } else {
-        setErrorMsg(res.error || "Failed to initiate reprint");
+        setErrorMsg(toUserMessage(res.error, "Reprint could not be prepared. Try again. If it happens again, contact an administrator."));
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred");
+      setErrorMsg(toUserMessage(err, "Reprint could not be prepared. Try again. If it happens again, contact an administrator."));
     } finally {
       setIsSubmitting(false);
     }

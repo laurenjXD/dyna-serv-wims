@@ -26,6 +26,7 @@
 // "Item verified" before the batch putaway UI. The legacy acceptance shape
 // item.scannedQty >= 1 && !isCommitted remains the readiness rule.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -60,11 +61,11 @@ import {
 function getScanErrorMessage(reason: string): string {
   switch (reason) {
     case "forbidden":
-      return "You do not have permission to scan items.";
+      return "You do not have permission to scan items. Ask an administrator for access.";
     case "network_restricted":
       return "Floor receiving is blocked because this device is outside the configured warehouse network. Connect to approved warehouse Wi-Fi and try again.";
     case "not_found":
-      return "WRR document not found.";
+      return "This WRR is unavailable. Return to the Receiving queue and open it again.";
     case "invalid_status":
       return "This WRR is not in receiving status. Return to the WRR and start receiving first.";
     case "wrr_document_qr":
@@ -82,7 +83,7 @@ function getScanErrorMessage(reason: string): string {
     case "duplicate_unit_scan":
       return "This exact label has already been scanned — if this carton is genuinely new, check for a duplicate printed label.";
     default:
-      return `Scan rejected: ${reason}. Contact a supervisor if this persists.`;
+      return toUserMessage(reason, "The scan could not be accepted. Check the current item and scan its label again. If it happens again, contact a supervisor.");
   }
 }
 
@@ -91,7 +92,7 @@ function getCommitErrorMessage(reason: string): string {
     return "Confirm that every received box is physically present before storing.";
   }
   if (reason.includes("allocation_qty_must_equal_derived_carton_count") || reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
-    return "The assigned cartons cannot exceed the derived carton count. Mark any missing cartons as Shortage.";
+    return "The assigned boxes must match the expected box count. Assign the remaining boxes or mark missing boxes as Shortage.";
   }
   if (reason.includes("missing_location")) {
     return "Choose a storage location for every declared box before storing.";
@@ -102,17 +103,29 @@ function getCommitErrorMessage(reason: string): string {
   if (reason.includes("must be of type")) {
     return "Please choose valid active storage racks or inspection holding bays.";
   }
+  if (reason.includes("has no resolved itemId")) {
+    return "This line has no enrolled item. Ask a supervisor to match the item in Enrollment before receiving.";
+  }
+  if (reason.includes("cannot be converted into complete cartons")) {
+    return "Expected Qty (Total Units) does not make complete boxes using the enrolled SPQ. Ask a supervisor to review the expected quantity and item enrollment.";
+  }
+  if (reason.includes("has no disposition")) {
+    return "Choose Store or Hold for this item before confirming receipt.";
+  }
+  if (reason.includes("not active") || reason.includes("has no accepted/overridden") || reason.includes("has no confirmed inspection")) {
+    return "The selected location is unavailable. Choose an active location that matches Store or Hold, then try again.";
+  }
   switch (reason) {
     case "network_restricted":
       return "This receiving action is restricted to the configured warehouse network. Connect to approved warehouse Wi-Fi and try again; nothing was stored.";
     case "forbidden":
-      return "You do not have permission to confirm receipt for this line.";
+      return "You do not have permission to confirm receipt for this line. Ask an administrator for access.";
     case "not_found":
-      return "This line could not be found.";
+      return "This item line is unavailable. Refresh the WRR and review its current items.";
     case "commit_failed":
       return "The receipt could not be saved. Nothing was stored. Try again; if it continues, contact a supervisor with the WRR number.";
     default:
-      return `Could not complete this line: ${reason.replace(/\|/g, ", ")}. Contact a supervisor if this persists.`;
+      return toUserMessage(reason.split("|"), "This receipt line could not be saved. Refresh the WRR and review its status before trying again.");
   }
 }
 
@@ -561,7 +574,7 @@ export default async function ReceiveFloorPage({
             className="mt-4 rounded-xl border border-status-held/40 bg-status-held/5 px-4 py-4 shadow-sm"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
-              <AlertCircle className="text-status-held" size={22} /> Could not complete line
+              <AlertCircle className="text-status-held" size={22} /> Receipt line was not saved.
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
               {getCommitErrorMessage(errorReason)}

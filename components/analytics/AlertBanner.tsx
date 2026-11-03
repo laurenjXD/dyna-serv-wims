@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 export function AlertBanner({ severity, message, linkTo, linkLabel }: { severity: "warning" | "critical"; message: string; linkTo: string; linkLabel: string }) {
   const critical = severity === "critical";
@@ -16,7 +17,7 @@ export function AlertBanner({ severity, message, linkTo, linkLabel }: { severity
       >
         {critical ? "⊗" : "⚠"}
       </span>
-      <p className="flex-1 font-body text-body-md text-on-surface">{message}</p>
+      <p className="flex-1 font-body text-body-md text-on-surface">{toUserMessage(message, "This information needs your attention. Open the linked page to review it.")}</p>
       <Link
         href={linkTo}
         className="font-label text-label font-semibold text-brand-navy underline hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"

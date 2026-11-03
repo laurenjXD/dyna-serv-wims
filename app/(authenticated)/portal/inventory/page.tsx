@@ -189,9 +189,7 @@ function PermissionDenied() {
         You do not have permission to view inventory.
       </p>
       <p className="mt-2 font-body text-body-sm text-text-grey">
-        This page requires the{" "}
-        <span className="font-mono text-mono-md">reporting.read</span>{" "}
-        capability.
+        Ask an administrator for access to this page.
       </p>
     </div>
   );

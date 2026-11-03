@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 // Approval Queue — request detail, target snapshot, and approve/reject controls.
 //
 // Traceability:
@@ -132,7 +133,7 @@ function getDecisionErrorMessage(reason: string): string {
     case "missing-actor":
       return "Could not identify the reviewing user. Please sign in again.";
     default:
-      return reason;
+      return toUserMessage(reason, "The approval decision could not be saved. Refresh the page and try again.");
   }
 }
 

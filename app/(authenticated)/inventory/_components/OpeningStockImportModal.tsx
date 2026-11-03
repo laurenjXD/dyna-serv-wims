@@ -1,5 +1,8 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
+
+
 import React, { useState, useRef } from "react";
 import {
   Upload,
@@ -206,7 +209,7 @@ export function OpeningStockImportModal({
           {error && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2">
               <AlertTriangle size={16} className="shrink-0 mt-0.5 text-rose-600" />
-              <span>{error}</span>
+              <span>{toUserMessage(error, "Opening stock could not be imported. Check the file and try again.")}</span>
             </div>
           )}
 
@@ -265,7 +268,7 @@ export function OpeningStockImportModal({
                               <CheckCircle2 size={12} /> Ready
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700" title={row.error}>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700" title={row.error ? toUserMessage(row.error, "Review this row and correct the file before importing.") : undefined}>
                               <AlertTriangle size={12} /> Invalid
                             </span>
                           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useEffect, useState, type FormEvent } from "react";
 import type { OwnProfile } from "@/app/(authenticated)/profile/actions";
 import { changePassword } from "@/app/(authenticated)/profile/actions";
@@ -19,20 +20,27 @@ function ChangePasswordForm() {
 
     const parsed = changePasswordSchema.safeParse({ newPassword, confirmPassword });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Invalid password");
+      setError(newPassword !== confirmPassword
+        ? "Confirm New Password does not match New Password. Enter the same password in both fields."
+        : "New Password must be at least 8 characters. Enter a longer password.");
       return;
     }
 
     setStatus("saving");
-    const result = await changePassword(parsed.data);
-    if (!result.ok) {
-      setError(result.error);
+    try {
+      const result = await changePassword(parsed.data);
+      if (!result.ok) {
+        setError(toUserMessage(result.error, "Your password could not be updated. Try again. If it happens again, contact an administrator."));
+        setStatus("idle");
+        return;
+      }
+      setStatus("saved");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setError("Your password could not be updated. Try again. If it happens again, contact an administrator.");
       setStatus("idle");
-      return;
     }
-    setStatus("saved");
-    setNewPassword("");
-    setConfirmPassword("");
   }
 
   return (
@@ -102,7 +110,7 @@ function ChangePasswordForm() {
       {status === "saved" && (
         <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>Password updated successfully.</span>
+          <span>Password updated. Use your new password the next time you sign in.</span>
         </div>
       )}
 
@@ -137,57 +145,76 @@ function MfaSection({ mfaRequiredByPolicy }: { mfaRequiredByPolicy: boolean }) {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.mfa.listFactors().then(({ data }) => {
+    supabase.auth.mfa.listFactors().then(({ data, error: loadError }) => {
+      if (loadError) {
+        setError("Two-factor authentication status could not be loaded. Refresh the page before changing these settings.");
+        return;
+      }
       if (data) {
         setFactors(data.totp.map((f) => ({ id: f.id, status: f.status })));
       }
-    });
+    }).catch(() => setError("Two-factor authentication status could not be loaded. Refresh the page before changing these settings."));
   }, [verified]);
 
   async function handleEnroll() {
     setError(null);
     setEnrolling(true);
-    const supabase = createClient();
-    const { data, error: enrollError } = await supabase.auth.mfa.enroll({
-      factorType: "totp",
-    });
-    setEnrolling(false);
-    if (enrollError) {
-      setError(enrollError.message);
-      return;
+    try {
+      const supabase = createClient();
+      const { data, error: enrollError } = await supabase.auth.mfa.enroll({
+        factorType: "totp",
+      });
+      setEnrolling(false);
+      if (enrollError) {
+        setError("Two-factor authentication setup could not be started. Try again. If it happens again, contact an administrator.");
+        return;
+      }
+      setFactorId(data.id);
+      setQrCode(data.totp.qr_code);
+    } catch {
+      setError("Two-factor authentication setup could not be started. Try again. If it happens again, contact an administrator.");
+    } finally {
+      setEnrolling(false);
     }
-    setFactorId(data.id);
-    setQrCode(data.totp.qr_code);
   }
 
   async function handleVerify(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!factorId) return;
     setError(null);
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
-      factorId,
-      code,
-    });
-    if (verifyError) {
-      setError(verifyError.message);
-      return;
+    try {
+      const supabase = createClient();
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+        factorId,
+        code,
+      });
+      if (verifyError) {
+        setError("The verification code could not be confirmed. Enter the current code from your authenticator app and try again.");
+        return;
+      }
+      setVerified(true);
+      setQrCode(null);
+      setFactorId(null);
+      setCode("");
+    } catch {
+      setError("The verification code could not be confirmed. Try again. If it happens again, contact an administrator.");
     }
-    setVerified(true);
-    setQrCode(null);
-    setFactorId(null);
-    setCode("");
   }
 
   async function handleRemove(id: string) {
     setError(null);
-    const supabase = createClient();
-    const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: id });
-    if (unenrollError) {
-      setError(unenrollError.message);
-      return;
+    try {
+      const supabase = createClient();
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: id });
+      if (unenrollError) {
+        setError("Two-factor authentication could not be removed. Try again. If it happens again, contact an administrator.");
+        return;
+      }
+      setFactors((prev) => prev.filter((f) => f.id !== id));
+      setVerified(false);
+    } catch {
+      setError("Two-factor authentication could not be removed. Try again. If it happens again, contact an administrator.");
     }
-    setFactors((prev) => prev.filter((f) => f.id !== id));
   }
 
   return (
@@ -287,7 +314,7 @@ function MfaSection({ mfaRequiredByPolicy }: { mfaRequiredByPolicy: boolean }) {
       {verified && (
         <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>Two-factor authentication enabled successfully.</span>
+          <span>Two-factor authentication enabled. Use your authenticator code when signing in.</span>
         </div>
       )}
       {error && (

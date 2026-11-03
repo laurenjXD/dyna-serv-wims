@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState } from "react";
 import { createVmiChargeLineAction, type VmiChargeLineState } from "../../_actions";
 
@@ -46,7 +47,7 @@ export function ChargeLineForm({
         </p>
       </div>
 
-      {state.error && <p className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">Charge line not saved: {state.error}</p>}
+      {state.error && <p className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">{toUserMessage(state.error, "Charge line was not saved. Try again. If it happens again, contact an administrator.")}</p>}
       {state.ok && <p className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">Charge line saved.</p>}
 
       {lines.length > 0 ? (

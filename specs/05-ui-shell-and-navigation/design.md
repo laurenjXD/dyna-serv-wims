@@ -356,3 +356,7 @@ Feature specs `06`–`22` consume this shell design for:
 - [x] Confirm Auth session integration against `04-services-and-infrastructure`.
 - [x] Confirm offline indicator semantics against `03-offline-mode-and-client-storage`.
 - [x] Reconcile this design with `requirements.md` and `tasks.md`.
+
+## Approved clarification — system-wide feedback writing (2026-11-03)
+
+All feature surfaces use `00-steering/error-message-writing-guide.md`. The pure `lib/ui/user-messages.ts` display boundary maps stable domain codes and validator paths to plain field names, deduplicates repeated messages, preserves authored safe guidance, and uses a workflow-specific fallback for internal diagnostics or unknown failures. Shared Alert, EmptyState, Input/Select/Textarea, table feedback, and feature-owned custom states use this boundary. Machine-readable action results, validation identifiers, authorization, and inventory/pricing rules remain owned by their existing domain contracts. Feature state handling must report unavailable reads, partial saves, and confirmed success accurately.

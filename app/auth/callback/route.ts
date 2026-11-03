@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       console.error("[auth/callback] Failed to exchange code for session:", error.message);
       // Redirect to login with error parameter if code exchange fails
       const errorUrl = new URL("/login", request.url);
-      errorUrl.searchParams.set("error", "The invitation or auth link has expired or is invalid. Please ask your administrator to resend it.");
+      errorUrl.searchParams.set("error", "The sign-in link could not be verified. Open the latest link from your email, or ask an administrator for a new one.");
       return NextResponse.redirect(errorUrl);
     }
   } else if (token_hash && (type === "invite" || type === "recovery" || type === "email" || type === "signup")) {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("[auth/callback] Failed to verify OTP token_hash:", error.message);
       const errorUrl = new URL("/login", request.url);
-      errorUrl.searchParams.set("error", "The invitation or auth link has expired or is invalid.");
+      errorUrl.searchParams.set("error", "The sign-in link could not be verified. Open the latest link from your email, or ask an administrator for a new one.");
       return NextResponse.redirect(errorUrl);
     }
   }

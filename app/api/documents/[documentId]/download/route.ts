@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   const perm = await requirePermission(resolver, "documents.read");
   if (perm.kind !== "authorized") {
     return NextResponse.json(
-      { error: "Forbidden: documents.read required" },
+      { error: "You do not have permission to download this document. Ask an administrator for access." },
       { status: 403 },
     );
   }
@@ -32,7 +32,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   if (!doc) {
     return NextResponse.json(
-      { error: "Document not found" },
+      { error: "This document is unavailable. Return to Documents and choose another document." },
       { status: 404 },
     );
   }
@@ -44,11 +44,11 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   if (doc.status !== "ready" || !doc.artifactPath) {
-    return NextResponse.json({ error: "This document is not ready for download." }, { status: 409 });
+    return NextResponse.json({ error: "This document is still being prepared. Try downloading it again shortly." }, { status: 409 });
   }
 
   const download = await (await getStorageClient()).from("generated-documents").download(doc.artifactPath);
-  if (download.error) return NextResponse.json({ error: "The stored document could not be downloaded." }, { status: 502 });
+  if (download.error) return NextResponse.json({ error: "The document could not be downloaded. Try again shortly." }, { status: 502 });
   const body = await download.data.arrayBuffer();
   return new NextResponse(body, {
     headers: {

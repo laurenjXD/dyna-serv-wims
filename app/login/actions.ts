@@ -22,7 +22,11 @@ export async function signInAction(input: {
       password: input.password,
     });
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: error.code === "invalid_credentials"
+      ? "You could not be signed in. Check Email and Password, then try again."
+      : error.code === "email_not_confirmed"
+        ? "You could not be signed in because your email is not confirmed. Open the confirmation email, or ask an administrator for help."
+        : "You could not be signed in. Try again. If it happens again, contact an administrator." };
 
     // Recovery for accounts saved by the old profile form. A base64 avatar
     // in user_metadata is copied into the JWT and can make the first

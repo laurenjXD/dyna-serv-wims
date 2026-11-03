@@ -5,7 +5,9 @@ Updated: 2026-08-05
 
 ## Implementation gate
 
-No model provider integration, prompt templates, chat tables, retrieval adapter, chatbot route, or AI UI may be implemented until `requirements.md` and `design.md` are approved, provider/data-retention decisions are recorded in `specs/00-steering/revision-log.md`, and both sign-offs below are complete. The chatbot remains read-only and online-only unless a future approved spec explicitly changes that boundary.
+The Product Owner approved the first-rollout scope on 2026-11-03: internal staff only, no persisted conversations, approved internal manuals, and the eight read-only live projections in `design.md` §10, all behind current RBAC and user-bound RLS. This supersedes the earlier manuals-only decision; see `specs/00-steering/revision-log.md`. OpenRouter model calls and indexing must remain disabled until the exact endpoint/provider, processing region, privacy terms, and latency review are verified. The live projections still require focused tests and real-Postgres RLS verification before production use.
+
+The detailed one-assistant rollout, document-RAG lifecycle, whole-system source coverage, floating-launcher behavior, phase gates, and verification matrix are in [`implementation-roadmap.md`](./implementation-roadmap.md). Resolve its Phase 0 gates before writing application code.
 
 ## Dependencies and aligned boundaries
 
@@ -20,9 +22,11 @@ No model provider integration, prompt templates, chat tables, retrieval adapter,
 
 Testing: product/security/privacy/design review; revision-log update.
 
-- [ ] Select the approved model/provider, environment separation, region, retention, training/data-use, and fallback policy.
+- [x] Select OpenRouter as the model-routing gateway. Pin each deployment to an explicit model and provider allowlist; require `zdr: true`, `data_collection: "deny"`, and `allow_fallbacks: false`; keep prompt/completion logging off; fail closed if no eligible endpoint is available. (Product Owner decision, 2026-11-03; see design.md §8 and revision-log.md.)
+- [ ] Select and verify the exact model/provider endpoint, Philippine-region latency/data-processing constraints, environment separation, contractual retention terms, training/data-use policy, and approved fallback policy before production enablement.
 - [ ] Decide whether full conversations are retained, the retention/deletion/export process, support access, legal hold, and incident handling.
-- [ ] Define supported user roles, party-user availability, answer freshness/as-of requirements, and citation format.
+- [x] Decide whether full conversations are retained: no prompts, answers, history, or source snapshots are persisted in the first rollout; in-memory UI state clears when the panel closes or page reloads. No history tables are in scope.
+- [x] Define initial roles/audience: internal warehouse staff, supervisors, and administrators only; party/Organization users are excluded.
 - [x] Define rate limits, quotas, concurrency, cost budgets, alerts, and abuse handling. — 20 msg/hour, 100 msg/day via Upstash; abuse-signal sessions consume full window; operator-level overrides delegated to `04`. (design.md §11.5, 2026-08-05)
 - [ ] Define prohibited requests and the human/owning-feature handoff language.
 - [ ] Record decisions in `specs/00-steering/revision-log.md`.
@@ -37,6 +41,10 @@ Testing: contract/unit tests; source-feature review.
 - [x] Define required capability, party scope, optional `flow_type`, fields, source labels, and as-of semantics for every adapter. — design.md §10.1 maps each tool to its required capability, party/flow scope enforcement rules, and field projection. Every tool response includes an `as_of` timestamp for citation. (2026-08-05)
 - [ ] Define safe not-found/forbidden behavior and how revoked access affects historical conversations and links.
 - [ ] Have each owning feature approve its projection, privacy boundary, and source link.
+- [ ] Inventory approved knowledge sources (SOPs, user guides, training, terminology) and assign a publisher/owner, audience, classification, version, effective dates, and removal process.
+- [ ] Define document parsing, structural chunking, page/heading anchors, embeddings, lexical + semantic retrieval, reranking, authorized citations, reindexing, and stale-version retirement.
+- [ ] Define per-role/party/flow access metadata for knowledge chunks and prove filtering happens before retrieval results enter model context.
+- [ ] Establish a RAG evaluation corpus for exact codes, help questions, outdated/conflicting guidance, no-answer questions, unauthorized docs, and document-embedded prompt injection.
 
 ## 3. Design schema, retention, and audit
 
@@ -74,7 +82,8 @@ Testing: Vitest adversarial/prompt-injection tests; provider response-contract t
 
 Testing: Playwright; accessibility/responsive/manual QA.
 
-- [ ] Add the shell assistant entry point and feature-context links without interrupting active floor scanning.
+- [ ] Add the single floating chatbot head to the authenticated shell and feature-context links; use an accessible touch target, desktop side panel, mobile safe-area panel, and a clear AI disclosure.
+- [ ] Keep the floating head/panel clear of primary actions and scanner/camera focus; define page-level suppression/repositioning for active scan and commit screens.
 - [ ] Build chat, source links, as-of labels, loading/partial/error/rate-limit/offline states, and AI disclosure.
 - [ ] Make source links reauthorize through the owning feature; never execute a mutation from a chat link or suggestion.
 - [ ] Support approved history view/deletion and clear local-draft versus server-response state.
@@ -89,6 +98,14 @@ Testing: Playwright; accessibility/responsive/manual QA.
 - [ ] Test Realtime/notification absence does not prevent chat’s explicit read-only operation and does not make chat authoritative.
 - [ ] Verify no approval, inventory, receiving, inspection, transfer, pricing, document, billing, or RBAC mutation can be performed through chat.
 - [ ] Run Vitest, real-Postgres, provider/integration, and Playwright tests; complete privacy, security, accessibility, and cost reviews.
+
+## First-rollout implementation status (2026-11-03)
+
+- Runtime foundation added on branch `codex/ai-chatbot-readonly`: staff capability check, online-only route, bounded question input, fail-closed Upstash limits, OpenRouter server boundary, RLS-backed manual retrieval, floating assistant panel, source view, and trusted manual-indexing script.
+- Supabase migration `0073_ai_assistant_knowledge.sql` adds `ai_assistant.read`, internal source/chunk tables, vector search, and read-only RLS. It has not been applied or verified against the user's Supabase project.
+- Indexing supports only the six current files in `docs/user-manual/`. The assistant now includes the eight typed live-read projections listed in `design.md` §10; each still needs focused authorization/data-shape tests and real-Postgres RLS verification.
+- `AI_CHAT_ENABLED=false` and `AI_CHAT_PRIVACY_REVIEWED=false` are required defaults. Provider requests and indexing remain unavailable until the endpoint/provider review is complete and both settings are deliberately enabled.
+- Focused tests, real-Postgres RLS verification, source-owner review for future live-data adapters, and production privacy/provider review remain open. Do not check implementation tasks complete until their required verification passes.
 
 ## Sign-off
 

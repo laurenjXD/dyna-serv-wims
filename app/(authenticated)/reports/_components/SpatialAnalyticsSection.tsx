@@ -149,7 +149,7 @@ export function SpatialAnalyticsSection({
           <div className="h-72 w-full">
             {tdcData.length === 0 ? (
               <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-sm text-text-grey">
-                No live distribution-cost data is available for this period.
+                No distribution-cost data is available for this period. Choose another reporting period to compare.
               </div>
             ) : (
             <ResponsiveContainer width="100%" height="100%">

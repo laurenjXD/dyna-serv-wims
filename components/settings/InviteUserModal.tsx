@@ -9,6 +9,7 @@
 
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState, type FormEvent } from "react";
 import {
   inviteUserSchema,
@@ -51,20 +52,29 @@ export function InviteUserModal({
       const fieldErrors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0]?.toString() ?? "form";
-        fieldErrors[key] = issue.message;
+        fieldErrors[key] = key === "email" ? "Enter a valid Email Address, then try again."
+          : key === "displayName" ? "Display Name must be at least 2 characters. Enter a longer name."
+          : key === "partyId" ? "Select an Organization for this Organization Client, then try again."
+          : "Select a Role, then try again.";
       }
       setErrors(fieldErrors);
       return;
     }
     setErrors({});
     setSubmitting(true);
-    const result = await onInvite(parsed.data);
-    setSubmitting(false);
-    if (!result.ok) {
-      setServerError(result.error ?? "Failed to send invitation.");
-      return;
+    try {
+      const result = await onInvite(parsed.data);
+      setSubmitting(false);
+      if (!result.ok) {
+        setServerError(toUserMessage(result.error, "The invitation could not be sent. Try again. If it happens again, contact an administrator."));
+        return;
+      }
+      onClose();
+    } catch {
+      setServerError("The invitation could not be sent. Try again. If it happens again, contact an administrator.");
+    } finally {
+      setSubmitting(false);
     }
-    onClose();
   }
 
   return (

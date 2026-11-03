@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { useActionState } from "react";
 import { X, CheckCircle, Calculator, FileCheck, AlertCircle } from "@/components/ui/icons";
@@ -62,7 +63,7 @@ export function PeriodCloseModal({
         {state.error && (
           <div className="mt-4 flex items-center gap-2 rounded-lg bg-status-held/10 p-3 text-status-held font-body text-body-sm">
             <AlertCircle size={18} />
-            <span>{state.error}</span>
+            <span>{toUserMessage(state.error, "Billing draft was not created. Try again. If it happens again, contact an administrator.")}</span>
           </div>
         )}
 
@@ -153,7 +154,7 @@ export function PeriodCloseModal({
 
               {paymentState.error && (
                 <div className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">
-                  What happened: Payment was not recorded. Why it failed: {paymentState.error}. Next action: Correct the fields and try again.
+                  {toUserMessage(paymentState.error, "Payment was not recorded. Check the payment history before trying again. Contact an administrator if the result is unclear.")}
                 </div>
               )}
 

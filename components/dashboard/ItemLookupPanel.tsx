@@ -1,5 +1,8 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
+
+
 import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, MapPin, Package, X } from "@/components/ui/icons";
 import { getItemAuditDetailAction } from "@/app/(authenticated)/inventory/_actions";
@@ -57,7 +60,7 @@ export function ItemLookupPanel({ itemId, onClose }: { itemId: string; onClose: 
           {error ? (
             <div role="alert" className="rounded-xl border border-status-held/30 bg-status-held/5 p-4 font-body text-body-md text-on-surface">
               <p className="font-heading font-semibold text-status-held">Item details unavailable</p>
-              <p className="mt-1">{error}</p>
+              <p className="mt-1">{toUserMessage(error, "Item details could not be loaded. Close this panel and scan the item again.")}</p>
               <button type="button" onClick={onClose} className="mt-4 h-11 rounded-xl bg-brand-navy px-4 font-label text-label font-bold text-surface-white">Scan another item</button>
             </div>
           ) : !detail ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState, useEffect } from "react";
 import {
   X,
@@ -304,14 +305,14 @@ export function DocumentPreviewModal({
                 <div className="space-y-3">
                   <div>
                     <h3 className="font-heading text-headline-sm font-bold text-status-held">
-                      {doc.error.whatHappened}
+                      Document preview could not be loaded.
                     </h3>
                     <p className="mt-1 font-body text-body-md text-on-surface">
-                      <strong>Why it failed:</strong> {doc.error.whyItFailed}
+                      {toUserMessage(doc.error.whyItFailed, "The document could not be displayed. Close the preview and try again. If it happens again, contact an administrator.")}
                     </p>
                   </div>
                   <div className="rounded-xl border border-outline-variant/30 bg-surface-light-grey/40 p-3 font-body text-body-sm text-text-grey">
-                    <strong>Next Action / Solution:</strong> {doc.error.nextAction}
+                    {toUserMessage(doc.error.nextAction, "Close the preview and try again. If it happens again, contact an administrator.")}
                   </div>
                 </div>
               </div>
@@ -345,8 +346,8 @@ export function DocumentPreviewModal({
               <FileText size={48} className="text-brand-navy" />
               <p className="mt-3 font-body text-body-md text-on-surface font-semibold">
                 {previewLoadFailed
-                  ? "This document cannot be embedded in the preview window. Open it directly to view the official document."
-                  : "Digital document preview rendered inline from authoritative snapshot."}
+                  ? "The document preview could not be loaded. Select Open Document to view it in a new tab."
+                  : "No document preview is available. Close this preview and refresh Documents. If it happens again, contact an administrator."}
               </p>
               <p className="mt-1 font-mono text-mono-md font-bold text-brand-navy">
                 {activeNumber}

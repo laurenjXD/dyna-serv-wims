@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { AlertTriangle, X, Search, PlusCircle, RefreshCw } from "@/components/ui/icons";
 
@@ -28,8 +29,8 @@ export function ScanDiscrepancyModal({
       case "unknown_item":
         return {
           title: "Unregistered Item Barcode",
-          description: "This barcode was not found in the Dyna-Serv Master Items database. The item must be enrolled before it can be received.",
-          recommendation: "Enroll this item in Master Data or verify if the vendor used an internal part number.",
+          description: "This barcode is not registered for an item.",
+          recommendation: "Check the label in Item Master. Ask an administrator to enroll the item if needed.",
           canEnroll: true,
         };
       case "no_match":
@@ -42,23 +43,23 @@ export function ScanDiscrepancyModal({
       case "duplicate_unit_scan":
       case "duplicate":
         return {
-          title: "Duplicate Unit Scan",
-          description: "This specific carton or unit label has already been scanned and recorded in the system.",
-          recommendation: "Ensure you are not scanning the same box twice. If this is a new physical box, verify if a duplicate QR code was printed.",
+          title: "Box already scanned",
+          description: "This box has already been recorded.",
+          recommendation: "Scan the next box. If this is a different box, ask a supervisor to check its label.",
           canEnroll: false,
         };
       case "over_quantity":
         return {
-          title: "Quantity Exceeds Expected Baseline",
+          title: "Expected quantity already reached",
           description: "All expected cartons/units for this line item have already been scanned.",
-          recommendation: "If physical delivery has extra excess boxes, use the Overage Intake workflow or set aside for supervisor verification.",
+          recommendation: "Set extra boxes aside and ask a supervisor to review the quantity.",
           canEnroll: false,
         };
       case "fully_scanned":
         return {
           title: "Line Already Fully Scanned",
-          description: "The receiving server reports that this item has already reached its expected carton quantity.",
-          recommendation: "Refresh the receiving screen and continue with the next line. If cartons are still shown as remaining, report the WRR number to a supervisor so the quantities can be reconciled.",
+          description: "This item has already reached its expected box quantity.",
+          recommendation: "Refresh the page and continue with the next line. If the quantity looks wrong, ask a supervisor to review the WRR.",
           canEnroll: false,
         };
       case "stale_scan":
@@ -71,7 +72,7 @@ export function ScanDiscrepancyModal({
       case "invalid_barcode":
         return {
           title: "Barcode Could Not Be Read",
-          description: "The scanner submitted an empty or invalid barcode value.",
+          description: "The label did not provide a readable barcode.",
           recommendation: "Clean the label, keep the full code inside the scan area, and try again or enter the barcode manually.",
           canEnroll: false,
         };
@@ -79,14 +80,14 @@ export function ScanDiscrepancyModal({
         return {
           title: "Inventory Model Mismatch",
           description: "The scanned item belongs to a different inventory model (e.g. VMI vs. Trading vs. Supplies) than this document.",
-          recommendation: "Segregate this carton into the appropriate flow staging lane.",
+          recommendation: "Keep this box separate and ask a supervisor to confirm which shipment it belongs to.",
           canEnroll: false,
         };
       case "pick_not_completed":
         return {
           title: "Pick Stage Not Complete",
-          description: "This Pick List has not completed its approval and physical picking stage, so dispatch cannot be finalized yet.",
-          recommendation: "Approve the Pick List, scan each committed box, then confirm dispatch.",
+          description: "Picking is not complete for this pick list.",
+          recommendation: "Mark the pick list as picked. Then scan one matching shared item or lot QR for each dispatch line.",
           canEnroll: false,
         };
       case "invalid_status":
@@ -107,7 +108,7 @@ export function ScanDiscrepancyModal({
       default:
         return {
           title: "Scan Discrepancy Detected",
-          description: `The scanned barcode could not be processed: ${reasonCode.replace(/_/g, " ")}.`,
+          description: toUserMessage(reasonCode, "This scan could not be accepted."),
           recommendation: "Verify the physical label and try scanning again, or contact a warehouse supervisor.",
           canEnroll: false,
         };
@@ -134,7 +135,7 @@ export function ScanDiscrepancyModal({
               <h3 id="discrepancy-modal-title" className="font-heading text-headline-sm font-bold text-on-surface">
                 {details.title}
               </h3>
-              <p className="font-body text-body-xs text-text-grey">Floor Scan Validation Error</p>
+              <p className="font-body text-body-xs text-text-grey">Check the scan</p>
             </div>
           </div>
           <button
@@ -168,7 +169,7 @@ export function ScanDiscrepancyModal({
             </p>
             <div className="rounded-lg border border-status-pending/40 bg-status-pending/5 p-3 shadow-sm">
               <p className="font-body text-body-sm font-semibold text-on-surface">
-                Recommended Action:
+                What to do next:
               </p>
               <p className="mt-0.5 font-body text-body-sm text-text-grey">
                 {details.recommendation}

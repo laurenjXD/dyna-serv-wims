@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import {
   Warehouse,
@@ -80,28 +81,28 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
   // Web Audio Synthesizer for Floor Alerts test
   function testAudioAlertTone() {
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-      osc.type = "sine";
-      // Dual tone alert pattern (800Hz -> 400Hz quarantine tone)
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
+        osc.type = "sine";
+        // Dual tone alert pattern (800Hz -> 400Hz quarantine tone)
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
 
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
 
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
 
-      setAudioTested(true);
-      setTimeout(() => setAudioTested(false), 2000);
+        setAudioTested(true);
+        setTimeout(() => setAudioTested(false), 2000);
     } catch {
       // Audio not supported in environment
     }
@@ -121,12 +122,18 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
     setIsSaving(true);
     setStatus(null);
 
+    try {
     const res = await saveGeneralSettings(settings);
     setIsSaving(false);
     if (res.ok) {
-      setStatus({ type: "success", message: "General warehouse and BYOD scanner settings saved successfully." });
+      setStatus({ type: "success", message: "General settings saved." });
     } else {
-      setStatus({ type: "error", message: res.error || "Failed to save settings." });
+      setStatus({ type: "error", message: toUserMessage(res.error, "General settings could not be saved. Review your changes and try again.") });
+    }
+    } catch {
+      setStatus({ type: "error", message: "General settings could not be saved. Try again. If it happens again, contact an administrator." });
+    } finally {
+      setIsSaving(false);
     }
   }
 

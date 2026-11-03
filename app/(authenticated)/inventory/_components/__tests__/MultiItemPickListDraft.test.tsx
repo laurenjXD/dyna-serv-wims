@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { parseDraDocumentAction } from "../../_actions";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
+import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
 
 vi.mock("../../_actions", () => ({
   parseDraDocumentAction: vi.fn(),
@@ -139,6 +140,17 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(recommendation);
     expect(itemSearch).toHaveValue("ITEM-1");
     fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "1" } });
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+    const payload = JSON.parse((screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement).value);
+    expect(payload.lines[0]).not.toHaveProperty("customerItemCode");
+    expect(validateWithdrawal(payload).ok).toBe(true);
+
+    const customerPn = screen.getAllByTitle("Customer part number snapshot")[0];
+    expect(customerPn).toHaveAttribute("maxlength", "100");
+    fireEvent.change(customerPn, { target: { value: "A".repeat(101) } });
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+    expect(screen.getByText("Customer PN must be 100 characters or fewer. Shorten it or leave it blank.")).toBeInTheDocument();
+    fireEvent.change(customerPn, { target: { value: "" } });
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
   });
 

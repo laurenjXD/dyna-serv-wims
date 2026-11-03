@@ -8,6 +8,7 @@
 //   specs/06-party-and-item-enrollment/design.md §5
 //   specs/00-steering/brand-design-system.md §2, §3, §9, §11
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState, useMemo } from "react";
 import Link from "next/link";
 import type { PartyFormState } from "../_actions";
@@ -109,7 +110,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
         role="alert"
         className="mt-1 font-body text-xs text-brand-red"
       >
-        {state.fieldErrors[name]}
+        {toUserMessage(state.fieldErrors[name], "Review this field and try again.")}
       </p>
     ) : null;
 
@@ -145,7 +146,7 @@ export function PartyForm({ action, party, initialCode, existingCodes = [], canc
           role="alert"
           className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
         >
-          {state.error}
+          {toUserMessage(state.error, "Organization was not saved. Try again. If it happens again, contact an administrator.")}
         </div>
       )}
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { createVmiContractTerms, updateVmiContractTerms } from "@/lib/actions/vmi-contract-terms";
@@ -29,7 +30,7 @@ export async function createVmiContractTermsAction(
   const billingCurrency = String(formData.get("billingCurrency") ?? "USD");
 
   if (!partyId) return { ok: false, error: "Please select an Organization." };
-  if (!storageRatePerCbmDay) return { ok: false, error: "Storage rate is required." };
+  if (!storageRatePerCbmDay) return { ok: false, error: "Enter a Storage Rate, then save the contract terms again." };
 
   const result = await createVmiContractTerms(resolver, {
     partyId,
@@ -47,7 +48,7 @@ export async function createVmiContractTermsAction(
   if (!result.ok) {
     return {
       ok: false,
-      error: `Could not save VMI contract terms: ${result.errors.join(", ")}`,
+      error: toUserMessage(result.errors, "VMI contract terms were not saved. Review the form and try again."),
     };
   }
 
@@ -88,7 +89,7 @@ export async function updateVmiContractTermsAction(
   if (!result.ok) {
     return {
       ok: false,
-      error: `Could not update VMI contract terms: ${result.errors.join(", ")}`,
+      error: toUserMessage(result.errors, "VMI contract terms were not saved. Review the form and try again."),
     };
   }
 
@@ -111,8 +112,8 @@ export async function createVmiPermitAction(
   const monthlyFeeUsd = String(formData.get("monthlyFeeUsd") ?? "0.00");
 
   if (!partyId) return { ok: false, error: "Please select an Organization." };
-  if (!permitNumber) return { ok: false, error: "Permit number is required." };
-  if (!validFrom || !validTo) return { ok: false, error: "Validity dates are required." };
+  if (!permitNumber) return { ok: false, error: "Enter a Permit Number, then save the permit again." };
+  if (!validFrom || !validTo) return { ok: false, error: "Enter Valid From and Valid To dates, then save the permit again." };
 
   const result = await createVmiPermit(resolver, {
     partyId,
@@ -126,7 +127,7 @@ export async function createVmiPermitAction(
   if (!result.ok) {
     return {
       ok: false,
-      error: `Could not save VMI permit: ${result.errors.join(", ")}`,
+      error: toUserMessage(result.errors, "Permit was not saved. Review the form and try again."),
     };
   }
 

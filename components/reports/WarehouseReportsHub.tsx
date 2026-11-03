@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React, { useState } from "react";
 import {
   DollarSign,
@@ -167,11 +168,8 @@ export function WarehouseReportsHub({
   };
 
   const showError = (msg: string) => {
-    setErrorMessage(msg);
+    setErrorMessage(toUserMessage(msg, "The report request could not be completed. Try again. If it happens again, contact an administrator."));
     setToastMessage(null);
-    setTimeout(() => {
-      setErrorMessage(null);
-    }, 4500);
   };
 
   // Quick PDF Generator
@@ -194,17 +192,17 @@ export function WarehouseReportsHub({
       setPdfModalRef(`DS-TPL-${template.id.toUpperCase()}`);
       setIsPdfPreviewOpen(true);
     } else {
-      showError(`${format} export for this template is not connected to a live report query yet.`);
+      showError(`${format} export is unavailable for this template. Choose PDF to open the report preview.`);
     }
   };
 
   const handleScheduleTemplate = (template: PreBuiltTemplate) => {
-    showError(`Scheduling for "${template.title}" is not available until the report job contract is connected.`);
+    showError(`Scheduling is unavailable for "${template.title}". Select Run to open the report now.`);
   };
 
   const handleDownloadReport = (item: ReportArchiveItem) => {
     if (!item.downloadUrl) {
-      showError(`The archived artifact for ${item.reportName} is not available.`);
+      showError(`The file for ${item.reportName} is unavailable. Refresh Reports. If it is still unavailable, contact an administrator.`);
       return;
     }
     const link = document.createElement("a");
@@ -220,7 +218,7 @@ export function WarehouseReportsHub({
 
   const handleShareReport = async (item: ReportArchiveItem) => {
     if (!item.downloadUrl) {
-      showError(`The archived artifact for ${item.reportName} is not available to share.`);
+      showError(`The file for ${item.reportName} is unavailable to share. Refresh Reports. If it is still unavailable, contact an administrator.`);
       return;
     }
     try {
@@ -233,7 +231,7 @@ export function WarehouseReportsHub({
 
   const handlePreviewReport = (item: ReportArchiveItem) => {
     if (!item.downloadUrl) {
-      showError(`The archived artifact for ${item.reportName} is not available.`);
+      showError(`The file for ${item.reportName} is unavailable. Refresh Reports. If it is still unavailable, contact an administrator.`);
       return;
     }
     window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
@@ -259,11 +257,11 @@ export function WarehouseReportsHub({
         document.body.removeChild(link);
         showToast(res.message);
       } else {
-        showError(res.message || "Failed to export raw transactions.");
+        showError(toUserMessage(res.message, "Transactions could not be exported. Select Export Raw Data and choose the file format again. If it happens again, contact an administrator."));
       }
     } catch (err) {
       console.error(err);
-      showError("Error exporting raw transaction data.");
+      showError("Transactions could not be exported. Try again. If it happens again, contact an administrator.");
     }
   };
 
@@ -285,11 +283,11 @@ export function WarehouseReportsHub({
           setIsPdfPreviewOpen(true);
         }
       } else {
-        showError(res.message);
+        showError(toUserMessage(res.message, "The report could not be created. Review the report options and try again. If it happens again, contact an administrator."));
       }
     } catch (err) {
       console.error(err);
-      showError("Failed to build custom report.");
+      showError("The report could not be created. Review the report options and try again. If it happens again, contact an administrator.");
     }
   };
 
@@ -344,7 +342,7 @@ export function WarehouseReportsHub({
 
       {/* ── 2. Executive Reporting & Settlement KPIs (Bento Row) ───────────── */}
       {!isReportOverlayOpen && <>
-      <ReportKpis kpis={activeKpis} />
+      {activeKpis ? <ReportKpis kpis={activeKpis} /> : <ReportUnavailable name="Report totals" />}
 
       {/* ── Section Quick Navigation Filter Bar ───────────────────────────── */}
       <div
@@ -424,13 +422,13 @@ export function WarehouseReportsHub({
       {canReadFinancial && (activeSection === "all" || activeSection === "financial") && (
         <section className="space-y-5">
           {/* A. VMI Client Storage & CBM Billing Reconciliation */}
-          <VmiBillingTable
+          {activeVmiBillingRows ? <VmiBillingTable
             initialData={activeVmiBillingRows}
             onAuditDwellTime={handleAuditDwellTime}
-          />
+          /> : <ReportUnavailable name="VMI billing report" />}
 
           {/* B & C. Trading Revenue, COGS, Margin Realization & Product Line Margin Table */}
-          <TradingMarginSection initialData={activeTradingMargin} />
+          {activeTradingMargin ? <TradingMarginSection initialData={activeTradingMargin} /> : <ReportUnavailable name="Trading margin report" />}
         </section>
       )}
 
@@ -438,17 +436,17 @@ export function WarehouseReportsHub({
       {(activeSection === "all" || activeSection === "operations") && (
         <section className="space-y-5">
           {/* A & C. Movement Volume Throughput & Location Occupancy */}
-          <ThroughputSection initialData={activeThroughput} />
+          {activeThroughput ? <ThroughputSection initialData={activeThroughput} /> : <ReportUnavailable name="Throughput report" />}
 
           {/* B. Delivery SLA & OTIF Fulfillment Report */}
-          <DeliveryPerformanceReport initialData={activeDeliverySla} />
+          {activeDeliverySla ? <DeliveryPerformanceReport initialData={activeDeliverySla} /> : <ReportUnavailable name="Delivery performance report" />}
         </section>
       )}
 
       {/* ── 5. Monthly Location Intelligence Heatmap (31-Day View) ────────── */}
       {(activeSection === "all" || activeSection === "heatmap") && (
         <section>
-          <MonthlyHeatmap initialGrid={heatmap} />
+          {heatmap ? <MonthlyHeatmap initialGrid={heatmap} /> : <ReportUnavailable name="Location heatmap" />}
         </section>
       )}
 
@@ -462,12 +460,12 @@ export function WarehouseReportsHub({
           />
 
           {/* Generated Reports Archive */}
-          <ReportArchiveTable
+          {archiveItems ? <ReportArchiveTable
             initialData={archiveItems}
             onDownloadReport={handleDownloadReport}
             onShareReport={handleShareReport}
             onPreviewReport={handlePreviewReport}
-          />
+          /> : <ReportUnavailable name="Report archive" />}
         </section>
       )}
 
@@ -497,6 +495,15 @@ export function WarehouseReportsHub({
         onClose={() => setIsAuditModalOpen(false)}
         row={auditRow}
       />
+    </div>
+  );
+}
+
+function ReportUnavailable({ name }: { name: string }) {
+  return (
+    <div role="status" className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 font-body text-body-sm text-text-grey">
+      <p className="font-semibold text-on-surface">{name} could not be loaded.</p>
+      <p className="mt-1">Refresh Reports. If it happens again, contact an administrator.</p>
     </div>
   );
 }

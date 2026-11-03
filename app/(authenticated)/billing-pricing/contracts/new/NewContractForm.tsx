@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import Link from "next/link";
 import { Save, AlertCircle, Loader2 } from "@/components/ui/icons";
@@ -62,14 +63,14 @@ export function NewContractForm({ partiesList, onSubmitAction }: NewContractForm
       const formData = new FormData(e.currentTarget);
       const res = await onSubmitAction(formData);
       if (res && !res.ok) {
-        setErrorMessage(res.error || "Failed to create contract. Please check all fields.");
+        setErrorMessage(toUserMessage(res.error, "Contract was not created. Review the form and try again."));
       }
     } catch (err: unknown) {
       const errorObj = err as { digest?: string; message?: string };
       if (errorObj?.digest?.startsWith("NEXT_REDIRECT") || errorObj?.message === "NEXT_REDIRECT") {
         throw err;
       }
-      setErrorMessage(errorObj?.message || "An unexpected error occurred while saving the contract.");
+      setErrorMessage(toUserMessage(err, "Contract could not be created. Refresh the contract list to check whether it was saved before trying again."));
     } finally {
       setIsSubmitting(false);
     }

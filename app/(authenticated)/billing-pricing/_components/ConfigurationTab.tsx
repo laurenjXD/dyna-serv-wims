@@ -10,6 +10,7 @@ import type { TradingPolicyRow } from "@/lib/db/queries/trading-policies";
 
 interface ConfigurationTabProps {
   contracts: ContractItem[];
+  contractsUnavailable?: boolean;
   vmiContractRows?: VmiContractTermsRow[];
   parties?: { id: string; name: string; code: string }[];
   policyRows?: TradingPolicyRow[];
@@ -19,6 +20,7 @@ interface ConfigurationTabProps {
 
 export function ConfigurationTab({
   contracts,
+  contractsUnavailable = false,
   initialSubTab = "contracts",
 }: ConfigurationTabProps) {
   const router = useRouter();
@@ -69,7 +71,12 @@ export function ConfigurationTab({
 
       {/* Sub-tab content */}
       {subTab === "contracts" && (
-        <ContractTableClient initialContracts={contracts} />
+        contractsUnavailable ? (
+          <div role="status" className="rounded-xl border border-outline-variant/30 bg-surface-white p-4 font-body text-body-sm text-text-grey">
+            <p className="font-semibold text-on-surface">Commercial contracts could not be loaded.</p>
+            <p className="mt-1">Refresh Billing &amp; Pricing. If it happens again, contact an administrator.</p>
+          </div>
+        ) : <ContractTableClient initialContracts={contracts} />
       )}
       {subTab === "logistics" && (
         <LogisticsRateMatrixTable />

@@ -17,6 +17,21 @@ describe("reports modal smoke render", () => {
     expect(() => render(<CustomReportBuilderModal isOpen onClose={vi.fn()} onBuildComplete={vi.fn()} />)).not.toThrow();
   });
 
+  it("shows a retry state when report data could not be loaded", () => {
+    render(<WarehouseReportsHub />);
+    expect(screen.getByText("Report totals could not be loaded.")).toBeInTheDocument();
+    expect(screen.getByText("VMI billing report could not be loaded.")).toBeInTheDocument();
+    expect(screen.getByText("Report archive could not be loaded.")).toBeInTheDocument();
+    expect(screen.queryByText("No archived reports match your search or filters. Clear the search or change the filters.")).not.toBeInTheDocument();
+  });
+
+  it("keeps a loaded empty report distinct from a loading failure", () => {
+    render(<WarehouseReportsHub vmiBillingRows={[]} archiveItems={[]} />);
+    expect(screen.queryByText("VMI billing report could not be loaded.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Report archive could not be loaded.")).not.toBeInTheDocument();
+    expect(screen.getAllByText("No archived reports match your search or filters. Clear the search or change the filters.").length).toBeGreaterThan(0);
+  });
+
   it("opens both report actions from the reports hub", () => {
     render(<WarehouseReportsHub />);
     fireEvent.click(screen.getByRole("button", { name: /Generate Full Inventory PDF/i }));

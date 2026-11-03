@@ -305,7 +305,7 @@ export function InspectionResolutionForm({
             <span className="font-bold text-emerald-700">✓ Balanced</span>
           ) : (
             <span className="font-bold text-amber-700">
-              ⚠️ Breakdown does not match inspected total ({inspectedQty})
+              Passed / Conforming and Failed / Defective must add up to the inspected total ({inspectedQty}). Adjust the quantities before submitting.
             </span>
           )}
         </div>

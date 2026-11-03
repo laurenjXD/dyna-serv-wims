@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React from "react";
 import {
   AlertCircle,
@@ -109,7 +110,7 @@ export function Alert({
             isFloor ? "text-white" : config.officeTitle
           }`}
         >
-          {title}
+          {toUserMessage(title, "Action could not be completed")}
         </h4>
 
         {(description || children) && (
@@ -118,7 +119,7 @@ export function Alert({
               isFloor ? "text-white/80" : "text-inherit opacity-90"
             }`}
           >
-            {description}
+            {typeof description === "string" ? toUserMessage(description) : description}
             {children}
           </div>
         )}

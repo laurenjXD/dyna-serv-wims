@@ -186,7 +186,7 @@ export function StatementOfAccountTab({
         {filteredPeriods.length === 0 ? (
           <div className="py-12 text-center text-text-grey">
             <FileText size={40} className="mx-auto mb-2 opacity-40" />
-            <p className="font-body text-body-md">No Statement of Account records found matching filters.</p>
+            <p className="font-body text-body-md">No statements of account match your search or filters. Clear the search or change the filters.</p>
             <p className="mt-1 font-body text-body-sm text-text-grey">
               Try adjusting your organization or search filters, or click &quot;Close Period &amp; Generate SOA&quot;.
             </p>

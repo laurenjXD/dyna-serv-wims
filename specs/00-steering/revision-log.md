@@ -1,5 +1,21 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Product Owner amendment: role-scoped live WIMS reads in the first assistant rollout (2026-11-03)
+
+The Product Owner expanded the assistant's first rollout beyond manuals-only to include read-only live WIMS lookups. Use only the eight typed projections already listed in `specs/15-ai-chatbot/design.md` §10. On every request and tool call, resolve the current internal user's capability and execute the projection through the user-bound RLS transaction. Party/Organization accounts remain excluded. No write, upload, approval, allocation, dispatch, or arbitrary SQL tools are allowed. This decision supersedes the manuals-only limitation in the earlier 2026-11-03 first-rollout decision and §6.1; it does not waive RLS, privacy, provider, real-Postgres verification, or source-link authorization requirements. OpenRouter stays disabled until the exact endpoint's processing region, privacy terms, and latency are reviewed.
+
+## System-wide error and feedback writing review (2026-11-03)
+
+The Product Owner directed all system errors, validation messages, and feedback states to follow the error-writing guide. Shared display formatting and feature messages now use visible field names, accurate outcomes, and useful recovery actions. Failed reads no longer masquerade as empty/default data in the reviewed reports and admin settings, and partial saves/refused actions no longer announce complete success. Approval is recorded in `05/tasks.md`; coverage and verification (2,429 unit tests, TypeScript, lint) are recorded in `error-message-review-2026-11-03.md`. Existing domain validation, authorization, reservation, pricing, and machine-code contracts remain in place.
+
+## Product Owner decision: OpenRouter gateway for read-only WIMS chatbot (2026-11-03)
+
+OpenRouter is selected as the chatbot's model-routing gateway. Requests must pin an explicitly configured model/provider allowlist, require ZDR and `data_collection: deny`, disable automatic provider fallback, and leave prompt/completion logging off. If no eligible endpoint is available, fail closed. This does not mean prompt data stays within WIMS: exact endpoint data policy, contractual retention, processing region, and latency from the Philippine deployment remain production gates. See `specs/15-ai-chatbot/design.md` §8 and `tasks.md`.
+
+## Product Owner decision: AI assistant first-rollout scope (2026-11-03)
+
+The first chatbot rollout is internal-staff only; party/Organization users are excluded. Full conversations are not persisted. The initial knowledge corpus is approved internal WIMS manuals, with no user uploads or live business records indexed into the corpus. Use a Supabase SQL/pgvector index with row-level access and a dedicated global `ai_assistant.read` capability granted to warehouse staff, supervisors, and administrators. The authenticated server resolves this capability on every request. The provider stays disabled by default until the exact OpenRouter model/provider endpoint and data-processing/privacy terms are verified. This scope does not approve live-data adapters; each feature owner must still approve the exact projection before it is exposed to the assistant.
+
 ## Pick-list location selection and duplicate lot-card correction (2026-11-03)
 
 The grouped FIFO/FEFO plan now provides location checkboxes and editable box quantities directly inside each business lot card. Repeated lot numbers in the same rank are visually grouped even when opening balances have separate internal lot IDs; each location retains its exact stock identity for server validation. Both manual drafts and DRA-import drafts use this editor, and displayed allocations track manual changes. The duplicate allocation cards and add-location dropdown are removed from multi-location mode. Verified with 90 focused tests and TypeScript.

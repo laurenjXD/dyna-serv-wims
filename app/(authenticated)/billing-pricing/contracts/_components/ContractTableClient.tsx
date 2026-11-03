@@ -116,7 +116,7 @@ export function ContractTableClient({ initialContracts }: ContractTableClientPro
                     <p className="mt-1 max-w-sm font-body text-body-sm text-text-grey">
                       {initialContracts.length === 0
                         ? "No commercial contracts configured yet. Click \"New Contract\" to define your first rate-card contract."
-                        : "No contracts match your search query or filter criteria."}
+                        : "No contracts match your search or filters. Clear the search or change the filters."}
                     </p>
                   </div>
                 </td>

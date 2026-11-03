@@ -6,6 +6,7 @@
 //   specs/11-transfer-and-inspection/requirements.md R3, R3.1–R3.4
 //   specs/00-steering/brand-design-system.md
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -241,7 +242,7 @@ export default async function InspectionDetailPage({
           <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
           <div className="min-w-0">
             <p className="font-heading text-body-md font-bold text-emerald-950">
-              Inspection Disposition Recorded Successfully
+              Inspection result saved.
             </p>
             <p className="mt-0.5 font-body text-body-sm text-emerald-800">
               The disposition has been committed to inventory ledgers. You may now return to the queue.
@@ -266,10 +267,10 @@ export default async function InspectionDetailPage({
           <ShieldAlert size={20} className="mt-0.5 shrink-0 text-rose-600" />
           <div>
             <p className="font-heading text-body-md font-bold text-rose-950">
-              Submission Failed
+              Inspection result was not saved.
             </p>
             <p className="mt-0.5 font-body text-body-sm text-rose-800">
-              {errorReason ?? "Could not record this inspection disposition. Please verify inputs and try again."}
+              {toUserMessage(errorReason?.split(", "), "The inspection result could not be saved. Review the quantities, storage locations, and Inspection Remarks, then try again.")}
             </p>
           </div>
         </div>

@@ -45,7 +45,7 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
         </div>
         <h3 className="font-heading text-title-sm font-bold text-on-surface">No Delivery Receipts or ARs</h3>
         <p className="mt-1 max-w-md font-body text-body-sm text-text-grey">
-          No signed acknowledgement receipts or proof of delivery records match your filters. Dispatched releases will appear here automatically.
+          No Delivery Receipts / Acknowledgement Receipts match your filters. Change the filters or check again after a release is dispatched.
         </p>
       </div>
     );

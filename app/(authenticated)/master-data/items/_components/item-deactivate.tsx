@@ -6,6 +6,7 @@
 // Traceability:
 //   specs/06-party-and-item-enrollment/design.md §6
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState } from "react";
 import { deactivateItemAction } from "../_actions";
 
@@ -59,7 +60,7 @@ export function DeactivateItemSection({ itemId }: { itemId: string }) {
       )}
       {state.error && (
         <p role="alert" className="mt-2 font-body text-body-sm text-brand-red">
-          {state.error}
+          {toUserMessage(state.error, "Material was not deactivated. Try again. If it happens again, contact an administrator.")}
         </p>
       )}
     </div>

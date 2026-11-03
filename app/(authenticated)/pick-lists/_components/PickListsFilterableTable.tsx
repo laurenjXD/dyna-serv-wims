@@ -245,7 +245,7 @@ export function PickListsFilterableTable({
         {filteredAndSortedRows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="font-body text-body-md text-text-grey">
-              {isDeleted ? "No deleted pick lists match your filter." : "No pick lists match your filter."}
+              {isDeleted ? "No deleted pick lists match your filter. Change or clear the filters." : "No pick lists match your filter. Change or clear the filters."}
             </p>
             <p className="mt-2 font-body text-body-sm text-text-grey">
               Try adjusting your search terms or filters.

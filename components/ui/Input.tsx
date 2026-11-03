@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React, { forwardRef, useEffect, useRef } from "react";
 import { X, AlertCircle } from "@/components/ui/icons";
 
@@ -163,7 +164,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               isFloor ? "text-red-300" : "text-error"
             }`}
           >
-            {error}
+            {toUserMessage(error, "Enter a valid value for this field.")}
           </p>
         ) : helperText ? (
           <p

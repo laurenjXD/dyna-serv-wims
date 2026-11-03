@@ -89,7 +89,7 @@ describe("AccountTab (Task 21.2)", () => {
     expect(updateProfileDetailsMock).toHaveBeenCalledWith(
       expect.objectContaining({ displayName: "Jane Smith" }),
     );
-    expect(await screen.findByRole("status")).toHaveTextContent(/updated successfully/i);
+    expect(await screen.findByRole("status")).toHaveTextContent(/Profile details saved/i);
   });
 
   it("surfaces a server-reported error without swallowing it", async () => {

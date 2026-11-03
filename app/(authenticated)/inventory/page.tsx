@@ -37,6 +37,7 @@ import { ToPickQueue } from "./_components/ToPickQueue";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
 import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, requestPickListOverride } from "./actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
+import { getPickListErrorMessage } from "@/lib/withdrawal/error-messages";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
 import { StockCountTab } from "./_components/StockCountTab";
 import { AutoDismissNotice } from "./_components/AutoDismissNotice";
@@ -60,52 +61,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
 
   const activeTab: TabKey = resolveInventoryTab(tabParam);
 
-  const pickListErrorMessages: Record<string, { primary: string; next: string }> = {
-    forbidden: {
-      primary: "Your account does not have permission to generate pick lists.",
-      next: "Ask an administrator to grant the required inventory permission.",
-    },
-    fifo_override_required: {
-      primary: "The selected location is not the current FIFO/FEFO source.",
-      next: "Choose the recommended source or submit the required override request.",
-    },
-    override_single_pallet_required: {
-      primary: "Supervisor approval can cover only one alternate pallet/location per request.",
-      next: "Keep the recommended FIFO/FEFO locations in the split, or submit approval for one alternate location at a time.",
-    },
-    provisional_item_code: {
-      primary: "This item is missing its enrolled supplier/DSGC item code.",
-      next: "Open Item Master, add the required code for this Inventory Model, then refresh and try again.",
-    },
-    no_rate_configured: {
-      primary: "No active Trading price is configured for this organization and item.",
-      next: "Ask an administrator to configure the Trading rate card, then retry.",
-    },
-    fx_rate_required: {
-      primary: "A current exchange rate is required before this Trading pick list can be created.",
-      next: "Ask an administrator to publish the current FX rate, then retry.",
-    },
-    price_invalid: {
-      primary: "The configured Trading price is invalid.",
-      next: "Ask an administrator to correct the rate card before retrying.",
-    },
-    insufficient_stock: {
-      primary: "The available stock changed before the reservation completed.",
-      next: "Refresh the inventory and choose a new allocation.",
-    },
-    unable_to_reserve_stock: {
-      primary: "The selected stock is no longer available for this Organization and location.",
-      next: "Refresh inventory, select the current FIFO location, and try again.",
-    },
-    quantity_must_match_spq: {
-      primary: "The requested quantity must make complete boxes.",
-      next: "Enter a total quantity that divides evenly by the enrolled SPQ.",
-    },
-    stale_record: {
-      primary: "This record changed in another session.",
-      next: "Refresh the page and try again.",
-    },
-  };
+  const pickListErrorMessage = pickListError ? getPickListErrorMessage(pickListError) : null;
 
   const resolver = await createPageResolver();
 
@@ -170,13 +126,13 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         )}
       </div>
 
-      {pickListError && (
+      {pickListErrorMessage && (
         <WorkflowState
           kind="error"
           title="Pick list was not created"
-          description={`${pickListErrorMessages[pickListError]?.primary ?? `Request could not be completed (${pickListError.replaceAll(",", ", ")}).`} ${pickListErrorMessages[pickListError]?.next ?? "Review the current Organization and available quantity, then try again."}`}
-          actionLabel="Refresh inventory"
-          actionHref="/inventory"
+          description={pickListErrorMessage.description}
+          actionLabel={pickListErrorMessage.actionLabel}
+          actionHref={pickListErrorMessage.actionHref}
           className="mt-4"
           testId="pick-list-generation-error"
         />

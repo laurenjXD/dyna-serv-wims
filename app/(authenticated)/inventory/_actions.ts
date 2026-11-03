@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { commitWithdrawal } from "@/lib/actions/withdrawals";
+import { getPickListErrorMessage } from "@/lib/withdrawal/error-messages";
 
 export type GeneratePickListState =
   | { ok: false; error: string }
@@ -21,36 +22,19 @@ export async function generatePickList(
 ): Promise<GeneratePickListState> {
   const raw = formData.get("payload");
   if (typeof raw !== "string") {
-    return { ok: false, error: "The pick-list request is incomplete. Refresh and try again." };
+    return { ok: false, error: getPickListErrorMessage("invalid_request").description };
   }
 
   let payload: unknown;
   try {
     payload = JSON.parse(raw);
   } catch {
-    return { ok: false, error: "The pick-list request is invalid. Refresh and try again." };
+    return { ok: false, error: getPickListErrorMessage("invalid_request").description };
   }
 
   const result = await commitWithdrawal(await createPageResolver(), payload);
   if (!result.ok) {
-    const messages: Record<string, string> = {
-      forbidden: "You do not have permission to generate pick lists.",
-      provisional_item_code: "This item needs its enrolled supplier/DSGC item code before a pick list can be created.",
-      invalid_end_customer: "The selected end customer is inactive or is not enrolled with the End Customer role.",
-      organization_inactive_or_not_found: "The selected Organization is inactive or no longer enrolled.",
-      organization_relationship_required: "The selected Organization is not authorized for this Inventory Model.",
-      end_customer_inactive_or_not_found: "The selected End Customer is inactive or no longer enrolled.",
-      end_customer_relationship_required: "The selected Organization is not enrolled as an End Customer.",
-      stale_record: "This record changed in another session. Refresh the page and try again.",
-      invalid_transition: "This workflow step is no longer available. Refresh the page to see the current state.",
-      insufficient_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
-      duplicate_operation: "This operation was already completed. The original result is shown.",
-      no_rate_configured: "No active Trading price is configured for this organization and item.",
-      fx_rate_required: "A current exchange rate is required before this Trading withdrawal can be created.",
-      price_invalid: "The configured Trading price is invalid. Contact an administrator before retrying.",
-      unable_to_reserve_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
-    };
-    return { ok: false, error: messages[result.errors[0]] ?? "Pick list was not created. Please try again." };
+    return { ok: false, error: getPickListErrorMessage(result.errors).description };
   }
 
   revalidatePath("/inventory");
@@ -61,7 +45,7 @@ export async function generatePickList(
 export async function parseDraDocumentAction(formData: FormData) {
   const file = formData.get("file");
   if (!file || !(file instanceof File)) {
-    return { ok: false, error: "No file was uploaded." };
+    return { ok: false, error: "Choose a DRA file to upload." };
   }
 
   try {
@@ -76,16 +60,16 @@ export async function parseDraDocumentAction(formData: FormData) {
       parseResult,
     };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("DRA import failed", err);
     return {
       ok: false,
-      error: `DRA processing error: ${errorMsg}`,
+      error: "The DRA file could not be read. Check that it is a valid Excel, CSV, or PDF file, then upload it again.",
     };
   }
 }
 
 export async function getItemAuditDetailAction(itemId: string) {
-  if (!itemId) return { ok: false as const, error: "Invalid item ID" };
+  if (!itemId) return { ok: false as const, error: "Choose an item to view its history." };
 
   try {
     const { db } = await import("@/lib/db/client");
@@ -93,7 +77,7 @@ export async function getItemAuditDetailAction(itemId: string) {
     const { getItemMovementHistory, listStockView } = await import("@/lib/db/queries/inventory");
     const item = await getItem(db, itemId);
     if (!item) {
-      return { ok: false as const, error: "Item not found in master records." };
+      return { ok: false as const, error: "This item is no longer available. Refresh inventory and choose another item." };
     }
 
     const movements = await getItemMovementHistory(db, itemId);
@@ -106,10 +90,10 @@ export async function getItemAuditDetailAction(itemId: string) {
       stockRows,
     };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error("Item history failed to load", err);
     return {
       ok: false as const,
-      error: `Failed to load item audit details: ${errorMsg}`,
+      error: "Item history could not be loaded. Try again.",
     };
   }
 }

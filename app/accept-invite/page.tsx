@@ -3,6 +3,7 @@
 
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState, useEffect, type FormEvent } from "react";
 import { completeInvitationAcceptance, establishInvitationSession } from "./actions";
 import { createClient } from "@/lib/supabase/client";
@@ -99,10 +100,8 @@ export default function AcceptInvitePage() {
         if (name) setDisplayName(name);
         setAuthenticated(true);
         window.history.replaceState(null, "", "/accept-invite");
-      } catch (cause) {
-        if (active) setError(cause instanceof Error && cause.message !== "No invitation session found."
-          ? `Invitation link could not be opened: ${cause.message}. Ask your administrator to resend it.`
-          : "Open the invitation link from your email to set up your account. If it has expired, ask your administrator to resend it.");
+      } catch {
+        if (active) setError("The invitation link could not be opened. Open the latest invitation email and try again. If it happens again, ask your administrator for a new link.");
       } finally {
         if (active) setLoadingInitial(false);
       }
@@ -116,12 +115,12 @@ export default function AcceptInvitePage() {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match. Please re-enter.");
+      setError("Confirm Password does not match Create Account Password. Enter the same password in both fields.");
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError("Create Account Password must be at least 8 characters. Enter a longer password.");
       return;
     }
 
@@ -148,7 +147,7 @@ export default function AcceptInvitePage() {
         refreshToken: sessionData.session?.refresh_token,
       });
       if (!result.ok) {
-        setError(result.error);
+        setError(toUserMessage(result.error, "Account setup could not be completed. Try again. If it happens again, contact an administrator."));
         return;
       }
       await supabase.auth.signOut();
@@ -310,7 +309,7 @@ export default function AcceptInvitePage() {
               className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800"
             >
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span>Your account was created successfully. Redirecting you to the login page…</span>
+              <span>{previewMode ? "Preview complete. No account was changed." : "Your account is active. Taking you to Sign in…"}</span>
             </div>
           )}
 

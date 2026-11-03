@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React, { forwardRef } from "react";
 import { AlertCircle } from "@/components/ui/icons";
 
@@ -90,7 +91,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             }`}
           >
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-            {error}
+            {toUserMessage(error, "Enter a valid value for this field.")}
           </p>
         ) : helperText ? (
           <p

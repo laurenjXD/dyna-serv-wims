@@ -24,7 +24,7 @@ export default async function PricingRuleBuilderPage({ params }: PageProps) {
     return (
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to configure pricing rules.
+          You do not have permission to configure pricing rules. Ask an administrator for access.
         </p>
       </div>
     );

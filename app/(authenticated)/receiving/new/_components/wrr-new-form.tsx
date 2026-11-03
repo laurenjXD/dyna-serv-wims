@@ -260,7 +260,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
                       )}
                     </button>
                   )) : (
-                    <p className="px-3 py-3 font-body text-body-sm text-text-grey">No matching organizations.</p>
+                    <p className="px-3 py-3 font-body text-body-sm text-text-grey">No organizations match. Change or clear the search.</p>
                   )}
                   <div className="border-t border-outline-variant/30 bg-[#F0F4FF] p-2.5">
                     <Link

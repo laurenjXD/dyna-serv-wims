@@ -15,7 +15,7 @@ export default async function VmiPermitsPage({ params }: Props) {
   const { partyId } = await params;
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "reporting.financial_read");
-  if (permission.kind !== "authorized") return <div className="mx-auto max-w-container px-8 py-12 text-center font-body text-body-md text-text-grey">You do not have permission to view VMI permits.</div>;
+  if (permission.kind !== "authorized") return <div className="mx-auto max-w-container px-8 py-12 text-center font-body text-body-md text-text-grey">You do not have permission to view VMI permits. Ask an administrator for access.</div>;
 
   const [party] = await db.select({ id: parties.id, name: parties.name, code: parties.code }).from(parties).where(eq(parties.id, partyId)).limit(1);
   if (!party) notFound();

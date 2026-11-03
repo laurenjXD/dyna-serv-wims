@@ -6,6 +6,7 @@
 // Traceability:
 //   specs/06-party-and-item-enrollment/design.md §6a
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState } from "react";
 import { deactivateLocationAction } from "../_actions";
 
@@ -64,7 +65,7 @@ export function DeactivateLocationSection({
       )}
       {state.error && (
         <p role="alert" className="mt-2 font-body text-body-sm text-brand-red">
-          {state.error}
+          {toUserMessage(state.error, "Location was not deactivated. Try again. If it happens again, contact an administrator.")}
         </p>
       )}
     </div>

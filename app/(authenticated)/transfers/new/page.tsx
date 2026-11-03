@@ -12,6 +12,7 @@
 // On success: redirects to /transfers/[transferId].
 // On error: redirects back with errors= searchParam.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -51,7 +52,7 @@ async function resolveTransferLineReferences(
         .limit(2);
   const lot = lotRows[0];
   if (!lot) return { lotId: "", itemId: "", error: "Lot not found for this item. Scan the matching lot label." };
-  if (lot.itemId !== item.id) return { lotId: "", itemId: "", error: "The scanned lot and item do not match." };
+  if (lot.itemId !== item.id) return { lotId: "", itemId: "", error: "The scanned lot and item do not match. Scan the lot label for the selected item." };
 
   return { lotId: lot.id, itemId: item.id, error: lotRows.length > 1 ? "Lot number is ambiguous. Scan the lot barcode instead." : undefined };
 }
@@ -78,7 +79,7 @@ async function handleCreateTransfer(formData: FormData): Promise<void> {
     );
     if (references.error) lineErrors.push(`Line ${i + 1}: ${references.error}`);
     if (references.lotId && seenLots.has(references.lotId)) {
-      lineErrors.push(`Line ${i + 1}: This lot is already included in another transfer line.`);
+      lineErrors.push(`Line ${i + 1}: This lot is already included in another transfer line. Update that line or choose a different lot.`);
     }
     if (references.lotId) seenLots.add(references.lotId);
     lines.push({ ...references, qtyRequested: rawQty ? parseFloat(rawQty) : NaN });
@@ -147,7 +148,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
   }
 
   const errors = encodedErrors
-    ? decodeURIComponent(encodedErrors).split("|").filter(Boolean)
+    ? [...new Set(encodedErrors.split("|").filter(Boolean).map((error) => toUserMessage(error, "Review the items, lots, locations, and requested quantities, then try again.")))]
     : [];
 
   const locationList = await db
@@ -190,7 +191,7 @@ export default async function NewTransferPage({ searchParams }: PageProps) {
           className="mt-4 rounded-xl bg-status-held/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-held">
-            Validation errors
+            Transfer request was not created.
           </p>
           <ul className="mt-2 list-inside list-disc space-y-1">
             {errors.map((err) => (

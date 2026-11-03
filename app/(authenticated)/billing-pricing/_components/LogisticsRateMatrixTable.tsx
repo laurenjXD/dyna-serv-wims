@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React, { useState } from "react";
 import {
   Truck,
@@ -60,10 +61,10 @@ export function LogisticsRateMatrixTable() {
         setFxRate(res.rate);
         setFxSourceLabel(`BSP Live Market API (${res.date})`);
       } else {
-        alert(`Failed to fetch live BSP rate: ${res.error}`);
+        alert(toUserMessage(res.error, "The BSP exchange rate could not be loaded. Try again. If it happens again, contact an administrator."));
       }
     } catch {
-      alert("Error contacting live BSP Forex server.");
+      alert("The BSP exchange rate could not be loaded. Try again. If it happens again, contact an administrator.");
     } finally {
       setIsSyncingFx(false);
     }
@@ -118,11 +119,11 @@ export function LogisticsRateMatrixTable() {
     e.preventDefault();
     const trimmed = newPlantName.trim();
     if (!trimmed) {
-      setAddError("Destination / Plant name is required.");
+      setAddError("Enter a Destination / Plant name, then add the destination again.");
       return;
     }
     if (matrixData[trimmed]) {
-      setAddError("A destination with this name already exists in the matrix.");
+      setAddError("A destination with this name already exists. Use a different Destination / Plant name or edit the existing destination.");
       return;
     }
 
@@ -306,7 +307,7 @@ export function LogisticsRateMatrixTable() {
               {pagedEntries.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="p-8 text-center text-text-grey">
-                    No destinations match the selected filters.
+                    No destinations match the selected filters. Change or clear the filters.
                   </td>
                 </tr>
               ) : (

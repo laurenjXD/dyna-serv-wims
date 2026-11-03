@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React, { forwardRef } from "react";
 import { ChevronDown, AlertCircle } from "@/components/ui/icons";
 
@@ -117,7 +118,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               isFloor ? "text-red-300" : "text-error"
             }`}
           >
-            {error}
+            {toUserMessage(error, "Enter a valid value for this field.")}
           </p>
         ) : helperText ? (
           <p

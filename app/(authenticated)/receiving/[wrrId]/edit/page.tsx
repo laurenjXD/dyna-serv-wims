@@ -1,3 +1,4 @@
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { notFound, redirect } from "next/navigation";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -8,8 +9,9 @@ import { getActiveWrrOrganizations } from "@/lib/db/queries/items";
 import { updateWrrHeader, updateWrrLines } from "@/lib/actions/receiving";
 import { WrrHeaderFields } from "./_components/WrrHeaderFields";
 
-export default async function EditWrrPage({ params }: { params: Promise<{ wrrId: string }> }) {
+export default async function EditWrrPage({ params, searchParams }: { params: Promise<{ wrrId: string }>; searchParams: Promise<{ error?: string }> }) {
   const { wrrId } = await params;
+  const { error } = await searchParams;
   const resolver = await createPageResolver();
   if ((await requirePermission(resolver, "receiving.confirm")).kind !== "authorized") notFound();
   const [wrr, vendors] = await Promise.all([getWrrDocument(db, wrrId), getActiveWrrOrganizations(db)]);
@@ -40,9 +42,10 @@ export default async function EditWrrPage({ params }: { params: Promise<{ wrrId:
         remarks: String(formData.get(`line_${line.id}_remarks`) ?? "") || null,
       }));
       const lineResult = await updateWrrLines(actionResolver, wrrId, lines);
-      if (!lineResult.ok) redirect(`/receiving/${wrrId}/edit`);
+      if (!lineResult.ok) redirect(`/receiving/${wrrId}/edit?error=${encodeURIComponent("The WRR header was saved, but the expected lines were not updated. " + toUserMessage(lineResult.errors, "Review the line details and try again."))}`);
     }
-    redirect(result.ok ? `/receiving/${wrrId}` : `/receiving/${wrrId}/edit`);
+    if (!result.ok) redirect(`/receiving/${wrrId}/edit?error=${encodeURIComponent(toUserMessage(result.errors, "The WRR was not updated. Review the Organization and header details, then try again."))}`);
+    redirect(`/receiving/${wrrId}`);
   }
 
   return <div className="mx-auto w-full max-w-container px-4 sm:px-6">
@@ -50,6 +53,7 @@ export default async function EditWrrPage({ params }: { params: Promise<{ wrrId:
     <div className="mx-auto w-full max-w-5xl">
       <h1 className="font-heading text-headline-md font-extrabold text-on-surface">Edit WRR</h1>
       <p className="mt-1 font-body text-body-md text-text-grey">You can edit a staged WRR before receiving starts. Expected lines are locked after scan labels are used.</p>
+    {error && <p role="alert" className="mt-4 rounded-xl bg-status-held/10 px-4 py-3 font-body text-body-md text-on-surface">{toUserMessage(error, "The WRR could not be fully updated. Review the saved details and try again.")}</p>}
     <form action={save} className="mt-6 w-full space-y-4 rounded-xl bg-surface-white p-6 shadow-elevation-1">
       <WrrHeaderFields vendors={vendors} initialVendorPartyId={wrr.vendorPartyId} initialFlowType={wrr.flowType as "vmi" | "trading" | "supplies"} />
       <label className="block font-label text-label text-text-grey">Commercial Invoice No.<input name="commercialInvoiceNo" defaultValue={wrr.commercialInvoiceNo ?? ""} className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-md" /></label>

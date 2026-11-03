@@ -263,10 +263,10 @@ export function PutawayRoutingChecklist({
         <div className="rounded-xl border border-dashed border-outline-variant/50 bg-surface-white p-8 text-center">
           <p className="font-body text-body-md text-text-grey">
             {filter === "shelved"
-              ? "No items have been marked as shelved yet."
+              ? "No items have been marked as shelved. Switch to Pending to review the remaining placements."
               : filter === "pending"
-              ? "All items have been shelved! Great job."
-              : "No putaway routing allocations found."}
+              ? "No pending placements are shown. Review All to check the recorded placements."
+              : "No putaway placements are recorded. Confirm the receiving locations before shelving the items."}
           </p>
         </div>
       )}

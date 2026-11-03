@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 
 export function CancelInviteDialog({
@@ -21,7 +22,7 @@ export function CancelInviteDialog({
     setSubmitting(true);
     try {
       const result = await onConfirm();
-      if (!result.ok) setError(result.error ?? "Failed to cancel invitation.");
+      if (!result.ok) setError(toUserMessage(result.error, "The invitation could not be cancelled. Try again. If it happens again, contact an administrator."));
     } catch {
       setError("The invitation could not be cancelled. Check your connection and try again.");
     } finally {

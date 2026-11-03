@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
@@ -76,11 +77,18 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
     const formData = new FormData();
     formData.set("file", selectedFile);
 
-    const res = await uploadAndParseCiplDocument(wrrId, formData);
+    let res: Awaited<ReturnType<typeof uploadAndParseCiplDocument>>;
+    try {
+      res = await uploadAndParseCiplDocument(wrrId, formData);
+    } catch {
+      setLoading(false);
+      setError("The CIPL file could not be uploaded. Check your connection and upload it again.");
+      return;
+    }
     setLoading(false);
 
     if (!res.ok || !res.parseResult) {
-      setError(res.error || "Failed to process document.");
+      setError(toUserMessage(res.error, "The CIPL file could not be read. Check that it is a valid Excel, CSV, or PDF file, then upload it again."));
       return;
     }
 

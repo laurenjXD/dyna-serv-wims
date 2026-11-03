@@ -658,7 +658,7 @@ export function CustomReportBuilderModal({
                   <div className="h-44 w-full">
                     {activeDataset.length === 0 ? (
                       <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-4 text-center text-xs text-slate-500">
-                        No live records are available for this dimension and scope.
+                        No records are available to preview. Choose another dimension or scope.
                       </div>
                     ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -777,7 +777,7 @@ export function CustomReportBuilderModal({
                       {activeDataset.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-3.5 py-8 text-center font-body text-xs text-slate-500">
-                            No live records are available for this dimension and scope.
+                            No records are available to preview. Choose another dimension or scope.
                           </td>
                         </tr>
                       ) : activeDataset.map((row, idx) => (

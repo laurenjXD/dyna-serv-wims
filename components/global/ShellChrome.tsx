@@ -23,6 +23,7 @@ import {
   signOutAction,
 } from "@/app/(authenticated)/actions";
 import { IdleSessionTracker } from "./IdleSessionTracker";
+import { FloatingAssistant } from "./FloatingAssistant";
 import type { ShellNotification } from "@/app/(authenticated)/actions";
 import {
   markNotificationReadAction,
@@ -751,6 +752,10 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
       </main>
       <IdleSessionTracker tier={tier} />
+      {!isScanLoopRoute(pathname)
+        && context?.grants.some((grant) => grant.resource === "ai_assistant" && grant.action === "read" && grant.scopeKind === "global")
+        && !context.activeRoleKeys.includes("party_user")
+        && <FloatingAssistant />}
     </>
   );
 }

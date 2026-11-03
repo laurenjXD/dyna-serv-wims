@@ -134,11 +134,11 @@ export function EditPickListClient({
       {error && (
         <div role="alert" className="mt-5 rounded-xl border border-status-held/40 bg-status-held/10 px-4 py-3 font-body text-body-sm text-status-held">
           {error === "invalid_line_quantity"
-            ? "Each line must have a positive quantity made up of complete boxes (units = SPQ × boxes)."
+            ? "QTY (Total Units) must be greater than zero and make complete boxes using SPQ. Review the quantities and try again."
             : error === "insufficient_stock"
               ? "There is not enough available stock for that increase. Refresh the list and try again."
               : error === "pick_list_locked"
-                ? "This pick list has already moved out of To Pick and can no longer be edited."
+                ? "This pick list has moved out of To Pick and can no longer be edited. Return to the queue to review its current status."
                 : "The pick list could not be updated. Refresh and try again."}
         </div>
       )}

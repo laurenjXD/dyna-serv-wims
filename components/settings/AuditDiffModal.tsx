@@ -96,7 +96,7 @@ export function AuditDiffModal({ event, onClose }: AuditDiffModalProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-slate-400 italic">No state mutation delta recorded for this event.</p>
+              <p className="text-slate-400 italic">No before-and-after values were recorded for this event.</p>
             )}
           </div>
         </div>

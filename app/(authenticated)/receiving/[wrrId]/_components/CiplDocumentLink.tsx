@@ -6,6 +6,7 @@
 // stored/cached — the object is in a private bucket, so there is no public
 // URL to link to directly.
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useState } from "react";
 
 export type SignedUrlResult = { ok: true; url: string } | { ok: false; error: string };
@@ -21,13 +22,18 @@ export function CiplDocumentLink({
   async function handleClick() {
     setStatus("loading");
     setError(null);
-    const result = await onGetSignedUrl();
-    if (result.ok) {
-      window.open(result.url, "_blank", "noopener,noreferrer");
-      setStatus("idle");
-    } else {
+    try {
+      const result = await onGetSignedUrl();
+      if (result.ok) {
+        window.open(result.url, "_blank", "noopener,noreferrer");
+        setStatus("idle");
+      } else {
+        setStatus("error");
+        setError(toUserMessage(result.error, "The CIPL document could not be opened. Try again. If it happens again, ask a supervisor to check the attached file."));
+      }
+    } catch {
       setStatus("error");
-      setError(result.error);
+      setError("The CIPL document could not be opened. Check your connection and try again.");
     }
   }
 

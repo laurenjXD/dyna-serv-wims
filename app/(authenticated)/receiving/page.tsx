@@ -51,7 +51,7 @@ function ReceivingDataError() {
   return (
     <section className="mt-6 rounded-2xl border border-status-held/30 bg-surface-white p-6 text-center shadow-elevation-1" role="alert">
       <h2 className="font-heading text-lg font-bold text-on-surface">Receiving data could not be loaded</h2>
-      <p className="mt-2 font-body text-sm text-text-grey">The database request took too long. Check the connection and try again.</p>
+      <p className="mt-2 font-body text-sm text-text-grey">The receiving list could not be retrieved. Check your connection and try again.</p>
       <Link href="/receiving" className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-brand-navy px-4 font-body text-sm font-semibold text-surface-white">Try again</Link>
     </section>
   );
@@ -187,7 +187,7 @@ export default async function ReceivingListPage({ searchParams }: PageProps) {
     return (
       <div className="mx-auto max-w-container px-4 py-12 text-center">
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view the receiving queue.
+          You do not have permission to view the receiving queue. Ask an administrator for access.
         </p>
         <p className="mt-2 font-body text-body-sm text-text-grey">
           This page requires the{" "}
@@ -378,7 +378,7 @@ async function ReceiveTab({
             <div className="rounded-2xl border border-dashed border-slate-200 bg-surface-white px-6 py-12 text-center shadow-xs">
               <ClipboardList className="mx-auto text-slate-400" size={32} aria-hidden="true" />
               <p className="mt-3 font-heading text-sm font-bold text-text-primary">
-                No WRRs currently in progress
+                No WRRs are currently in progress
               </p>
               <p className="mt-1 font-body text-xs text-text-grey">
                 New WRRs staged for your shift will appear here automatically.

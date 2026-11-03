@@ -194,7 +194,7 @@ export default async function PortalPage() {
         <div className="flex items-center justify-between"><h2 className="font-heading text-body-lg font-bold text-on-surface">Recent Alerts</h2><Link href="/portal/notifications" className="font-label text-label font-bold text-on-surface underline">View All</Link></div>
         <div className="mt-5 space-y-4 font-body text-body-sm text-text-grey">
           {recentNotifications.length === 0 ? (
-            <p>No recent alerts.</p>
+            <p>No recent alerts. Open Notifications to review earlier updates.</p>
           ) : recentNotifications.map((notification) => (
             <p key={notification.id}>
               <span className={`mr-2 ${notification.readAt ? "text-status-neutral" : "text-status-held"}`}>●</span>

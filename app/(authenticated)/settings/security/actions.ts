@@ -3,6 +3,7 @@
 // Server Actions backing `/settings/security` — Network-gated BYOD, 2FA/Auth policies,
 // active session inspection & termination, and immutable whole-system audit trail.
 
+import { readSettings } from "../_lib/read-settings";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { eq, desc, sql } from "drizzle-orm";
@@ -88,28 +89,24 @@ const DEFAULT_SECURITY_SETTINGS: SecuritySettingsData = {
 
 let runtimeSecuritySettings = { ...DEFAULT_SECURITY_SETTINGS };
 
-export async function getSecuritySettings(): Promise<{ ok: true; data: SecuritySettingsData } | { ok: false; error: string }> {
+export async function getSecuritySettings(): Promise<{ ok: true; data: SecuritySettingsData; isDefault: boolean } | { ok: false; error: string; reason: "forbidden" | "unavailable" }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied to security settings." };
+    return { ok: false, error: "Access denied to security settings.", reason: "forbidden" };
   }
-
   try {
-    const [stored] = await withSettingsTimeout(
+    const [stored] = await readSettings(
       db.select({ value: systemSettings.value }).from(systemSettings).where(eq(systemSettings.key, "security")),
-      [],
     );
-
-    const parsed = securitySettingsSchema.safeParse(stored?.value);
-    if (parsed.success) {
-      runtimeSecuritySettings = parsed.data;
-    }
+    if (!stored) return { ok: true, data: DEFAULT_SECURITY_SETTINGS, isDefault: true };
+    const parsed = securitySettingsSchema.safeParse(stored.value);
+    if (!parsed.success) return { ok: false, reason: "unavailable", error: "Saved security settings could not be read. Ask an administrator to check the saved policy before making changes." };
+    runtimeSecuritySettings = parsed.data;
+    return { ok: true, data: parsed.data, isDefault: false };
   } catch {
-    // fallback to runtime state
+    return { ok: false, reason: "unavailable", error: "Security settings could not be loaded. Refresh the page to try again. If it happens again, contact an administrator." };
   }
-
-  return { ok: true, data: runtimeSecuritySettings };
 }
 
 export async function saveSecuritySettings(settings: SecuritySettingsData): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -245,21 +242,22 @@ export async function verifyFloorNetworkAccess(): Promise<{ allowed: boolean; re
 
 
 
-export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSessionItem[] } | { ok: false; error: string }> {
+export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSessionItem[] } | { ok: false; error: string; reason: "forbidden" | "unavailable" }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
+    return { ok: false, error: "Access denied.", reason: "forbidden" };
   }
 
   try {
     const settingsRes = await getSecuritySettings();
-    const allowedRanges = settingsRes.ok ? settingsRes.data.network.allowedIpRanges : [];
-    const mobileTimeoutMinutes = settingsRes.ok ? settingsRes.data.sessionConfig.mobileIdleTimeoutMinutes : 15;
-    const desktopTimeoutMinutes = settingsRes.ok ? settingsRes.data.sessionConfig.desktopIdleTimeoutMinutes : 60;
+    if (!settingsRes.ok) return settingsRes;
+    const allowedRanges = settingsRes.data.network.allowedIpRanges;
+    const mobileTimeoutMinutes = settingsRes.data.sessionConfig.mobileIdleTimeoutMinutes;
+    const desktopTimeoutMinutes = settingsRes.data.sessionConfig.desktopIdleTimeoutMinutes;
 
     // Query real active sessions from PostgreSQL auth.sessions joined with auth.users & user_profiles
-    const rawSessions = await withSettingsTimeout((db.execute(sql`
+    const rawSessions = await readSettings((db.execute(sql`
       SELECT 
         s.id as session_id,
         s.user_id,
@@ -287,7 +285,7 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
       raw_user_meta_data: Record<string, unknown> | null;
       display_name: string | null;
       profile_status: string | null;
-    }>>, []);
+    }>>);
 
     const now = Date.now();
     const sessions: ActiveSessionItem[] = rawSessions.map((s) => {
@@ -320,7 +318,7 @@ export async function listActiveSessions(): Promise<{ ok: true; data: ActiveSess
     return { ok: true, data: sessions };
   } catch (err) {
     console.error("Failed to query real sessions:", err);
-    return { ok: true, data: [] };
+    return { ok: false, reason: "unavailable", error: "Device sessions could not be loaded. Refresh the page to try again." };
   }
 }
 
@@ -341,13 +339,12 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
       .filter((s) => parseUserAgentDevice(s.user_agent).isMobile)
       .map((s) => s.id);
 
-    let count = 0;
-    if (mobileSessionIds.length > 0) {
-      await db.execute(sql`
-        DELETE FROM auth.sessions WHERE id = ANY(${mobileSessionIds}::uuid[]);
-      `);
-      count = mobileSessionIds.length;
-    }
+    const terminatedSessions = mobileSessionIds.length > 0
+      ? await db.execute(sql`
+          DELETE FROM auth.sessions WHERE id = ANY(${mobileSessionIds}::uuid[]) RETURNING id;
+        `) as Array<{ id: string }>
+      : [];
+    const count = terminatedSessions.length;
 
     // Write audit record
     await db.insert(auditLog).values({
@@ -358,7 +355,7 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
       entityId: permission.context.userId,
       diffData: {
         disconnectedDeviceCount: count,
-        terminatedSessionIds: mobileSessionIds,
+        terminatedSessionIds: terminatedSessions.map((session) => session.id),
         event: "floor_mobile_sessions_terminated",
       },
       correlationId: `KILLSWITCH-${Date.now()}`,
@@ -373,16 +370,16 @@ export async function terminateAllMobileSessions(): Promise<{ ok: true; count: n
   }
 }
 
-export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAuditEvent[] } | { ok: false; error: string }> {
+export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAuditEvent[] } | { ok: false; error: string; reason: "forbidden" | "unavailable" }> {
   const resolver = await createPageResolver();
   const permission = await requirePermission(resolver, "users.read");
   if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
+    return { ok: false, error: "Access denied.", reason: "forbidden" };
   }
 
   let dbEventsList: SystemAuditEvent[] = [];
   try {
-    const rawEvents = await withSettingsTimeout(
+    const rawEvents = await readSettings(
       db
         .select({
         id: auditLog.id,
@@ -402,7 +399,6 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
       .leftJoin(userProfiles, eq(auditLog.actorUserId, userProfiles.id))
       .orderBy(desc(auditLog.createdAt))
         .limit(100),
-      [],
     );
 
     if (rawEvents.length > 0) {
@@ -454,7 +450,7 @@ export async function getSystemAuditEvents(): Promise<{ ok: true; data: SystemAu
       });
     }
   } catch {
-    // Database initial state
+    return { ok: false, reason: "unavailable", error: "System audit events could not be loaded. Refresh the page to try again." };
   }
 
   return { ok: true, data: dbEventsList };

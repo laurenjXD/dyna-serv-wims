@@ -67,6 +67,27 @@ function validWithdrawalInput() {
   };
 }
 
+describe("optional Customer PN", () => {
+  it.each([undefined, null, "", "   "])("accepts blank Customer PN (%s)", (customerItemCode) => {
+    const input = validWithdrawalInput();
+    const result = validateWithdrawal({ ...input, lines: [{ ...input.lines[0], customerItemCode }] });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.lines[0].customerItemCode).toBeUndefined();
+  });
+
+  it.each(["A".repeat(101), 123])("rejects invalid Customer PN (%s)", (customerItemCode) => {
+    const input = validWithdrawalInput();
+    expect(validateWithdrawal({ ...input, lines: [{ ...input.lines[0], customerItemCode }] }).ok).toBe(false);
+  });
+
+  it("accepts a Customer PN at the 100-character limit", () => {
+    const input = validWithdrawalInput();
+    const result = validateWithdrawal({ ...input, lines: [{ ...input.lines[0], customerItemCode: "A".repeat(100) }] });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.lines[0].customerItemCode).toBe("A".repeat(100));
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Valid input (R1.1, R1.2, design.md §6)
 // ---------------------------------------------------------------------------

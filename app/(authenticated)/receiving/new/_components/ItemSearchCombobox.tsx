@@ -193,7 +193,7 @@ export function ItemSearchCombobox({
                 <p className="mt-0.5 font-body text-body-xs text-text-grey">
                   {availableItems.length === 0
                     ? "No active catalog items are available. Refresh the list or enroll the item in Master Data."
-                    : `No active item matches "${inputValue}" for this organization.`}
+                    : `No active item matches "${inputValue}" for this organization. Change the search or ask an administrator to assign the item.`}
                 </p>
                 <div className="mt-3 flex flex-col gap-2">
                   {inputValue.trim() && onUseTypedCode && (

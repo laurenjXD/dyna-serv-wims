@@ -249,7 +249,7 @@ export function ReportArchiveTable({
       {/* ── TanStack Table Container ────────────────────────── */}
       <MobileDataCardList className="md:hidden -mx-1">
         {table.getRowModel().rows.length === 0 ? (
-          <p className="p-4 text-center font-body text-sm text-text-secondary">No archived reports match your query.</p>
+          <p className="p-4 text-center font-body text-sm text-text-secondary">No archived reports match your search or filters. Clear the search or change the filters.</p>
         ) : table.getRowModel().rows.map((row) => {
           const item = row.original;
           return (
@@ -305,7 +305,7 @@ export function ReportArchiveTable({
                   colSpan={columns.length}
                   className="px-4 py-8 text-center font-body text-xs text-text-secondary"
                 >
-                  No archived reports match your query.
+                  No archived reports match your search or filters. Clear the search or change the filters.
                 </td>
               </tr>
             ) : (

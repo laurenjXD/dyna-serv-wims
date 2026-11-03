@@ -138,7 +138,7 @@ export function LocationCombobox({
         </ul>
       )}
       {open && query.trim() && filtered.length === 0 && (
-        <p className="absolute z-30 mt-1 w-full rounded-lg border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-sm text-text-grey shadow-elevation-3">No matching locations</p>
+        <p className="absolute z-30 mt-1 w-full rounded-lg border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-sm text-text-grey shadow-elevation-3">No locations match. Change or clear the search.</p>
       )}
     </div>
   );

@@ -45,7 +45,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
       <div className="mx-auto max-w-container px-8 py-12 text-center">
         <FileText size={40} className="mx-auto mb-3 text-text-grey" />
         <p className="font-body text-body-md text-text-grey">
-          You do not have permission to view Statement of Account documents.
+          You do not have permission to view Statement of Account documents. Ask an administrator for access.
         </p>
       </div>
     );
@@ -102,7 +102,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         <WorkflowState
           kind="unavailable"
           title="Exchange rate unavailable"
-          description="This billing period has no locked exchange rate and no recorded daily rate is available. The statement is withheld until a valid rate is recorded."
+          description="This billing period has no locked exchange rate, and no daily rate is available. Ask an administrator to record a valid exchange rate, then refresh the statement."
           actionLabel="Back to SOA directory"
           actionHref="/billing-pricing/soa"
         />
@@ -201,7 +201,7 @@ export default async function SoaDetailPage({ params, searchParams }: PageProps)
         <WorkflowState
           kind="unavailable"
           title="Statement data unavailable"
-          description="The system could not load every billing component for this Organization and period. No zero-value substitute was shown. Refresh and retry, or contact an administrator if the issue continues."
+          description="The statement could not be loaded completely. Refresh the page. If it happens again, contact an administrator."
           actionLabel="Back to SOA directory"
           actionHref="/billing-pricing/soa"
         />

@@ -9,6 +9,7 @@
 //   specs/06-party-and-item-enrollment/design.md §6
 //   lib/enrollment/item-schema.ts — computeItemVolumes, field rules
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState, useEffect } from "react";
 import Link from "next/link";
 import { RefreshCw, Plus, Pencil, Check, X } from "@/components/ui/icons";
@@ -247,7 +248,7 @@ export function ItemForm({
         role="alert"
         className="mt-1 font-body text-body-sm text-brand-red"
       >
-        {state.fieldErrors[name]}
+        {toUserMessage(state.fieldErrors[name], "Review this field and try again.")}
       </p>
     ) : null;
 
@@ -280,7 +281,7 @@ export function ItemForm({
           role="alert"
           className="mb-6 rounded border border-brand-red/30 bg-brand-red/5 px-4 py-3 font-body text-body-md text-brand-red"
         >
-          {state.error}
+          {toUserMessage(state.error, "Material was not saved. Try again. If it happens again, contact an administrator.")}
         </div>
       )}
 
@@ -1291,7 +1292,7 @@ export function ItemForm({
             <div className="mt-4 space-y-4">
               {categoryModal.error && (
                 <div className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 border border-rose-200">
-                  {categoryModal.error}
+                  {toUserMessage(categoryModal.error, "Category was not saved. Try again. If it happens again, contact an administrator.")}
                 </div>
               )}
 

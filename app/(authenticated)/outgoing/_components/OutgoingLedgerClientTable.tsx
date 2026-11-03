@@ -526,7 +526,7 @@ export function OutgoingLedgerClientTable({
         subtitle="Immutable transaction audit log of released shipments with multi-field filtering, date ranges, and POD proof-of-delivery tracking."
         icon={<FileSpreadsheet size={18} />}
         initialSorting={[{ id: "createdAt", desc: true }]}
-        emptyMessage="No outgoing transactions match the selected filters."
+        emptyMessage="No outgoing transactions match the selected filters. Change or clear the filters to see other transactions."
       />
 
       {/* ── PDF / Image Receipt Viewer Modal ───────────────────────────── */}

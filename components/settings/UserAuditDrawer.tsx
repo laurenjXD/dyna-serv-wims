@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useEffect, useState } from "react";
 import {
   X,
@@ -41,8 +42,11 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
         setAuditItems(res.data);
       } else {
         setAuditItems([]);
-        setAuditError(res.error);
+        setAuditError(toUserMessage(res.error, "User activity could not be loaded. Close and reopen the activity panel."));
       }
+    }).catch(() => {
+      setLoading(false);
+      setAuditError("User activity could not be loaded. Close and reopen the activity panel.");
     });
   }, [user]);
 
@@ -52,9 +56,16 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
     if (!user) return;
     if (confirm(`Revoke all active BYOD device sessions for ${user.displayName}?`)) {
       setRevoking(true);
-      await revokeUserSession(user.id);
-      setRevoking(false);
-      setRevokedMessage("Device session revoked successfully.");
+      setRevokedMessage(null);
+      try {
+        const result = await revokeUserSession(user.id);
+        if (result.ok) setRevokedMessage("Device session revoked successfully.");
+        else setAuditError(toUserMessage(result.error, "The device session could not be revoked. Try again. If it happens again, contact an administrator."));
+      } catch {
+        setAuditError("The device session could not be revoked. Try again. If it happens again, contact an administrator.");
+      } finally {
+        setRevoking(false);
+      }
     }
   }
 
@@ -181,12 +192,12 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
               {loading ? (
                 <div className="py-8 text-center text-xs text-slate-400">Loading user audit history...</div>
               ) : auditError ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800">
+                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center text-xs text-rose-800">
                   {auditError}
                 </div>
               ) : auditItems.length === 0 ? (
                 <div className="rounded-xl border border-slate-200 p-6 text-center text-xs text-slate-500">
-                  No floor activities recorded for this user yet.
+                  No floor activities recorded for this user yet. Check again after the user completes warehouse work.
                 </div>
               ) : (
                 <div className="space-y-3">

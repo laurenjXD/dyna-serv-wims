@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import React, { useState, useTransition } from "react";
 import { Truck, FileText, Users, Plus, Save, Clock } from "@/components/ui/icons";
 import { logManpowerHoursAction } from "@/lib/actions/vmi-manpower";
@@ -50,8 +51,12 @@ export function MonthlyChargesEditor({
     formData.append("notes", manpowerNotes);
 
     startTransition(async () => {
-      const res = await logManpowerHoursAction({}, formData);
-      setFeedback(res);
+      try {
+        const res = await logManpowerHoursAction({}, formData);
+        setFeedback(res);
+      } catch (error) {
+        setFeedback({ error: toUserMessage(error, "Manpower hours could not be saved. Try again. If it happens again, contact an administrator.") });
+      }
     });
   }
 
@@ -145,7 +150,7 @@ export function MonthlyChargesEditor({
 
           {feedback && (
             <div className={`p-3 rounded-lg text-body-sm font-body ${feedback.ok ? "bg-status-available/10 text-status-available" : "bg-status-held/10 text-status-held"}`}>
-              {feedback.ok ? "Manpower hours saved successfully." : feedback.error}
+              {feedback.ok ? "Manpower hours saved." : toUserMessage(feedback.error, "Manpower hours could not be saved. Try again. If it happens again, contact an administrator.")}
             </div>
           )}
 

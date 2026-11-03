@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState, useState, useEffect } from "react";
 import { X, Save, AlertCircle } from "@/components/ui/icons";
 import { createTradingPolicyAction } from "../_actions";
@@ -73,7 +74,7 @@ export function PolicyFormModal({ isOpen, onClose, parties, items }: Props) {
         {state.error && (
           <div className="mt-4 flex items-center gap-2 rounded-lg bg-status-held/10 p-3 text-status-held font-body text-body-sm">
             <AlertCircle size={18} />
-            <span>{state.error}</span>
+            <span>{toUserMessage(state.error, "Trading rate card was not saved. Try again. If it happens again, contact an administrator.")}</span>
           </div>
         )}
 

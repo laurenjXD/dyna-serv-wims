@@ -1,7 +1,7 @@
 # AI Chatbot — Design
 
 Status: Approved
-Updated: 2026-08-05
+Updated: 2026-11-03
 
 ## 1. Design intent
 
@@ -25,7 +25,7 @@ authenticated question
   -> minimize/redact fields and attach source/as-of metadata
   -> call approved model provider server-side
   -> validate answer, citations, safety, and size limits
-  -> persist approved conversation metadata/history per policy
+  -> return the answer without persisting prompt or conversation content
   -> return answer with safe links and uncertainty labels
 ```
 
@@ -33,26 +33,18 @@ The model must not select arbitrary SQL or receive a service-role connection. To
 
 ## 4. Logical data model
 
-The provisional model is:
+First rollout stores only approved, versioned manual sources and their chunks:
 
 ```text
-chat_conversations
-  id, owner_user_id, title_safe, created_at, last_activity_at,
-  retention_expires_at, deleted_at
+knowledge_sources
+  id, source_key, title, source_path, content_sha256, version,
+  published, audience, effective_at, retired_at
 
-chat_messages
-  id, conversation_id, role, content_or_reference,
-  model/provider metadata, created_at, correlation_id
-
-chat_sources
-  message_id, source_type, source_id, as_of_at, label_safe
-
-ai_usage_events
-  request_id, user/role scope, model, token/latency estimate,
-  outcome, cost bucket, redacted error, created_at
+knowledge_chunks
+  id, source_id, chunk_index, heading, content, embedding(1536)
 ```
 
-Exact storage, whether full content is retained, and whether source snapshots are stored must be approved. If content is retained, access must be owner-scoped plus narrowly approved support/audit capability; it must not become a searchable global data lake. Usage telemetry should store aggregates and redacted metadata by default.
+No chat history, message, or source-snapshot table is created for the first rollout. Request-level metadata can be added only through the approved `04` telemetry contract and must not contain prompts, answers, raw provider payloads, or sensitive retrieval text. The knowledge tables are writable only by the trusted documentation indexing process; authenticated application users have RLS-filtered SELECT access and no write grants.
 
 ## 5. Grounding, safety, and prompt-injection controls
 
@@ -75,6 +67,15 @@ Every source adapter runs with the current user-bound authorization context and 
 
 Separate projection types should distinguish internal operational fields from party-safe fields. Trading buy cost/margin, VMI internal billing details, inspection evidence, credentials, security events, and unrelated-party records are excluded unless an explicit approved capability and projection permit the field.
 
+### 6.1 First rollout scope (Product Owner amendment, 2026-11-03)
+
+- The first rollout is for internal `warehouse_staff`, `supervisor`, and `administrator` accounts only. Party/Organization accounts are denied even if an accidental grant is added; UI visibility is not the security boundary.
+- Add the global `ai_assistant.read` capability and enforce it in the request handler and knowledge-index RLS. This allows entry to the assistant; it does not grant live-record access by itself. Each live projection additionally requires its feature capability and user-bound RLS.
+- Do not persist prompts, answers, conversation history, or source snapshots. The browser may keep the current conversation in memory until the panel is closed or the page is refreshed. Telemetry may store only sanitized request metadata after the `04` policy is implemented.
+- The initial corpus is the approved internal manuals under `docs/user-manual/`. Do not index party-facing guidance, private uploads, operational records, or arbitrary repository files. A manual update is not published to retrieval until the trusted indexing task succeeds.
+- The provider and embedding route is disabled unless `AI_CHAT_ENABLED=true` and all pinned OpenRouter settings are present. Production must remain disabled until endpoint/provider privacy, region, retention, and latency review is complete.
+- First rollout may answer approved manual questions and live WIMS questions through only the eight typed projections in §10. The Product Owner authorized implementation of these existing projections without waiting for separate source-owner signatures; this does not waive capability checks, user-bound RLS, real-Postgres verification, or per-tool safe denial. New projections still require a spec amendment and approval. When live data cannot be read within the caller's permissions, the assistant must say it cannot verify and direct the user to the owning page.
+
 ## 7. Client, offline, and shell behavior
 
 The chat surface is office-first and responsive. The shell may expose a help/assistant entry point, while feature pages may provide contextual links. It should not interrupt active floor scanning or claim that a live answer is current when offline. `03`’s status model is displayed read-only; chat requests are never placed into the offline queue.
@@ -83,7 +84,13 @@ A conversation may be locally draftable if approved, but unsent text must be cle
 
 ## 8. Provider and infrastructure behavior
 
-Provider credentials remain server-only and are loaded from environment-specific secret storage. `04` supplies rate limiting, correlation IDs, Sentry redaction, timeout/retry policy, and cost/error telemetry. Model calls should not be retried blindly when a request may have been accepted; request IDs and provider idempotency behavior must be defined.
+OpenRouter is the approved model-routing gateway. The server pins each deployment to an explicitly configured model and provider allowlist. Every request requires OpenRouter's ZDR routing (`provider.zdr: true`), provider data collection denied (`provider.data_collection: "deny"`), and automatic fallback disabled (`provider.allow_fallbacks: false`). Prompt/completion logging stays disabled. If configuration is incomplete or no endpoint satisfies the policy, the assistant returns a safe unavailable response and does not relax the routing policy. The API key is server-only and loaded from environment-specific secrets. No browser call, OpenRouter file storage, plugin, or unapproved provider route is permitted.
+
+Embedding generation uses a separately configured model but the same pinned provider and privacy restrictions. The initial pgvector index uses 1536-dimensional vectors and therefore requires an embedding endpoint returning that dimension. Source chunks and query text are minimized before embedding; embeddings are not a substitute for authorization metadata or current live-data queries.
+
+OpenRouter and downstream model endpoints still process request content; ZDR is not a claim that data stays in WIMS or never leaves the service boundary. Before production enablement, `04`/security review must verify the exact endpoint's current data policy, contractual terms, data-processing region, and latency from the Philippine deployment. Do not send unnecessary personal, financial, inspection-evidence, or source-document data. Log only sanitized usage metadata and correlation IDs.
+
+`04` supplies rate limiting, correlation IDs, Sentry redaction, timeout/retry policy, secrets, and cost/error telemetry. Model calls should not be retried blindly when a request may have been accepted; request IDs and provider idempotency behavior must be defined.
 
 The initial request path should be synchronous with bounded timeout. Long summaries or approved batch assistance may use a durable job, but the job records the original actor and system executor, is auditable, and cannot execute business mutations. `14` may notify an authorized operator of repeated provider/job failures, but notification delivery is not part of answer correctness.
 

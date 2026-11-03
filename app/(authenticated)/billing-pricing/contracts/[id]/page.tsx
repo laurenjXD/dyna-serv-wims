@@ -28,7 +28,7 @@ export default async function ContractDetailPage({ params }: PageProps) {
         <FileText size={40} className="mx-auto mb-3 text-text-grey" />
         <h3 className="font-heading text-title-md font-bold text-on-surface">Financial Access Required</h3>
         <p className="mt-1 font-body text-body-md text-text-grey">
-          You do not have permission to view commercial contract details.
+          You do not have permission to view commercial contract details. Ask an administrator for access.
         </p>
       </div>
     );

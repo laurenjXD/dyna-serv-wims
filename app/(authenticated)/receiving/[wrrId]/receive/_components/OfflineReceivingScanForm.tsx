@@ -59,7 +59,15 @@ export function OfflineReceivingScanForm({
     }));
     const result = matchScan(barcode, localLines, flowType);
     if (!result.matched) {
-      setFeedback(`Scan rejected: ${result.reason.replaceAll("_", " ")}. Check the label and try again.`);
+      const messages: Record<typeof result.reason, string> = {
+        invalid_barcode: "The scan is empty. Scan a carton or item label, or enter its barcode.",
+        unknown_item: "This barcode could not be matched to an expected item. Check the WRR and scan the matching label, or ask a supervisor to check the item enrollment.",
+        fully_scanned: "This item already has all expected scans. Continue with the next unfinished item.",
+        over_quantity: "This item has more scans than expected. Reconnect and ask a supervisor to review the quantity before continuing.",
+        flow_type_mismatch: "This item's Inventory Model differs from the WRR. Check the shipment and ask a supervisor to review the item.",
+        duplicate_unit_scan: "This label has already been scanned. Scan the next carton or check for a duplicate printed label.",
+      };
+      setFeedback(messages[result.reason]);
       return;
     }
     try {

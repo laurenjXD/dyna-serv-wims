@@ -263,7 +263,7 @@ export function VmiBillingTable({
       {/* ── TanStack Table View ─────────────────────────── */}
       <MobileDataCardList className="md:hidden -mx-1">
         {table.getRowModel().rows.length === 0 ? (
-          <p className="p-4 text-center font-body text-sm text-text-secondary">No VMI billing clients match your search.</p>
+          <p className="p-4 text-center font-body text-sm text-text-secondary">No VMI Organizations match your search. Clear the search or enter a different Organization.</p>
         ) : table.getRowModel().rows.map((row) => {
           const item = row.original;
           return (
@@ -331,7 +331,7 @@ export function VmiBillingTable({
                   colSpan={columns.length}
                   className="px-4 py-8 text-center font-body text-xs text-text-secondary"
                 >
-                  No VMI billing clients match your search.
+                  No VMI Organizations match your search. Clear the search or enter a different Organization.
                 </td>
               </tr>
             ) : (

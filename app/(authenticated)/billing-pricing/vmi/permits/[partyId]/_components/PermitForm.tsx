@@ -1,5 +1,6 @@
 "use client";
 
+import { toUserMessage } from "@/lib/ui/user-messages";
 import { useActionState } from "react";
 import { createVmiPermitAction, type VmiFormState } from "../../../contracts/_actions";
 
@@ -12,7 +13,7 @@ export function PermitForm({ partyId }: { partyId: string }) {
     <section className="rounded-2xl border border-outline-variant/30 bg-surface-white p-5 shadow-elevation-1">
       <h2 className="font-heading text-title-md font-bold text-on-surface">Add permit</h2>
       <p className="mt-1 font-body text-body-sm text-text-grey">The permit remains part of the organization record and is used when the Letter of Authority is generated.</p>
-      {state.error && <p className="mt-3 rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">What happened: Permit was not saved. Why it failed: {state.error}. Next action: Correct the fields and try again.</p>}
+      {state.error && <p className="mt-3 rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">{toUserMessage(state.error, "Permit was not saved. Try again. If it happens again, contact an administrator.")}</p>}
       {state.ok && <p className="mt-3 rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">Permit saved.</p>}
       <form action={formAction} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input type="hidden" name="partyId" value={partyId} />
