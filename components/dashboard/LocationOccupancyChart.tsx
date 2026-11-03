@@ -28,10 +28,10 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
   const overallPctLabel = overallPct === 0 && totalCbmUsed > 0 ? "<1" : overallPct.toString();
 
   return (
-    <div className="h-full rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm flex flex-col justify-between">
+    <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm">
       {/* Header */}
-      <div>
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
           <div>
             <h2 className="font-heading text-title-md font-bold text-brand-navy">
               Warehouse Occupancy
@@ -40,13 +40,13 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
               Storage allocation by warehouse zone
             </p>
           </div>
-          <span className="rounded-md bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-navy border border-blue-200/80">
+          <span className="w-max min-w-[250px] max-w-full whitespace-nowrap rounded-md border border-blue-200/80 bg-blue-50 px-3 py-1 font-mono text-[10px] font-bold text-brand-navy">
             {totalCbmUsed.toLocaleString()} / {totalCbmCapacity.toLocaleString()} m³
           </span>
         </div>
 
         {/* Donut Chart with Center Metric */}
-        <div className="relative mt-2 min-h-44 w-full flex-1">
+        <div className="relative mt-2 flex min-h-44 w-full flex-1 items-center justify-center">
           {data.length === 0 ? (
             <div className="flex h-full min-h-44 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center font-body text-sm text-text-grey">
               No live location capacity data is available.
