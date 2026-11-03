@@ -34,10 +34,8 @@ describe("PickQueueSection", () => {
       "href",
       "/pick-lists/pick-allocated/pick",
     );
-    expect(screen.getByRole("link", { name: /^edit$/i })).toHaveAttribute(
-      "href",
-      "/pick-lists/pick-allocated/edit",
-    );
+    expect(screen.queryByRole("link", { name: /^edit$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /create replacement/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^dispatch/i })).not.toBeInTheDocument();
   });
 

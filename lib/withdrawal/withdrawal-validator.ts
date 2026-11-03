@@ -187,7 +187,7 @@ function validateLine(
   }
 
   const customerItemCode = line["customerItemCode"];
-  if (customerItemCode !== undefined &&
+  if (customerItemCode !== undefined && customerItemCode !== null &&
       (typeof customerItemCode !== "string" || customerItemCode.length > 100)) {
     errors.push(`lines[${index}]: customerItemCode must be a string of 100 characters or fewer when provided`);
   }

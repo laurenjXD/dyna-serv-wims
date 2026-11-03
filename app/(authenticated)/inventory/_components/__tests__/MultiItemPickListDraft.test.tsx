@@ -142,6 +142,29 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
   });
 
+  it("omits an empty optional customer item code from the generation payload", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "1" } });
+
+    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
+    const payload = JSON.parse(request.value) as { lines: Array<Record<string, unknown>> };
+    expect(payload.lines[0]).not.toHaveProperty("customerItemCode");
+  });
+
   it("defaults the requested boxes to the first FIFO location", () => {
     const stockWithSplitFifo = [
       { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10" },

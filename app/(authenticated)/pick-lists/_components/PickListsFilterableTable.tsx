@@ -9,7 +9,6 @@ import {
   ArrowDown,
   X,
   FileText,
-  Pencil,
   ArrowRight,
 } from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
@@ -54,13 +53,6 @@ function PickListAction({
       </Link>
       {row.status === "allocated" && canExecute && (
         <>
-          <Link
-            href={`/pick-lists/${row.id}/edit`}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-brand-navy/25 bg-brand-navy/5 px-3 font-label text-label-xs font-bold text-brand-navy hover:bg-brand-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-          >
-            <Pencil size={14} aria-hidden="true" />
-            Edit
-          </Link>
           <Link
             href={`/pick-lists/${row.id}/pick`}
             className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-brand-navy px-3 font-label text-label-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"

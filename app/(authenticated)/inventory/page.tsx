@@ -436,7 +436,7 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
                       Pick list generated successfully
                     </h3>
                     <p className="mt-0.5 font-body text-body-xs text-text-grey">
-                      The list is active in the To Pick Queue. Review or print the PDF, edit it if needed, then approve it to move it to Dispatch.
+                      The list is active in the To Pick Queue. Review or print the PDF, then approve it to move it to Dispatch. Corrections require a new draft.
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Link

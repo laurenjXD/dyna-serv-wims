@@ -186,7 +186,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                 )}
               </div>
               <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Review allocated stock, edit it if needed, then approve it before it moves to Dispatch.
+                Review the reserved stock, then approve it before it moves to Dispatch. Corrections require a new draft.
               </p>
             </div>
           </div>
@@ -317,12 +317,6 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                       <span>PDF</span>
                     </Link>
                     <Link
-                      href={`/pick-lists/${row.id}/edit`}
-                      className="inline-flex min-h-11 min-w-0 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-brand-navy/25 bg-brand-navy/5 px-4 font-label text-sm font-bold text-brand-navy"
-                    >
-                      <span>Edit</span>
-                    </Link>
-                    <Link
                       href={`/pick-lists/${row.id}/pick`}
                       className="inline-flex min-h-11 min-w-0 flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand-navy px-4 font-label text-sm font-bold text-white"
                     >
@@ -428,12 +422,6 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                             <span>PDF</span>
                           </Link>
 
-                          <Link
-                            href={`/pick-lists/${row.id}/edit`}
-                            className="inline-flex h-10 min-w-[4.5rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-brand-navy/25 bg-brand-navy/5 px-3 font-label text-label-xs font-bold text-brand-navy shadow-sm transition-all hover:bg-brand-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
-                          >
-                            <span>Edit</span>
-                          </Link>
                           <Link
                             href={`/pick-lists/${row.id}/pick`}
                             className="inline-flex h-10 min-w-[9.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-brand-navy px-3.5 font-label text-label-xs font-bold text-surface-white shadow-sm transition-all hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
