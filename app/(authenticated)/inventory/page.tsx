@@ -504,6 +504,7 @@ async function PickListsTab({ createdPickListId, pickedPickListId, view }: { cre
                 balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`,
                 lotId: row.lotId,
                 lotNumber: row.lotNumber,
+                manufactureDate: row.manufactureDate ?? null,
                 locationId: row.locationId,
                 locationLabel: row.locationLabel,
                 availableQty: row.qtyRemaining - row.qtyCommitted,

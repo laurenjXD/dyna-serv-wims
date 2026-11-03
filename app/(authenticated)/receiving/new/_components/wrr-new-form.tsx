@@ -195,17 +195,19 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {/* Organization — dropdown of active receiving source parties */}
           <div>
-            <label
-              htmlFor="vendorPartyId"
-              className="block font-label text-label text-text-grey"
-            >
-              Organization{" "}
-              <span aria-hidden="true" className="text-brand-red">
-                *
-              </span>
-              <span className="sr-only">(required)</span>
-            </label>
-            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
+            <div className="flex h-7 items-center">
+              <label
+                htmlFor="vendorPartyId"
+                className="block font-label text-label text-text-grey"
+              >
+                Organization{" "}
+                <span aria-hidden="true" className="text-brand-red">
+                  *
+                </span>
+                <span className="sr-only">(required)</span>
+              </label>
+            </div>
+            <p className="mt-1 h-10 overflow-hidden font-body text-xs leading-5 text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
             <div className="relative mt-1" ref={vendorSearchRef}>
               <input type="hidden" name="vendorPartyId" value={vendorPartyId} />
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-grey" />
@@ -288,7 +290,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
 
           {/* Inventory Model — inherited from the selected Organization */}
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex h-7 items-center justify-between gap-3">
               <label
                 htmlFor="flowType"
                 className="block font-label text-label text-text-grey"
@@ -303,7 +305,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
                 Inherited from organization
               </span>
             </div>
-            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">
+            <p className="mt-1 h-10 overflow-hidden font-body text-xs leading-5 text-text-grey">
               The Inventory Model is inherited from the organization&apos;s active receiving relationship and cannot be overridden here.
             </p>
             <div className={`mt-1 flex h-11 items-center justify-between rounded-lg border px-3 font-body text-body-md ${inheritedModel ? "border-emerald-200 bg-emerald-50/60 text-on-surface" : "border-amber-200 bg-amber-50 text-amber-900"}`}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
@@ -39,6 +40,16 @@ type DraftLine = {
   customerItemCode: string;
 };
 
+function blankDraftLine(id: string): DraftLine {
+  return {
+    id,
+    itemId: "",
+    boxes: "",
+    sourceBalanceId: "",
+    customerItemCode: "",
+  };
+}
+
 type FifoBoxAllocation = {
   source: StockSource;
   boxes: number;
@@ -69,6 +80,15 @@ function availableBoxesForSource(source: Pick<StockSource, "availableQty" | "spq
   return Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq)));
 }
 
+function formatStockDate(value?: string | null): string | null {
+  if (!value) return null;
+  const dateOnly = value.slice(0, 10);
+  const date = new Date(`${dateOnly}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? dateOnly
+    : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 function PickListItemSearch({
   catalog,
   flowType,
@@ -85,6 +105,8 @@ function PickListItemSearch({
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const listboxId = useId();
   const selectedItem = catalog.find((item) => item.itemId === selectedItemId);
 
@@ -94,11 +116,45 @@ function PickListItemSearch({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
+      const target = event.target as Node;
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setIsOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // The desktop line list scrolls horizontally. Render the menu at document
+  // level so that the table's overflow container cannot clip the choices.
+  useEffect(() => {
+    if (!isOpen) {
+      setMenuPosition(null);
+      return;
+    }
+
+    function syncMenuPosition() {
+      const bounds = dropdownRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      setMenuPosition({
+        top: bounds.bottom + 4,
+        left: bounds.left,
+        width: bounds.width,
+      });
+    }
+
+    syncMenuPosition();
+    window.addEventListener("resize", syncMenuPosition);
+    window.addEventListener("scroll", syncMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", syncMenuPosition);
+      window.removeEventListener("scroll", syncMenuPosition, true);
+    };
+  }, [isOpen]);
 
   const query = inputValue.trim().toLowerCase();
   const filteredItems = catalog.filter((item) => {
@@ -134,8 +190,8 @@ function PickListItemSearch({
             if (selectedItem && value !== itemCodeFor(selectedItem, flowType)) onSelectItem("");
             if (!isOpen && !disabled) setIsOpen(true);
           }}
-          placeholder={disabled ? "Select organization and model first" : "Type item code, description, or customer code…"}
-          className={`h-9 w-full rounded-lg border pl-8 pr-8 font-body text-xs text-slate-900 shadow-2xs outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 ${
+          placeholder={disabled ? "Complete organization and recipient first" : "Type item code, description, or customer code…"}
+          className={`h-10 w-full rounded-xl border pl-9 pr-9 font-body text-sm text-slate-900 shadow-2xs outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 ${
             disabled ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400" : "border-slate-200 bg-white"
           }`}
         />
@@ -148,8 +204,12 @@ function PickListItemSearch({
         />
       </div>
 
-      {isOpen && !disabled && (
-        <div className="absolute left-0 right-0 z-50 mt-1 max-h-80 min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+      {isOpen && !disabled && menuPosition && typeof document !== "undefined" && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-[100] max-h-80 min-w-0 max-w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+          style={menuPosition}
+        >
           <div className="border-b border-slate-100 bg-[#F0F4FF] px-3 py-2">
             <p className="truncate font-label text-[10px] uppercase tracking-wider text-slate-500">
               Available Item Recommendations ({filteredItems.length})
@@ -202,7 +262,8 @@ function PickListItemSearch({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -254,7 +315,10 @@ export function MultiItemPickListDraft({
   const [customerPartyId, setCustomerPartyId] = useState("");
   const [endCustomerPartyId, setEndCustomerPartyId] = useState("");
   const [flowType, setFlowType] = useState<"" | "vmi" | "trading" | "supplies">("");
-  const [lines, setLines] = useState<DraftLine[]>([]);
+  // Keep one starter row visible from the beginning. It remains disabled until
+  // the organization, model, and required recipient are selected; additional
+  // rows are added only after the first row becomes available for entry.
+  const [lines, setLines] = useState<DraftLine[]>(() => [blankDraftLine("draft-line-1")]);
   const [importingDra, setImportingDra] = useState(false);
   const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
   const visibleCustomers = useMemo(() => customers.filter((customer) =>
@@ -264,6 +328,12 @@ export function MultiItemPickListDraft({
         ? customer.relationship === "trading_customer"
         : false,
   ), [customers, flowType]);
+
+  const canEditLines = Boolean(
+    organizationId &&
+    flowType &&
+    (flowType === "vmi" ? endCustomerPartyId : flowType === "trading" ? customerPartyId : true),
+  );
 
   const catalog = useMemo(() => {
     const grouped = new Map<string, StockSource[]>();
@@ -410,10 +480,10 @@ export function MultiItemPickListDraft({
                 ? "Reduce the quantity to the on-hand boxes shown for this line."
                 : null;
 
-  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", boxes: "", sourceBalanceId: "", customerItemCode: "" }]);
+  const addLine = () => setLines((current) => [...current, blankDraftLine(crypto.randomUUID())]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
-  const resetDraft = () => setLines([]);
+  const resetDraft = () => setLines([blankDraftLine(crypto.randomUUID())]);
   const handleOrganization = (value: string) => {
     setOrganizationId(value);
     resetDraft();
@@ -799,6 +869,7 @@ export function MultiItemPickListDraft({
             <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
               End Customer / Recipient
               <select
+                aria-label="End Customer / Recipient"
                 value={endCustomerPartyId}
                 onChange={(event) => setEndCustomerPartyId(event.target.value)}
                 disabled={!customerPartyId || flowType !== "vmi"}
@@ -857,6 +928,12 @@ export function MultiItemPickListDraft({
 
         </div>
 
+        {!canEditLines && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-body text-sm text-slate-600">
+            Complete the Organization, Inventory Model, and required recipient first. The first item row will unlock automatically; use <span className="font-semibold text-slate-800">Add item line</span> only when you need a second line.
+          </div>
+        )}
+
         {/* Pick List: mobile cards */}
         <div className="md:hidden">
           {lines.length === 0 ? (
@@ -890,13 +967,13 @@ export function MultiItemPickListDraft({
                             customerItemCode: selectedItem?.customerItemCode ?? "",
                           });
                         }}
-                        disabled={!organizationId || !flowType}
+                        disabled={!canEditLines}
                       />
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Boxes)
-                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" max={maxRequestBoxes || undefined} disabled={!item || maxRequestBoxes === 0} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" max={maxRequestBoxes || undefined} disabled={!canEditLines || !item || maxRequestBoxes === 0} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Units)
@@ -908,7 +985,7 @@ export function MultiItemPickListDraft({
                     {item && <p className="font-body text-xs text-slate-500">Enter complete boxes. Units are calculated from SPQ {item.spq}.</p>}
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                       Location
-                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
                         <option value="">Auto FIFO / split across locations</option>
                         {item?.sources.map((source) => (
                           <option key={source.balanceId} value={source.balanceId}>
@@ -931,7 +1008,7 @@ export function MultiItemPickListDraft({
                       <div><dt className="text-slate-500">Remaining</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes</dd></div>
                       <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
-                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{fifoAllocations[0]?.source.manufactureDate ? new Date(fifoAllocations[0].source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
+                      <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
                     </dl>
                     {selectedSource && selectedSource.priority > 1 && <p className="text-sm font-medium text-amber-700">This location is outside the recommended FIFO/FEFO source and needs supervisor approval.</p>}
                   </div>
@@ -942,35 +1019,35 @@ export function MultiItemPickListDraft({
         </div>
 
         {/* Pick List Table: desktop */}
-        <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
-          <table aria-label="Pick list lines" className="w-full min-w-[1180px] table-fixed border-collapse text-left">
+        <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+          <table aria-label="Pick list lines" className="w-full min-w-[1610px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
-              <col className="w-[175px]" />
-              <col className="w-[78px]" />
-              <col className="w-[100px]" />
-              <col className="w-[112px]" />
-              <col className="w-[230px]" />
-              <col className="w-[110px]" />
-              <col className="w-[125px]" />
-              <col className="w-[190px]" />
-              <col className="w-[135px]" />
-              <col className="w-[112px]" />
+              <col className="w-[195px]" />
+              <col className="w-[72px]" />
+              <col className="w-[108px]" />
+              <col className="w-[118px]" />
+              <col className="w-[250px]" />
+              <col className="w-[130px]" />
+              <col className="w-[180px]" />
+              <col className="w-[220px]" />
+              <col className="w-[170px]" />
+              <col className="w-[120px]" />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
-              <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                <th scope="col" className="py-3 px-3">Item Code</th>
-                <th scope="col" className="py-3 px-2 text-right">SPQ</th>
-                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Boxes)</th>
-                <th scope="col" className="py-3 px-2 text-right">Qty (Units)</th>
-                <th scope="col" className="py-3 px-3">Location</th>
-                <th scope="col" className="py-3 px-3">Remaining</th>
-                <th scope="col" className="py-3 px-3">Cust PN</th>
-                <th scope="col" className="py-3 px-3">Item Description</th>
-                <th scope="col" className="py-3 px-3">Lot Number</th>
-                <th scope="col" className="py-3 px-3">Mfg Date</th>
-                <th scope="col" className="py-3 pr-4 pl-2 text-center"><span className="sr-only">Actions</span></th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                <th scope="col" className="h-14 px-4 text-left">Item Code</th>
+                <th scope="col" className="h-14 px-2 text-right">SPQ</th>
+                <th scope="col" className="h-14 px-3 text-right">Qty (Boxes)</th>
+                <th scope="col" className="h-14 px-3 text-right">Qty (Units)</th>
+                <th scope="col" className="h-14 px-4 text-left">Location</th>
+                <th scope="col" className="h-14 px-3 text-left">Remaining</th>
+                <th scope="col" className="h-14 px-4 text-left">Cust PN</th>
+                <th scope="col" className="h-14 px-4 text-left">Item Description</th>
+                <th scope="col" className="h-14 px-4 text-left">Lot Number</th>
+                <th scope="col" className="h-14 px-4 text-left">Mfg Date</th>
+                <th scope="col" className="h-14 px-3 text-center"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -988,9 +1065,9 @@ export function MultiItemPickListDraft({
                 </tr>
               ) : (
                 lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource }) => (
-                  <tr key={line.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={line.id} className="bg-white transition-colors hover:bg-[#F8FAFC]">
                     {/* ITEM CODE */}
-                    <td className="py-2.5 px-3 align-middle">
+                    <td className="px-4 py-4 align-top">
                       <PickListItemSearch
                         catalog={catalog}
                         flowType={flowType}
@@ -1004,42 +1081,45 @@ export function MultiItemPickListDraft({
                             customerItemCode: selectedItem?.customerItemCode ?? "",
                           });
                         }}
-                        disabled={!organizationId || !flowType}
+                        disabled={!canEditLines}
                       />
                     </td>
 
                     {/* SPQ (inherited from item enrollment; never manually adjusted) */}
-                    <td className="py-2.5 px-2 align-middle">
-                      <span className="block rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-right font-mono text-xs font-semibold text-slate-900" title="Standard Packaging Quantity (SPQ)">
+                    <td className="px-2 py-4 align-top">
+                      <span className="block rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-right font-mono text-xs font-semibold text-slate-900" title="Standard Packaging Quantity (SPQ)">
                         {item?.spq ?? "—"}
                       </span>
                     </td>
 
                     {/* Qty (Boxes input) */}
-                    <td className="py-2.5 pl-4 pr-2 align-middle">
+                    <td className="px-3 py-4 align-top">
                       <input
                         value={line.boxes}
                         onChange={(event) => handleBoxesChange(line.id, event.target.value)}
                         type="number"
                         min="1"
                         max={maxRequestBoxes || undefined}
-                        disabled={!item || maxRequestBoxes === 0}
-                        className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
+                        disabled={!canEditLines || !item || maxRequestBoxes === 0}
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-sm font-semibold text-slate-900 shadow-2xs outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
                         title="Quantity in complete boxes"
                       />
                     </td>
 
                     {/* Qty (Units, derived from boxes × SPQ) */}
-                    <td className="py-2.5 px-2 align-middle">
-                      <span className="block rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-right font-mono text-xs font-semibold text-slate-900">
+                    <td className="px-3 py-4 align-top">
+                      <span className="block rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-right font-mono text-sm font-semibold text-slate-900">
                         {requestedUnits ?? "—"}
                       </span>
                     </td>
 
                     {/* LOCATION */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!item} className="mb-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                    <td className="px-4 py-4 align-top">
+                      <p className="mb-1.5 font-label text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                        Source strategy
+                      </p>
+                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
                         <option value="">Auto FIFO / split locations</option>
                         {item?.sources.map((source) => (
                           <option key={source.balanceId} value={source.balanceId}>
@@ -1047,21 +1127,26 @@ export function MultiItemPickListDraft({
                           </option>
                         ))}
                       </select>
-                      <div className="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-body text-xs text-slate-900">
+                      <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-900">
                         {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
-                          <div key={source.balanceId} className="flex items-center justify-between gap-2 leading-5">
+                          <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
                             <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{source.locationLabel}</span>
                             <span className="shrink-0 font-mono font-semibold text-brand-navy">{boxes} boxes</span>
                           </div>
                         )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
                       </div>
-                      <p className="mt-1 font-body text-[10px] text-slate-500">Max {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across FIFO locations"}.</p>
-                      {selectedSource && selectedSource.priority > 1 && <p className="mt-1 text-[10px] font-semibold text-amber-700">Supervisor approval required for this source.</p>}
+                      {fifoAllocations.length > 0 && (
+                        <span className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                          {selectedSource ? "Fixed source selected" : "FIFO allocation ready"}
+                        </span>
+                      )}
+                      <p className="mt-2 font-body text-[11px] leading-4 text-slate-500">Max {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across FIFO locations"}.</p>
+                      {selectedSource && selectedSource.priority > 1 && <p className="mt-1 text-[11px] font-semibold leading-4 text-amber-700">Supervisor approval required for this source.</p>}
                     </td>
 
                     {/* REMAINING (after this FIFO allocation) */}
-                    <td className="py-2.5 px-2 align-middle">
-                      <div className="space-y-0.5 font-mono text-xs text-slate-700">
+                    <td className="px-3 py-4 align-top">
+                      <div className="space-y-1 font-mono text-xs text-slate-700">
                         {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, remainingBoxes }) => (
                           <div key={source.balanceId}>{remainingBoxes} boxes</div>
                         )) : <span className="text-slate-400">{item ? `${Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes` : "—"}</span>}
@@ -1070,37 +1155,40 @@ export function MultiItemPickListDraft({
                     </td>
 
                     {/* CUST PN */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} title="Customer part number snapshot" className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-xs text-slate-700 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" />
+                    <td className="px-4 py-4 align-top">
+                      <input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} title="Customer part number snapshot" className="h-10 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-mono text-sm text-slate-700 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" />
                     </td>
 
                     {/* ITEM DESCRIPTION */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <span className="block truncate font-body text-xs text-slate-800" title={item?.itemName ?? undefined}>
+                    <td className="px-4 py-4 align-top">
+                      <span className="block truncate pt-2.5 font-body text-sm text-slate-800" title={item?.itemName ?? undefined}>
                         {item?.itemName || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
 
                     {/* LOT NUMBER */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <span className="block truncate font-mono text-xs text-slate-700" title={fifoAllocations.map(({ source }) => source.lotNumber).join(", ") || undefined}>
+                    <td className="px-4 py-4 align-top">
+                      <span className="block truncate pt-2.5 font-mono text-sm text-slate-700" title={fifoAllocations.map(({ source }) => source.lotNumber).join(", ") || undefined}>
                         {[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || <span className="text-slate-400">—</span>}
                       </span>
                     </td>
 
                     {/* MFG DATE */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <span className="font-mono text-xs text-slate-600 block" title="Inherited from the selected inventory lot; correct this on the receiving record.">
-                        {fifoAllocations[0]?.source.manufactureDate ? new Date(fifoAllocations[0].source.manufactureDate).toLocaleDateString() : <span className="text-slate-400">—</span>}
-                      </span>
+                    <td className="px-4 py-4 align-top">
+                      <div className="pt-1.5">
+                        <span className="block font-mono text-sm text-slate-600" title="Inherited from the selected inventory lot; correct this on the receiving record.">
+                          {formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}
+                        </span>
+                        <span className="mt-1 block font-body text-[10px] leading-4 text-slate-400">Inherited from lot</span>
+                      </div>
                     </td>
 
                     {/* Action */}
-                    <td className="py-2.5 pr-4 pl-2 align-middle text-center">
+                    <td className="px-3 py-4 align-top text-center">
                       <button
                         type="button"
                         onClick={() => removeLine(line.id)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                         aria-label="Remove line"
                       >
                         <Trash2 size={16} aria-hidden="true" />
@@ -1116,7 +1204,7 @@ export function MultiItemPickListDraft({
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <button
             type="button"
-            disabled={!organizationId || !flowType}
+            disabled={!canEditLines}
             onClick={addLine}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 font-label text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white transition-colors"
           >

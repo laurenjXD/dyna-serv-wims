@@ -94,7 +94,9 @@ describe("MultiItemPickListDraft organization selection", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
-    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+    const recipientSelect = screen.getByRole("combobox", { name: "End Customer / Recipient" });
+    fireEvent.change(recipientSelect, { target: { value: "party-end-customer" } });
+    expect(recipientSelect).toHaveValue("party-end-customer");
 
     const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
@@ -122,8 +124,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
-    fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: "party-end-customer" } });
-    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
 
     const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
@@ -149,7 +150,6 @@ describe("MultiItemPickListDraft organization selection", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
-    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
 
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
     expect(screen.getByText(/Required: select the downstream End Customer/)).toBeInTheDocument();
@@ -172,8 +172,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
-    fireEvent.change(screen.getAllByRole("combobox")[1], { target: { value: "party-end-customer" } });
-    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
 
     const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
@@ -202,5 +201,29 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
     expect(JSON.parse(request.value).lines[0].customerItemCode).toBe("CUSTOMER-PN-42");
+  });
+
+  it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    expect(itemSearch).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Add item line/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    expect(screen.getAllByRole("combobox", { name: "Search item code" })[0]).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Add item line/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+    expect(screen.getByText("2 lines")).toBeInTheDocument();
   });
 });
