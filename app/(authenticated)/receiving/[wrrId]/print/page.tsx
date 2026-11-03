@@ -40,7 +40,6 @@ import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { PrintButton } from "./_components/PrintButton";
-import { WrrBarcode } from "./_components/WrrBarcode";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
@@ -155,11 +154,8 @@ export default async function WrrPrintPage({ params }: PageProps) {
             titleAlignment={template.titleAlignment}
             orientation="landscape"
             showPrintButton={false}
+            documentQrValue={wrr.wrrNumber}
           />
-
-          <div className="flex justify-end mb-3">
-            <WrrBarcode wrrNumber={wrr.wrrNumber} />
-          </div>
 
           {/* Header metadata grid — compact & readable */}
           <div className="mt-3 grid grid-cols-2 gap-2.5 rounded-lg bg-slate-50/70 p-2.5 font-mono text-[11px] sm:grid-cols-4 lg:grid-cols-5 border border-slate-200">

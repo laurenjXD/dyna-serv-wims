@@ -191,7 +191,7 @@ export function MasterDocumentHeader({
               </div>
             )}
 
-            <div className="flex items-start gap-3">
+            <div className="flex flex-col items-end gap-2">
               <div className="sm:text-right font-mono text-[8px] space-y-1">
                 <div className="flex items-center sm:justify-end gap-1.5">
                   <span className="text-slate-500 uppercase text-[8px]">Doc Ref:</span>
@@ -212,9 +212,9 @@ export function MasterDocumentHeader({
                 <div className="shrink-0 rounded border border-slate-200 bg-white p-1">
                   <QRCode
                     value={documentQrValue}
-                    size={64}
+                    size={52}
                     aria-label="Document QR code"
-                    style={{ display: "block", height: "64px", width: "64px" }}
+                    style={{ display: "block", height: "52px", width: "52px" }}
                     viewBox="0 0 256 256"
                   />
                 </div>
