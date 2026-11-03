@@ -13,6 +13,7 @@ export type AggregatedLot = {
   lotId: string;
   lotNumber: string;
   lotStatus: string;
+  manufactureDate: string | null;
   expiryDate: string | null;
   receivedAt: Date | string;
   locationLabels: string[];
@@ -407,6 +408,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                     </summary>
                     <div className="mt-2 space-y-1 border-t border-slate-100 pt-2 text-xs">
                       <div className="flex justify-between gap-2 text-text-grey"><span>Location:</span><span className="font-mono font-semibold text-slate-800">{lot.locationLabels.join(", ") || "—"}</span></div>
+                      <div className="flex justify-between gap-2 text-text-grey"><span>Manufactured:</span><span className="font-mono text-slate-800">{lot.manufactureDate || "Not dated"}</span></div>
                       <div className="flex justify-between gap-2 text-text-grey"><span>Expiry:</span><span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span></div>
                       <div className="flex justify-between gap-2 text-text-grey"><span>Status:</span><span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span></div>
                       <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
@@ -552,11 +554,10 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                           <strong className="text-brand-navy">{lot.availableQty.toLocaleString()} {item.uom}</strong>
                         </div>
                       </div>
-                      {lot.expiryDate && (
-                        <div className="text-[11px] text-text-grey font-mono">
-                          Expires: {new Date(lot.expiryDate).toLocaleDateString()}
-                        </div>
-                      )}
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-text-grey font-mono">
+                        <span>Manufactured: {lot.manufactureDate ? new Date(lot.manufactureDate).toLocaleDateString() : "Not dated"}</span>
+                        <span>Expires: {lot.expiryDate ? new Date(lot.expiryDate).toLocaleDateString() : "Not dated"}</span>
+                      </div>
                       <div className="pt-2 border-t border-slate-200/60 flex justify-end">
                         <LotQrViewer
                           lotId={lot.lotId}

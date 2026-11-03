@@ -29,6 +29,7 @@ import { locations } from "@/lib/db/schema/locations";
 import { parties } from "@/lib/db/schema/parties";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 import { userProfiles } from "@/lib/db/schema/rbac";
+import { wrrItems } from "@/lib/db/schema/wrr";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -72,6 +73,7 @@ export type PickListItemRow = {
   spqMeter?: string | number | null;
   numberOfBoxes: number;
   manufactureDate?: string | null;
+  expiryDate?: string | null;
   unitPrice: string | null;
 };
 
@@ -314,12 +316,16 @@ export async function getPickListItems(
       spq: pickListItems.spq,
       spqMeter: items.spqMeter,
       numberOfBoxes: pickListItems.numberOfBoxes,
-      manufactureDate: lots.manufactureDate,
+      // Preserve dates for legacy receipts whose lot row is blank by reading
+      // the dates originally declared on the linked WRR line.
+      manufactureDate: sql<string | null>`COALESCE(${lots.manufactureDate}, ${wrrItems.manufactureDate})`,
+      expiryDate: sql<string | null>`COALESCE(${lots.expiryDate}, ${wrrItems.expiryDate})`,
       unitPrice: pickListItems.unitPrice,
     })
     .from(pickListItems)
     .leftJoin(items, eq(items.id, pickListItems.itemId))
     .leftJoin(lots, eq(lots.id, pickListItems.lotId))
+    .leftJoin(wrrItems, eq(lots.wrrItemId, wrrItems.id))
     .where(eq(pickListItems.pickListId, pickListId))
     .orderBy(asc(pickListItems.createdAt))) as PickListItemRow[];
 

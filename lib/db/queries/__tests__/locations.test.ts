@@ -146,6 +146,22 @@ describe("suggestPutawayLocations (01 design.md §5 item 10, 07 design.md §6.2/
     expect(result).toHaveLength(2);
   });
 
+  it("can return all eligible locations for operator search", async () => {
+    const db = makeDb([
+      rawLocationRow({ id: "loc-a", label: "A1-01" }),
+      rawLocationRow({ id: "loc-b", label: "A2-01" }),
+      rawLocationRow({ id: "loc-c", label: "A3-01" }),
+    ]);
+
+    const result = await suggestPutawayLocations(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { itemUnitCbm: 1, requestedQty: 1, limit: 1, includeAll: true },
+    );
+
+    expect(result).toHaveLength(3);
+  });
+
   it("queries only active storage locations (asserts a where() filter is applied, not a full-table scan)", async () => {
     const dataChain = makeSelectChain([]);
     const db = { select: vi.fn().mockReturnValue(dataChain) };

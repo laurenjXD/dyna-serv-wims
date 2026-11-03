@@ -15,8 +15,9 @@ import { getDocumentTemplate } from "@/lib/documents/document-template";
 const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = PDF_PAGE.landscape;
 const { margin: MARGIN, ink: INK, muted: MUTED, grid: GRID, headerFill: HEADER_FILL } = PDF_THEME;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const RECEIPT_FONT_SIZE = 9;
-const RECEIPT_LINE_HEIGHT = 11;
+const RECEIPT_FONT_SIZE = 8;
+const RECEIPT_LINE_HEIGHT = 10;
+const RECEIPT_LABEL_SIZE = 7.5;
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
@@ -134,11 +135,11 @@ export async function GET(
   const nonNullPickList = pickList;
   const isPricedFlow = nonNullPickList.flowType === "trading" || nonNullPickList.flowType === "vmi";
   const headings = isPricedFlow
-    ? ["NO.", "QTY", "SPQ", "BOXES", "ITEM CODE", "CUST PN", "DESCRIPTION", "LOT", "LOCATION", "UNIT PRICE", "LINE TOTAL", "REMARKS"]
-    : ["NO.", "QTY", "SPQ", "NO. OF BOXES", "ITEM CODE", "CUST PN", "ITEM DESCRIPTION", "LOT NUMBER", "PO NUMBER", "INVOICE NO.", "REMARKS", "LOCATION"];
+    ? ["NO.", "QTY", "SPQ", "BOXES", "ITEM CODE", "CUST PN", "DESCRIPTION", "LOT", "MFG DATE", "EXPIRY DATE", "LOCATION", "UNIT PRICE", "LINE TOTAL", "REMARKS"]
+    : ["NO.", "QTY", "SPQ", "NO. OF BOXES", "ITEM CODE", "CUST PN", "ITEM DESCRIPTION", "LOT NUMBER", "MFG DATE", "EXPIRY DATE", "PO NUMBER", "INVOICE NO.", "REMARKS", "LOCATION"];
   const widths = isPricedFlow
-    ? [24, 38, 32, 42, 68, 54, 108, 62, 78, 62, 68, 87.89]
-    : [26, 42, 36, 54, 80, 64, 126, 76, 60, 60, 66, 95.89];
+    ? [34, 38, 32, 42, 64, 50, 90, 58, 45, 45, 75, 60, 70, 73.89]
+    : [34, 42, 38, 54, 74, 56, 96, 62, 45, 45, 54, 60, 60, 65.89];
 
   // Helper to draw standard document header & table header
   function renderDocumentHeader(page: PDFPage, pageNum: number, totalPages: number): number {
@@ -147,7 +148,7 @@ export async function GET(
     }
     const headerX = MARGIN + (logoImage ? 38 : 0);
     page.drawText("ACKNOWLEDGEMENT RECEIPT", { x: headerX, y: 540, size: 10, font: bold, color: INK });
-    page.drawText(`${template.companyName} — ${template.subtitle}`, { x: headerX, y: 526, size: RECEIPT_FONT_SIZE, font: bold, color: MUTED });
+    page.drawText(`${template.companyName} - ${template.subtitle}`, { x: headerX, y: 526, size: RECEIPT_FONT_SIZE, font: bold, color: MUTED });
 
     const meta = [
       ["DELIVERY RECEIPT NO.", drNumber],
@@ -173,7 +174,7 @@ export async function GET(
     // Table Column Headers
     let x = MARGIN;
     headings.forEach((heading, index) => {
-      drawCell(page, heading, x, 442, widths[index], 22, bold, 8, "center", HEADER_FILL);
+      drawCell(page, heading, x, 442, widths[index], 22, bold, RECEIPT_LABEL_SIZE, "center", HEADER_FILL);
       x += widths[index];
     });
 
@@ -212,14 +213,14 @@ export async function GET(
         ? [
             String(globalIndex + 1), line.qty.toLocaleString(), line.spq.toLocaleString(),
             line.numberOfBoxes.toLocaleString(), line.itemCode, line.customerItemCode ?? "—",
-            line.itemDescription ?? "—", line.lotNumber, line.locationLabel,
+            line.itemDescription ?? "—", line.lotNumber, line.manufactureDate ?? "—", line.expiryDate ?? "—", line.locationLabel,
             line.unitPrice == null ? "—" : Number(line.unitPrice).toFixed(4),
             lineTotal == null ? "—" : lineTotal.toFixed(2), "—",
           ]
         : [
             String(globalIndex + 1), line.qty.toLocaleString(), line.spq.toLocaleString(),
             line.numberOfBoxes.toLocaleString(), line.itemCode, line.customerItemCode ?? "—",
-            line.itemDescription ?? "—", line.lotNumber, "—", "—", "—", line.locationLabel,
+            line.itemDescription ?? "—", line.lotNumber, line.manufactureDate ?? "—", line.expiryDate ?? "—", "—", "—", "—", line.locationLabel,
           ];
       values.forEach((value, column) => {
         drawCell(
@@ -247,16 +248,16 @@ export async function GET(
         ? lines.reduce((sum, line) => sum + (line.unitPrice == null ? 0 : Number(line.unitPrice) * line.qty), 0)
         : null;
       const totals = isPricedFlow
-        ? ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", referenceTotal == null ? "—" : referenceTotal.toFixed(2), ""]
-        : ["TOTAL", totalQty.toLocaleString(), "—", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", ""];
+        ? ["TOTAL", totalQty.toLocaleString(), "-", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", "", referenceTotal == null ? "-" : referenceTotal.toFixed(2), ""]
+        : ["TOTAL", totalQty.toLocaleString(), "-", totalBoxes.toLocaleString(), "", "", "", "", "", "", "", "", "", ""];
       totals.forEach((value, column) => {
-        drawCell(page, value, x, rowTop, widths[column], 20, bold, RECEIPT_FONT_SIZE, column < 4 ? "center" : "left", HEADER_FILL);
+        drawCell(page, value, x, rowTop, widths[column], 20, bold, column === 0 ? RECEIPT_LABEL_SIZE : RECEIPT_FONT_SIZE, column < 4 ? "center" : "left", HEADER_FILL);
         x += widths[column];
       });
 
       if (nonNullPickList.flowType === "vmi") {
         page.drawText("Unit prices are per-release reference values only. Authoritative billing is the period VMI statement.", {
-          x: MARGIN, y: rowTop - 32, size: RECEIPT_FONT_SIZE, font: regular, color: MUTED,
+          x: MARGIN, y: rowTop - 32, size: RECEIPT_LABEL_SIZE, font: regular, color: MUTED,
         });
       }
 

@@ -152,7 +152,7 @@ export function PickListInteractiveChecklist({
                 </p>
 
                 {/* Lot, Qty & Location Grid */}
-                <div className="mt-2.5 grid grid-cols-2 gap-2 font-mono text-body-sm sm:grid-cols-4">
+                <div className="mt-2.5 grid grid-cols-2 gap-2 font-mono text-body-sm sm:grid-cols-6">
                   <div className="rounded-lg bg-surface-light-grey/60 px-2.5 py-1.5">
                     <span className="text-text-grey block font-label text-mono-xs uppercase">Lot Number</span>
                     <span className="font-bold text-on-surface">{item.lotNumber}</span>
@@ -168,6 +168,14 @@ export function PickListInteractiveChecklist({
                   <div className="rounded-lg bg-surface-light-grey/60 px-2.5 py-1.5">
                     <span className="text-text-grey block font-label text-mono-xs uppercase">Boxes</span>
                     <span className="font-bold text-on-surface">{scannedCount} / {item.numberOfBoxes} verified</span>
+                  </div>
+                  <div className="rounded-lg bg-surface-light-grey/60 px-2.5 py-1.5">
+                    <span className="text-text-grey block font-label text-mono-xs uppercase">Mfg. Date</span>
+                    <span className="font-bold text-on-surface">{item.manufactureDate ?? "—"}</span>
+                  </div>
+                  <div className="rounded-lg bg-surface-light-grey/60 px-2.5 py-1.5">
+                    <span className="text-text-grey block font-label text-mono-xs uppercase">Expiry Date</span>
+                    <span className="font-bold text-on-surface">{item.expiryDate ?? "—"}</span>
                   </div>
                 </div>
 

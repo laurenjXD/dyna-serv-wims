@@ -17,6 +17,11 @@ interface PutawayLocationSelectorProps {
   disposition?: "store" | "inspect";
 }
 
+type SplitLocationRow = {
+  locationId: string;
+  qty: string;
+};
+
 function maxBoxesFor(candidate: PutawayCandidate | undefined, unitCbm: number, quantity: number): number {
   if (!candidate) return 0;
   const safeUnitCbm = Number(unitCbm) || 0;
@@ -51,7 +56,26 @@ export function PutawayLocationSelector({
   const [locationsBySlot, setLocationsBySlot] = useState<string[]>(() =>
     Array.from({ length: safeQuantity }, () => ""),
   );
+  const [splitRows, setSplitRows] = useState<SplitLocationRow[]>([
+    { locationId: "", qty: "" },
+  ]);
   const [attested, setAttested] = useState(true);
+
+  function expandedLocations(rows: SplitLocationRow[]): string[] {
+    const assigned = rows.flatMap((row) => {
+      const qty = Math.max(0, Math.floor(Number(row.qty) || 0));
+      return row.locationId ? Array.from({ length: qty }, () => row.locationId) : [];
+    });
+    return [
+      ...assigned.slice(0, safeQuantity),
+      ...Array.from({ length: Math.max(0, safeQuantity - assigned.length) }, () => ""),
+    ];
+  }
+
+  function updateSplitRows(rows: SplitLocationRow[]) {
+    setSplitRows(rows);
+    setLocationsBySlot(expandedLocations(rows));
+  }
 
   // Combined options: storage candidates (with capacity) + inspection candidates
   const allLocationOptions = useMemo(() => {
@@ -117,12 +141,9 @@ export function PutawayLocationSelector({
 
   function assignAll(locationId: string) {
     if (!locationId) return;
-    setLocationsBySlot(
-      Array.from(
-        { length: safeQuantity },
-        (_, index) => (index < assignmentQuantity ? locationId : ""),
-      ),
-    );
+    const rows = [{ locationId, qty: String(assignmentQuantity) }];
+    setSplitRows(rows);
+    setLocationsBySlot(expandedLocations(rows));
   }
 
   const assignedCounts = useMemo(() => {
@@ -180,7 +201,7 @@ export function PutawayLocationSelector({
       <details className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
         <summary className="cursor-pointer list-none font-label text-body-md font-bold text-on-surface marker:hidden">
           <span className="flex items-center justify-between gap-3">
-            <span><span className="mr-2 text-primary">Step 2</span>Split Storage / Hold / Shortage per box</span>
+          <span><span className="mr-2 text-primary">Step 2</span>{showIndividualSlots ? "Split Storage / Hold / Shortage per box" : "Split Storage / Hold / Shortage by quantity"}</span>
             <span aria-hidden="true" className="text-title-md text-text-grey">⌄</span>
           </span>
         </summary>
@@ -228,8 +249,93 @@ export function PutawayLocationSelector({
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-lg bg-surface-light-grey p-3 font-body text-body-sm text-text-grey">
-            This shipment contains {safeQuantity} declared boxes{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Assign the whole line to a primary location above.
+          <div className="mt-3 space-y-3">
+            <p className="rounded-lg bg-surface-light-grey p-3 font-body text-body-md text-text-grey">
+              Assign the {safeQuantity} declared boxes by location. Leave boxes unassigned only when recording a shortage.
+            </p>
+            {splitRows.map((row, index) => {
+              const rowQty = Math.max(0, Math.floor(Number(row.qty) || 0));
+              const assignedElsewhere = splitRows.reduce(
+                (sum, candidate, candidateIndex) =>
+                  candidateIndex === index || candidate.locationId !== row.locationId
+                    ? sum
+                    : sum + Math.max(0, Math.floor(Number(candidate.qty) || 0)),
+                0,
+              );
+
+              return (
+                <div key={index} className="grid gap-2 rounded-lg bg-surface-light-grey p-3 sm:grid-cols-[minmax(0,1fr)_7rem_auto] sm:items-end">
+                  <div>
+                    <label htmlFor={`split-location-${index}`} className="mb-1 block font-label text-label font-bold text-on-surface">
+                      Location {index + 1}
+                    </label>
+                    <LocationCombobox
+                      id={`split-location-${index}`}
+                      options={allLocationOptions.map((opt) => ({
+                        id: opt.id,
+                        label: opt.label,
+                        disabled: opt.raw
+                          ? assignedElsewhere >= maxBoxesFor(opt.raw, safeUnitCbm, safeQuantity)
+                          : false,
+                        capacity: opt.capacity
+                          ? {
+                              occupied: (opt.capacity.occupied || 0) + rowQty * safeUnitCbm,
+                              maximum: opt.capacity.maximum || 0,
+                            }
+                          : undefined,
+                      }))}
+                      value={row.locationId}
+                      onChange={(nextValue) => {
+                        const rows = splitRows.map((candidate, candidateIndex) =>
+                          candidateIndex === index ? { ...candidate, locationId: nextValue } : candidate,
+                        );
+                        updateSplitRows(rows);
+                      }}
+                      placeholder="Choose storage or hold"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`split-quantity-${index}`} className="mb-1 block font-label text-label font-bold text-on-surface">
+                      Boxes
+                    </label>
+                    <input
+                      id={`split-quantity-${index}`}
+                      type="number"
+                      min="0"
+                      max={safeQuantity}
+                      step="1"
+                      value={row.qty}
+                      onChange={(event) => {
+                        const rows = splitRows.map((candidate, candidateIndex) =>
+                          candidateIndex === index ? { ...candidate, qty: event.target.value } : candidate,
+                        );
+                        updateSplitRows(rows);
+                      }}
+                      className="h-14 w-full rounded-lg border-2 border-outline-variant bg-surface-white px-3 font-mono text-mono-md text-on-surface focus:outline-none focus:ring-4 focus:ring-brand-navy"
+                    />
+                  </div>
+                  {splitRows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => updateSplitRows(splitRows.filter((_, candidateIndex) => candidateIndex !== index))}
+                      className="h-14 rounded-lg border border-status-held/40 px-3 font-label text-label font-bold text-status-held hover:bg-status-held/5"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setSplitRows((rows) => [...rows, { locationId: "", qty: "" }])}
+              className="min-h-11 rounded-lg border border-primary/30 bg-surface-white px-4 font-label text-label font-bold text-primary hover:bg-[#EEF3FF]"
+            >
+              + Add another location
+            </button>
+            <p className="font-body text-body-md text-text-grey">
+              {assignedBoxesCount} of {safeQuantity} boxes assigned. {missingBoxesCount > 0 ? `${missingBoxesCount} will be recorded as Missing.` : "Assign the remaining boxes before storing."}
+            </p>
           </div>
         )}
       </details>

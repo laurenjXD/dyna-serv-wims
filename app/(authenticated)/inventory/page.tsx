@@ -248,6 +248,7 @@ type AggregatedLot = {
   lotId: string;
   lotNumber: string;
   lotStatus: string;
+  manufactureDate: string | null;
   expiryDate: string | null;
   receivedAt: Date;
   // Stacked location tag: all locations this lot spans, comma-separated.
@@ -320,6 +321,7 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
           lotId: row.lotId,
           lotNumber: row.lotNumber,
           lotStatus: row.lotStatus,
+          manufactureDate: row.manufactureDate ?? null,
           expiryDate: row.expiryDate,
           receivedAt: row.receivedAt,
           locationLabels: [],

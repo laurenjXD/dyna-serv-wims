@@ -631,6 +631,33 @@ describe("requestFifoOverride — exact alternate pallet approval", () => {
     }));
   });
 
+  it("accepts the FIFO portion plus one alternate location and targets only the alternate quantity", async () => {
+    const oldest = allocationRow({ allocationVersion: 4 });
+    const newer = allocationRow({
+      balanceId: "balance-uuid-2",
+      lotId: "lot-newer",
+      lotNumber: "LOT-NEW",
+      locationId: "loc-uuid-2",
+      locationLabel: "B1-02",
+      receivedAt: new Date("2026-08-02T00:00:00Z"),
+      allocationVersion: 7,
+    });
+    const db = makeWithdrawalDb([], [[oldest, newer]]);
+    const input = validCommitInput();
+    input.lines = [
+      { ...input.lines[0], qty: 5 },
+      { ...input.lines[0], lotId: "lot-newer", locationId: "loc-uuid-2", qty: 5 },
+    ];
+
+    const result = await requestFifoOverride(supervisorResolver(), input, "Aisle A is temporarily inaccessible.", mockRlsDeps(db).deps);
+
+    expect(result).toEqual({ ok: true, requestId: "new-uuid-generated", requestNumber: "AR-000001" });
+    expect(db._inserted).toContainEqual(expect.objectContaining({
+      targetResourceId: "balance-uuid-2",
+      targetSnapshot: expect.objectContaining({ requested_qty: "5" }),
+    }));
+  });
+
   it("rejects an override request when the selected pallet is already the FIFO recommendation", async () => {
     const db = makeWithdrawalDb([], [[allocationRow()]]);
     const result = await requestFifoOverride(supervisorResolver(), validCommitInput(), "Use the normally assigned source pallet.", mockRlsDeps(db).deps);

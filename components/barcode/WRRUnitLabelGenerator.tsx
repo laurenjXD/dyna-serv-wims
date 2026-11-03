@@ -88,7 +88,7 @@ export function WRRUnitLabelGenerator({
         type="button"
         onClick={() => { if (canGenerateLabels) setIsModalOpen(true); }}
         disabled={!canGenerateLabels}
-        className="inline-flex h-10 w-max min-w-[172px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border border-outline-variant bg-surface-white px-3 font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex h-auto min-h-10 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded border border-outline-variant bg-surface-white px-3 py-2 text-center font-heading font-semibold text-body-md text-brand-navy shadow-sm active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy sm:w-max sm:min-w-[172px] sm:whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span aria-hidden="true">&#128424;</span>
         <span>{canGenerateLabels ? `Print Carton Labels (${cartonCount})` : "Labels unavailable — resolve item/SPQ"}</span>
@@ -217,12 +217,12 @@ export function WRRUnitLabelGenerator({
 
           <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-surface-white p-6 shadow-elevation-2 print:block print:max-h-none print:w-[50mm] print:p-0 print:shadow-none">
             {/* Header — Screen only */}
-            <div className="flex items-center justify-between border-b border-outline-variant pb-4 print:hidden">
-              <div>
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-4 border-b border-outline-variant pb-4 print:hidden sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                   <h2
                     id="print-modal-title"
-                    className="font-heading font-semibold text-headline-md text-brand-navy"
+                    className="break-words font-heading font-semibold text-headline-md text-brand-navy"
                   >
                     Carton Labels ({cartonCount} {cartonCount === 1 ? "label" : "labels"})
                   </h2>
@@ -238,11 +238,11 @@ export function WRRUnitLabelGenerator({
                   {cartonCount.toLocaleString()} cartons × SPQ {Math.max(1, spq).toLocaleString()} = {totalUnits.toLocaleString()} {uom || "units"}. One unique QR is generated per carton.
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex w-full items-stretch gap-2 sm:w-auto sm:shrink-0">
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="flex h-12 items-center justify-center gap-2 rounded bg-primary px-5 font-heading font-bold text-body-md text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-center font-heading font-bold text-body-md leading-tight text-surface-white active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-navy sm:flex-none sm:whitespace-nowrap sm:px-5"
                 >
                   <span aria-hidden="true">&#128424;</span>
                   <span>Print 2&quot; × 2&quot; Carton Labels</span>
@@ -250,7 +250,7 @@ export function WRRUnitLabelGenerator({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex h-12 w-12 items-center justify-center rounded border border-outline-variant bg-surface-white text-body-md font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-outline-variant bg-surface-white text-body-md font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy"
                   aria-label="Close modal"
                 >
                   &#10005;

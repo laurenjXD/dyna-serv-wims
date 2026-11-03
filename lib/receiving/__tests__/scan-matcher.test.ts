@@ -133,6 +133,22 @@ describe("matchScan — unknown barcode returns unknown_item (design.md §6, req
   });
 });
 
+describe("matchScan — structured unit label from another WRR", () => {
+  it("returns no_match instead of unknown_item for a generated unit label not on this WRR", async () => {
+    const { matchScan } = await import("@/lib/receiving/scan-matcher");
+
+    const result = matchScan(JSON.stringify({
+      type: "wrr_item_unit",
+      wrr_item_id: "line-from-another-wrr",
+      unit_id: "unit-from-another-wrr",
+      carton_id: "carton-from-another-wrr",
+      unit_index: 1,
+    }), [makeLine()]);
+
+    expect(result).toEqual({ matched: false, reason: "no_match" });
+  });
+});
+
 describe("matchScan — manual item-code fallback", () => {
   it("accepts the displayed item code when a camera is unavailable", async () => {
     const { matchScan } = await import("@/lib/receiving/scan-matcher");

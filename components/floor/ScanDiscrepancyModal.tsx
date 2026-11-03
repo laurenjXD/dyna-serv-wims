@@ -34,9 +34,11 @@ export function ScanDiscrepancyModal({
         };
       case "no_match":
         return {
-          title: "Barcode Not on this Document",
-          description: `The scanned barcode does not match any item or lot listed on ${contextType === "receiving" ? "WRR" : "Pick List"} ${contextRef || ""}.`,
-          recommendation: "Check if this carton belongs to a different shipment or purchase order.",
+          title: "Barcode Not on This Document",
+          description: `This label does not belong to any item or lot listed on ${contextType === "receiving" ? "WRR" : "Pick List"} ${contextRef || ""}. It may have been printed for a different document.`,
+          recommendation: contextType === "receiving"
+            ? "Return to the WRR that printed this label, or print Unit Labels from the current WRR."
+            : "Check whether this carton belongs to a different shipment or pick list.",
           canEnroll: false,
         };
       case "duplicate_unit_scan":

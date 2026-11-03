@@ -641,7 +641,7 @@ export function ItemDetailModal({ isOpen, onClose, groupedItem }: ItemDetailModa
                                     {lotUnits.toLocaleString()} {uom}
                                   </td>
                                   <td className="py-3 px-3 font-mono text-slate-700">
-                                    {lot.receivedAt ? new Date(lot.receivedAt).toLocaleDateString() : "—"}
+                                    {lot.manufactureDate ? new Date(lot.manufactureDate).toLocaleDateString() : "—"}
                                   </td>
                                   <td className="py-3 px-3 font-mono text-slate-700">
                                     {lot.expiryDate ? new Date(lot.expiryDate).toLocaleDateString() : "—"}

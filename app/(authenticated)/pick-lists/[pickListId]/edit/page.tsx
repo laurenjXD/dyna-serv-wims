@@ -36,6 +36,8 @@ export default async function EditPickListPage({ params, searchParams }: PagePro
     customerItemCode: item.customerItemCode,
     itemDescription: item.itemDescription,
     lotNumber: item.lotNumber,
+    manufactureDate: item.manufactureDate ?? null,
+    expiryDate: item.expiryDate ?? null,
     locationLabel: item.locationLabel,
     qty: item.qty,
     spq: item.spq,

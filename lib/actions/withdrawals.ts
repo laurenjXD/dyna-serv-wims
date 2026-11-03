@@ -169,7 +169,10 @@ export type ListOutgoingLedgerResult =
   | { ok: false; errors: string[] };
 
 /**
- * Creates a bounded FIFO/FEFO override request for one exact pallet/location.
+ * Creates a bounded FIFO/FEFO override request for one exact alternate
+ * pallet/location. The submitted allocation may also contain the recommended
+ * FIFO/FEFO locations; only the quantity that exceeds the current standard
+ * plan is covered by the approval.
  * No stock is reserved here. A later Stage 1 command must consume an approved,
  * unexpired decision and revalidate the balance version atomically.
  */
@@ -186,12 +189,14 @@ export async function requestFifoOverride(
   if (!validation.ok) return { ok: false, errors: validation.errors };
   const data = validation.data;
   const trimmedReason = reason.trim();
-  if (data.lines.length !== 1) return { ok: false, errors: ["override_single_pallet_required"] };
 
   try {
     const result = await withRlsTransaction(rlsDeps, async (tx) => {
       const database = tx.db as DbLike;
-      const requested = data.lines[0];
+      const itemIds = new Set(data.lines.map((line) => line.itemId));
+      if (itemIds.size !== 1) throw new Error("override_single_pallet_required");
+      const itemId = data.lines[0].itemId;
+      const requestedQty = data.lines.reduce((sum, line) => sum + line.qty, 0);
       const rows = (await database
         .select({
           balanceId: lotLocationBalances.id,
@@ -218,7 +223,7 @@ export async function requestFifoOverride(
         .innerJoin(items, eq(items.id, lots.itemId))
         .innerJoin(locations, eq(locations.id, lotLocationBalances.locationId))
         .where(and(
-          eq(lots.itemId, requested.itemId),
+          eq(lots.itemId, itemId),
           eq(lots.status, "available"),
           eq(lots.flowType, data.flowType),
           stockOrganizationCondition(data.partyId),
@@ -226,15 +231,11 @@ export async function requestFifoOverride(
         ))
         .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
 
-      const selected = rows.find((row) =>
-        row.lotId === requested.lotId && row.locationId === requested.locationId,
-      );
-      if (!selected || stockOrganizationId(selected) !== data.partyId) {
+      const item = rows[0];
+      if (!item || stockOrganizationId(item) !== data.partyId) {
         throw new Error("unable_to_reserve_stock");
       }
-      const available = selected.qtyRemaining - selected.qtyCommitted;
-      if (requested.qty > available) throw new Error("unable_to_reserve_stock");
-      if (requested.qty % positiveInteger(selected.spq) !== 0) {
+      if (requestedQty <= 0 || requestedQty % positiveInteger(item.spq) !== 0) {
         throw new Error("quantity_must_match_spq");
       }
 
@@ -248,11 +249,44 @@ export async function requestFifoOverride(
         qtyCommitted: row.qtyCommitted,
         receivedAt: row.receivedAt,
         expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
-      })), requested.qty, selected.isPerishable, positiveInteger(selected.spq));
+      })), requestedQty, item.isPerishable, positiveInteger(item.spq));
       if (!standard.ok) throw new Error("unable_to_reserve_stock");
-      if (standard.lines.length === 1 &&
-          standard.lines[0].lotId === requested.lotId &&
-          standard.lines[0].locationId === requested.locationId) {
+
+      const sourceKey = (lotId: string, locationId: string) => `${lotId}\u0000${locationId}`;
+      const selectedBySource = new Map<string, number>();
+      for (const line of data.lines) {
+        const key = sourceKey(line.lotId, line.locationId);
+        selectedBySource.set(key, (selectedBySource.get(key) ?? 0) + line.qty);
+      }
+      const standardBySource = new Map<string, number>();
+      for (const line of standard.lines) {
+        const key = sourceKey(line.lotId, line.locationId);
+        standardBySource.set(key, (standardBySource.get(key) ?? 0) + line.qtyAllocated);
+      }
+      const alternateSources = [...selectedBySource.entries()]
+        .map(([key, qty]) => ({ key, qty: qty - (standardBySource.get(key) ?? 0) }))
+        .filter(({ qty }) => qty > 0);
+      if (alternateSources.length === 0) {
+        throw new Error("override_not_required");
+      }
+      if (alternateSources.length !== 1) {
+        throw new Error("override_single_pallet_required");
+      }
+
+      const alternateKey = alternateSources[0].key;
+      const alternateQty = alternateSources[0].qty;
+      const [alternateLotId, alternateLocationId] = alternateKey.split("\u0000");
+      const selected = rows.find((row) =>
+        row.lotId === alternateLotId && row.locationId === alternateLocationId,
+      );
+      if (!selected || stockOrganizationId(selected) !== data.partyId) {
+        throw new Error("unable_to_reserve_stock");
+      }
+      const available = selected.qtyRemaining - selected.qtyCommitted;
+      if (alternateQty > available || alternateQty % positiveInteger(selected.spq) !== 0) {
+        throw new Error("unable_to_reserve_stock");
+      }
+      if (alternateQty <= 0) {
         throw new Error("override_not_required");
       }
 
@@ -270,7 +304,7 @@ export async function requestFifoOverride(
           lot_number: selected.lotNumber,
           location_id: selected.locationId,
           location_code: selected.locationLabel,
-          requested_qty: String(requested.qty),
+          requested_qty: String(alternateQty),
           available_qty_at_request: String(available),
           flow_type: data.flowType,
           actor_user_id: permission.context.userId,

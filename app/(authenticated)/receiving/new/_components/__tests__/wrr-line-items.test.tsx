@@ -38,6 +38,27 @@ describe("WrrLineItems mobile item selection", () => {
     expect(input).toHaveValue("DSGC-ITEM-1");
     expect(screen.getByDisplayValue("Test material description")).toBeInTheDocument();
     expect(screen.getByDisplayValue("piece")).toBeInTheDocument();
+    expect(screen.getByText("SPQ detected: 100 units/carton")).toBeInTheDocument();
+  });
+
+  it("explains when total units are not divisible by the enrolled SPQ", () => {
+    render(
+      <WrrLineItems
+        flowType="trading"
+        vendorPartyId="vendor-1"
+        itemOptions={[assignedItem]}
+      />,
+    );
+
+    const itemInput = screen.getByPlaceholderText(/Type item code/i);
+    fireEvent.focus(itemInput);
+    fireEvent.click(screen.getByRole("button", { name: /DSGC-ITEM-1/ }));
+
+    fireEvent.change(screen.getByLabelText(/Expected Qty \(Total Units\)/i), {
+      target: { value: "80" },
+    });
+
+    expect(screen.getByText("80 total units ÷ 100 SPQ = 0.8 cartons. Enter a total-unit quantity divisible by 100 (for example, 200 for 2 cartons).")).toBeInTheDocument();
   });
 
   it("shows a legacy catalog material with no organization assignment", () => {

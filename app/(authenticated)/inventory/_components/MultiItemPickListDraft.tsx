@@ -1441,6 +1441,7 @@ export function MultiItemPickListDraft({
                       <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
+                      <div><dt className="text-slate-500">Expiry Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.expiryDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
                     </dl>
                     {requiresOverride && <p className="text-sm font-medium text-amber-700">{selectedSource ? "This location is outside the recommended FIFO/FEFO source and needs supervisor approval." : "One or more selected locations are outside the recommended FIFO/FEFO source and need supervisor approval."}</p>}
                   </div>
@@ -1452,7 +1453,7 @@ export function MultiItemPickListDraft({
 
         {/* Pick List Table: desktop */}
         <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-          <table aria-label="Pick list lines" className="w-full min-w-[1720px] table-fixed border-collapse text-left">
+          <table aria-label="Pick list lines" className="w-full min-w-[1860px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
               <col className="w-[280px]" />
@@ -1463,6 +1464,7 @@ export function MultiItemPickListDraft({
               <col className="w-[180px]" />
               <col className="w-[220px]" />
               <col className="w-[170px]" />
+              <col className="w-[130px]" />
               <col className="w-[120px]" />
               <col className="w-[52px]" />
             </colgroup>
@@ -1477,6 +1479,7 @@ export function MultiItemPickListDraft({
                 <th scope="col" className="h-14 px-4 text-left">Item Description</th>
                 <th scope="col" className="h-14 px-4 text-left">Lot Number</th>
                 <th scope="col" className="h-14 px-4 text-left">Mfg Date</th>
+                <th scope="col" className="h-14 px-4 text-left">Expiry Date</th>
                 <th scope="col" className="h-14 px-3 text-center"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -1650,6 +1653,16 @@ export function MultiItemPickListDraft({
                       <div className="pt-1.5">
                         <span className="block font-mono text-sm text-slate-600" title="Inherited from the selected inventory lot; correct this on the receiving record.">
                           {formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}
+                        </span>
+                        <span className="mt-1 block font-body text-[10px] leading-4 text-slate-400">Inherited from lot</span>
+                      </div>
+                    </td>
+
+                    {/* EXPIRY DATE */}
+                    <td className="px-4 py-4 align-top">
+                      <div className="pt-1.5">
+                        <span className="block font-mono text-sm text-slate-600" title="Inherited from the selected inventory lot; correct this on the receiving record.">
+                          {formatStockDate(fifoAllocations[0]?.source.expiryDate) ?? <span className="text-slate-400">Not recorded</span>}
                         </span>
                         <span className="mt-1 block font-body text-[10px] leading-4 text-slate-400">Inherited from lot</span>
                       </div>

@@ -12,7 +12,7 @@ import { locations } from "@/lib/db/schema/locations";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
 import { lots } from "@/lib/db/schema/lots";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
-import { wrrDocuments } from "@/lib/db/schema/wrr";
+import { wrrDocuments, wrrItems } from "@/lib/db/schema/wrr";
 import { pickLists } from "@/lib/db/schema/pick_lists";
 import { userProfiles } from "@/lib/db/schema/rbac";
 import { allocate, type AllocationResult } from "@/lib/withdrawal/allocation";
@@ -99,8 +99,10 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       flowType: lots.flowType,
       lotNumber: lots.lotNumber,
       lotStatus: lots.status,
-      manufactureDate: lots.manufactureDate,
-      expiryDate: lots.expiryDate,
+      // Lots are authoritative after receiving. Fall back to the originating
+      // WRR line for older receipts created before lot-date copying was wired.
+      manufactureDate: sql<string | null>`COALESCE(${lots.manufactureDate}, ${wrrItems.manufactureDate})`,
+      expiryDate: sql<string | null>`COALESCE(${lots.expiryDate}, ${wrrItems.expiryDate})`,
       receivedAt: lots.createdAt,
       locationId: locations.id,
       locationLabel: locations.label,
@@ -112,6 +114,7 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
     })
     .from(lotLocationBalances)
     .innerJoin(lots, eq(lotLocationBalances.lotId, lots.id))
+    .leftJoin(wrrItems, eq(lots.wrrItemId, wrrItems.id))
     .innerJoin(items, eq(lots.itemId, items.id))
     .innerJoin(locations, eq(lotLocationBalances.locationId, locations.id))
     .leftJoin(itemCategories, eq(items.categoryId, itemCategories.id))

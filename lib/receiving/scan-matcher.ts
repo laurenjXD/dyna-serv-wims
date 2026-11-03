@@ -49,6 +49,7 @@ export type ScanMatchResult =
       reason:
         | "invalid_barcode"
         | "unknown_item"
+        | "no_match"
         | "fully_scanned"
         | "over_quantity"
         | "flow_type_mismatch"
@@ -134,7 +135,11 @@ export function matchScan(
   });
 
   if (matchingLines.length === 0) {
-    return { matched: false, reason: "unknown_item" };
+    // A structured WRR unit label is already an enrolled/generated identity.
+    // If its line is absent from this document, report a document mismatch —
+    // not an unregistered Master Item. This keeps labels from another WRR
+    // blocked while giving the operator the correct recovery path.
+    return { matched: false, reason: parsedWrrItemId ? "no_match" : "unknown_item" };
   }
 
   // Walk matching lines in order; skip exhausted ones to support multi-line shared barcode

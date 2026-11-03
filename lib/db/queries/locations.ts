@@ -436,6 +436,9 @@ export type SuggestPutawayLocationsOpts = {
   /** Max number of candidates to return. Defaults to 5 (one suggestion plus
    *  a small set of override alternatives for the accept/override dropdown). */
   limit?: number;
+  /** Return every eligible location so operator search can reach locations
+   * outside the best-fit recommendation window. */
+  includeAll?: boolean;
 };
 
 /**
@@ -506,10 +509,11 @@ export async function suggestPutawayLocations(
     };
   });
 
-  return candidates
+  const rankedCandidates = candidates
     .filter((c) => c.remainingCbm >= requestedCbm)
-    .sort((a, b) => a.remainingCbm - b.remainingCbm)
-    .slice(0, limit);
+    .sort((a, b) => a.remainingCbm - b.remainingCbm);
+
+  return opts.includeAll ? rankedCandidates : rankedCandidates.slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------

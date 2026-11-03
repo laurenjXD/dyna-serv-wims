@@ -91,4 +91,50 @@ describe("PutawayLocationSelector whole-line receiving", () => {
     expect(screen.getByText(/800\/800 Boxes Assigned/)).toBeInTheDocument();
     expect(screen.queryByText("Put the 1 scanned box in")).not.toBeInTheDocument();
   });
+
+  it("supports quantity-based location splits for lines larger than 50 boxes", () => {
+    const { container } = render(
+      <PutawayLocationSelector
+        candidates={[
+          {
+            id: "loc-1",
+            label: "B2-05",
+            locationType: "storage",
+            maxCbmCapacity: 1000,
+            occupiedCbm: 0,
+            remainingCbm: 1000,
+          },
+          {
+            id: "loc-2",
+            label: "B2-06",
+            locationType: "storage",
+            maxCbmCapacity: 1000,
+            occupiedCbm: 0,
+            remainingCbm: 1000,
+          },
+        ]}
+        contents={{}}
+        quantity={70}
+        scannedQuantity={1}
+        unitCbm={1}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/Split Storage \/ Hold \/ Shortage by quantity/));
+    fireEvent.focus(screen.getByLabelText("Location 1"));
+    fireEvent.click(screen.getByRole("button", { name: /B2-05 \(Storage\)/ }));
+    fireEvent.change(screen.getByLabelText("Boxes"), { target: { value: "40" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Add another location" }));
+    fireEvent.focus(screen.getByLabelText("Location 2"));
+    fireEvent.click(screen.getByRole("button", { name: /B2-06 \(Storage\)/ }));
+    fireEvent.change(screen.getAllByLabelText("Boxes")[1], { target: { value: "30" } });
+
+    const allocations = container.querySelector<HTMLInputElement>('input[name="allocations"]');
+    expect(JSON.parse(allocations?.value ?? "null")).toEqual([
+      { locationId: "loc-1", qty: 40 },
+      { locationId: "loc-2", qty: 30 },
+    ]);
+    expect(screen.getByText(/70 of 70 boxes assigned/)).toBeInTheDocument();
+  });
 });

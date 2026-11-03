@@ -101,10 +101,10 @@ export default async function PickListApprovalPage({ params, searchParams }: Pag
         </div>
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-outline-variant/30 bg-surface-white">
-          <table className="w-full min-w-[760px] border-collapse text-left">
+          <table className="w-full min-w-[930px] border-collapse text-left">
             <thead className="bg-surface-light-grey">
               <tr className="border-b border-outline-variant/30">
-                {["Item code", "Description", "Lot", "Location", "Boxes", "Units"].map((label) => (
+                {["Item code", "Description", "Lot", "Mfg. date", "Expiry date", "Location", "Boxes", "Units"].map((label) => (
                   <th key={label} className="px-4 py-3 font-label text-label-xs font-bold uppercase tracking-wide text-text-grey">{label}</th>
                 ))}
               </tr>
@@ -115,6 +115,8 @@ export default async function PickListApprovalPage({ params, searchParams }: Pag
                   <td className="px-4 py-3 font-mono text-mono-sm font-bold text-on-surface">{item.itemCode}</td>
                   <td className="max-w-[18rem] truncate px-4 py-3 font-body text-body-sm text-on-surface">{item.itemDescription ?? "—"}</td>
                   <td className="px-4 py-3 font-mono text-mono-sm text-on-surface">{item.lotNumber}</td>
+                  <td className="px-4 py-3 font-mono text-mono-sm text-on-surface">{item.manufactureDate ?? "—"}</td>
+                  <td className="px-4 py-3 font-mono text-mono-sm text-on-surface">{item.expiryDate ?? "—"}</td>
                   <td className="px-4 py-3 font-mono text-mono-sm font-bold text-brand-navy">{item.locationLabel}</td>
                   <td className="px-4 py-3 font-mono text-mono-sm text-on-surface">{item.numberOfBoxes}</td>
                   <td className="px-4 py-3 font-mono text-mono-sm text-on-surface">{item.qty}</td>

@@ -405,15 +405,33 @@ export function WrrLineItems({
 
               {/* Col 2: Derived carton QR labels */}
               <div>
-                <label className="block font-label text-label text-text-grey">Carton QR Labels</label>
+                <label className="block font-label text-label text-text-grey">
+                  Carton QR Labels
+                  {selectedItem && (
+                    <span className="ml-2 font-mono text-[11px] font-semibold text-brand-navy">
+                      SPQ detected: {selectedItem.spq} units/carton
+                    </span>
+                  )}
+                </label>
                 {(() => {
                   const spq = selectedItem?.spq ?? 0;
                   const total = Number(line.expectedQty);
                   const valid = Number.isInteger(total) && total > 0 && spq > 0 && total % spq === 0;
+                  const cartons = Number.isInteger(total) && total > 0 && spq > 0 ? total / spq : 0;
                   return (
-                    <div className={`mt-1 flex h-11 items-center rounded-lg border px-3 font-mono text-mono-md ${valid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-                      {valid ? `${total / spq} labels` : selectedItem ? "Quantity must divide evenly by SPQ" : "Select an enrolled item"}
-                    </div>
+                    <>
+                      <div
+                        aria-live="polite"
+                        className={`mt-1 flex h-11 items-center rounded-lg border px-3 font-mono text-mono-md ${valid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+                      >
+                        {valid ? `${cartons} labels` : selectedItem ? "Quantity must divide evenly by SPQ" : "Select an enrolled item"}
+                      </div>
+                      {selectedItem && !valid && Number.isInteger(total) && total > 0 && spq > 0 && (
+                        <p className="mt-1 font-body text-[11px] text-status-warning">
+                          {total} total units ÷ {spq} SPQ = {cartons} cartons. Enter a total-unit quantity divisible by {spq} (for example, {spq * 2} for 2 cartons).
+                        </p>
+                      )}
+                    </>
                   );
                 })()}
                 <p className="mt-1 font-body text-[11px] text-text-grey">Derived from total units ÷ enrolled SPQ.</p>

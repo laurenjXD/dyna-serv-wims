@@ -81,6 +81,7 @@ describe("MultiItemPickListDraft organization selection", () => {
       "Item Description",
       "Lot Number",
       "Mfg Date",
+      "Expiry Date",
       "Actions",
     ]);
   });

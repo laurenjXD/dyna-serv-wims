@@ -70,7 +70,7 @@ function getScanErrorMessage(reason: string): string {
     case "wrr_document_qr":
       return "This QR identifies the WRR document, not a physical item. Go back to the WRR, print its Unit Labels, then scan one label per carton or item.";
     case "no_match":
-      return "Item not found — barcode does not match any expected line on this WRR.";
+      return "This label does not belong to this WRR. Return to the WRR that printed it, or print Unit Labels from the current WRR.";
     case "over_quantity":
       return "Already fully scanned — this item has already reached its expected quantity.";
     case "duplicate":
@@ -210,7 +210,10 @@ export default async function ReceiveFloorPage({
       primaryStoreCandidates = await suggestPutawayLocations(db, {
         itemUnitCbm: Number(primaryReadyLine.unitCbm ?? 0),
         requestedQty: 1,
-        limit: 50,
+        // Keep the best-fit ordering, but expose every eligible storage
+        // location so the operator's search can reach racks outside the
+        // recommendation window (for example, A1 locations).
+        includeAll: true,
       });
       primaryStoreContents = await getPutawayLocationContents(
         db,
@@ -430,12 +433,12 @@ export default async function ReceiveFloorPage({
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-5 pb-8">
         {/* Progress header — Fira Sans, large enough for floor visibility */}
         <div className="rounded-2xl border border-outline-variant/40 bg-surface-white p-5 shadow-elevation-2 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="font-label text-label font-bold uppercase tracking-[0.12em] text-primary">Receiving workflow</p>
               <h1 className="mt-1 font-heading font-extrabold text-headline-md text-on-surface">Scan items</h1>
             </div>
-            <div className="rounded-xl bg-[#EEF3FF] px-4 py-3 text-right">
+            <div className="w-full rounded-xl bg-[#EEF3FF] px-4 py-3 text-center sm:w-auto sm:text-right">
               <p className="font-mono text-data-display font-bold text-brand-navy">{fullyScannedLines}/{totalLines}</p>
               <p className="font-label text-label font-bold uppercase tracking-wide text-text-grey">Lines complete</p>
             </div>

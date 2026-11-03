@@ -162,7 +162,7 @@ export default async function PickListPrintPage({
           </div>
 
           <div className="overflow-x-auto">
-            <table data-document-table className="w-full border-collapse border border-slate-300 font-mono text-[11px]">
+            <table data-document-table className="w-full min-w-[1080px] border-collapse border border-slate-300 font-mono text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-[10px]">
                   <th className="border border-slate-300 px-2 py-1.5 text-center uppercase font-bold tracking-wider text-slate-700 w-10">
@@ -173,6 +173,8 @@ export default async function PickListPrintPage({
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Customer PN</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Description</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Lot Number</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Mfg Date</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Expiry Date</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Location</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">SPQ</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">Boxes</th>
@@ -192,6 +194,8 @@ export default async function PickListPrintPage({
                       <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{line.customerItemCode ?? "—"}</td>
                       <td className="border border-slate-300 px-2 py-1.5 text-slate-800 max-w-[200px] truncate">{line.itemDescription ?? "—"}</td>
                       <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{line.lotNumber}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{line.manufactureDate ?? "—"}</td>
+                      <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{line.expiryDate ?? "—"}</td>
                       <td className="border border-slate-300 px-2 py-1.5 font-bold text-brand-navy">{line.locationLabel}</td>
                       <td className="border border-slate-300 px-2 py-1.5 text-right text-slate-700">{line.spq.toLocaleString()}</td>
                       <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
@@ -206,7 +210,7 @@ export default async function PickListPrintPage({
               </tbody>
               <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
                 <tr>
-                  <td colSpan={8} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
+                  <td colSpan={10} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
                     Total Pick Allocation:
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">
