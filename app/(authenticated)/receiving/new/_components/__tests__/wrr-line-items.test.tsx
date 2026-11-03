@@ -41,7 +41,7 @@ describe("WrrLineItems mobile item selection", () => {
     expect(screen.getByText("SPQ detected: 100 units/carton")).toBeInTheDocument();
   });
 
-  it("explains when total units are not divisible by the enrolled SPQ", () => {
+  it("derives total units and QR labels from the CIPL carton quantity", () => {
     render(
       <WrrLineItems
         flowType="trading"
@@ -54,11 +54,12 @@ describe("WrrLineItems mobile item selection", () => {
     fireEvent.focus(itemInput);
     fireEvent.click(screen.getByRole("button", { name: /DSGC-ITEM-1/ }));
 
-    fireEvent.change(screen.getByLabelText(/Expected Qty \(Total Units\)/i), {
-      target: { value: "80" },
+    fireEvent.change(screen.getByLabelText(/Carton Qty \(CIPL\)/i), {
+      target: { value: "5" },
     });
 
-    expect(screen.getByText("80 total units ÷ 100 SPQ = 0.8 cartons. Enter a total-unit quantity divisible by 100 (for example, 200 for 2 cartons).")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("500")).toBeInTheDocument();
+    expect(screen.getByText("5 labels")).toBeInTheDocument();
   });
 
   it("shows a legacy catalog material with no organization assignment", () => {

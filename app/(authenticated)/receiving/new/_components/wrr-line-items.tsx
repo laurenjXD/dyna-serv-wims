@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
+import { exactCartonCount } from "@/lib/inventory/quantities";
 import { filterReceivingItemOptions } from "@/lib/receiving/item-selection";
 import { DatePickerField } from "@/components/ui/DatePickerField";
 import { ItemSearchCombobox } from "./ItemSearchCombobox";
@@ -36,6 +37,7 @@ export interface ImportedWrrLine {
 
 interface LineState {
   lotNumber: string;
+  cartonQty: string;
   expectedQty: string;
   unitCbm: string;
   uom: string;
@@ -51,6 +53,7 @@ interface LineState {
 
 const EMPTY_LINE: LineState = {
   lotNumber: "",
+  cartonQty: "",
   expectedQty: "",
   unitCbm: "",
   uom: "",
@@ -107,6 +110,7 @@ export function WrrLineItems({
         const item = itemOptions.find((candidate) => candidate.id === imp.itemId);
         return {
           lotNumber: imp.lotNumber || "",
+          cartonQty: imp.packageCount || (item ? String(exactCartonCount(Number(imp.expectedQty), item.spq) ?? "") : ""),
           expectedQty: imp.expectedQty || "",
           unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
           // Once an enrolled item is known, its UOM is authoritative. The
@@ -157,6 +161,7 @@ export function WrrLineItems({
       if (!item) return line;
       return {
         ...line,
+        cartonQty: line.cartonQty || String(exactCartonCount(Number(line.expectedQty), item.spq) ?? ""),
         itemCode: codeFor(item),
         itemDescription: item.description?.trim() || item.name,
         customerItemCode: item.customerItemCode ?? "",
@@ -174,6 +179,7 @@ export function WrrLineItems({
     if (!item) return;
     setLines((prev) => prev.map((line, i) => i === index ? {
       ...line,
+      cartonQty: line.cartonQty || String(exactCartonCount(Number(line.expectedQty), item.spq) ?? ""),
       itemId: item.id,
       itemCode: codeFor(item),
       itemDescription: item.description?.trim() || item.name,
@@ -190,6 +196,7 @@ export function WrrLineItems({
       ...line,
       itemId: "",
       itemCode: value,
+      cartonQty: "",
       itemDescription: "",
       customerItemCode: "",
       unitCbm: "",
@@ -212,6 +219,21 @@ export function WrrLineItems({
         i === index ? { ...line, [field]: value } : line
       )
     );
+  }
+
+  function updateCartonQty(index: number, value: string) {
+    setLines((prev) => prev.map((line, i) => {
+      if (i !== index) return line;
+      const item = itemOptions.find((candidate) => candidate.id === line.itemId);
+      const cartons = Number(value);
+      return {
+        ...line,
+        cartonQty: value,
+        expectedQty: item && Number.isInteger(cartons) && cartons > 0
+          ? String(cartons * item.spq)
+          : "",
+      };
+    }));
   }
 
   return (
@@ -380,27 +402,54 @@ export function WrrLineItems({
               </div>
             </div>
 
-            {/* Row 3: Total units, derived labels, CBM & UOM */}
+            {/* Row 3: CIPL cartons, derived total units/labels, CBM & UOM */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-              {/* Col 1: Expected total base units */}
+              {/* Col 1: CIPL carton quantity, with total units derived from SPQ */}
               <div>
-                <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
-                  Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
-                </label>
-                <input
-                  id={`line-${index}-expectedQty`}
-                  name={`line_${index}_expectedQty`}
-                  type="number"
-                  required
-                  min="1"
-                  step="1"
-                  value={line.expectedQty}
-                  onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
-                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface"
-                />
-                <p className="mt-1 font-body text-[11px] text-text-grey">
-                  Total base units from the CIPL/WRR.
-                </p>
+                {selectedItem ? (
+                  <>
+                    <label htmlFor={`line-${index}-cartonQty`} className="block font-label text-label text-text-grey">
+                      Carton Qty (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
+                    </label>
+                    <input
+                      id={`line-${index}-cartonQty`}
+                      type="number"
+                      required
+                      min="1"
+                      step="1"
+                      value={line.cartonQty}
+                      readOnly={isImported}
+                      onChange={(e) => updateCartonQty(index, e.target.value)}
+                      className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
+                    />
+                    <input type="hidden" name={`line_${index}_expectedQty`} value={line.expectedQty} />
+                    <p className="mt-1 font-body text-[11px] text-text-grey">
+                      {line.cartonQty
+                        ? `${line.expectedQty} total units (${line.cartonQty} cartons × SPQ ${selectedItem.spq}).`
+                        : `Total units are calculated from cartons × SPQ ${selectedItem.spq}.`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
+                      Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
+                    </label>
+                    <input
+                      id={`line-${index}-expectedQty`}
+                      name={`line_${index}_expectedQty`}
+                      type="number"
+                      required
+                      min="1"
+                      step="1"
+                      value={line.expectedQty}
+                      onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
+                      className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface"
+                    />
+                    <p className="mt-1 font-body text-[11px] text-text-grey">
+                      Total base units from the CIPL/WRR.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Col 2: Derived carton QR labels */}
@@ -419,13 +468,8 @@ export function WrrLineItems({
                         aria-live="polite"
                         className={`mt-1 flex h-11 items-center rounded-lg border px-3 font-mono text-mono-md ${valid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
                       >
-                        {valid ? `${cartons} labels` : selectedItem ? "Quantity must divide evenly by SPQ" : "Select an enrolled item"}
+                        {valid ? `${cartons} labels` : selectedItem ? "Enter carton quantity" : "Select an enrolled item"}
                       </div>
-                      {selectedItem && !valid && Number.isInteger(total) && total > 0 && spq > 0 && (
-                        <p className="mt-1 font-body text-[11px] text-status-warning">
-                          {total} total units ÷ {spq} SPQ = {cartons} cartons. Enter a total-unit quantity divisible by {spq} (for example, {spq * 2} for 2 cartons).
-                        </p>
-                      )}
                     </>
                   );
                 })()}
@@ -437,7 +481,7 @@ export function WrrLineItems({
                       </span>{" "}
                     </>
                   )}
-                  Derived from total units ÷ enrolled SPQ.
+                  {selectedItem ? "Derived from carton quantity × enrolled SPQ." : "Derived from total units ÷ enrolled SPQ."}
                 </p>
               </div>
 
