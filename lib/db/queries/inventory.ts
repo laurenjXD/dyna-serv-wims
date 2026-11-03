@@ -268,6 +268,7 @@ export function buildStockAllocationPreview(
     })),
     requestedQty,
     isPerishable,
+    itemRows[0]?.spq,
   );
 
   return result.ok

@@ -75,7 +75,7 @@
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
-import { allocate, checkProvisionalItemCodes } from "../allocation";
+import { allocate, buildAllocationPlan, checkProvisionalItemCodes } from "../allocation";
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -106,6 +106,64 @@ function makeRow(overrides: {
     expiryDate: overrides.expiryDate ?? null,
   };
 }
+
+describe("lot-first allocation plans", () => {
+  it("groups one lot across locations, ranks the lot once, and orders its locations by label", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-older", lotNumber: "LOT-OLD", locationId: "loc-z", locationLabel: "Z-09", qtyRemaining: 10, receivedAt: new Date("2026-01-01") }),
+      makeRow({ lotId: "lot-older", lotNumber: "LOT-OLD", locationId: "loc-a", locationLabel: "A-01", qtyRemaining: 20, receivedAt: new Date("2026-01-01") }),
+      makeRow({ lotId: "lot-newer", lotNumber: "LOT-NEW", locationId: "loc-b", locationLabel: "B-01", qtyRemaining: 50, receivedAt: new Date("2026-02-01") }),
+    ], 25, false);
+
+    expect(plan.strategy).toBe("FIFO");
+    expect(plan.lots.map((lot) => lot.lotNumber)).toEqual(["LOT-OLD", "LOT-NEW"]);
+    expect(plan.lots[0].rank).toBe(1);
+    expect(plan.lots[0].availableQty).toBe(30);
+    expect(plan.lots[0].locations.map((location) => location.locationLabel)).toEqual(["A-01", "Z-09"]);
+    expect(plan.lots[0].locations.map((location) => location.qtyAllocated)).toEqual([20, 5]);
+    expect(plan.lots[1].qtyAllocated).toBe(0);
+  });
+
+  it("moves to the next lot only after every earlier-lot location is exhausted", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-first", lotNumber: "LOT-1", locationId: "loc-2", locationLabel: "B-02", qtyRemaining: 10, receivedAt: new Date("2026-01-01") }),
+      makeRow({ lotId: "lot-first", lotNumber: "LOT-1", locationId: "loc-1", locationLabel: "A-01", qtyRemaining: 15, receivedAt: new Date("2026-01-01") }),
+      makeRow({ lotId: "lot-second", lotNumber: "LOT-2", locationId: "loc-3", locationLabel: "C-03", qtyRemaining: 100, receivedAt: new Date("2026-02-01") }),
+    ], 30, false);
+
+    expect(plan.lines).toEqual([
+      { lotId: "lot-first", locationId: "loc-1", qtyAllocated: 15 },
+      { lotId: "lot-first", locationId: "loc-2", qtyAllocated: 10 },
+      { lotId: "lot-second", locationId: "loc-3", qtyAllocated: 5 },
+    ]);
+  });
+
+  it("uses FEFO lot order and places missing expiry dates last", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-no-expiry", lotNumber: "LOT-NO-DATE", locationId: "loc-1", expiryDate: null, receivedAt: new Date("2025-01-01") }),
+      makeRow({ lotId: "lot-late", lotNumber: "LOT-LATE", locationId: "loc-2", expiryDate: new Date("2026-06-01"), receivedAt: new Date("2026-01-01") }),
+      makeRow({ lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-3", expiryDate: new Date("2026-03-01"), receivedAt: new Date("2026-04-01") }),
+    ], 20, true);
+
+    expect(plan.strategy).toBe("FEFO");
+    expect(plan.lots.map((lot) => lot.lotNumber)).toEqual(["LOT-EARLY", "LOT-LATE", "LOT-NO-DATE"]);
+  });
+
+  it("keeps authoritative allocations on complete SPQ/box boundaries", () => {
+    const result = allocate([
+      makeRow({ lotId: "lot-one", locationId: "loc-1", locationLabel: "A-01", qtyRemaining: 150 }),
+      makeRow({ lotId: "lot-two", locationId: "loc-2", locationLabel: "B-01", qtyRemaining: 200 }),
+    ], 200, false, 100);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.lines).toEqual([
+        { lotId: "lot-one", locationId: "loc-1", qtyAllocated: 100 },
+        { lotId: "lot-two", locationId: "loc-2", qtyAllocated: 100 },
+      ]);
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
 // FEFO — perishable items sorted by expiryDate ascending (R3.2, design.md §5)

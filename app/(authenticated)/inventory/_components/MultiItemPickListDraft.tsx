@@ -7,7 +7,7 @@ import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRi
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { boxesToPieces, piecesToBoxes } from "@/lib/inventory/quantities";
-import { compareLotLocationPriority } from "@/lib/withdrawal/allocation";
+import { buildAllocationPlan, orderLotLocationRows, type AllocationPlan } from "@/lib/withdrawal/allocation";
 import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 type StockSource = {
@@ -28,28 +28,13 @@ type StockSource = {
   balanceId: string;
   lotId: string;
   lotNumber: string;
-  receivedAt: Date | string;
-  expiryDate: Date | string | null;
-  isPerishable: boolean;
   locationId: string;
   locationLabel: string;
   availableQty: number;
-};
-
-type RankedStockSource = StockSource & {
-  lotPriority: number;
-  sourcePriority: number;
-};
-
-type FifoLotGroup = {
-  lotId: string;
-  lotNumber: string;
-  lotPriority: number;
-  receivedAt: Date | string;
-  expiryDate: Date | string | null;
-  isPerishable: boolean;
-  availableBoxes: number;
-  sources: RankedStockSource[];
+  receivedAt?: Date;
+  expiryDate?: string | null;
+  isPerishable?: boolean;
+  priority?: number;
 };
 
 type DraftLine = {
@@ -99,7 +84,7 @@ function PendingActionButton({
 }
 
 type FifoBoxAllocation = {
-  source: RankedStockSource;
+  source: StockSource;
   boxes: number;
   availableBoxes: number;
   remainingBoxes: number;
@@ -112,12 +97,11 @@ type CatalogItem = {
   supplierItemCode?: string | null;
   dsgcItemNumber?: string | null;
   customerItemCode: string | null;
-  isPerishable: boolean;
   uom: string;
   spq: number;
   volumeCbm?: string | number | null;
-  sources: RankedStockSource[];
-  lotGroups: FifoLotGroup[];
+  isPerishable: boolean;
+  sources: StockSource[];
 };
 
 function itemCodeFor(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "dsgcItemNumber">, flowType: string) {
@@ -134,73 +118,13 @@ function availableBoxesForSource(source: Pick<StockSource, "availableQty" | "spq
   return Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq)));
 }
 
-function formatStockDate(value?: Date | string | null): string | null {
+function formatStockDate(value?: string | null): string | null {
   if (!value) return null;
-  const dateOnly = value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10);
+  const dateOnly = value.slice(0, 10);
   const date = new Date(`${dateOnly}T00:00:00`);
   return Number.isNaN(date.getTime())
     ? dateOnly
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-function rankSourcesByLot(sources: StockSource[]): RankedStockSource[] {
-  const ordered = [...sources].sort((left, right) =>
-    compareLotLocationPriority(left, right, left.isPerishable),
-  );
-  let currentLotId: string | null = null;
-  let lotPriority = 0;
-  return ordered.map((source, index) => {
-    if (source.lotId !== currentLotId) {
-      currentLotId = source.lotId;
-      lotPriority += 1;
-    }
-    return { ...source, lotPriority, sourcePriority: index + 1 };
-  });
-}
-
-function groupSourcesByLot(sources: RankedStockSource[]): FifoLotGroup[] {
-  const groups = new Map<string, FifoLotGroup>();
-  for (const source of sources) {
-    let group = groups.get(source.lotId);
-    if (!group) {
-      group = {
-        lotId: source.lotId,
-        lotNumber: source.lotNumber,
-        lotPriority: source.lotPriority,
-        receivedAt: source.receivedAt,
-        expiryDate: source.expiryDate,
-        isPerishable: source.isPerishable,
-        availableBoxes: 0,
-        sources: [],
-      };
-      groups.set(source.lotId, group);
-    }
-    group.sources.push(source);
-    group.availableBoxes += availableBoxesForSource(source);
-  }
-  return [...groups.values()];
-}
-
-function groupManualAllocationsByLot(
-  lotGroups: FifoLotGroup[],
-  allocations: DraftLine["manualAllocations"],
-) {
-  return lotGroups.map((lotGroup) => ({
-    lotGroup,
-    allocations: lotGroup.sources.flatMap((source) => {
-      const allocation = allocations.find((entry) => entry.balanceId === source.balanceId);
-      return allocation ? [{ source, allocation }] : [];
-    }),
-  })).filter((group) => group.allocations.length > 0);
-}
-
-function lotDateLabel(lotGroup: FifoLotGroup): string {
-  if (lotGroup.isPerishable) {
-    return lotGroup.expiryDate
-      ? `Expires ${formatStockDate(lotGroup.expiryDate)}`
-      : "No expiry date on record (ranked last)";
-  }
-  return `Received ${formatStockDate(lotGroup.receivedAt) ?? "date not recorded"}`;
 }
 
 function PickListItemSearch({
@@ -384,35 +308,54 @@ function PickListItemSearch({
   );
 }
 
-function allocateFifoBoxes(sources: RankedStockSource[], requestedBoxes: number): FifoBoxAllocation[] {
-  if (!Number.isInteger(requestedBoxes) || requestedBoxes <= 0) return [];
-
-  let remaining = requestedBoxes;
-  const allocations: FifoBoxAllocation[] = [];
-  for (const source of [...sources].sort((a, b) => a.sourcePriority - b.sourcePriority)) {
-    if (remaining <= 0) break;
-    const availableBoxes = Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq)));
-    const boxes = Math.min(remaining, availableBoxes);
-    if (boxes <= 0) continue;
-    allocations.push({
-      source,
-      boxes,
-      availableBoxes,
-      remainingBoxes: availableBoxes - boxes,
-    });
-    remaining -= boxes;
-  }
-  return allocations;
+function sourceAsBoxPlanRow(source: StockSource) {
+  return {
+    lotId: source.lotId,
+    locationId: source.locationId,
+    lotStatus: "available",
+    qtyRemaining: availableBoxesForSource(source),
+    qtyCommitted: 0,
+    receivedAt: source.receivedAt ?? new Date(0),
+    expiryDate: source.expiryDate ? new Date(`${source.expiryDate}T00:00:00.000Z`) : null,
+    lotNumber: source.lotNumber,
+    locationLabel: source.locationLabel,
+  };
 }
 
-function allocateDefaultFifoPlan(
-  sources: RankedStockSource[],
+function orderedSourcesForItem(sources: StockSource[], isPerishable: boolean): StockSource[] {
+  const byKey = new Map(sources.map((source) => [`${source.lotId}:${source.locationId}`, source]));
+  return orderLotLocationRows(sources.map(sourceAsBoxPlanRow), isPerishable)
+    .map((row) => byKey.get(`${row.lotId}:${row.locationId}`))
+    .filter((source): source is StockSource => Boolean(source));
+}
+
+function buildBoxAllocationPlan(
+  sources: StockSource[],
   requestedBoxes: number,
+  isPerishable: boolean,
+): { plan: AllocationPlan; allocations: FifoBoxAllocation[] } {
+  const plan = buildAllocationPlan(
+    sources.map(sourceAsBoxPlanRow),
+    requestedBoxes,
+    isPerishable,
+  );
+  const byKey = new Map(sources.map((source) => [`${source.lotId}:${source.locationId}`, source]));
+  const allocations = plan.lines.flatMap((line) => {
+    const source = byKey.get(`${line.lotId}:${line.locationId}`);
+    if (!source || line.qtyAllocated <= 0) return [];
+    const availableBoxes = availableBoxesForSource(source);
+    return [{ source, boxes: line.qtyAllocated, availableBoxes, remainingBoxes: availableBoxes - line.qtyAllocated }];
+  });
+  return { plan, allocations };
+}
+
+function allocateDefaultFifoLocation(
+  sources: StockSource[],
+  requestedBoxes: number,
+  isPerishable: boolean,
 ): DraftLine["manualAllocations"] {
-  return allocateFifoBoxes(sources, requestedBoxes).map(({ source, boxes }) => ({
-    balanceId: source.balanceId,
-    boxes: String(boxes),
-  }));
+  const { allocations } = buildBoxAllocationPlan(sources, requestedBoxes, isPerishable);
+  return allocations.map(({ source, boxes }) => ({ balanceId: source.balanceId, boxes: String(boxes) }));
 }
 
 function allocationsMatchFifoPlan(
@@ -430,15 +373,16 @@ function allocationsMatchFifoPlan(
 }
 
 function rebalanceManualAllocations(
-  sources: RankedStockSource[],
+  sources: StockSource[],
   existing: DraftLine["manualAllocations"],
   requestedBoxes: number,
+  isPerishable: boolean,
 ): DraftLine["manualAllocations"] {
-  if (existing.length === 0) return allocateDefaultFifoPlan(sources, requestedBoxes);
+  if (existing.length === 0) return allocateDefaultFifoLocation(sources, requestedBoxes, isPerishable);
 
   let remaining = requestedBoxes;
   const existingByBalanceId = new Map(existing.map((allocation) => [allocation.balanceId, allocation]));
-  const sortedSources = [...sources].sort((a, b) => a.sourcePriority - b.sourcePriority);
+  const sortedSources = orderedSourcesForItem(sources, isPerishable);
   const allocations: DraftLine["manualAllocations"] = [];
 
   // Preserve the operator's selected locations first, while filling each one
@@ -508,23 +452,19 @@ export function MultiItemPickListDraft({
     stock
       .filter((row) => row.organizationId === organizationId && row.flowType === flowType)
       .forEach((row) => grouped.set(row.itemId, [...(grouped.get(row.itemId) ?? []), row]));
-    return [...grouped.values()].map((itemSources): CatalogItem => {
-      const sources = rankSourcesByLot(itemSources);
-      return {
-        itemId: sources[0].itemId,
-        itemCode: sources[0].itemCode,
-        itemName: sources[0].itemName,
-        supplierItemCode: sources[0].supplierItemCode,
-        dsgcItemNumber: sources[0].dsgcItemNumber,
-        customerItemCode: sources[0].customerItemCode,
-        isPerishable: sources[0].isPerishable,
-        uom: sources[0].uom,
-        spq: sources[0].spq,
-        volumeCbm: sources[0].volumeCbm,
-        sources,
-        lotGroups: groupSourcesByLot(sources),
-      };
-    });
+    return [...grouped.values()].map((sources): CatalogItem => ({
+      itemId: sources[0].itemId,
+      itemCode: sources[0].itemCode,
+      itemName: sources[0].itemName,
+      supplierItemCode: sources[0].supplierItemCode,
+      dsgcItemNumber: sources[0].dsgcItemNumber,
+      customerItemCode: sources[0].customerItemCode,
+      uom: sources[0].uom,
+      spq: sources[0].spq,
+      volumeCbm: sources[0].volumeCbm,
+      isPerishable: sources[0].isPerishable ?? false,
+      sources: orderedSourcesForItem(sources, sources[0].isPerishable ?? false),
+    }));
   }, [flowType, organizationId, stock]);
 
   const lineDetails = lines.map((line) => {
@@ -541,7 +481,6 @@ export function MultiItemPickListDraft({
     ) ?? 0;
     const selectedSource = item?.sources.find((source) => source.balanceId === line.sourceBalanceId) ?? null;
     const maxRequestBoxes = selectedSource && !line.manualSplit ? availableBoxesForSource(selectedSource) : totalAvailableBoxes;
-    const allocationSources = selectedSource && !line.manualSplit ? [selectedSource] : item?.sources ?? [];
     const manualAllocations = line.manualSplit && item
       ? line.manualAllocations.flatMap(({ balanceId, boxes }) => {
           const source = item.sources.find((candidate) => candidate.balanceId === balanceId);
@@ -556,14 +495,22 @@ export function MultiItemPickListDraft({
           }];
         })
       : null;
-    const fifoPlan = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
-    const fifoAllocations = manualAllocations ?? (item && requestedBoxes ? allocateFifoBoxes(allocationSources, requestedBoxes) : []);
+    const standardPlanResult = item
+      ? buildBoxAllocationPlan(item.sources, requestedBoxes ?? 0, item.isPerishable)
+      : null;
+    const fifoPlan = standardPlanResult?.allocations ?? [];
+    const selectedPlanResult = item && selectedSource && requestedBoxes
+      ? buildBoxAllocationPlan([selectedSource], requestedBoxes, item.isPerishable)
+      : null;
+    const fifoAllocations = manualAllocations
+      ?? selectedPlanResult?.allocations
+      ?? (requestedBoxes !== null ? fifoPlan : []);
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
     const requiresOverride = line.manualSplit
       ? !allocationsMatchFifoPlan(fifoAllocations, fifoPlan)
-      : Boolean(selectedSource && selectedSource.sourcePriority > 1);
+      : Boolean(selectedSource && !allocationsMatchFifoPlan(fifoAllocations, fifoPlan));
     return {
       line,
       item,
@@ -571,6 +518,7 @@ export function MultiItemPickListDraft({
       requestedUnits,
       requestedBoxes,
       fifoAllocations,
+      allocationPlan: standardPlanResult?.plan ?? null,
       allocatedBoxes,
       totalAvailableBoxes,
       maxRequestBoxes,
@@ -592,7 +540,7 @@ export function MultiItemPickListDraft({
     const nextRequestedBoxes = Number(nextValue);
     let manualAllocationsPatch: DraftLine["manualAllocations"] | undefined;
     if (detail?.line.manualSplit && detail.item && Number.isInteger(nextRequestedBoxes) && nextRequestedBoxes > 0) {
-      manualAllocationsPatch = rebalanceManualAllocations(detail.item.sources, detail.line.manualAllocations, nextRequestedBoxes);
+      manualAllocationsPatch = rebalanceManualAllocations(detail.item.sources, detail.line.manualAllocations, nextRequestedBoxes, detail.item.isPerishable);
     } else if (nextValue === "" && detail?.line.manualSplit) {
       manualAllocationsPatch = [];
     }
@@ -921,7 +869,10 @@ export function MultiItemPickListDraft({
 
       const matchedItemId = matchRes.bestMatch.item.id;
       const candidateSources = matchedItemId
-        ? rankSourcesByLot(availableStock.filter((s) => s.itemId === matchedItemId))
+        ? orderedSourcesForItem(
+            availableStock.filter((s) => s.itemId === matchedItemId),
+            availableStock.find((s) => s.itemId === matchedItemId)?.isPerishable ?? false,
+          )
         : [];
 
       if (candidateSources.length === 0) {
@@ -962,9 +913,10 @@ export function MultiItemPickListDraft({
     // part of the pick-list identity, so repeated item rows become one total
     // demand line before FIFO/FEFO source allocation.
     for (const request of importRequests.values()) {
-      const candidateSources = rankSourcesByLot(
-        availableStock.filter((source) => source.itemId === request.itemId),
-      );
+      const candidateSources = availableStock
+        .filter((source) => source.itemId === request.itemId)
+        .sort((a, b) => a.locationLabel.localeCompare(b.locationLabel, undefined, { numeric: true, sensitivity: "base" }));
+      const orderedCandidateSources = orderedSourcesForItem(candidateSources, candidateSources[0]?.isPerishable ?? false);
       const availableBoxes = candidateSources.reduce(
         (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
         0,
@@ -979,7 +931,7 @@ export function MultiItemPickListDraft({
         boxes: String(request.requestedBoxes),
         sourceBalanceId: "",
         manualSplit: true,
-        manualAllocations: allocateDefaultFifoPlan(candidateSources, request.requestedBoxes),
+        manualAllocations: allocateDefaultFifoLocation(orderedCandidateSources, request.requestedBoxes, orderedCandidateSources[0]?.isPerishable ?? false),
         customerItemCode: request.customerItemCode,
       });
       totalBoxesAllocated += request.requestedBoxes;
@@ -1212,7 +1164,7 @@ export function MultiItemPickListDraft({
             </div>
           ) : (
             <MobileDataCardList>
-              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
+              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocationPlan, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
                 <MobileDataCard
                   key={line.id}
                   title={item ? itemCodeFor(item, flowType) : "Select an item"}
@@ -1271,38 +1223,29 @@ export function MultiItemPickListDraft({
                         <>
                           <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm font-normal text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
                             <option value="">Select a fixed location</option>
-                            {item?.lotGroups.map((lotGroup) => (
-                              <optgroup key={lotGroup.lotId} label={`${item.isPerishable ? "FEFO" : "FIFO"} lot #${lotGroup.lotPriority} · Lot ${lotGroup.lotNumber}`}>
-                                {lotGroup.sources.map((source) => (
-                                  <option key={source.balanceId} value={source.balanceId}>
-                                    {source.locationLabel} · {availableBoxesForSource(source)} boxes{source.sourcePriority === 1 ? " · Recommended" : " · Supervisor approval"}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            ))}
+                            {item?.sources.map((source) => {
+                              const lotRank = allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank;
+                              return (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · Lot #{lotRank ?? "—"} {source.lotNumber} · {availableBoxesForSource(source)} boxes{lotRank === 1 ? " · Recommended" : " · Supervisor approval"}
+                              </option>
+                              );
+                            })}
                           </select>
-                          <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-base font-normal text-slate-900">
+                          <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-sm font-normal text-slate-700">
                             {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
                               <div key={source.balanceId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                                <span className="truncate">{source.locationLabel} <span className="text-sm text-slate-500">({source.lotNumber})</span></span>
-                                <span className="font-mono text-sm font-semibold text-brand-navy">{boxes} boxes</span>
+                                <span className="truncate">{boxes} boxes from {source.locationLabel} <span className="text-slate-500">· Lot {source.lotNumber}</span></span>
                               </div>
                             )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
                           </div>
                         </>
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
-                          <p className="text-[11px] font-semibold leading-4 text-slate-600">{item?.isPerishable ? "FEFO" : "FIFO"} lots are ranked first; locations within each lot are filled in label order. The next lot is used only when needed.</p>
-                          {item && groupManualAllocationsByLot(item.lotGroups, line.manualAllocations).map(({ lotGroup, allocations }) => (
-                            <section key={lotGroup.lotId} className="grid gap-2 rounded-lg border border-slate-200 bg-white/70 p-2.5">
-                              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 border-b border-slate-200 pb-2">
-                                <span className="min-w-0">
-                                  <span className="block font-semibold text-brand-navy">{item.isPerishable ? "FEFO" : "FIFO"} lot #{lotGroup.lotPriority} · Lot {lotGroup.lotNumber}</span>
-                                  <span className="block font-body text-[10px] font-normal text-slate-600">{lotDateLabel(lotGroup)}</span>
-                                </span>
-                                <span className="shrink-0 font-body text-[10px] font-semibold text-slate-600">{lotGroup.availableBoxes} boxes across {lotGroup.sources.length} {lotGroup.sources.length === 1 ? "location" : "locations"}</span>
-                              </div>
-                              {allocations.map(({ source, allocation }) => {
+                          <p className="text-[11px] font-semibold leading-4 text-slate-600">{allocationPlan?.strategy ?? "FIFO"} is applied automatically across lots. Adjust the locations below if needed.</p>
+                          {line.manualAllocations.map((allocation) => {
+                            const source = item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
+                            if (!source) return null;
                             const otherAllocatedBoxes = line.manualAllocations
                               .filter((entry) => entry.balanceId !== source.balanceId)
                               .reduce((sum, entry) => sum + (Number.isInteger(Number(entry.boxes)) ? Number(entry.boxes) : 0), 0);
@@ -1310,8 +1253,8 @@ export function MultiItemPickListDraft({
                             return (
                               <div key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_5.5rem_auto] items-center gap-2 rounded-lg border border-brand-navy/30 bg-brand-navy/10 px-2.5 py-2 ring-1 ring-brand-navy/10">
                                 <span className="min-w-0">
-                                  <span className="block truncate font-semibold text-brand-navy">✓ {source.locationLabel}</span>
-                                  <span className="block truncate text-[10px] font-normal text-slate-600">{availableBoxesForSource(source)} boxes available in this lot</span>
+                                  <span className="block truncate font-semibold text-brand-navy">✓ {source.locationLabel} <span className="font-normal">· Lot #{allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank ?? "—"}</span></span>
+                                  <span className="block truncate text-[10px] font-normal text-slate-600">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
                                 </span>
                                 <input
                                   aria-label={`Boxes from ${source.locationLabel}`}
@@ -1326,9 +1269,7 @@ export function MultiItemPickListDraft({
                                 <button type="button" aria-label={`Remove location ${source.locationLabel}`} onClick={() => handleManualLocationToggle(line.id, source.balanceId)} disabled={!canEditLines} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-rose-600 disabled:opacity-40">×</button>
                               </div>
                             );
-                              })}
-                            </section>
-                          ))}
+                          })}
                           <select
                             aria-label="Add location within FIFO lot"
                             value=""
@@ -1337,14 +1278,10 @@ export function MultiItemPickListDraft({
                             className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
                           >
                             <option value="">Add another location…</option>
-                            {item?.lotGroups.map((lotGroup) => (
-                              <optgroup key={lotGroup.lotId} label={`${item.isPerishable ? "FEFO" : "FIFO"} lot #${lotGroup.lotPriority} · Lot ${lotGroup.lotNumber}`}>
-                                {lotGroup.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
-                                  <option key={source.balanceId} value={source.balanceId}>
-                                    {source.locationLabel} · {availableBoxesForSource(source)} boxes available
-                                  </option>
-                                ))}
-                              </optgroup>
+                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · Lot #{allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank ?? "—"} · {availableBoxesForSource(source)} boxes available
+                              </option>
                             ))}
                           </select>
                           <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-[11px]">
@@ -1418,7 +1355,7 @@ export function MultiItemPickListDraft({
                   </td>
                 </tr>
               ) : (
-                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
+                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocationPlan, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
                   <tr key={line.id} className="bg-white transition-colors hover:bg-[#F8FAFC]">
                     {/* ITEM CODE */}
                     <td className="px-4 py-4 align-top">
@@ -1491,38 +1428,29 @@ export function MultiItemPickListDraft({
                         <>
                           <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
                             <option value="">Select a fixed location</option>
-                            {item?.lotGroups.map((lotGroup) => (
-                              <optgroup key={lotGroup.lotId} label={`${item.isPerishable ? "FEFO" : "FIFO"} lot #${lotGroup.lotPriority} · Lot ${lotGroup.lotNumber}`}>
-                                {lotGroup.sources.map((source) => (
-                                  <option key={source.balanceId} value={source.balanceId}>
-                                    {source.locationLabel} · {availableBoxesForSource(source)} boxes{source.sourcePriority === 1 ? " · Recommended" : " · Approval"}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            ))}
+                            {item?.sources.map((source) => {
+                              const lotRank = allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank;
+                              return (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · Lot #{lotRank ?? "—"} {source.lotNumber} · {availableBoxesForSource(source)} boxes{lotRank === 1 ? " · Recommended" : " · Approval"}
+                              </option>
+                              );
+                            })}
                           </select>
-                          <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-900">
+                        <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-700">
                             {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
                               <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
-                                <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{source.locationLabel}</span>
-                                <span className="shrink-0 font-mono font-semibold text-brand-navy">{boxes} boxes</span>
+                              <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{boxes} boxes from {source.locationLabel} · Lot {source.lotNumber}</span>
                               </div>
                             )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
                           </div>
                         </>
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
-                          <p className="font-body text-[11px] leading-4 text-slate-600">{item?.isPerishable ? "FEFO" : "FIFO"} lots are ranked first; locations within each lot are filled in label order. The next lot is used only when needed.</p>
-                          {item && groupManualAllocationsByLot(item.lotGroups, line.manualAllocations).map(({ lotGroup, allocations }) => (
-                            <section key={lotGroup.lotId} className="grid gap-1.5 rounded-lg border border-slate-200 bg-white/70 p-2">
-                              <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 border-b border-slate-200 pb-1.5">
-                                <span className="min-w-0">
-                                  <span className="block font-body text-xs font-semibold text-brand-navy">{item.isPerishable ? "FEFO" : "FIFO"} lot #{lotGroup.lotPriority} · Lot {lotGroup.lotNumber}</span>
-                                  <span className="block font-body text-[10px] text-slate-600">{lotDateLabel(lotGroup)}</span>
-                                </span>
-                                <span className="shrink-0 font-body text-[10px] font-semibold text-slate-600">{lotGroup.availableBoxes} boxes · {lotGroup.sources.length} {lotGroup.sources.length === 1 ? "location" : "locations"}</span>
-                              </div>
-                              {allocations.map(({ source, allocation }) => {
+                          <p className="font-body text-[11px] leading-4 text-slate-600">{allocationPlan?.strategy ?? "FIFO"} is applied automatically across lots. Adjust the locations below if needed.</p>
+                          {line.manualAllocations.map((allocation) => {
+                            const source = item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
+                            if (!source) return null;
                             const otherAllocatedBoxes = line.manualAllocations
                               .filter((entry) => entry.balanceId !== source.balanceId)
                               .reduce((sum, entry) => sum + (Number.isInteger(Number(entry.boxes)) ? Number(entry.boxes) : 0), 0);
@@ -1530,8 +1458,8 @@ export function MultiItemPickListDraft({
                             return (
                               <div key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_4.5rem_auto] items-center gap-2 rounded-lg border border-brand-navy/30 bg-brand-navy/10 px-2 py-1.5 ring-1 ring-brand-navy/10">
                                 <span className="min-w-0">
-                                  <span className="block truncate font-body text-xs font-semibold text-brand-navy">✓ {source.locationLabel}</span>
-                                  <span className="block truncate font-body text-[10px] text-slate-600">{availableBoxesForSource(source)} boxes available in this lot</span>
+                                  <span className="block truncate font-body text-xs font-semibold text-brand-navy">✓ {source.locationLabel} <span className="font-normal">· Lot #{allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank ?? "—"}</span></span>
+                                  <span className="block truncate font-body text-[10px] text-slate-600">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
                                 </span>
                                 <input
                                   aria-label={`Boxes from ${source.locationLabel}`}
@@ -1546,9 +1474,7 @@ export function MultiItemPickListDraft({
                                 <button type="button" aria-label={`Remove location ${source.locationLabel}`} onClick={() => handleManualLocationToggle(line.id, source.balanceId)} disabled={!canEditLines} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-rose-600 disabled:opacity-40">×</button>
                               </div>
                             );
-                              })}
-                            </section>
-                          ))}
+                          })}
                           <select
                             aria-label="Add location within FIFO lot"
                             value=""
@@ -1557,14 +1483,10 @@ export function MultiItemPickListDraft({
                             className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
                           >
                             <option value="">Add another location…</option>
-                            {item?.lotGroups.map((lotGroup) => (
-                              <optgroup key={lotGroup.lotId} label={`${item.isPerishable ? "FEFO" : "FIFO"} lot #${lotGroup.lotPriority} · Lot ${lotGroup.lotNumber}`}>
-                                {lotGroup.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
-                                  <option key={source.balanceId} value={source.balanceId}>
-                                    {source.locationLabel} · {availableBoxesForSource(source)} boxes available
-                                  </option>
-                                ))}
-                              </optgroup>
+                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · Lot #{allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank ?? "—"} · {availableBoxesForSource(source)} boxes available
+                              </option>
                             ))}
                           </select>
                           <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 font-body text-[11px]">
