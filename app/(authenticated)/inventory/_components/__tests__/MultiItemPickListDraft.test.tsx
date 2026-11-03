@@ -131,7 +131,6 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
 
     fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "20" } });
-    fireEvent.click(screen.getAllByLabelText("Use location A4-01")[0]);
     fireEvent.change(screen.getAllByLabelText("Boxes from A4-01")[0], { target: { value: "20" } });
 
     expect(screen.getAllByText("2000")).toHaveLength(2);
@@ -230,19 +229,18 @@ describe("MultiItemPickListDraft organization selection", () => {
     const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
-    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "12" } });
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "2" } });
 
-    fireEvent.click(screen.getAllByLabelText("Use location A4-01")[0]);
-    fireEvent.click(screen.getAllByLabelText("Use location B2-05")[0]);
+    fireEvent.change(screen.getAllByLabelText("Add location to split")[0], { target: { value: "balance-2" } });
     const firstLocationBoxes = screen.getAllByLabelText("Boxes from A4-01")[0];
     const secondLocationBoxes = screen.getAllByLabelText("Boxes from B2-05")[0];
-    fireEvent.change(firstLocationBoxes, { target: { value: "8" } });
-    fireEvent.change(secondLocationBoxes, { target: { value: "4" } });
+    fireEvent.change(firstLocationBoxes, { target: { value: "1" } });
+    fireEvent.change(secondLocationBoxes, { target: { value: "1" } });
 
     const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
     expect(JSON.parse(request.value).lines.map((line: { locationId: string; qty: number }) => [line.locationId, line.qty])).toEqual([
-      ["location-1", 8],
-      ["location-2", 4],
+      ["location-1", 1],
+      ["location-2", 1],
     ]);
   });
 

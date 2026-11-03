@@ -419,7 +419,36 @@ export function MultiItemPickListDraft({
     const nextValue = val !== "" && Number.isFinite(parsed) && parsed > (detail?.maxRequestBoxes ?? Number.MAX_SAFE_INTEGER)
       ? String(detail?.maxRequestBoxes ?? parsed)
       : val;
-    updateLine(lineId, { boxes: nextValue });
+    const nextRequestedBoxes = Number(nextValue);
+    let manualAllocationsPatch: DraftLine["manualAllocations"] | undefined;
+    if (detail?.line.manualSplit && detail.item && Number.isInteger(nextRequestedBoxes) && nextRequestedBoxes > 0) {
+      if (detail.line.manualAllocations.length === 0) {
+        manualAllocationsPatch = allocateFifoBoxes(detail.item.sources, nextRequestedBoxes).map(({ source, boxes }) => ({
+          balanceId: source.balanceId,
+          boxes: String(boxes),
+        }));
+      } else {
+        let remainingBoxes = nextRequestedBoxes;
+        manualAllocationsPatch = detail.line.manualAllocations.map((allocation) => {
+          const source = detail.item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
+          const availableBoxes = source ? availableBoxesForSource(source) : 0;
+          const requestedAllocation = Number(allocation.boxes);
+          const boxes = Math.min(
+            Math.max(0, Number.isInteger(requestedAllocation) ? requestedAllocation : 0),
+            availableBoxes,
+            remainingBoxes,
+          );
+          remainingBoxes -= boxes;
+          return { ...allocation, boxes: String(boxes) };
+        });
+      }
+    } else if (nextValue === "" && detail?.line.manualSplit) {
+      manualAllocationsPatch = [];
+    }
+    updateLine(lineId, {
+      boxes: nextValue,
+      ...(manualAllocationsPatch ? { manualAllocations: manualAllocationsPatch } : {}),
+    });
   };
 
   const handleSourceChange = (lineId: string, sourceBalanceId: string) => {
@@ -477,10 +506,14 @@ export function MultiItemPickListDraft({
     const detail = lineDetails.find(({ line }) => line.id === lineId);
     const source = detail?.item?.sources.find((candidate) => candidate.balanceId === balanceId);
     const parsed = Number(value);
+    const otherAllocatedBoxes = (detail?.line.manualAllocations ?? [])
+      .filter((allocation) => allocation.balanceId !== balanceId)
+      .reduce((sum, allocation) => sum + (Number.isInteger(Number(allocation.boxes)) ? Number(allocation.boxes) : 0), 0);
+    const remainingLineBoxes = Math.max(0, (detail?.requestedBoxes ?? Number.MAX_SAFE_INTEGER) - otherAllocatedBoxes);
     const nextValue = value === ""
       ? ""
       : Number.isFinite(parsed)
-        ? String(Math.min(Math.max(0, Math.floor(parsed)), source ? availableBoxesForSource(source) : 0))
+        ? String(Math.min(Math.max(0, Math.floor(parsed)), source ? availableBoxesForSource(source) : 0, remainingLineBoxes))
         : "";
     const currentAllocations = detail?.line.manualAllocations ?? [];
     updateLine(lineId, {
@@ -1090,7 +1123,7 @@ export function MultiItemPickListDraft({
                             <option value="">Select a fixed location</option>
                             {item?.sources.map((source) => (
                               <option key={source.balanceId} value={source.balanceId}>
-                                {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Supervisor approval"}
+                                {source.locationLabel} · FIFO #{source.priority} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Supervisor approval"}
                               </option>
                             ))}
                           </select>
@@ -1105,34 +1138,46 @@ export function MultiItemPickListDraft({
                         </>
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
-                          <p className="text-[11px] font-semibold leading-4 text-slate-600">Select one or more locations, then enter boxes for each. The total must equal the line quantity.</p>
-                          {item?.sources.map((source) => {
-                            const allocation = line.manualAllocations.find((entry) => entry.balanceId === source.balanceId);
+                          <p className="text-[11px] font-semibold leading-4 text-slate-600">FIFO locations are preselected. Add another location below to split the quantity.</p>
+                          <select
+                            aria-label="Add location to split"
+                            value=""
+                            onChange={(event) => handleManualLocationToggle(line.id, event.target.value)}
+                            disabled={!canEditLines || !item || line.manualAllocations.length === item?.sources.length}
+                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                          >
+                            <option value="">Add another location…</option>
+                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · FIFO #{source.priority} · {availableBoxesForSource(source)} boxes available
+                              </option>
+                            ))}
+                          </select>
+                          {line.manualAllocations.map((allocation) => {
+                            const source = item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
+                            if (!source) return null;
+                            const otherAllocatedBoxes = line.manualAllocations
+                              .filter((entry) => entry.balanceId !== source.balanceId)
+                              .reduce((sum, entry) => sum + (Number.isInteger(Number(entry.boxes)) ? Number(entry.boxes) : 0), 0);
+                            const maxBoxesForLine = Math.max(0, Math.min(availableBoxesForSource(source), (requestedBoxes ?? availableBoxesForSource(source)) - otherAllocatedBoxes));
                             return (
-                              <label key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-                                <input
-                                  type="checkbox"
-                                  aria-label={`Use location ${source.locationLabel}`}
-                                  checked={Boolean(allocation)}
-                                  onChange={() => handleManualLocationToggle(line.id, source.balanceId)}
-                                  disabled={!canEditLines}
-                                  className="sr-only peer"
-                                />
+                              <div key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_5.5rem_auto] items-center gap-2 rounded-lg border border-brand-navy/30 bg-brand-navy/10 px-2.5 py-2 ring-1 ring-brand-navy/10">
                                 <span className="min-w-0">
-                                  <span className={`block truncate font-semibold ${allocation ? "text-brand-navy" : "text-slate-800"}`}>{allocation ? "✓ " : ""}{source.locationLabel}</span>
-                                  <span className="block truncate text-[10px] font-normal text-slate-500">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
+                                  <span className="block truncate font-semibold text-brand-navy">✓ {source.locationLabel} <span className="font-normal">· FIFO #{source.priority}</span></span>
+                                  <span className="block truncate text-[10px] font-normal text-slate-600">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
                                 </span>
                                 <input
                                   aria-label={`Boxes from ${source.locationLabel}`}
                                   type="number"
                                   min="0"
-                                  max={availableBoxesForSource(source)}
-                                  value={allocation?.boxes ?? ""}
+                                  max={maxBoxesForLine}
+                                  value={allocation.boxes}
                                   onChange={(event) => handleManualAllocationChange(line.id, source.balanceId, event.target.value)}
-                                  disabled={!canEditLines || !allocation}
-                                  className="h-9 w-full rounded-lg border border-slate-200 px-2 text-right font-mono text-sm font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                                  disabled={!canEditLines}
+                                  className="h-9 w-full rounded-lg border border-brand-navy/30 bg-white px-2 text-right font-mono text-sm font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
                                 />
-                              </label>
+                                <button type="button" aria-label={`Remove location ${source.locationLabel}`} onClick={() => handleManualLocationToggle(line.id, source.balanceId)} disabled={!canEditLines} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-rose-600 disabled:opacity-40">×</button>
+                              </div>
                             );
                           })}
                           <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-[11px]">
@@ -1162,14 +1207,14 @@ export function MultiItemPickListDraft({
 
         {/* Pick List Table: desktop */}
         <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-          <table aria-label="Pick list lines" className="w-full min-w-[1700px] table-fixed border-collapse text-left">
+          <table aria-label="Pick list lines" className="w-full min-w-[1850px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
               <col className="w-[280px]" />
               <col className="w-[72px]" />
               <col className="w-[108px]" />
               <col className="w-[118px]" />
-              <col className="w-[250px]" />
+              <col className="w-[360px]" />
               <col className="w-[130px]" />
               <col className="w-[180px]" />
               <col className="w-[220px]" />
@@ -1281,7 +1326,7 @@ export function MultiItemPickListDraft({
                             <option value="">Select a fixed location</option>
                             {item?.sources.map((source) => (
                               <option key={source.balanceId} value={source.balanceId}>
-                                {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Approval"}
+                                {source.locationLabel} · FIFO #{source.priority} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Approval"}
                               </option>
                             ))}
                           </select>
@@ -1296,34 +1341,46 @@ export function MultiItemPickListDraft({
                         </>
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
-                          <p className="font-body text-[11px] leading-4 text-slate-600">Select one or more locations, then enter boxes for each. The total must equal the line quantity.</p>
-                          {item?.sources.map((source) => {
-                            const allocation = line.manualAllocations.find((entry) => entry.balanceId === source.balanceId);
+                          <p className="font-body text-[11px] leading-4 text-slate-600">FIFO locations are preselected. Add another location below to split the quantity.</p>
+                          <select
+                            aria-label="Add location to split"
+                            value=""
+                            onChange={(event) => handleManualLocationToggle(line.id, event.target.value)}
+                            disabled={!canEditLines || !item || line.manualAllocations.length === item?.sources.length}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                          >
+                            <option value="">Add another location…</option>
+                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · FIFO #{source.priority} · {availableBoxesForSource(source)} boxes available
+                              </option>
+                            ))}
+                          </select>
+                          {line.manualAllocations.map((allocation) => {
+                            const source = item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
+                            if (!source) return null;
+                            const otherAllocatedBoxes = line.manualAllocations
+                              .filter((entry) => entry.balanceId !== source.balanceId)
+                              .reduce((sum, entry) => sum + (Number.isInteger(Number(entry.boxes)) ? Number(entry.boxes) : 0), 0);
+                            const maxBoxesForLine = Math.max(0, Math.min(availableBoxesForSource(source), (requestedBoxes ?? availableBoxesForSource(source)) - otherAllocatedBoxes));
                             return (
-                              <label key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
-                                <input
-                                  type="checkbox"
-                                  aria-label={`Use location ${source.locationLabel}`}
-                                  checked={Boolean(allocation)}
-                                  onChange={() => handleManualLocationToggle(line.id, source.balanceId)}
-                                  disabled={!canEditLines}
-                                  className="sr-only peer"
-                                />
+                              <div key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_4.5rem_auto] items-center gap-2 rounded-lg border border-brand-navy/30 bg-brand-navy/10 px-2 py-1.5 ring-1 ring-brand-navy/10">
                                 <span className="min-w-0">
-                                  <span className={`block truncate font-body text-xs font-semibold ${allocation ? "text-brand-navy" : "text-slate-800"}`}>{allocation ? "✓ " : ""}{source.locationLabel}</span>
-                                  <span className="block truncate font-body text-[10px] text-slate-500">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
+                                  <span className="block truncate font-body text-xs font-semibold text-brand-navy">✓ {source.locationLabel} <span className="font-normal">· FIFO #{source.priority}</span></span>
+                                  <span className="block truncate font-body text-[10px] text-slate-600">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
                                 </span>
                                 <input
                                   aria-label={`Boxes from ${source.locationLabel}`}
                                   type="number"
                                   min="0"
-                                  max={availableBoxesForSource(source)}
-                                  value={allocation?.boxes ?? ""}
+                                  max={maxBoxesForLine}
+                                  value={allocation.boxes}
                                   onChange={(event) => handleManualAllocationChange(line.id, source.balanceId, event.target.value)}
-                                  disabled={!canEditLines || !allocation}
-                                  className="h-8 w-full rounded-lg border border-slate-200 px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                                  disabled={!canEditLines}
+                                  className="h-8 w-full rounded-lg border border-brand-navy/30 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
                                 />
-                              </label>
+                                <button type="button" aria-label={`Remove location ${source.locationLabel}`} onClick={() => handleManualLocationToggle(line.id, source.balanceId)} disabled={!canEditLines} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-rose-600 disabled:opacity-40">×</button>
+                              </div>
                             );
                           })}
                           <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 font-body text-[11px]">
@@ -1420,9 +1477,8 @@ export function MultiItemPickListDraft({
                   <input
                     value={overrideReason}
                     onChange={(event) => setOverrideReason(event.target.value)}
-                    placeholder="Reason for choosing this location (min. 10 characters)"
+                    placeholder="Optional reason for choosing this location"
                     className="mt-2 h-10 w-full rounded-lg border border-amber-300 bg-white px-3 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10"
-                    minLength={10}
                   />
                 )}
               </div>
@@ -1431,7 +1487,7 @@ export function MultiItemPickListDraft({
                 <input type="hidden" name="reason" value={overrideReason} />
                 <button
                   type="submit"
-                  disabled={!overrideRequest || overrideReason.trim().length < 10}
+                  disabled={!overrideRequest}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                 >
                   Request Approval

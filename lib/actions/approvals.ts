@@ -327,10 +327,6 @@ export async function createFifoOverrideRequest(
       ? `${input.reasonCategory}: ${input.reasonNote}`
       : `${input.reasonCategory} justification for override`;
 
-    if (reasonText.length < 10) {
-      return { ok: false, error: "Reason must be at least 10 characters long." };
-    }
-
     const expiryAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
     const idempotencyKey = `FIFO-${input.itemId}-${input.lotId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 

@@ -171,7 +171,6 @@ export async function requestFifoOverride(
   if (!validation.ok) return { ok: false, errors: validation.errors };
   const data = validation.data;
   const trimmedReason = reason.trim();
-  if (trimmedReason.length < 10) return { ok: false, errors: ["override_reason_too_short"] };
   if (data.lines.length !== 1) return { ok: false, errors: ["override_single_pallet_required"] };
 
   try {
