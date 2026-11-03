@@ -18,9 +18,14 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
   const defaultOccupancy: LocationOccupancyDatum[] = [];
 
   const data = initialData && initialData.length > 0 ? initialData : defaultOccupancy;
+  const chartData = data.map((entry) => ({
+    ...entry,
+    chartValue: entry.chartValue ?? entry.value,
+  }));
   const totalCbmUsed = data.reduce((sum, d) => sum + d.cbmUsed, 0);
   const totalCbmCapacity = data.reduce((sum, d) => sum + (d.cbmTotal || 0), 0);
   const overallPct = totalCbmCapacity > 0 ? Math.round((totalCbmUsed / totalCbmCapacity) * 100) : 0;
+  const overallPctLabel = overallPct === 0 && totalCbmUsed > 0 ? "<1" : overallPct.toString();
 
   return (
     <div className="h-full rounded-2xl border border-slate-200/80 bg-surface-white p-5 shadow-sm flex flex-col justify-between">
@@ -50,13 +55,13 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={50}
                 outerRadius={70}
                 paddingAngle={3}
-                dataKey="value"
+                dataKey="chartValue"
               >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
@@ -66,11 +71,14 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const d = payload[0].payload;
+                    const occupancyPct = d.cbmTotal > 0
+                      ? ((d.cbmUsed / d.cbmTotal) * 100).toFixed(2)
+                      : "0.00";
                     return (
                       <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-elevation-2 font-body text-xs">
                         <p className="font-bold text-slate-900 mb-1">{d.name}</p>
                         <div className="space-y-0.5">
-                          <p className="text-brand-navy font-bold">{d.value}% of capacity</p>
+                          <p className="text-brand-navy font-bold">{occupancyPct}% of capacity</p>
                           <p className="text-text-grey">{d.cbmUsed} m³ allocated</p>
                         </div>
                       </div>
@@ -87,7 +95,7 @@ export function LocationOccupancyChart({ initialData }: LocationOccupancyChartPr
           {data.length > 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="font-mono text-xl font-black text-brand-navy leading-none">
-                {overallPct}%
+                {overallPctLabel}%
               </span>
               <span className="text-[10px] font-label font-bold uppercase tracking-wider text-text-grey mt-0.5">
                 UTILIZED

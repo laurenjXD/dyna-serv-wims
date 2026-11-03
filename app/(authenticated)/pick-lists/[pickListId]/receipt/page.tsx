@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { eq, and } from "drizzle-orm";
-import { ChevronLeft } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -11,6 +9,7 @@ import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "../print/_components/PickListPrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 export default async function DeliveryReceiptPage({
   params,
@@ -85,13 +84,13 @@ export default async function DeliveryReceiptPage({
       />
 
       <div className="print-hide mx-auto mb-4 flex max-w-[1500px] items-center justify-between gap-4">
-        <Link
-          href="/outgoing?tab=ledger"
-          className="inline-flex items-center gap-2 rounded border border-outline-variant/40 bg-surface-white px-4 py-2.5 font-label text-label font-bold text-brand-navy hover:bg-surface-light-grey"
-        >
-          <ChevronLeft size={18} aria-hidden="true" />
-          Back to Outgoing Ledger
-        </Link>
+        <PageBreadcrumb
+          backHref="/outgoing?tab=ledger"
+          backLabel="Outgoing Ledger"
+          currentLabel={pickList.pickListNumber}
+          monoCurrent
+          className="mb-0"
+        />
         <PickListPrintButton />
       </div>
 

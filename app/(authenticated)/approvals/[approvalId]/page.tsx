@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, User, Clock, AlertTriangle } from "@/components/ui/icons";
+import { User, Clock, AlertTriangle } from "@/components/ui/icons";
 import { eq, and } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -26,6 +26,7 @@ import { getApprovalRequest } from "@/lib/db/queries/approvals";
 import { approveRequest, rejectRequest, archiveExpiredApprovalRequest } from "@/lib/actions/approvals";
 import { listStockView, buildStockAllocationPreview } from "@/lib/db/queries/inventory";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -278,16 +279,12 @@ export default async function ApprovalDetailPage({ params, searchParams }: PageP
 
   return (
     <div className="mx-auto max-w-container">
-      {/* Back link — ChevronLeft + touch target h-11 (44px) */}
-      <nav aria-label="Breadcrumb" className="mb-4">
-        <Link
-          href="/approvals"
-          className="inline-flex h-11 items-center gap-1 rounded font-label text-label text-brand-navy hover:text-brand-royal-blue focus:outline-none focus:ring-2 focus:ring-brand-navy"
-        >
-          <ChevronLeft size={16} aria-hidden="true" />
-          {isDeleted ? "Archived Approvals" : "Approval Queue"}
-        </Link>
-      </nav>
+      <PageBreadcrumb
+        backHref={isDeleted ? "/approvals?tab=deleted" : "/approvals"}
+        backLabel={isDeleted ? "Archived Approvals" : "Approval Queue"}
+        currentLabel={request.requestNumber}
+        monoCurrent
+      />
 
       {/* Page heading — Fira Sans SemiBold per §2 type scale */}
       <h1 className="font-heading font-extrabold text-headline-md text-on-surface">

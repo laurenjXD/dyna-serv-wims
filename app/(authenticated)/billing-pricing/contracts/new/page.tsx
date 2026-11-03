@@ -1,14 +1,13 @@
 // `/billing-pricing/contracts/new` — Create New Commercial Contract Page
 
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { createContract } from "@/lib/actions/contracts";
 import { listParties } from "@/lib/db/queries/parties";
 import { db } from "@/lib/db/client";
 import { partyRoles } from "@/lib/db/schema/parties";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { NewContractForm } from "./NewContractForm";
 
 export default async function NewContractPage() {
@@ -150,12 +149,11 @@ export default async function NewContractPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6">
       <div>
-        <Link
-          href="/billing-pricing?section=configuration&subtab=contracts"
-          className="inline-flex items-center text-body-sm text-text-grey hover:text-brand-blue"
-        >
-          <ArrowLeft size={16} className="mr-1" /> Back to Commercial Contracts
-        </Link>
+        <PageBreadcrumb
+          backHref="/billing-pricing?section=configuration&subtab=contracts"
+          backLabel="Commercial Contracts"
+          currentLabel="New Contract"
+        />
         <h1 className="mt-2 font-heading text-heading-lg font-bold text-text-dark">
           New Commercial Contract
         </h1>

@@ -106,13 +106,12 @@ export default async function DispatchConfirmationPage({
         <p className="mt-2 font-body text-body-md text-text-grey">
           You do not have permission to dispatch pick lists.
         </p>
-        <Link
-          href="/outgoing"
-          className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-        >
-          <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" />
-          Return to Outgoing
-        </Link>
+        <PageBreadcrumb
+          backHref="/outgoing"
+          backLabel="Outgoing"
+          currentLabel="Dispatch"
+          className="mt-6 mb-0"
+        />
       </div>
     );
   }

@@ -26,13 +26,13 @@ import { getTransferRequest } from "@/lib/db/queries/transfers";
 import { updateTransferStatus } from "@/lib/actions/transfers";
 import type { TransferLineRow } from "@/lib/db/queries/transfers";
 import {
-  ArrowLeft,
   ArrowRight,
   Check,
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
 } from "@/components/ui/icons";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -120,14 +120,12 @@ export default async function ExecuteTransferPage({
       {/* Top bar — compact, floor-appropriate, brand-navy background */}
       <div className="bg-brand-navy px-4 py-3">
         <div className="flex items-center justify-between">
-          {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
-          <Link
-            href={`/transfers/${transferId}`}
-            className="inline-flex h-14 items-center gap-2 font-label text-body-md text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy active:scale-[0.97]"
-          >
-            <ArrowLeft size={18} aria-hidden="true" />
-            <span>Back to Transfer</span>
-          </Link>
+          <PageBreadcrumb
+            backHref={`/transfers/${transferId}`}
+            backLabel="Transfer Request"
+            currentLabel="Execute Transfer"
+            className="mb-0"
+          />
           {/* Inventory model badge — Epilogue, floor-visible */}
           <span className="font-label text-body-md text-white/70 uppercase">
             {transfer.flowType.toUpperCase()}

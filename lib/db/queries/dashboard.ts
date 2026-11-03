@@ -235,28 +235,58 @@ export async function getDashboardMonthlyFlow(): Promise<Record<string, MonthlyF
  */
 export async function getDashboardLocationOccupancy(): Promise<LocationOccupancyDatum[]> {
   try {
-    const zoneRows = await db
-      .select({
-        zone: locations.zone,
-        totalCapacityCbm: sql<string>`coalesce(sum(${locations.maxCbmCapacity}), 0)`,
-        usedCbm: sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ((${lotLocationBalances.qtyRemaining}::numeric / nullif(${items.spq}, 0)) * coalesce(${items.volumeCbm}, 0.05)) else 0 end), 0)`,
-      })
-      .from(locations)
-      .leftJoin(lotLocationBalances, eq(locations.id, lotLocationBalances.locationId))
-      .leftJoin(lots, eq(lotLocationBalances.lotId, lots.id))
-      .leftJoin(items, eq(lots.itemId, items.id))
-      .groupBy(locations.zone);
+    // Aggregate capacities independently from balances. Joining locations to
+    // lot_location_balances before summing capacity multiplies each location's
+    // capacity once per balance row, making occupancy look effectively empty.
+    const [locationRows, usedRows] = await Promise.all([
+      db
+        .select({
+          id: locations.id,
+          zone: locations.zone,
+          totalCapacityCbm: locations.maxCbmCapacity,
+        })
+        .from(locations)
+        .where(eq(locations.isActive, true)),
+      db
+        .select({
+          locationId: lotLocationBalances.locationId,
+          usedCbm: sql<string>`coalesce(sum(case when ${lotLocationBalances.qtyRemaining} > 0 then ((${lotLocationBalances.qtyRemaining}::numeric / nullif(${items.spq}, 0)) * coalesce(${items.volumeCbm}, 0.05)) else 0 end), 0)`,
+        })
+        .from(lotLocationBalances)
+        .leftJoin(lots, eq(lotLocationBalances.lotId, lots.id))
+        .leftJoin(items, eq(lots.itemId, items.id))
+        .groupBy(lotLocationBalances.locationId),
+    ]);
+
+    const usedByLocation = new Map(
+      usedRows.map((row) => [row.locationId, parseFloat(row.usedCbm) || 0]),
+    );
+    const zoneTotals = new Map<string, { total: number; used: number }>();
+
+    for (const location of locationRows) {
+      const current = zoneTotals.get(location.zone) ?? { total: 0, used: 0 };
+      current.total += parseFloat(location.totalCapacityCbm ?? "0") || 0;
+      current.used += usedByLocation.get(location.id) ?? 0;
+      zoneTotals.set(location.zone, current);
+    }
+
+    const zoneRows = Array.from(zoneTotals, ([zone, totals]) => ({
+      zone,
+      totalCapacityCbm: totals.total,
+      usedCbm: totals.used,
+    }));
 
     const colors = ["#002B49", "#00A8B5", "#2563EB", "#F59E0B", "#10B981", "#8B5CF6"];
 
     if (zoneRows.length > 0) {
       return zoneRows.map((z, idx) => {
-        const total = parseFloat(z.totalCapacityCbm) || 0;
-        const used = parseFloat(z.usedCbm) || 0;
-        const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+        const total = z.totalCapacityCbm || 0;
+        const used = z.usedCbm || 0;
+        const pct = total > 0 ? Math.min(100, Number(((used / total) * 100).toFixed(2))) : 0;
         return {
           name: z.zone.startsWith("Zone") ? z.zone : `Zone ${z.zone}`,
           value: pct,
+          chartValue: used,
           color: colors[idx % colors.length],
           cbmUsed: Math.round(used),
           cbmTotal: Math.round(total),

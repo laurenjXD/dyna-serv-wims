@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, FileText, RefreshCw, ShieldCheck } from "@/components/ui/icons";
+import { FileText, RefreshCw, ShieldCheck } from "@/components/ui/icons";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 export type EditablePickListItem = {
   id: string;
@@ -40,14 +41,14 @@ export function EditPickListClient({
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-outline-variant/30 pb-6">
-        <div className="flex items-start gap-3">
-          <Link
-            href={`/pick-lists/${pickListId}/pick`}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-            aria-label="Back to pick list review"
-          >
-            <ChevronLeft size={20} />
-          </Link>
+        <div>
+          <PageBreadcrumb
+            backHref={`/pick-lists/${pickListId}/pick`}
+            backLabel="Pick List Review"
+            currentLabel={pickListNumber}
+            monoCurrent
+            className="mb-3"
+          />
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-heading text-headline-md font-extrabold text-on-surface">Pick List Details</h1>

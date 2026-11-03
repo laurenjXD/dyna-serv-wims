@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { ChevronLeft } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
@@ -11,6 +9,7 @@ import { PickListPrintButton } from "./_components/PickListPrintButton";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI (Vendor Managed Inventory)",
@@ -95,13 +94,13 @@ export default async function PickListPrintPage({
 
       {/* Screen Toolbar */}
       <div className="print-hide mb-6 flex items-center justify-between gap-4 rounded-xl border border-outline-variant/30 bg-surface-light-grey p-4 shadow-elevation-1">
-        <Link
-          href="/inventory?tab=pick-lists"
-          className="inline-flex h-11 items-center gap-2 rounded border border-outline-variant/40 bg-surface-white px-4 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-        >
-          <ChevronLeft size={18} aria-hidden="true" />
-          Back to Pick Lists
-        </Link>
+        <PageBreadcrumb
+          backHref="/inventory?tab=pick-lists"
+          backLabel="Pick Lists"
+          currentLabel={pickList.pickListNumber}
+          monoCurrent
+          className="mb-0"
+        />
         <PickListPrintButton />
       </div>
 

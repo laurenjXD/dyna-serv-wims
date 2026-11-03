@@ -44,7 +44,6 @@ import { LocationCombobox } from "./_components/LocationCombobox";
 import { ReceiveDiscrepancyClient } from "./_components/ReceiveDiscrepancyClient";
 import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import {
-  ArrowLeft,
   ArrowDown,
   Check,
   CheckCircle2,
@@ -54,6 +53,7 @@ import {
   ShieldAlert,
   CircleDot,
 } from "@/components/ui/icons";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
@@ -413,14 +413,12 @@ export default async function ReceiveFloorPage({
       {/* Top bar — compact, floor-appropriate */}
       <div className="border-b border-outline-variant/30 bg-surface-white px-4 py-3 shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
-          <Link
-            href={`/receiving/${wrrId}`}
-            className="inline-flex min-h-14 items-center gap-1 font-body text-body-sm text-text-grey transition-colors hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-          >
-            <ArrowLeft size={16} className="mr-1" aria-hidden="true" />
-            <span>Back to WRR</span>
-          </Link>
+          <PageBreadcrumb
+            backHref={`/receiving/${wrrId}`}
+            backLabel="WRR"
+            currentLabel="Receive Items"
+            className="mb-0"
+          />
           {/* WRR reference — Roboto Mono per §9 */}
           <span className="font-mono text-mono-lg text-text-grey">
             {wrr.wrrNumber}

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText } from "@/components/ui/icons";
+import { FileText } from "@/components/ui/icons";
 import { and, between, eq, inArray } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { vmiBillingPeriods, vmiChargeLines, vmiPayments } from "@/lib/db/schema/vmi_billing";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { inventoryCommitments } from "@/lib/db/schema/commitments";
@@ -108,9 +109,12 @@ export default async function VmiPeriodDetailPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
-        <Link href="/billing-pricing?section=ledger&subtab=vmi" className="inline-flex items-center font-body text-body-sm text-text-grey hover:text-brand-navy">
-          <ArrowLeft size={16} className="mr-1" /> Back to VMI Billing
-        </Link>
+        <PageBreadcrumb
+          backHref="/billing-pricing?section=ledger&subtab=vmi"
+          backLabel="VMI Billing"
+          currentLabel={period.periodNumber}
+          monoCurrent
+        />
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-label text-label font-bold uppercase tracking-wider text-text-grey">VMI billing period</p>

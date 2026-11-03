@@ -29,6 +29,7 @@ import { resolveInspectionCase } from "@/lib/actions/transfers";
 import { InspectionResolutionForm } from "./_components/InspectionResolutionForm";
 import { locations } from "@/lib/db/schema/locations";
 import { and, asc, eq } from "drizzle-orm";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Disposition options — design.md §6.3 ────────────────────────────────────
 
@@ -189,14 +190,13 @@ export default async function InspectionDetailPage({
     <div className="mx-auto max-w-4xl space-y-6 pb-12">
       {/* ── Breadcrumb & Top Navigation ─────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/inventory?tab=inspection"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-text-secondary shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04] hover:text-primary active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            title="Back to Inspection Queue"
-          >
-            <ArrowLeft size={18} />
-          </Link>
+        <div>
+          <PageBreadcrumb
+            backHref="/inventory?tab=inspection"
+            backLabel="Inspection Queue"
+            currentLabel="Quality Review"
+            className="mb-2"
+          />
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-semibold uppercase tracking-wider text-text-secondary">

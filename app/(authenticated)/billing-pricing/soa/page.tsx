@@ -4,13 +4,14 @@
 // periods (months/years), inspect aggregated charges, and open the full 7-schedule SOA document.
 
 import Link from "next/link";
-import { FileText, ArrowLeft, Calendar, Building2, CheckCircle2, ChevronRight } from "@/components/ui/icons";
+import { FileText, Calendar, Building2, CheckCircle2, ChevronRight } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { partyRoles } from "@/lib/db/schema/parties";
 import { listParties } from "@/lib/db/queries/parties";
 import { getVmiCbmLedgerSummary, listVmiBillingPeriods } from "@/lib/billing/queries/vmi-ledger";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { SoaDirectoryClient } from "./_components/SoaDirectoryClient";
 import { getBillablePartyDecision } from "@/lib/billing/billable-party-policy";
 
@@ -97,14 +98,11 @@ export default async function SoaIndexPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/billing-pricing"
-              className="inline-flex items-center text-body-sm text-text-grey hover:text-brand-blue"
-            >
-              <ArrowLeft size={16} className="mr-1" /> Back to Billing & Pricing
-            </Link>
-          </div>
+          <PageBreadcrumb
+            backHref="/billing-pricing"
+            backLabel="Billing & Pricing"
+            currentLabel="Statement of Account"
+          />
           <h1 className="mt-1 font-heading text-heading-lg text-text-dark">
             Statement of Account (SOA) Directory
           </h1>

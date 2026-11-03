@@ -62,6 +62,8 @@ export interface DeliveryPerformanceMiniMetrics {
 export interface LocationOccupancyDatum {
   name: string;
   value: number;
+  /** Raw allocated volume used to size the chart slice. */
+  chartValue?: number;
   color: string;
   cbmUsed: number;
   cbmTotal: number;

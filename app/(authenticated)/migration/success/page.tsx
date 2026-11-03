@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ClipboardList, PackageCheck } from "@/components/ui/icons";
+import { CheckCircle2, ClipboardList, PackageCheck } from "@/components/ui/icons";
 import { BulkLotQrPrintButton } from "@/components/barcode/BulkLotQrPrintButton";
 import { getMigratedLotQrLabels, getMigrationSummary } from "@/lib/actions/data-migration";
 import { getMigrationCartonQrLabels, getPendingMigrationCartonLots } from "@/lib/actions/data-migration";
 import { BulkCartonQrPrintButton } from "@/components/barcode/BulkCartonQrPrintButton";
 import { MigrationCartonResolutionPanel } from "@/components/migration/MigrationCartonResolutionPanel";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 type MigrationSuccessPageProps = {
   searchParams: Promise<{ batch?: string }>;
@@ -53,7 +54,12 @@ export default async function MigrationSuccessPage({ searchParams }: MigrationSu
         )}
         {cartonLabels.length > 0 && <div className="mt-3"><BulkCartonQrPrintButton labels={cartonLabels} /></div>}
         {params.batch && <MigrationCartonResolutionPanel batchId={params.batch} lots={pendingLots} />}
-        <Link href="/" className="mt-6 inline-flex min-h-11 items-center gap-2 font-label text-label font-bold text-text-grey hover:text-brand-navy"><ArrowLeft size={16} /> Go to dashboard</Link>
+        <PageBreadcrumb
+          backHref="/"
+          backLabel="Dashboard"
+          currentLabel="Migration Complete"
+          className="mt-6 mb-0"
+        />
       </section>
     </div>
   );

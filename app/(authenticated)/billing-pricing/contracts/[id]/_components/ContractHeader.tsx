@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Plus, Building, Calendar, DollarSign, Clock } from "@/components/ui/icons";
+import { Building, Calendar, DollarSign, Clock } from "@/components/ui/icons";
 import type { ContractDetailResult } from "@/lib/actions/contracts";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 interface ContractHeaderProps {
   contract: NonNullable<ContractDetailResult>["contract"];
@@ -26,14 +26,13 @@ export function ContractHeader({ contract }: ContractHeaderProps) {
   return (
     <div className="rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-1 space-y-4">
       {/* Top row with Back navigation */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/billing-pricing?section=configuration&subtab=contracts"
-          className="inline-flex items-center gap-1.5 font-label text-label-md font-bold text-text-grey hover:text-brand-navy transition-colors"
-        >
-          <ArrowLeft size={16} /> Back to Commercial Contracts
-        </Link>
-      </div>
+      <PageBreadcrumb
+        backHref="/billing-pricing?section=configuration&subtab=contracts"
+        backLabel="Commercial Contracts"
+        currentLabel={contract.contractNumber}
+        monoCurrent
+        className="mb-0"
+      />
 
       {/* Contract Title, Badges, and Metadata Summary */}
       <div className="flex flex-wrap items-start justify-between gap-4 border-t border-outline-variant/30 pt-4">

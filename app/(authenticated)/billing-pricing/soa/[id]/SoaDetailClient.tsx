@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Printer, Download, ChevronDown, ChevronUp, FileText } from "@/components/ui/icons";
+import { Printer, Download, ChevronDown, ChevronUp, FileText } from "@/components/ui/icons";
 import { SoaStatusSelect, type SoaStatus } from "@/components/billing/SoaStatusSelect";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { DEFAULT_DOCUMENT_TEMPLATE, type DocumentTemplate } from "@/lib/documents/document-template";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 export interface SoaCategory {
   name: string;
@@ -287,13 +287,13 @@ export function SoaDetailClient({
       {/* ── Screen action bar ────────────────────────────────────────────── */}
       <div className="no-print mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
         <div>
-          <Link
-            href="/billing-pricing"
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-surface-white px-4 font-heading text-label font-bold text-brand-navy shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-royal-blue/40 hover:shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-royal-blue"
-          >
-            <ArrowLeft size={18} strokeWidth={2.4} aria-hidden="true" />
-            Back to Billing
-          </Link>
+          <PageBreadcrumb
+            backHref="/billing-pricing"
+            backLabel="Billing & Pricing"
+            currentLabel={soaData.soaNumber}
+            monoCurrent
+            className="mb-1"
+          />
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-base leading-5 font-bold text-slate-900">
               Statement of Account &mdash; {soaData.soaNumber}

@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@/components/ui/icons";
 import { eq } from "drizzle-orm";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { listVmiPermits } from "@/lib/actions/vmi-permits";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { PermitForm } from "./_components/PermitForm";
 
 interface Props { params: Promise<{ partyId: string }>; }
@@ -25,7 +24,11 @@ export default async function VmiPermitsPage({ params }: Props) {
   return (
     <main className="mx-auto max-w-container space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div>
-        <Link href="/billing-pricing?section=configuration&subtab=contracts" className="inline-flex items-center font-body text-body-sm text-text-grey hover:text-brand-navy"><ArrowLeft size={16} className="mr-1" /> Back to Configuration</Link>
+        <PageBreadcrumb
+          backHref="/billing-pricing?section=configuration&subtab=contracts"
+          backLabel="Commercial Contracts"
+          currentLabel="VMI Permits"
+        />
         <p className="mt-4 font-label text-label font-bold uppercase tracking-wider text-text-grey">VMI permits and LOA</p>
         <h1 className="mt-1 font-heading text-headline-lg font-bold text-on-surface">{party.code} · {party.name}</h1>
       </div>

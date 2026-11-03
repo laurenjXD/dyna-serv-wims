@@ -4,11 +4,12 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Save, Sparkles } from "@/components/ui/icons";
+import { Save, Sparkles } from "@/components/ui/icons";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getContractDetail, createPricingRule } from "@/lib/actions/contracts";
 import type { ChargeCategory, BillingBasis } from "@/lib/billing/pricing-engine";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -78,12 +79,11 @@ export default async function PricingRuleBuilderPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6">
       <div>
-        <Link
-          href={`/billing-pricing/contracts/${id}`}
-          className="inline-flex items-center text-body-sm text-text-grey hover:text-brand-blue"
-        >
-          <ArrowLeft size={16} className="mr-1" /> Back to Contract Rules
-        </Link>
+        <PageBreadcrumb
+          backHref={`/billing-pricing/contracts/${id}`}
+          backLabel="Contract Details"
+          currentLabel="New Pricing Rule"
+        />
         <h1 className="mt-2 font-heading text-heading-lg font-bold text-text-dark">
           Pricing Rule Builder
         </h1>
