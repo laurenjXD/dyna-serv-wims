@@ -567,9 +567,16 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     const itemIds = new Map<string, string>();
     for (const item of draftItems) {
       if (item.code.length > 100) throw new Error(`Item code ${item.code.slice(0, 40)}… exceeds the 100-character canonical limit.`);
-      const existing = await db.select({ id: items.id }).from(items).where(eq(items.code, item.code)).limit(1);
+      // The UBoT CODES sheet is the authoritative VMI supplier-facing item
+      // code source. Keep the canonical code as well, but populate the VMI
+      // cross-reference so opening stock can be picked immediately.
+      const existing = await db.select({ id: items.id, supplierItemCode: items.supplierItemCode }).from(items).where(eq(items.code, item.code)).limit(1);
       const itemId = existing[0]?.id ?? randomUUID();
-      if (!existing[0]) await db.insert(items).values({ id: itemId, code: item.code, name: item.name, barcode: item.code, itemType: "standard", uom: "piece", currency: "USD", spq: Math.max(1, Math.round(item.spq ?? 1)), spqMeter: item.spqMeter?.toFixed(2), lengthCm: item.lengthCm?.toFixed(2), widthCm: item.widthCm?.toFixed(2), heightCm: item.heightCm?.toFixed(2), volumeCm3: item.volumeCm3?.toFixed(2), volumeCbm: migrationVolumeCbm(item.volumeCbm), boxesPerPallet: item.boxesPerPallet ? Math.round(item.boxesPerPallet) : null, isActive: true });
+      if (!existing[0]) {
+        await db.insert(items).values({ id: itemId, code: item.code, supplierItemCode: item.code, name: item.name, barcode: item.code, itemType: "standard", uom: "piece", currency: "USD", spq: Math.max(1, Math.round(item.spq ?? 1)), spqMeter: item.spqMeter?.toFixed(2), lengthCm: item.lengthCm?.toFixed(2), widthCm: item.widthCm?.toFixed(2), heightCm: item.heightCm?.toFixed(2), volumeCm3: item.volumeCm3?.toFixed(2), volumeCbm: migrationVolumeCbm(item.volumeCbm), boxesPerPallet: item.boxesPerPallet ? Math.round(item.boxesPerPallet) : null, isActive: true });
+      } else if (!existing[0].supplierItemCode?.trim()) {
+        await db.update(items).set({ supplierItemCode: item.code, updatedAt: new Date() }).where(eq(items.id, itemId));
+      }
       itemIds.set(item.code, itemId);
     }
 
