@@ -15,7 +15,7 @@ import {
   X,
   ChevronRight,
 } from "@/components/ui/icons";
-import type { ComponentType } from "react";
+import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
 import {
   ElseIcon,
   BillingIcon,
@@ -708,6 +708,8 @@ export function ShellNavigation({
   );
 }
 
+const MENU_SNAP_HEIGHTS = [55, 85, 95] as const;
+
 function MoreOverlay({
   sections,
   activeId,
@@ -726,6 +728,52 @@ function MoreOverlay({
   onClose: () => void;
 }) {
   const floorText = tier === "floor";
+  const [snapHeight, setSnapHeight] = useState<number>(85);
+  const [dragHeight, setDragHeight] = useState<number | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    startHeight: number;
+    viewportHeight: number;
+  } | null>(null);
+
+  function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!event.isPrimary || event.button !== 0 || dragRef.current) return;
+    const startHeight = sheetRef.current?.getBoundingClientRect().height ?? 0;
+    // Measure the viewport independently: a new gesture can interrupt a snap
+    // animation while the rendered sheet is still between resting heights.
+    const viewportHeight = overlayRef.current?.getBoundingClientRect().height || window.innerHeight;
+    const height = startHeight || viewportHeight * snapHeight / 100;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { pointerId: event.pointerId, startY: event.clientY, startHeight: height, viewportHeight };
+    setDragHeight(height);
+  }
+
+  function heightAtPointer(clientY: number) {
+    const drag = dragRef.current!;
+    return Math.max(0, Math.min(drag.viewportHeight * 0.95, drag.startHeight + drag.startY - clientY));
+  }
+
+  function finishDrag(event: ReactPointerEvent<HTMLDivElement>, cancelled = false) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const heightPercent = heightAtPointer(event.clientY) / drag.viewportHeight * 100;
+    // Clear before releasing capture: the resulting lostpointercapture event
+    // must not cancel an already-completed gesture.
+    dragRef.current = null;
+    setDragHeight(null);
+    if (event.type !== "lostpointercapture") event.currentTarget.releasePointerCapture(event.pointerId);
+    if (cancelled) return;
+    if (heightPercent < 35) {
+      onClose();
+      return;
+    }
+    setSnapHeight(MENU_SNAP_HEIGHTS.reduce<number>((nearest, height) =>
+      Math.abs(height - heightPercent) < Math.abs(nearest - heightPercent) ? height : nearest,
+    55));
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -739,7 +787,8 @@ function MoreOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end animate-in fade-in duration-200 motion-reduce:animate-none"
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex h-[100dvh] flex-col justify-end animate-in fade-in duration-200 motion-reduce:animate-none"
       role="dialog"
       aria-modal="true"
       aria-label="Navigation menu"
@@ -753,10 +802,43 @@ function MoreOverlay({
         onClick={onClose}
       />
 
-      {/* Bottom Sheet rising from bottom to up */}
-      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-brand-navy bg-brand-navy shadow-[0_-16px_48px_rgba(15,23,42,0.24)] transition-transform duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] animate-in slide-in-from-bottom-6 motion-reduce:animate-none motion-reduce:transition-none">
+      {/* Bottom sheet: only the handle owns resize gestures. */}
+      <div
+        ref={sheetRef}
+        style={{ height: dragHeight === null ? `${snapHeight}dvh` : `${dragHeight}px` }}
+        className={`relative z-10 flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-brand-navy bg-brand-navy shadow-[0_-16px_48px_rgba(15,23,42,0.24)] ${dragHeight === null ? "transition-[height] duration-200 ease-out motion-reduce:transition-none" : "transition-none"}`}
+      >
         {/* Grab Handle */}
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
+        <div
+          role="slider"
+          tabIndex={0}
+          aria-label="Resize navigation menu"
+          aria-orientation="vertical"
+          aria-valuemin={55}
+          aria-valuemax={95}
+          aria-valuenow={snapHeight}
+          aria-valuetext={`${snapHeight}% of screen height`}
+          title="Drag up to expand, down to shrink or close. Use arrow keys to resize."
+          className="flex min-h-14 w-full shrink-0 touch-none select-none items-center justify-center cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          onPointerDown={startDrag}
+          onPointerMove={(event) => {
+            if (dragRef.current?.pointerId === event.pointerId) setDragHeight(heightAtPointer(event.clientY));
+          }}
+          onPointerUp={(event) => finishDrag(event)}
+          onPointerCancel={(event) => finishDrag(event, true)}
+          onLostPointerCapture={(event) => finishDrag(event, true)}
+          onKeyDown={(event) => {
+            if (dragRef.current) return;
+            const nextHeight = event.key === "Home" ? 55
+              : event.key === "End" ? 95
+                : event.key === "ArrowUp" ? MENU_SNAP_HEIGHTS.find((height) => height > snapHeight) ?? 95
+                  : event.key === "ArrowDown" ? [...MENU_SNAP_HEIGHTS].reverse().find((height) => height < snapHeight) ?? 55
+                    : null;
+            if (nextHeight === null) return;
+            event.preventDefault();
+            setSnapHeight(nextHeight);
+          }}
+        >
           <div className="h-1.5 w-12 rounded-full bg-white/30" aria-hidden="true" />
         </div>
 
@@ -786,7 +868,7 @@ function MoreOverlay({
         </div>
 
         {/* Scrollable Navigation List */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 pb-10 space-y-2">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[calc(2.5rem+env(safe-area-inset-bottom))] space-y-2">
           <GroupedSections
             sections={sections}
             activeId={activeId}

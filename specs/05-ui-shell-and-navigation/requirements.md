@@ -67,6 +67,7 @@ A feature declares its surface when registering a route. The shell must not infe
 3. During an active scan-driven floor flow, navigation SHALL be completely hidden and replaced by a feature-owned flow header with only an exit/cancel action. Bottom tabs appear only between scan steps.
 4. Floor navigation SHALL remain fully functional in portrait at the 375–430px base breakpoint without horizontal scrolling.
 5. Office navigation SHALL remain usable at narrow mobile widths via a collapsible drawer for supervisor/administrator access.
+6. The mobile navigation sheet SHALL expose a draggable top handle for touch, mouse, and pen. It opens at 85% of the dynamic viewport height, follows vertical handle movement, snaps to 55%, 85%, or 95% on release, and closes when released below 35%. Cancelled gestures restore the previous height. The list scrolls independently. The handle SHALL provide a 56px minimum touch target and keyboard resizing (Arrow Up/Down, Home/End); Escape, the close button, and backdrop dismissal remain available. Motion SHALL respect reduced-motion preferences.
 
 ### R5. Layout and page context
 

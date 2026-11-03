@@ -140,6 +140,12 @@ The table below lists every authenticated route planned at launch. Each route na
 
 ### 3.4 Application state catalog
 
+#### Mobile navigation sheet handle (2026-11-03)
+
+The existing bottom-sheet presentation shared by the floor More menu and narrow office navigation gains an interactive top handle. Use local presentation state only: initial 85dvh, settled heights 55/85/95dvh, and live pixel height during a gesture. Capture the primary pointer on the handle; isolate `touch-action: none` to that handle so the navigation list retains native vertical scrolling. Ignore secondary pointers and non-primary mouse buttons. On release, close below 35% viewport height, otherwise select the nearest settled height. Pointer cancellation or lost capture restores the pre-gesture settled height without closing. Disable height transitions during dragging; settled transitions respect reduced motion. Preserve list `min-height: 0`, contained vertical scrolling, and safe-area bottom spacing.
+
+Expose the handle as a focusable vertical slider with an accessible name, current height, and 55–95 range. Arrow Up/Down selects the adjacent settled height (bounded at each end); Home selects 55 and End selects 95. Existing Escape, close-button, backdrop, and navigate-then-close behavior remains. The drag target is at least 56px high and uses the shared blue focus token. No business data, capabilities, or persistence changes are involved.
+
 The shell owns the global application state catalog. All error states MUST follow the mandatory 3-component structure: **What happened**, **Why it failed**, and **Next Action / Solution**.
 
 | State | Trigger / condition | Shell behavior | Key constraints |

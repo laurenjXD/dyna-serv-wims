@@ -67,15 +67,13 @@ describe("MultiItemPickListDraft organization selection", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.replace(/\s+/g, " ").trim());
 
-    expect(headers.slice(0, 10)).toEqual([
-      "Item Code",
+    expect(headers.slice(0, 8)).toEqual([
+      "Item",
       "SPQ",
+      "Qty (Boxes)",
       "Qty (Units)",
-      "Number of Boxes",
       "Location",
       "Remaining",
-      "Cust PN",
-      "Item Description",
       "Lot Number",
       "Mfg Date",
     ]);

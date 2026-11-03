@@ -1132,7 +1132,7 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
     expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
   });
 
-  it("verifies all remaining boxes for a wrapped pallet line in a single scan", async () => {
+  it("confirms every committed box on a jackwrapped line with one matching QR scan", async () => {
     const db = makeWithdrawalDb([], [
       [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 5, pickListStatus: "picked" }],
       [], // no selections yet
@@ -1153,7 +1153,7 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
     );
 
     expect(result).toEqual({ ok: true, selectedCount: 5, requiredCount: 5 });
-    expect(db.update).toHaveBeenCalled();
+    expect(db.update).toHaveBeenCalledTimes(5);
   });
 });
 

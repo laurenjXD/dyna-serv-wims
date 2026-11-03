@@ -715,11 +715,10 @@ export async function commitWithdrawal(
 // ---------------------------------------------------------------------------
 
 /**
- * Counts one shared item/lot QR scan for its matching committed dispatch line.
- * Like WRR receiving, the same matching QR may be scanned repeatedly until
- * the line's required box count is reached. A physical inventory-unit row is
- * assigned server-side only to retain the existing commitment/accounting
- * invariant; its individual ID is never supplied or validated by the scanner.
+ * A matching carton/item/lot QR identifies the committed dispatch line, as in
+ * batch receiving. One scan confirms the complete jackwrapped line at that
+ * location. A physical inventory-unit row is assigned server-side for every
+ * committed box; unit IDs are never supplied by the scanner as authority.
  */
 export async function selectPickUnit(
   resolver: RequestAuthorizationResolver,
@@ -753,12 +752,97 @@ export async function selectPickUnit(
         .from(pickListItems)
         .leftJoin(items, eq(items.id, pickListItems.itemId))
         .innerJoin(pickLists, eq(pickLists.id, pickListItems.pickListId))
-        .where(eq(pickLists.id, pickListId))) as AnyRecord[];
+        .where(eq(pickLists.id, pickListId))
+        .for("update", { of: pickListItems })) as AnyRecord[];
 
       if (lineRows.length === 0) return { ok: false as const, errors: ["line_not_found"] };
       if (lineRows[0].pickListStatus !== "picked") {
         return { ok: false as const, errors: ["invalid_status"] };
       }
+
+      const selectWholeLine = async (
+        line: AnyRecord,
+        priorSelections?: AnyRecord[],
+      ): Promise<SelectPickUnitResult> => {
+        const requiredCount = Number(line.numberOfBoxes);
+        const selectedRows = priorSelections ?? (await db
+          .select({ id: inventoryUnits.id })
+          .from(inventoryUnits)
+          .where(and(
+            eq(inventoryUnits.pickListItemId, line.id),
+            eq(inventoryUnits.status, "selected"),
+          ))) as AnyRecord[];
+        if (selectedRows.length >= requiredCount) {
+          return { ok: false, errors: ["line_complete"] };
+        }
+
+        const neededCount = requiredCount - selectedRows.length;
+        const unitRows = (await db
+          .select({ id: inventoryUnits.id, unitIndex: inventoryUnits.unitIndex })
+          .from(inventoryUnits)
+          .where(and(
+            eq(inventoryUnits.lotId, line.lotId),
+            eq(inventoryUnits.locationId, line.locationId),
+            eq(inventoryUnits.status, "available"),
+            sql`${inventoryUnits.pickListItemId} IS NULL`,
+          ))
+          .limit(neededCount)) as Array<{ id: string; unitIndex: number }>;
+        const missingCount = neededCount - unitRows.length;
+
+        let wrrItemId: string | null = null;
+        let nextUnitIndex = 1;
+        if (missingCount > 0) {
+          // Legacy aggregate receipts may have fewer internal unit rows than
+          // their authoritative committed box count. Reconstruct only the
+          // missing rows for this line, never more than its committed quantity.
+          const sourceRows = (await db
+            .select({
+              wrrItemId: lots.wrrItemId,
+              unitIndex: inventoryUnits.unitIndex,
+            })
+            .from(lots)
+            .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
+            .where(eq(lots.id, line.lotId))) as Array<{
+            wrrItemId: string;
+            unitIndex: number | null;
+          }>;
+          wrrItemId = sourceRows[0]?.wrrItemId ?? null;
+          if (!wrrItemId) return { ok: false, errors: ["box_unavailable"] };
+          nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
+        }
+
+        for (const unit of unitRows) {
+          const claimed = (await db
+            .update(inventoryUnits)
+            .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
+            .where(and(
+              eq(inventoryUnits.id, unit.id),
+              eq(inventoryUnits.status, "available"),
+              sql`${inventoryUnits.pickListItemId} IS NULL`,
+            ))
+            .returning({ id: inventoryUnits.id })) as AnyRecord[];
+          if (claimed.length !== 1) throw new Error("stale_scan");
+        }
+
+        if (missingCount > 0 && wrrItemId) {
+          const missingUnits = Array.from({ length: missingCount }, () => {
+            const unitId = randomUUID();
+            return {
+              unitId,
+              cartonId: cartonIdFromUnitId(unitId),
+              unitIndex: nextUnitIndex++,
+              wrrItemId: wrrItemId!,
+              lotId: line.lotId,
+              locationId: line.locationId,
+              status: "selected" as const,
+              pickListItemId: line.id,
+            };
+          });
+          await db.insert(inventoryUnits).values(missingUnits);
+        }
+
+        return { ok: true, selectedCount: requiredCount, requiredCount };
+      };
 
       // Migration-origin carton labels carry the durable inventory-unit ID.
       // Resolve and reserve that exact carton instead of falling back to the
@@ -780,10 +864,7 @@ export async function selectPickUnit(
         if (unit.status !== "available" || unit.pickListItemId) return { ok: false as const, errors: ["box_already_selected"] };
         const line = lineRows.find((candidate) => candidate.lotId === unit.lotId && candidate.locationId === unit.locationId);
         if (!line) return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
-        const selectedRows = (await db.select({ id: inventoryUnits.id }).from(inventoryUnits).where(and(eq(inventoryUnits.pickListItemId, line.id), eq(inventoryUnits.status, "selected")))) as AnyRecord[];
-        if (selectedRows.length >= Number(line.numberOfBoxes)) return { ok: false as const, errors: ["line_complete"] };
-        await db.update(inventoryUnits).set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() }).where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
-        return { ok: true as const, selectedCount: selectedRows.length + 1, requiredCount: Number(line.numberOfBoxes) };
+        return await selectWholeLine(line);
       }
 
       // The scan determines the target line. Like WRR receiving, one shared
@@ -817,85 +898,15 @@ export async function selectPickUnit(
         }
       }
       if (!line) return { ok: false as const, errors: ["line_complete"] };
-      const requiredCount = Number(line.numberOfBoxes);
-
-      const neededCount = requiredCount - selectedRows.length;
-      if (neededCount <= 0) return { ok: false as const, errors: ["line_complete"] };
-
-      // Shared QR labels verify the line on the pallet. Assign all remaining
-      // physical units for this line from this committed lot/location.
-      const unitRows = (await db
-        .select({
-          id: inventoryUnits.id,
-          lotId: inventoryUnits.lotId,
-          locationId: inventoryUnits.locationId,
-          status: inventoryUnits.status,
-          pickListItemId: inventoryUnits.pickListItemId,
-        })
-        .from(inventoryUnits)
-        .where(and(
-          eq(inventoryUnits.lotId, line.lotId),
-          eq(inventoryUnits.locationId, line.locationId),
-          eq(inventoryUnits.status, "available"),
-          sql`${inventoryUnits.pickListItemId} IS NULL`,
-        ))
-        .limit(neededCount)) as AnyRecord[];
-
-      for (const unit of unitRows) {
-        await db
-          .update(inventoryUnits)
-          .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
-          .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
-      }
-
-      const stillMissingCount = neededCount - unitRows.length;
-      if (stillMissingCount > 0) {
-        // Older aggregate receipts can have a confirmed lot balance but fewer
-        // internal unit rows than physical boxes. A shared QR still represents
-        // the committed boxes, so reconstruct any missing internal accounting
-        // rows from the authoritative lot source rather than rejecting a valid scan.
-        const sourceRows = (await db
-          .select({
-            wrrItemId: lots.wrrItemId,
-            unitIndex: inventoryUnits.unitIndex,
-          })
-          .from(lots)
-          .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
-          .where(eq(lots.id, line.lotId))) as Array<{
-          wrrItemId: string;
-          unitIndex: number | null;
-        }>;
-        const wrrItemId = sourceRows[0]?.wrrItemId;
-        if (!wrrItemId) return { ok: false as const, errors: ["box_unavailable"] };
-        let nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
-
-        for (let i = 0; i < stillMissingCount; i++) {
-          const unitId = randomUUID();
-          await db
-            .insert(inventoryUnits)
-            .values({
-              unitId,
-              cartonId: cartonIdFromUnitId(unitId),
-              unitIndex: nextUnitIndex++,
-              wrrItemId,
-              lotId: line.lotId,
-              locationId: line.locationId,
-              status: "selected",
-              pickListItemId: line.id,
-            });
-        }
-      }
-
-      return {
-        ok: true as const,
-        selectedCount: requiredCount,
-        requiredCount,
-      };
+      return await selectWholeLine(line, selectedRows);
     });
 
     if (rlsResult.kind === "unauthenticated") return { ok: false, errors: ["forbidden"] };
     return rlsResult.value;
   } catch (error) {
+    if (error instanceof Error && error.message === "stale_scan") {
+      return { ok: false, errors: ["stale_scan"] };
+    }
     console.error("Shared QR dispatch count failed", error);
     return { ok: false, errors: ["unable_to_select_box"] };
   }

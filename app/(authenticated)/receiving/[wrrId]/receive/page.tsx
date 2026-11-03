@@ -150,28 +150,14 @@ export default async function ReceiveFloorPage({
     notFound();
   }
 
-  let wrr = await getWrrDocument(db, wrrId);
+  const wrr = await getWrrDocument(db, wrrId);
   if (!wrr) {
     notFound();
   }
 
-  // Auto-initiate: if the WRR is still staged, transition it to
-  // receiving_in_progress on load (idempotent — if already in progress, the
-  // action returns invalid_status which we ignore). R2.4 requires this to be
-  // safe to retry and not require a separate manual step on the floor.
-  if (wrr.status === "staged_pending_arrival") {
-    try {
-      const startResult = await startReceiving(resolver, wrrId);
-      if (startResult.ok) {
-        const refreshed = await getWrrDocument(db, wrrId);
-        if (refreshed) {
-          wrr = refreshed;
-        }
-      }
-    } catch {
-      // Non-fatal: if auto-initiation fails, render page with current state
-    }
-  }
+  // Starting receipt is an explicit, authorized command. Loading or refreshing
+  // this page must remain read-only and must not advance the WRR lifecycle.
+  const canStartReceiving = await requirePermission(resolver, "receiving.confirm");
 
   // Only allow scan/commit when WRR is in receiving_in_progress.
   const isReceivable = wrr.status === "receiving_in_progress";
@@ -235,6 +221,18 @@ export default async function ReceiveFloorPage({
   // Inline server action — closes over wrrId from the page component.
   // On success: redirects with scan result encoded in URL.
   // On failure: redirects with error reason encoded in URL.
+  async function handleStartReceiving(): Promise<void> {
+    "use server";
+    const actionResolver = await createPageResolver();
+    const startResult = await startReceiving(actionResolver, wrrId);
+    if (startResult.ok) {
+      redirect(`/receiving/${wrrId}/receive?result=started`);
+    }
+    redirect(
+      `/receiving/${wrrId}/receive?result=start_error&reason=${encodeURIComponent(startResult.errors.join("|"))}`,
+    );
+  }
+
   async function handleScan(formData: FormData): Promise<void> {
     "use server";
     const barcode = ((formData.get("barcode") as string | null) ?? "").trim();
@@ -333,6 +331,7 @@ export default async function ReceiveFloorPage({
   // Determine feedback state from search params.
   const scanSuccess = result === "scanned";
   const scanError = result === "error";
+  const startError = result === "start_error";
   const commitSuccess = result === "committed";
   const commitError = result === "commit_error";
   const remainingQty = remainingParam ? parseInt(remainingParam, 10) : null;
@@ -437,13 +436,33 @@ export default async function ReceiveFloorPage({
           </nav>
           {!isReceivable && (
             <div
-              role="alert"
+              role={startError ? "alert" : "status"}
               className="mt-3 rounded bg-status-pending px-3 py-2"
             >
-              <p className="font-body text-body-md text-on-surface">
-                This WRR is not in receiving status. Return to the WRR detail
-                and start receiving before scanning.
-              </p>
+              {wrr.status === "staged_pending_arrival" && canStartReceiving.kind === "authorized" ? (
+                <form action={handleStartReceiving} className="flex flex-col items-start gap-3">
+                  {startError && (
+                    <p role="alert" className="font-body text-body-md text-on-surface">
+                      Receiving could not be started. Refresh the WRR and try again, or ask a supervisor for access.
+                    </p>
+                  )}
+                  <p className="font-body text-body-md text-on-surface">
+                    This WRR is staged. Start receiving when the shipment is ready to be scanned.
+                  </p>
+                  <button
+                    type="submit"
+                    className="flex min-h-16 w-full items-center justify-center rounded bg-primary px-5 py-3 font-heading text-body-lg font-bold text-surface-white focus:outline-none focus:ring-4 focus:ring-brand-navy motion-safe:active:scale-[0.98] motion-safe:transition-transform motion-safe:duration-100"
+                  >
+                    Start receiving
+                  </button>
+                </form>
+              ) : (
+                <p className="font-body text-body-md text-on-surface">
+                  {startError
+                    ? "Receiving could not be started. Ask a supervisor to confirm access and WRR status."
+                    : "This WRR is not in receiving status. Ask an authorized user to start receiving before scanning."}
+                </p>
+              )}
             </div>
           )}
         </div>

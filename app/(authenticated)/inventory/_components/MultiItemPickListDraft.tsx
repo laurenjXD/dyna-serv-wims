@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
-import { boxesToPieces, exactCartonCount, piecesToBoxes } from "@/lib/inventory/quantities";
+import { boxesToPieces, piecesToBoxes } from "@/lib/inventory/quantities";
 import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
 
 type StockSource = {
@@ -34,7 +34,7 @@ type StockSource = {
 type DraftLine = {
   id: string;
   itemId: string;
-  totalUnits: string;
+  totalBoxes: string;
 };
 
 type FifoBoxAllocation = {
@@ -288,9 +288,9 @@ export function MultiItemPickListDraft({
   const lineDetails = lines.map((line) => {
     const item = catalog.find((candidate) => candidate.itemId === line.itemId);
     const effectiveSpq = item?.spq ?? 0;
-    const requestedUnits = Number(line.totalUnits);
-    const requestedBoxes = item && Number.isInteger(requestedUnits) && requestedUnits > 0
-      ? exactCartonCount(requestedUnits, effectiveSpq)
+    const enteredBoxes = Number(line.totalBoxes);
+    const requestedBoxes = item && Number.isInteger(enteredBoxes) && enteredBoxes > 0
+      ? enteredBoxes
       : null;
     const fifoAllocations = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
@@ -304,7 +304,7 @@ export function MultiItemPickListDraft({
       line,
       item,
       effectiveSpq,
-      requestedUnits,
+      requestedUnits: requestedBoxes === null ? null : boxesToPieces(requestedBoxes, effectiveSpq),
       requestedBoxes,
       fifoAllocations,
       allocatedBoxes,
@@ -314,8 +314,8 @@ export function MultiItemPickListDraft({
     };
   });
 
-  const handleTotalUnitsChange = (lineId: string, val: string) => {
-    updateLine(lineId, { totalUnits: val });
+  const handleTotalBoxesChange = (lineId: string, val: string) => {
+    updateLine(lineId, { totalBoxes: val });
   };
 
   const request = useMemo(() => {
@@ -353,7 +353,7 @@ export function MultiItemPickListDraft({
     });
   }, [customerPartyId, endCustomerPartyId, flowType, lineDetails, organizationId]);
 
-  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", totalUnits: "" }]);
+  const addLine = () => setLines((current) => [...current, { id: crypto.randomUUID(), itemId: "", totalBoxes: "" }]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
   const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
   const resetDraft = () => setLines([]);
@@ -593,7 +593,7 @@ export function MultiItemPickListDraft({
       newDraftLines.push({
         id: crypto.randomUUID(),
         itemId: request.itemId,
-        totalUnits: String(request.requestedBoxes * request.spq),
+        totalBoxes: String(request.requestedBoxes),
       });
       totalBoxesAllocated += request.requestedBoxes;
       mappedCount++;
@@ -828,19 +828,19 @@ export function MultiItemPickListDraft({
                         catalog={catalog}
                         flowType={flowType}
                         selectedItemId={line.itemId}
-                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalUnits: "" })}
+                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalBoxes: "" })}
                         disabled={!organizationId || !flowType}
                       />
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-                        Qty (Units)
-                        <input value={line.totalUnits} onChange={(event) => handleTotalUnitsChange(line.id, event.target.value)} type="number" min="1" disabled={!item} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                        Qty (Boxes)
+                        <input value={line.totalBoxes} onChange={(event) => handleTotalBoxesChange(line.id, event.target.value)} type="number" min="1" step="1" disabled={!item} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-                        Number of Boxes
+                        SPQ / Units
                         <div className="flex h-11 items-center justify-end rounded-xl border border-slate-200 bg-slate-50 px-3 font-mono text-base font-semibold text-slate-900">
-                          {requestedBoxes ?? "—"}
+                          {item ? `${item.spq} / ${requestedBoxes === null ? "—" : boxesToPieces(requestedBoxes, item.spq)}` : "—"}
                         </div>
                       </label>
                     </div>
@@ -856,9 +856,8 @@ export function MultiItemPickListDraft({
                       </div>
                     </label>
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
-                      <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
                       <div><dt className="text-slate-500">Remaining</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes</dd></div>
-                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>
+                      {flowType !== "supplies" && <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1 break-words font-mono text-slate-900">{item?.customerItemCode || "—"}</dd></div>}
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{fifoAllocations[0]?.source.manufactureDate ? new Date(fifoAllocations[0].source.manufactureDate).toLocaleDateString() : "—"}</dd></div>
                     </dl>
@@ -875,28 +874,24 @@ export function MultiItemPickListDraft({
           <table aria-label="Pick list lines" className="w-full min-w-[1180px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
-              <col className="w-[175px]" />
+              <col className="w-[260px]" />
               <col className="w-[78px]" />
               <col className="w-[100px]" />
               <col className="w-[112px]" />
               <col className="w-[230px]" />
               <col className="w-[110px]" />
-              <col className="w-[125px]" />
-              <col className="w-[190px]" />
               <col className="w-[135px]" />
               <col className="w-[112px]" />
               <col className="w-[52px]" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                <th scope="col" className="py-3 px-3">Item Code</th>
+                <th scope="col" className="py-3 px-3">Item</th>
                 <th scope="col" className="py-3 px-2 text-right">SPQ</th>
-                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Units)</th>
-                <th scope="col" className="py-3 px-2 text-right">Number of Boxes</th>
+                <th scope="col" className="py-3 pl-4 pr-2 text-right">Qty (Boxes)</th>
+                <th scope="col" className="py-3 px-2 text-right">Qty (Units)</th>
                 <th scope="col" className="py-3 px-3">Location</th>
                 <th scope="col" className="py-3 px-3">Remaining</th>
-                <th scope="col" className="py-3 px-3">Cust PN</th>
-                <th scope="col" className="py-3 px-3">Item Description</th>
                 <th scope="col" className="py-3 px-3">Lot Number</th>
                 <th scope="col" className="py-3 px-3">Mfg Date</th>
                 <th scope="col" className="py-3 pr-4 pl-2 text-center"><span className="sr-only">Actions</span></th>
@@ -905,7 +900,7 @@ export function MultiItemPickListDraft({
             <tbody className="divide-y divide-slate-100">
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 px-4 text-center">
+                  <td colSpan={9} className="py-12 px-4 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3">
                       <FileSpreadsheet className="h-6 w-6" />
                     </div>
@@ -924,9 +919,13 @@ export function MultiItemPickListDraft({
                         catalog={catalog}
                         flowType={flowType}
                         selectedItemId={line.itemId}
-                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalUnits: "" })}
+                        onSelectItem={(itemId) => updateLine(line.id, { itemId, totalBoxes: "" })}
                         disabled={!organizationId || !flowType}
                       />
+                      {item && <div className="mt-1 min-w-0">
+                        <span className="block truncate font-body text-[11px] text-slate-700" title={item.itemName}>{item.itemName}</span>
+                        {flowType !== "supplies" && item.customerItemCode && <span className="block truncate font-mono text-[10px] text-slate-500" title={item.customerItemCode}>PN {item.customerItemCode}</span>}
+                      </div>}
                     </td>
 
                     {/* SPQ (inherited from item enrollment; never manually adjusted) */}
@@ -936,24 +935,24 @@ export function MultiItemPickListDraft({
                       </span>
                     </td>
 
-                    {/* Qty (Total Units input) */}
+                    {/* Box quantity is the warehouse pick unit; units are derived. */}
                     <td className="py-2.5 pl-4 pr-2 align-middle">
                       <input
-                        value={line.totalUnits}
-                        onChange={(event) => handleTotalUnitsChange(line.id, event.target.value)}
+                        value={line.totalBoxes}
+                        onChange={(event) => handleTotalBoxesChange(line.id, event.target.value)}
                         type="number"
                         min="1"
                         disabled={!item}
                         className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-right font-mono text-xs font-semibold text-slate-900 shadow-2xs outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
-                        title="Total Units (Pieces)"
+                        title="Quantity in boxes; pieces are derived from SPQ"
                       />
                     </td>
 
-                    {/* Number of Boxes (derived from Qty ÷ SPQ) */}
+                    {/* Derived pieces */}
                     <td className="py-2.5 px-2 align-middle">
                       <span className="block rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-right font-mono text-xs font-semibold text-slate-900">
-                        {requestedBoxes ?? "—"}
+                        {item && requestedBoxes !== null ? boxesToPieces(requestedBoxes, item.spq) : "—"}
                       </span>
                     </td>
 
@@ -977,20 +976,6 @@ export function MultiItemPickListDraft({
                         )) : <span className="text-slate-400">{item ? `${Math.max(0, totalAvailableBoxes - (requestedBoxes ?? 0))} boxes` : "—"}</span>}
                       </div>
                       {item && requestedBoxes !== null && !hasEnoughStock && <p className="mt-1 text-[10px] font-semibold text-rose-600">Insufficient</p>}
-                    </td>
-
-                    {/* CUST PN */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <span className="block truncate font-mono text-xs text-slate-700" title={item?.customerItemCode ?? undefined}>
-                        {item?.customerItemCode || <span className="text-slate-400">—</span>}
-                      </span>
-                    </td>
-
-                    {/* ITEM DESCRIPTION */}
-                    <td className="py-2.5 px-3 align-middle">
-                      <span className="block truncate font-body text-xs text-slate-800" title={item?.itemName ?? undefined}>
-                        {item?.itemName || <span className="text-slate-400">—</span>}
-                      </span>
                     </td>
 
                     {/* LOT NUMBER */}

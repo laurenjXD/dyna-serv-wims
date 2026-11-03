@@ -152,6 +152,15 @@ Testing: Unit and E2E tests for `/` rendering under floor, office, and Organizat
 
 ## Sign-off
 
+### Mobile handle amendment — 2026-11-03
+
+Scope: requirements R4.6 and design §3.4 mobile navigation sheet handle, requested and authorized by the Product Owner in conversation ("yes that i want the drag"). This amendment retains the feature's Approved status and existing second-approver standing convention.
+
+- [x] Product Owner approval — User, 2026-11-03, explicit request in conversation.
+- [x] Second approver — User / System, 2026-11-03, per the standing auto-sign-off convention recorded below.
+- [x] Implement primary-pointer dragging, bounded snap heights, downward dismissal, cancellation recovery, and independent list scrolling.
+- [x] Verify pointer and keyboard behavior with focused component tests; typecheck, scoped lint, and design-system review. Verification: 43/43 ShellNavigation component tests pass (including eight new gesture/accessibility cases), `npm.cmd run typecheck`, scoped ESLint, and read-only design-system review pass. Physical-device gesture QA remains a pre-launch check under the shared testing strategy.
+
 - [x] Requirements, design, and tasks complete and internally consistent after visual design system alignment.
 - [x] Documentation-level verification passes.
 - [x] `rbac-rls-reviewer` confirms shell does not substitute client visibility for authorization.

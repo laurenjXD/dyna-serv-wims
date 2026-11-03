@@ -1,5 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Product Owner request: draggable mobile navigation handle (2026-11-03)
+
+The Product Owner explicitly requested dragging the mobile navigation sheet by its top handle. The approved `05-ui-shell-and-navigation` amendment adds touch/mouse/pen resizing, 55/85/95 dynamic-viewport-height snap positions (85 initially), downward dismissal below 35%, cancellation recovery, a keyboard-accessible handle, and independent navigation-list scrolling. The existing close/backdrop/Escape controls remain available. Approval and the standing second-approver convention are recorded in `05/tasks.md`; implementation verification is tracked there. This is local shell presentation behavior and changes no business data or authorization.
+
 ## Product Owner clarification: document-driven Organization-first forms (2026-10-23)
 
 For CIPL/WRR and DRA workflows, the source or requesting **Organization is
@@ -2046,3 +2050,14 @@ real-PostgreSQL WASM verification passed 21 tests after applying all 80 migratio
 full unit/component suite passed 2,299 tests. Hosted migration application, actual
 Supabase/PgBouncer concurrency and authenticated browser E2E remain separate checks.
 No real staff accounts or hosted database were modified in this session.
+
+## Jackwrapped line dispatch QR clarification approved (2026-11-03)
+
+Lauren clarified that dispatch follows receiving's batch confirmation behavior:
+one matching carton/item/lot QR identifies a jackwrapped committed line and
+confirms that line's full committed box quantity. A line split across locations
+still requires one identifying scan for each location line. The final dispatch
+command remains the only inventory-decrement boundary. The 08 requirements,
+design, and tasks now record this contract. The implementation retains the
+server-side pick-list line lock and assigns no more than the exact committed
+internal unit count; repeated scans after line completion are rejected.

@@ -154,7 +154,7 @@ Testing: Full applicable matrix below.
 - [ ] FEFO/FIFO selection, available-lot eligibility, dispersed-location allocation, and commitment accounting.
 - [ ] Override-required detection and approval-state validation.
 - [ ] Commitment/release/dispatch state transitions and idempotency result handling.
-- [ ] Scan matching and rejection classifications.
+- [ ] Scan matching and rejection classifications, including one matching carton/item/lot QR confirming exactly one jackwrapped committed location line, and rejection of repeat scans after that line is complete.
 - [ ] Pricing/document contract validation without pricing calculation leakage.
 
 ### Integration tests
@@ -234,3 +234,11 @@ Sign-off: Engineering — approved 2026-10-27.
 
 Sign-off: Product Owner — approved 2026-10-22.
 Sign-off: Engineering — approved 2026-10-22.
+
+## Approved amendment — jackwrapped line dispatch scan (2026-11-03)
+
+- [x] One matching carton/item/lot QR identifies and confirms the full committed box quantity for its matching item/lot/location line, following receiving's batch confirmation behavior.
+- [x] A split lot retains a separate confirmation scan for each committed location line; one scan cannot confirm unrelated lines.
+- [x] The server assigns exactly the committed number of internal inventory-unit rows, rejects completed-line duplicates, and retains the existing final dispatch command as the inventory-decrement boundary.
+- [x] Product Owner sign-off: Lauren, 2026-11-03 (explicit direction in conversation).
+- [x] Second approver sign-off: System standing approval, 2026-11-03.

@@ -37,7 +37,7 @@
 //   - `featureStatus: "planned"` entries (registry.ts) never render a
 //     live link (design.md §5's registry rule), and entries whose
 //     capability the context does not grant are omitted entirely (never
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AuthorizationContext } from "@/lib/rbac/session";
@@ -63,6 +63,141 @@ const officeContext: Pick<AuthorizationContext, "grants"> = {
     { resource: "documents", action: "read", scopeKind: "global" },
   ],
 };
+
+describe("mobile navigation sheet drag handle", () => {
+  beforeEach(() => {
+    // jsdom lacks PointerEvent and pointer capture; preserve browser pointer
+    // identity and coordinates so these tests exercise the complete gesture.
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number;
+      isPrimary: boolean;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 1;
+        this.isPrimary = init.isPrimary ?? true;
+      }
+    }
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
+    vi.stubGlobal("innerHeight", 800);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function openSheet() {
+    const onClose = vi.fn();
+    render(<ShellNavigation tier="office" context={officeContext} currentPath="/inventory" mobileNavOpen onCloseMobileNav={onClose} />);
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    const handle = within(dialog).getByRole("slider", { name: /resize navigation menu/i });
+    const sheet = handle.parentElement!;
+    const capture = vi.fn();
+    const release = vi.fn();
+    Object.defineProperty(handle, "setPointerCapture", { value: capture });
+    Object.defineProperty(handle, "releasePointerCapture", { value: release });
+    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({ height: 800 } as DOMRect);
+    vi.spyOn(sheet, "getBoundingClientRect").mockReturnValue({ height: 680 } as DOMRect);
+    // ShellNavigation also requests closing transient navigation on mount /
+    // route changes. Only count close requests made by the gesture itself.
+    onClose.mockClear();
+    return { dialog, handle, sheet, capture, release, onClose };
+  }
+
+  it("follows the captured pointer upward, then snaps to the expanded height", () => {
+    const { handle, sheet, capture, release } = openSheet();
+    expect(sheet.style.height).toBe("85dvh");
+    fireEvent.pointerDown(handle, { pointerId: 7, clientY: 200, button: 0 });
+    expect(capture).toHaveBeenCalledWith(7);
+    fireEvent.pointerMove(handle, { pointerId: 7, clientY: 140 });
+    expect(sheet.style.height).toBe("740px");
+    fireEvent.pointerUp(handle, { pointerId: 7, clientY: 140 });
+    expect(sheet.style.height).toBe("95dvh");
+    expect(handle).toHaveAttribute("aria-valuenow", "95");
+    expect(release).toHaveBeenCalledWith(7);
+  });
+
+  it("shrinks on a downward drag and dismisses when pulled below the closing threshold", () => {
+    const { handle, sheet, onClose } = openSheet();
+    fireEvent.pointerDown(handle, { clientY: 100, button: 0 });
+    fireEvent.pointerMove(handle, { clientY: 340 });
+    expect(sheet.style.height).toBe("440px");
+    fireEvent.pointerUp(handle, { clientY: 340 });
+    expect(sheet.style.height).toBe("55dvh");
+    expect(onClose).not.toHaveBeenCalled();
+    // Measure the new resting height for the next gesture.
+    vi.mocked(sheet.getBoundingClientRect).mockReturnValue({ height: 440 } as DOMRect);
+    fireEvent.pointerDown(handle, { clientY: 100, button: 0 });
+    fireEvent.pointerUp(handle, { clientY: 300 });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("can interrupt a snap animation without mistaking the animated sheet for the viewport", () => {
+    const { handle, sheet } = openSheet();
+    fireEvent.keyDown(handle, { key: "End" });
+    // 600px is an intermediate animated height on the way to 95dvh.
+    vi.mocked(sheet.getBoundingClientRect).mockReturnValue({ height: 600 } as DOMRect);
+    fireEvent.pointerDown(handle, { clientY: 100, button: 0 });
+    expect(sheet.style.height).toBe("600px");
+    fireEvent.pointerUp(handle, { clientY: 100 });
+    // 600/800 = 75%, nearest to 85%, not the previous target of 95%.
+    expect(sheet.style.height).toBe("85dvh");
+  });
+
+  it.each(["pointerCancel", "lostPointerCapture"] as const)("restores the resting height on %s without closing", (eventName) => {
+    const { handle, sheet, onClose } = openSheet();
+    fireEvent.pointerDown(handle, { clientY: 100, button: 0 });
+    fireEvent.pointerMove(handle, { clientY: 650 });
+    fireEvent[eventName](handle, { pointerId: 1 });
+    expect(sheet.style.height).toBe("85dvh");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("ignores right clicks, secondary pointers and events belonging to another finger", () => {
+    const { handle, sheet, capture, onClose } = openSheet();
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100, button: 2 });
+    fireEvent.pointerDown(handle, { pointerId: 2, clientY: 100, button: 0, isPrimary: false });
+    expect(capture).not.toHaveBeenCalled();
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100, button: 0 });
+    fireEvent.pointerDown(handle, { pointerId: 2, clientY: 100, button: 0 });
+    fireEvent.pointerMove(handle, { pointerId: 2, clientY: 750 });
+    fireEvent.pointerUp(handle, { pointerId: 2, clientY: 750 });
+    expect(sheet.style.height).toBe("680px");
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 100 });
+    expect(sheet.style.height).toBe("85dvh");
+  });
+
+  it("supports keyboard sizing and preserves Escape dismissal", () => {
+    const { handle, sheet, onClose } = openSheet();
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    fireEvent.keyDown(handle, { key: "ArrowUp" });
+    expect(sheet.style.height).toBe("95dvh");
+    fireEvent.keyDown(handle, { key: "ArrowDown" });
+    expect(sheet.style.height).toBe("85dvh");
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(sheet.style.height).toBe("55dvh");
+    fireEvent.keyDown(handle, { key: "ArrowDown" });
+    expect(sheet.style.height).toBe("55dvh");
+    fireEvent.keyDown(handle, { key: "End" });
+    expect(sheet.style.height).toBe("95dvh");
+    fireEvent.keyDown(handle, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("keeps dragging on the handle separate from scrolling the navigation list", () => {
+    const { dialog, handle, sheet, capture } = openSheet();
+    const list = dialog.querySelector(".overflow-y-auto")!;
+    fireEvent.pointerDown(list, { clientY: 200, button: 0 });
+    fireEvent.pointerMove(list, { clientY: 100 });
+    fireEvent.pointerUp(list, { clientY: 100 });
+    expect(capture).not.toHaveBeenCalled();
+    expect(sheet.style.height).toBe("85dvh");
+    expect(handle).toHaveClass("touch-none", "min-h-14");
+    expect(list).toHaveClass("min-h-0", "overscroll-contain");
+    expect(list).not.toHaveClass("touch-none");
+  });
+});
 
 describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
   it("renders the floor bottom tab bar, never the desktop sidebar, for tier='floor'", () => {
