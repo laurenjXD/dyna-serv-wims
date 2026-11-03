@@ -75,9 +75,13 @@ type CatalogItem = {
 };
 
 function itemCodeFor(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "dsgcItemNumber">, flowType: string) {
-  return flowType === "trading"
-    ? (item.dsgcItemNumber ?? item.itemCode)
-    : (item.supplierItemCode ?? item.itemCode);
+  const enrolledCode = flowType === "vmi" ? item.supplierItemCode : item.dsgcItemNumber;
+  return enrolledCode?.trim() || item.itemCode;
+}
+
+function hasRequiredItemCode(item: Pick<CatalogItem, "supplierItemCode" | "dsgcItemNumber">, flowType: string): boolean {
+  const requiredCode = flowType === "vmi" ? item.supplierItemCode : item.dsgcItemNumber;
+  return Boolean(requiredCode?.trim());
 }
 
 function availableBoxesForSource(source: Pick<StockSource, "availableQty" | "spq">): number {
@@ -223,6 +227,7 @@ function PickListItemSearch({
             {filteredItems.length > 0 ? filteredItems.map((item) => {
               const formattedCode = itemCodeFor(item, flowType);
               const isSelected = item.itemId === selectedItemId;
+              const codeIsProvisional = !hasRequiredItemCode(item, flowType);
               const availableBoxes = item.sources.reduce(
                 (sum, source) => sum + availableBoxesForSource(source),
                 0,
@@ -231,18 +236,19 @@ function PickListItemSearch({
                 <button
                   key={item.itemId}
                   type="button"
+                  disabled={codeIsProvisional}
                   onClick={() => {
                     onSelectItem(item.itemId);
                     setInputValue(formattedCode);
                     setIsOpen(false);
                   }}
-                  className={`flex w-full items-start justify-between gap-3 rounded-lg p-2.5 text-left transition-colors ${isSelected ? "bg-brand-navy/10 text-brand-navy" : "text-slate-900 hover:bg-slate-50"}`}
+                  className={`flex w-full items-start justify-between gap-3 rounded-lg p-2.5 text-left transition-colors ${codeIsProvisional ? "cursor-not-allowed bg-slate-50 opacity-70" : isSelected ? "bg-brand-navy/10 text-brand-navy" : "text-slate-900 hover:bg-slate-50"}`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="truncate font-mono text-xs font-bold text-brand-navy">{formattedCode}</span>
                       {item.customerItemCode && <span className="truncate font-mono text-[10px] text-slate-500">(Cust: {item.customerItemCode})</span>}
-                      <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-800">Available</span>
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide ${codeIsProvisional ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>{codeIsProvisional ? "Needs item code" : "Available"}</span>
                     </div>
                     <p className="mt-0.5 truncate font-body text-xs text-slate-700">{item.itemName}</p>
                     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-slate-500">
@@ -362,6 +368,7 @@ export function MultiItemPickListDraft({
 
   const lineDetails = lines.map((line) => {
     const item = catalog.find((candidate) => candidate.itemId === line.itemId);
+    const itemHasRequiredCode = Boolean(item && hasRequiredItemCode(item, flowType));
     const effectiveSpq = item?.spq ?? 0;
     const requestedBoxes = item && Number.isInteger(Number(line.boxes)) && Number(line.boxes) > 0
       ? Number(line.boxes)
@@ -408,6 +415,7 @@ export function MultiItemPickListDraft({
       selectedSource,
       manualAllocations,
       requiresOverride,
+      itemHasRequiredCode,
       hasWholeCartonQuantity,
       hasEnoughStock,
     };
@@ -530,7 +538,7 @@ export function MultiItemPickListDraft({
     const recipientPartyId = flowType === "supplies"
       ? organizationId
       : flowType === "trading" ? customerPartyId : endCustomerPartyId;
-    const prepared = details.flatMap(({ line, item, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock }) =>
+    const prepared = details.flatMap(({ line, item, itemHasRequiredCode, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock }) =>
       fifoAllocations.map(({ source, boxes }) => ({
         itemId: line.itemId,
         lotId: source.lotId,
@@ -538,13 +546,13 @@ export function MultiItemPickListDraft({
         qty: boxesToPieces(boxes, item?.spq ?? 1),
         customerItemCode: line.customerItemCode.trim() || source.customerItemCode || null,
         itemCodeIsProvisional: false,
-        valid: Boolean(item && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
+        valid: Boolean(item && itemHasRequiredCode && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
       })),
     );
     if (
       prepared.length === 0 ||
-      details.some(({ item, requestedBoxes, hasWholeCartonQuantity, hasEnoughStock }) =>
-        !item || requestedBoxes === null || !hasWholeCartonQuantity || !hasEnoughStock,
+      details.some(({ item, itemHasRequiredCode, requestedBoxes, hasWholeCartonQuantity, hasEnoughStock }) =>
+        !item || !itemHasRequiredCode || requestedBoxes === null || !hasWholeCartonQuantity || !hasEnoughStock,
       ) ||
       prepared.some((line) => !line.valid)
     ) return "";
@@ -585,6 +593,8 @@ export function MultiItemPickListDraft({
           ? "Add at least one item line."
           : lineDetails.some(({ item }) => !item)
             ? "Choose an item code for every line."
+            : lineDetails.some(({ itemHasRequiredCode }) => !itemHasRequiredCode)
+              ? "This item needs its enrolled supplier/DSGC item code before a pick list can be created."
             : lineDetails.some(({ requestedBoxes }) => requestedBoxes === null)
               ? "Enter a positive whole-box quantity for every line."
               : lineDetails.some(({ line, requestedBoxes, allocatedBoxes }) => line.manualSplit && requestedBoxes !== null && allocatedBoxes !== requestedBoxes)
@@ -1139,20 +1149,6 @@ export function MultiItemPickListDraft({
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
                           <p className="text-[11px] font-semibold leading-4 text-slate-600">FIFO locations are preselected. Add another location below to split the quantity.</p>
-                          <select
-                            aria-label="Add location to split"
-                            value=""
-                            onChange={(event) => handleManualLocationToggle(line.id, event.target.value)}
-                            disabled={!canEditLines || !item || line.manualAllocations.length === item?.sources.length}
-                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
-                          >
-                            <option value="">Add another location…</option>
-                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
-                              <option key={source.balanceId} value={source.balanceId}>
-                                {source.locationLabel} · FIFO #{source.priority} · {availableBoxesForSource(source)} boxes available
-                              </option>
-                            ))}
-                          </select>
                           {line.manualAllocations.map((allocation) => {
                             const source = item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
                             if (!source) return null;
@@ -1180,6 +1176,20 @@ export function MultiItemPickListDraft({
                               </div>
                             );
                           })}
+                          <select
+                            aria-label="Add location to split"
+                            value=""
+                            onChange={(event) => handleManualLocationToggle(line.id, event.target.value)}
+                            disabled={!canEditLines || !item || line.manualAllocations.length === item?.sources.length}
+                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                          >
+                            <option value="">Add another location…</option>
+                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · FIFO #{source.priority} · {availableBoxesForSource(source)} boxes available
+                              </option>
+                            ))}
+                          </select>
                           <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-[11px]">
                             <span className="text-slate-500">Allocated</span>
                             <span className={allocatedBoxes === requestedBoxes && requestedBoxes !== null ? "font-mono font-bold text-emerald-700" : "font-mono font-bold text-amber-700"}>
@@ -1342,20 +1352,6 @@ export function MultiItemPickListDraft({
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
                           <p className="font-body text-[11px] leading-4 text-slate-600">FIFO locations are preselected. Add another location below to split the quantity.</p>
-                          <select
-                            aria-label="Add location to split"
-                            value=""
-                            onChange={(event) => handleManualLocationToggle(line.id, event.target.value)}
-                            disabled={!canEditLines || !item || line.manualAllocations.length === item?.sources.length}
-                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
-                          >
-                            <option value="">Add another location…</option>
-                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
-                              <option key={source.balanceId} value={source.balanceId}>
-                                {source.locationLabel} · FIFO #{source.priority} · {availableBoxesForSource(source)} boxes available
-                              </option>
-                            ))}
-                          </select>
                           {line.manualAllocations.map((allocation) => {
                             const source = item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
                             if (!source) return null;
@@ -1383,6 +1379,20 @@ export function MultiItemPickListDraft({
                               </div>
                             );
                           })}
+                          <select
+                            aria-label="Add location to split"
+                            value=""
+                            onChange={(event) => handleManualLocationToggle(line.id, event.target.value)}
+                            disabled={!canEditLines || !item || line.manualAllocations.length === item?.sources.length}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-body text-xs text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                          >
+                            <option value="">Add another location…</option>
+                            {item?.sources.filter((source) => !line.manualAllocations.some((allocation) => allocation.balanceId === source.balanceId)).map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · FIFO #{source.priority} · {availableBoxesForSource(source)} boxes available
+                              </option>
+                            ))}
+                          </select>
                           <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 font-body text-[11px]">
                             <span className="text-slate-500">Allocated</span>
                             <span className={allocatedBoxes === requestedBoxes && requestedBoxes !== null ? "font-mono font-bold text-emerald-700" : "font-mono font-bold text-amber-700"}>

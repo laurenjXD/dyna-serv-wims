@@ -77,6 +77,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       primary: "The selected location is not the current FIFO/FEFO source.",
       next: "Choose the recommended source or submit the required override request.",
     },
+    provisional_item_code: {
+      primary: "This item is missing its enrolled supplier/DSGC item code.",
+      next: "Open Item Master, add the required code for this Inventory Model, then refresh and try again.",
+    },
     no_rate_configured: {
       primary: "No active Trading price is configured for this organization and item.",
       next: "Ask an administrator to configure the Trading rate card, then retry.",

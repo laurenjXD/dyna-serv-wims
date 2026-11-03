@@ -443,8 +443,8 @@ export async function commitWithdrawal(
       }
       const itemCodeIsProvisional =
         (data.flowType === "trading" || data.flowType === "supplies")
-          ? !item.dsgcItemNumber
-          : !item.supplierItemCode;
+          ? !item.dsgcItemNumber?.trim()
+          : !item.supplierItemCode?.trim();
       if (itemCodeIsProvisional) {
         throw new Error("provisional_item_code");
       }

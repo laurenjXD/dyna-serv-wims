@@ -110,6 +110,30 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(itemSearch).toHaveValue("SUP-ITEM-1");
   });
 
+  it("does not allow an item with a missing VMI supplier code to be selected", () => {
+    const stockWithoutSupplierCode = [{ ...stock[0], supplierItemCode: null }];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithoutSupplierCode}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "ITEM-1" } });
+
+    const recommendation = screen.getByRole("button", { name: /ITEM-1/ });
+    expect(recommendation).toBeDisabled();
+    expect(within(recommendation).getByText("Needs item code")).toBeInTheDocument();
+  });
+
   it("accepts boxes and derives the base-unit quantity from SPQ", () => {
     const boxedStock = [{ ...stock[0], spq: 100, availableQty: 2000 }];
 
