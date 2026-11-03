@@ -257,7 +257,9 @@ export function buildStockAllocationPreview(
   const result: AllocationResult = allocate(
     itemRows.map((row) => ({
       lotId: row.lotId,
+      lotNumber: row.lotNumber,
       locationId: row.locationId,
+      locationLabel: row.locationLabel,
       lotStatus: row.lotStatus,
       qtyRemaining: row.qtyRemaining,
       qtyCommitted: row.qtyCommitted,

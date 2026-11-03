@@ -464,7 +464,7 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
             <MultiItemPickListDraft
               endCustomers={endCustomers}
               customers={customers}
-              stock={stockRows.map((row, index) => ({
+              stock={stockRows.map((row) => ({
                 itemId: row.itemId,
                 itemCode: row.itemCode,
                 itemName: row.itemName,
@@ -480,11 +480,13 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
                 balanceId: row.balanceId ?? `${row.lotId}:${row.locationId}`,
                 lotId: row.lotId,
                 lotNumber: row.lotNumber,
+                receivedAt: row.receivedAt,
+                expiryDate: row.expiryDate,
+                isPerishable: row.isPerishable,
                 manufactureDate: row.manufactureDate ?? null,
                 locationId: row.locationId,
                 locationLabel: row.locationLabel,
                 availableQty: row.qtyRemaining - row.qtyCommitted,
-                priority: index + 1,
               }))}
               createAction={createPickList}
               overrideAction={requestPickListOverride}

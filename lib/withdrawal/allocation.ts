@@ -13,13 +13,52 @@
 
 export type LotLocationRow = {
   lotId: string;
+  lotNumber?: string;
   locationId: string;
+  locationLabel?: string;
   lotStatus: string; // 'available' | 'quarantine' | 'expired' | 'held' | ...
   qtyRemaining: number;
   qtyCommitted: number;
-  receivedAt: Date; // FIFO ordering
-  expiryDate: Date | null; // non-null for perishable items → FEFO ordering
+  receivedAt: Date | string; // FIFO ordering
+  expiryDate: Date | string | null; // non-null for perishable items → FEFO ordering
 };
+
+function dateOrder(value: Date | string | null): number {
+  if (value === null) return Number.POSITIVE_INFINITY;
+  const timestamp = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+}
+
+function compareLabel(left: string, right: string): number {
+  return left.localeCompare(right, "en", { numeric: true, sensitivity: "base" }) ||
+    (left < right ? -1 : left > right ? 1 : 0);
+}
+
+/**
+ * Shared source order for allocation previews, the pick-list draft, DRA
+ * suggestions, and the authoritative commitment transaction. Lots rank by
+ * FIFO/FEFO first; locations are only ordered after their lot is chosen.
+ */
+export function compareLotLocationPriority(
+  left: Pick<LotLocationRow, "lotId" | "lotNumber" | "locationId" | "locationLabel" | "receivedAt" | "expiryDate">,
+  right: Pick<LotLocationRow, "lotId" | "lotNumber" | "locationId" | "locationLabel" | "receivedAt" | "expiryDate">,
+  isPerishable: boolean,
+): number {
+  const expiryOrder = dateOrder(left.expiryDate) - dateOrder(right.expiryDate);
+  const receiptOrder = dateOrder(left.receivedAt) - dateOrder(right.receivedAt);
+  const lotOrder = compareLabel(left.lotNumber ?? left.lotId, right.lotNumber ?? right.lotId) ||
+    compareLabel(left.lotId, right.lotId);
+
+  if (isPerishable) {
+    return expiryOrder || receiptOrder || lotOrder ||
+      compareLabel(left.locationLabel ?? left.locationId, right.locationLabel ?? right.locationId) ||
+      compareLabel(left.locationId, right.locationId);
+  }
+
+  return receiptOrder || lotOrder ||
+    compareLabel(left.locationLabel ?? left.locationId, right.locationLabel ?? right.locationId) ||
+    compareLabel(left.locationId, right.locationId);
+}
 
 export type AllocationLineResult = {
   lotId: string;
@@ -52,8 +91,10 @@ export type ProvisionalCheckResult =
 //      is ≤ 0 are skipped.
 //   3. isPerishable = true → FEFO (sort by expiryDate ascending).
 //   4. isPerishable = false → FIFO (sort by receivedAt ascending).
-//   5. Fill greedily: take as much as available from each row in sorted order.
-//   6. If total available < requestedQty → { ok: false, error: 'insufficient_stock' }.
+//   5. Rank lots before their locations; within one lot, break ties by the
+//      human-readable location label and then location ID.
+//   6. Fill greedily: take as much as available from each row in sorted order.
+//   7. If total available < requestedQty → { ok: false, error: 'insufficient_stock' }.
 //      Never return a partial allocation.
 // ---------------------------------------------------------------------------
 
@@ -69,17 +110,7 @@ export function allocate(
     .filter((r) => r.availableQty > 0);
 
   // Step 3/4: sort by FEFO or FIFO
-  if (isPerishable) {
-    // FEFO: sort by expiryDate ascending; null expiryDate sorts to end
-    eligible.sort((a, b) => {
-      const aTime = a.expiryDate !== null ? a.expiryDate.getTime() : Infinity;
-      const bTime = b.expiryDate !== null ? b.expiryDate.getTime() : Infinity;
-      return aTime - bTime;
-    });
-  } else {
-    // FIFO: sort by receivedAt ascending
-    eligible.sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime());
-  }
+  eligible.sort((a, b) => compareLotLocationPriority(a, b, isPerishable));
 
   // Step 6: check total available before committing to allocation
   const totalAvailable = eligible.reduce((sum, r) => sum + r.availableQty, 0);

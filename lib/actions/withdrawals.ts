@@ -240,7 +240,9 @@ export async function requestFifoOverride(
 
       const standard = allocate(rows.map((row) => ({
         lotId: row.lotId,
+        lotNumber: row.lotNumber,
         locationId: row.locationId,
+        locationLabel: row.locationLabel,
         lotStatus: row.lotStatus,
         qtyRemaining: row.qtyRemaining,
         qtyCommitted: row.qtyCommitted,
@@ -502,7 +504,9 @@ export async function commitWithdrawal(
       const allocation = allocate(
         rows.map((row) => ({
           lotId: row.lotId,
+          lotNumber: row.lotNumber,
           locationId: row.locationId,
+          locationLabel: row.locationLabel,
           lotStatus: row.lotStatus,
           qtyRemaining: row.qtyRemaining,
           qtyCommitted: row.qtyCommitted,

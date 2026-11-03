@@ -26,7 +26,9 @@ const stock = [{
   locationId: "location-1",
   locationLabel: "A4-01",
   availableQty: 10,
-  priority: 1,
+  receivedAt: new Date("2026-01-01T00:00:00Z"),
+  expiryDate: null,
+  isPerishable: false,
 }];
 
 describe("MultiItemPickListDraft organization selection", () => {
@@ -141,8 +143,8 @@ describe("MultiItemPickListDraft organization selection", () => {
 
   it("defaults the requested boxes to the first FIFO location", () => {
     const stockWithSplitFifo = [
-      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
-      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10" },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11" },
     ];
 
     render(
@@ -169,8 +171,8 @@ describe("MultiItemPickListDraft organization selection", () => {
 
   it("does not request approval when a split follows the normal FIFO plan", () => {
     const stockWithSplitFifo = [
-      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
-      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10" },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11" },
     ];
 
     render(
@@ -189,7 +191,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "15" } });
-    fireEvent.change(screen.getAllByLabelText("Add location to split")[0], { target: { value: "balance-2" } });
+    fireEvent.change(screen.getAllByLabelText("Add location within FIFO lot")[0], { target: { value: "balance-2" } });
     fireEvent.change(screen.getAllByLabelText("Boxes from C1-11")[0], { target: { value: "5" } });
 
     expect(screen.getAllByLabelText("Boxes from C1-10")[0]).toHaveValue(10);
@@ -246,8 +248,8 @@ describe("MultiItemPickListDraft organization selection", () => {
 
   it("limits quantity to on-hand boxes, exposes source locations, and preserves Customer PN input", () => {
     const stockWithSources = [
-      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
-      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01" },
+      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05" },
     ];
 
     const { container } = render(
@@ -297,8 +299,8 @@ describe("MultiItemPickListDraft organization selection", () => {
 
   it("lets the operator split one line across multiple locations with explicit box quantities", () => {
     const stockWithSources = [
-      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
-      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01" },
+      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05" },
     ];
 
     render(
@@ -319,7 +321,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "2" } });
 
-    fireEvent.change(screen.getAllByLabelText("Add location to split")[0], { target: { value: "balance-2" } });
+    fireEvent.change(screen.getAllByLabelText("Add location within FIFO lot")[0], { target: { value: "balance-2" } });
     const firstLocationBoxes = screen.getAllByLabelText("Boxes from A4-01")[0];
     const secondLocationBoxes = screen.getAllByLabelText("Boxes from B2-05")[0];
     fireEvent.change(firstLocationBoxes, { target: { value: "1" } });

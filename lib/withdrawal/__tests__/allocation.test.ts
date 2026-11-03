@@ -85,7 +85,9 @@ const BASE_DATE = new Date("2026-01-01T00:00:00Z");
 
 function makeRow(overrides: {
   lotId?: string;
+  lotNumber?: string;
   locationId?: string;
+  locationLabel?: string;
   lotStatus?: string;
   qtyRemaining?: number;
   qtyCommitted?: number;
@@ -94,7 +96,9 @@ function makeRow(overrides: {
 }) {
   return {
     lotId: overrides.lotId ?? "lot-uuid-1",
+    lotNumber: overrides.lotNumber ?? overrides.lotId ?? "LOT-1",
     locationId: overrides.locationId ?? "loc-uuid-1",
+    locationLabel: overrides.locationLabel ?? overrides.locationId ?? "A1-01",
     lotStatus: overrides.lotStatus ?? "available",
     qtyRemaining: overrides.qtyRemaining ?? 100,
     qtyCommitted: overrides.qtyCommitted ?? 0,
@@ -157,6 +161,44 @@ describe("allocate — FEFO ordering for perishable items (R3.2, design.md §5)"
       expect(late).toBeDefined();
       expect(early!.qtyAllocated).toBe(20);
       expect(late!.qtyAllocated).toBe(30);
+    }
+  });
+
+  it("uses label order within one earliest-expiring lot before moving to the next lot", () => {
+    const firstLocation = makeRow({
+      lotId: "lot-earliest",
+      lotNumber: "LOT-EARLY",
+      locationId: "loc-a",
+      locationLabel: "A1-01",
+      qtyRemaining: 2,
+      expiryDate: new Date("2026-03-01T00:00:00Z"),
+    });
+    const secondLocation = makeRow({
+      lotId: "lot-earliest",
+      lotNumber: "LOT-EARLY",
+      locationId: "loc-b",
+      locationLabel: "B1-01",
+      qtyRemaining: 2,
+      expiryDate: new Date("2026-03-01T00:00:00Z"),
+    });
+    const laterExpiry = makeRow({
+      lotId: "lot-later",
+      lotNumber: "LOT-LATER",
+      locationId: "loc-c",
+      locationLabel: "C1-01",
+      qtyRemaining: 10,
+      expiryDate: new Date("2026-04-01T00:00:00Z"),
+    });
+
+    const result = allocate([laterExpiry, secondLocation, firstLocation], 5, true);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.lines).toEqual([
+        { lotId: "lot-earliest", locationId: "loc-a", qtyAllocated: 2 },
+        { lotId: "lot-earliest", locationId: "loc-b", qtyAllocated: 2 },
+        { lotId: "lot-later", locationId: "loc-c", qtyAllocated: 1 },
+      ]);
     }
   });
 });
@@ -446,6 +488,44 @@ describe("allocate — dispersed locations (R3.3, design.md §5)", () => {
       expect(loc2Line).toBeDefined();
       const totalAllocated = result.lines.reduce((sum, l) => sum + l.qtyAllocated, 0);
       expect(totalAllocated).toBe(50);
+    }
+  });
+
+  it("fills locations within the oldest lot before moving to the next lot", () => {
+    const olderAtA = makeRow({
+      lotId: "lot-old",
+      lotNumber: "LOT-OLD",
+      locationId: "loc-a",
+      locationLabel: "A1-01",
+      qtyRemaining: 3,
+      receivedAt: new Date("2026-01-01T00:00:00Z"),
+    });
+    const olderAtB = makeRow({
+      lotId: "lot-old",
+      lotNumber: "LOT-OLD",
+      locationId: "loc-b",
+      locationLabel: "B1-01",
+      qtyRemaining: 2,
+      receivedAt: new Date("2026-01-01T00:00:00Z"),
+    });
+    const newerLot = makeRow({
+      lotId: "lot-new",
+      lotNumber: "LOT-NEW",
+      locationId: "loc-c",
+      locationLabel: "C1-01",
+      qtyRemaining: 10,
+      receivedAt: new Date("2026-02-01T00:00:00Z"),
+    });
+
+    const result = allocate([newerLot, olderAtB, olderAtA], 7, false);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.lines).toEqual([
+        { lotId: "lot-old", locationId: "loc-a", qtyAllocated: 3 },
+        { lotId: "lot-old", locationId: "loc-b", qtyAllocated: 2 },
+        { lotId: "lot-new", locationId: "loc-c", qtyAllocated: 2 },
+      ]);
     }
   });
 });
