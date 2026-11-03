@@ -384,7 +384,7 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       data-active={isActive ? "true" : "false"}
-      className={`group relative flex ${compact ? "min-h-11 gap-3 rounded-full px-3 py-1.5" : "h-12 gap-3 rounded-full px-3"} items-center font-label font-semibold
+      className={`group relative flex ${compact ? "min-h-10 gap-2.5 rounded-full px-2.5 py-1" : "h-12 gap-3 rounded-full px-3"} items-center font-label font-semibold
         ${floorText ? "text-mono-md" : "text-label"}
         motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
         focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1
@@ -392,8 +392,8 @@ function NavLink({
           ? "bg-white text-[#0b4d94] shadow-[0_4px_14px_rgba(0,0,0,0.15)] bg-primary/[0.08] before:bg-primary scale-[1.01]"
           : "text-white/90 hover:translate-x-1 hover:bg-white/10 hover:text-white hover:bg-primary/[0.05] hover:shadow-sm"}`}
     >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? "bg-blue-100/90 text-primary text-[#0b4d94]" : "bg-white/15 text-white group-hover:bg-white/25"}`}>
-        <Icon size={20} strokeWidth={2.6} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full motion-safe:transition-all motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? "bg-blue-100/90 text-primary text-[#0b4d94]" : "bg-white/15 text-white group-hover:bg-white/25"}`}>
+        <Icon size={18} strokeWidth={2.4} aria-hidden="true" className="motion-safe:transition-transform motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110" />
       </span>
       <span className={`min-w-0 flex-1 break-words leading-tight motion-safe:transition-opacity motion-safe:duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${floorText ? "text-mono-md" : "text-label"} ${isActive ? "text-[#0b4d94] font-bold" : "text-white/90 font-semibold"}`}>{label}</span>
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -646,7 +646,7 @@ export function ShellNavigation({
         aria-label="Primary navigation"
         aria-hidden={false}
         className={`print:hidden hidden flex-col overflow-hidden border-r border-brand-navy bg-brand-navy transition-[width] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:fixed lg:bottom-0 lg:left-0 lg:top-[76px] lg:z-40 lg:flex ${
-          desktopOpen ? "lg:w-[304px]" : "lg:w-[88px]"
+          desktopOpen ? "lg:w-[272px]" : "lg:w-[72px]"
         }`}
       >
         <a
