@@ -139,9 +139,9 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
   });
 
-  it("fills the requested boxes across FIFO locations by default", () => {
+  it("defaults the requested boxes to the first FIFO location", () => {
     const stockWithSplitFifo = [
-      { ...stock[0], availableQty: 2, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
       { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
     ];
 
@@ -162,8 +162,8 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "5" } });
 
-    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "2")).toBe(true);
-    expect(screen.getAllByLabelText("Boxes from C1-11").every((input) => (input as HTMLInputElement).value === "3")).toBe(true);
+    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "5")).toBe(true);
+    expect(screen.queryByLabelText("Boxes from C1-11")).not.toBeInTheDocument();
     expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
   });
 

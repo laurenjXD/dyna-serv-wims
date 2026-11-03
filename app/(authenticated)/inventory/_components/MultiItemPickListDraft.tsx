@@ -299,11 +299,25 @@ function allocateFifoBoxes(sources: StockSource[], requestedBoxes: number): Fifo
   return allocations;
 }
 
+function allocateDefaultFifoLocation(
+  sources: StockSource[],
+  requestedBoxes: number,
+): DraftLine["manualAllocations"] {
+  const firstSource = [...sources].sort((a, b) => a.priority - b.priority)[0];
+  if (!firstSource || !Number.isInteger(requestedBoxes) || requestedBoxes <= 0) return [];
+  return [{
+    balanceId: firstSource.balanceId,
+    boxes: String(Math.min(requestedBoxes, availableBoxesForSource(firstSource))),
+  }];
+}
+
 function rebalanceManualAllocations(
   sources: StockSource[],
   existing: DraftLine["manualAllocations"],
   requestedBoxes: number,
 ): DraftLine["manualAllocations"] {
+  if (existing.length === 0) return allocateDefaultFifoLocation(sources, requestedBoxes);
+
   let remaining = requestedBoxes;
   const existingByBalanceId = new Map(existing.map((allocation) => [allocation.balanceId, allocation]));
   const sortedSources = [...sources].sort((a, b) => a.priority - b.priority);
@@ -319,18 +333,6 @@ function rebalanceManualAllocations(
     const boxes = Number.isInteger(parsedBoxes)
       ? Math.min(Math.max(0, parsedBoxes), availableBoxes, Math.max(0, remaining))
       : 0;
-    allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
-    remaining -= boxes;
-  }
-
-  // If the requested line is larger than the first FIFO location, append the
-  // next FIFO locations automatically instead of leaving the line partially
-  // allocated for the operator to repair manually.
-  for (const source of sortedSources) {
-    if (remaining <= 0) break;
-    if (existingByBalanceId.has(source.balanceId)) continue;
-    const boxes = Math.min(remaining, availableBoxesForSource(source));
-    if (boxes <= 0) continue;
     allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
     remaining -= boxes;
   }

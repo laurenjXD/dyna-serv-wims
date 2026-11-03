@@ -97,6 +97,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       primary: "The available stock changed before the reservation completed.",
       next: "Refresh the inventory and choose a new allocation.",
     },
+    unable_to_reserve_stock: {
+      primary: "The selected stock is no longer available for this Organization and location.",
+      next: "Refresh inventory, select the current FIFO location, and try again.",
+    },
     quantity_must_match_spq: {
       primary: "The requested quantity must make complete boxes.",
       next: "Enter a total quantity that divides evenly by the enrolled SPQ.",

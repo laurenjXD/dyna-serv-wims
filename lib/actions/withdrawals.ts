@@ -99,6 +99,10 @@ function stockOrganizationId(row: AnyRecord): string | null {
   return row.organizationPartyId ?? row.defaultSupplierPartyId ?? null;
 }
 
+function stockOrganizationCondition(partyId: string) {
+  return sql`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId}) = ${partyId}`;
+}
+
 function hashSnapshot(data: unknown): string {
   return createHash("sha256").update(JSON.stringify(data)).digest("hex");
 }
@@ -206,6 +210,7 @@ export async function requestFifoOverride(
           eq(lots.itemId, requested.itemId),
           eq(lots.status, "available"),
           eq(lots.flowType, data.flowType),
+          stockOrganizationCondition(data.partyId),
           sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
         ))
         .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
@@ -433,6 +438,7 @@ export async function commitWithdrawal(
           eq(lots.itemId, itemId),
           eq(lots.status, "available"),
           eq(lots.flowType, data.flowType),
+          stockOrganizationCondition(data.partyId),
           sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted} > 0`,
         ))
         .orderBy(asc(lots.expiryDate), asc(lots.createdAt), asc(lotLocationBalances.id))) as AnyRecord[];
