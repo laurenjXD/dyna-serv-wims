@@ -1,5 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Pick-list location selection and duplicate lot-card correction (2026-11-03)
+
+The grouped FIFO/FEFO plan now provides location checkboxes and editable box quantities directly inside each business lot card. Repeated lot numbers in the same rank are visually grouped even when opening balances have separate internal lot IDs; each location retains its exact stock identity for server validation. Both manual drafts and DRA-import drafts use this editor, and displayed allocations track manual changes. The duplicate allocation cards and add-location dropdown are removed from multi-location mode. Verified with 90 focused tests and TypeScript.
+
 ## Product Owner clarification: shared FIFO/FEFO date ranks in pick-list and DRA plans (2026-11-03)
 
 FIFO rank identifies the receipt calendar date group, and FEFO rank identifies the expiry calendar date group. Multiple distinct lots may share one rank and remain separate beneath it; each lot shows its own locations. Timestamps/sequences order lots within a rank, and the UI presents rank → lot → location for both manual pick-list drafts and DRA-import previews. The approved `08` amendment and standing second-approver sign-off are recorded in `08/tasks.md`.

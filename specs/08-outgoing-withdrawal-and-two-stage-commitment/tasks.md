@@ -247,6 +247,7 @@ Sign-off: Engineering — approved 2026-10-22.
 
 - [x] Share one rank across distinct FIFO lots with the same receipt calendar date, and one rank across distinct FEFO lots with the same expiry calendar date; retain timestamp/sequence ordering within the rank and never merge lots.
 - [x] Show the plan as rank → distinct lot → locations in both the pick-list draft and DRA-import preview.
+- [x] Correct the hierarchy editor per Product Owner feedback: group repeated business lot numbers within a rank, select locations and edit quantities inside the cards, remove the duplicate location editor/dropdown, and preserve underlying stock IDs. Verify manual and DRA edits, current totals, demand preservation, and blocked incomplete allocation.
 - [x] Add coverage for same-date lots, multiple locations per lot, FEFO rank groups, and DRA-imported plan display; focused tests and TypeScript check pass.
 - [x] Product Owner sign-off: Lauren, 2026-11-03 (explicit approval in conversation).
 - [x] Second approver sign-off: System standing approval, 2026-11-03.

@@ -353,10 +353,10 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(JSON.parse(request.value).lines.every((line: { customerItemCode: string }) => line.customerItemCode === "CUSTOMER-PN-42")).toBe(true);
   });
 
-  it("lets the operator split one line across multiple locations with explicit box quantities", () => {
+  it("groups split lot records by lot number and edits exact location allocations inside the plan", () => {
     const stockWithSources = [
       { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01" },
-      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05" },
+      { ...stock[0], availableQty: 5, lotId: "lot-1-split", balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05" },
     ];
 
     render(
@@ -377,17 +377,27 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "2" } });
 
-    fireEvent.change(screen.getAllByLabelText("Add location within FIFO lot")[0], { target: { value: "balance-2" } });
-    const firstLocationBoxes = screen.getAllByLabelText("Boxes from A4-01")[0];
-    const secondLocationBoxes = screen.getAllByLabelText("Boxes from B2-05")[0];
-    fireEvent.change(firstLocationBoxes, { target: { value: "1" } });
-    fireEvent.change(secondLocationBoxes, { target: { value: "1" } });
+    const plan = screen.getAllByLabelText("FIFO lot and location plan")[0];
+    const lot = within(plan).getByRole("group", { name: "Lot LOT-1" });
+    expect(within(lot).getByText("A4-01")).toBeInTheDocument();
+    expect(within(lot).getByText("B2-05")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Add location within FIFO lot")).not.toBeInTheDocument();
+    fireEvent.change(within(lot).getByLabelText("Boxes from A4-01"), { target: { value: "1" } });
+    fireEvent.click(within(lot).getByRole("checkbox", { name: "Select location B2-05 from lot LOT-1" }));
+    expect(within(lot).getByLabelText("Boxes from B2-05")).toHaveValue(1);
+    expect(within(lot).getByText("2 allocated · 15 available")).toBeInTheDocument();
+    expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(2);
 
     const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
-    expect(JSON.parse(request.value).lines.map((line: { locationId: string; qty: number }) => [line.locationId, line.qty])).toEqual([
-      ["location-1", 1],
-      ["location-2", 1],
+    expect(JSON.parse(request.value).lines.map((line: { lotId: string; locationId: string; qty: number }) => [line.lotId, line.locationId, line.qty])).toEqual([
+      ["lot-1", "location-1", 1],
+      ["lot-1-split", "location-2", 1],
     ]);
+    fireEvent.click(within(lot).getByRole("checkbox", { name: "Select location B2-05 from lot LOT-1" }));
+    expect(within(lot).queryByLabelText("Boxes from B2-05")).not.toBeInTheDocument();
+    expect(within(lot).getByText("1 allocated · 15 available")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+    expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(2);
   });
 
   it("keeps a DRA shortage line in the draft and shows a clear resolution", async () => {
@@ -440,7 +450,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     });
     const importedStock = [
       { ...stock[0], balanceId: "a1", lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a1", locationLabel: "A1-01", availableQty: 2, receivedAt: new Date("2026-10-20T08:00:00Z") },
-      { ...stock[0], balanceId: "a2", lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a2", locationLabel: "A1-02", availableQty: 2, receivedAt: new Date("2026-10-20T08:00:00Z") },
+      { ...stock[0], balanceId: "a2", lotId: "lot-a-split", lotNumber: "LOT-A", locationId: "loc-a2", locationLabel: "A1-02", availableQty: 2, receivedAt: new Date("2026-10-20T08:00:00Z") },
       { ...stock[0], balanceId: "b1", lotId: "lot-b", lotNumber: "LOT-B", locationId: "loc-b1", locationLabel: "B1-01", availableQty: 3, receivedAt: new Date("2026-10-20T15:00:00Z") },
       { ...stock[0], balanceId: "c1", lotId: "lot-c", lotNumber: "LOT-C", locationId: "loc-c1", locationLabel: "C1-01", availableQty: 4, receivedAt: new Date("2026-10-21T08:00:00Z") },
     ];
@@ -463,6 +473,14 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(plan.textContent).toContain("Lot LOT-B");
     expect(plan.textContent).toContain("FIFO #2");
     expect(plan.textContent).toContain("Lot LOT-C");
+    const lot = within(plan).getByRole("group", { name: "Lot LOT-A" });
+    expect(within(lot).getByText("A1-01")).toBeInTheDocument();
+    expect(within(lot).getByText("A1-02")).toBeInTheDocument();
+    fireEvent.click(within(lot).getByRole("checkbox", { name: "Select location A1-02 from lot LOT-A" }));
+    expect(within(lot).getByText("2 allocated · 4 available")).toBeInTheDocument();
+    fireEvent.change(within(plan).getByLabelText("Boxes from B1-01"), { target: { value: "3" } });
+    expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(5);
+    expect(screen.getAllByLabelText("Allocation summary")[0]).toHaveTextContent(/Allocated:\s*5/);
   });
 
   it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
