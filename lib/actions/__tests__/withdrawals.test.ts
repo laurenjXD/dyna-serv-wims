@@ -100,6 +100,7 @@ import {
   dispatchPickList,
   selectPickUnit,
   listOutgoingLedger,
+  updateCommittedPickListLineItems,
 } from "../withdrawals";
 import { mockRlsDeps } from "@/lib/db/__tests__/helpers/mock-rls";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
@@ -182,6 +183,16 @@ const pickerResolver = () =>
       ],
     },
   });
+
+describe("committed pick-list corrections", () => {
+  it("rejects in-place line edits so corrections use a replacement draft", async () => {
+    const result = await updateCommittedPickListLineItems(pickerResolver(), "pick-list-1", [
+      { lineId: "line-1", qty: 200, spq: 100, numberOfBoxes: 2 },
+    ]);
+
+    expect(result).toEqual({ ok: false, errors: ["pick_list_replacement_required"] });
+  });
+});
 
 // ---------------------------------------------------------------------------
 // DB mock helpers

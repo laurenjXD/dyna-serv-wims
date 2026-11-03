@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { FileText, Pencil, ShieldCheck, Truck } from "@/components/ui/icons";
+import { FileText, ShieldCheck, Truck } from "@/components/ui/icons";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { PageContainer } from "@/components/ui/Page";
 import { createPageResolver } from "@/lib/auth/page-resolver";
@@ -62,16 +62,15 @@ export default async function PickListApprovalPage({ params, searchParams }: Pag
             <FileText size={16} aria-hidden="true" />
             Review PDF
           </Link>
-          <Link href={`/pick-lists/${pickListId}/edit`} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-brand-navy/25 bg-brand-navy/5 px-4 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
-            <Pencil size={16} aria-hidden="true" />
-            Edit
+          <Link href="/inventory?tab=pick-lists" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-brand-navy/25 bg-brand-navy/5 px-4 font-label text-label font-bold text-brand-navy hover:bg-brand-navy/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy">
+            Create replacement draft
           </Link>
         </div>
       </header>
 
-      {result === "updated" && (
+      {result === "edit_blocked" && (
         <div role="status" className="mt-5 rounded-xl border border-status-available/40 bg-status-available/10 px-4 py-3 font-body text-body-sm text-on-surface">
-          Pick list quantities were updated and the reservation was adjusted safely.
+          Committed pick lists are read-only. Create a replacement draft to recalculate the allocation safely.
         </div>
       )}
 

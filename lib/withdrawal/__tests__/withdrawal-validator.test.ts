@@ -148,6 +148,19 @@ describe("validateWithdrawal — valid input (R1.1, R1.2, design.md §6)", () =>
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.endCustomerPartyId).toBe("party-uuid-end-customer");
   });
+
+  it("treats a nullable customer item code as omitted", () => {
+    const result = validateWithdrawal({
+      ...validWithdrawalInput(),
+      lines: [{
+        ...validWithdrawalInput().lines[0],
+        customerItemCode: null,
+      }],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.lines[0].customerItemCode).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

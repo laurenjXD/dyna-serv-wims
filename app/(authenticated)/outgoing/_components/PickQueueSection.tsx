@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, PackageCheck, Pencil } from "@/components/ui/icons";
+import { ArrowRight, CheckCircle2, PackageCheck } from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
 
 type QueueMode = "pick" | "dispatch";
@@ -118,11 +118,10 @@ export function PickQueueSection({
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {!isDispatch && (
                       <Link
-                        href={`/pick-lists/${row.id}/edit`}
+                        href="/inventory?tab=pick-lists"
                         className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-outline-variant/60 bg-surface-white px-3 font-label text-xs font-bold text-on-surface shadow-2xs hover:border-brand-navy hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                       >
-                        <Pencil size={14} aria-hidden="true" />
-                        <span>Edit</span>
+                        Create replacement draft
                       </Link>
                     )}
                     <Link

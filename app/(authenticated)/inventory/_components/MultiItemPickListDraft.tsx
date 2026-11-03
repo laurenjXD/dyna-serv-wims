@@ -114,6 +114,11 @@ function hasRequiredItemCode(item: Pick<CatalogItem, "itemCode" | "supplierItemC
   return Boolean(requiredCode?.trim());
 }
 
+function optionalCustomerItemCode(lineValue: string | null | undefined, sourceValue: string | null | undefined): string | undefined {
+  const value = lineValue?.trim() || sourceValue?.trim() || "";
+  return value.length > 0 && value.length <= 100 ? value : undefined;
+}
+
 function availableBoxesForSource(source: Pick<StockSource, "availableQty" | "spq">): number {
   return Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq)));
 }
@@ -740,15 +745,18 @@ export function MultiItemPickListDraft({
       ? organizationId
       : flowType === "trading" ? customerPartyId : endCustomerPartyId;
     const prepared = details.flatMap(({ line, item, itemHasRequiredCode, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, hasEnoughStock }) =>
-      fifoAllocations.map(({ source, boxes }) => ({
-        itemId: line.itemId,
-        lotId: source.lotId,
-        locationId: source.locationId,
-        qty: boxesToPieces(boxes, item?.spq ?? 1),
-        customerItemCode: line.customerItemCode.trim() || source.customerItemCode || null,
-        itemCodeIsProvisional: false,
-        valid: Boolean(item && itemHasRequiredCode && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
-      })),
+      fifoAllocations.map(({ source, boxes }) => {
+        const customerItemCode = optionalCustomerItemCode(line.customerItemCode, source.customerItemCode);
+        return {
+          itemId: line.itemId,
+          lotId: source.lotId,
+          locationId: source.locationId,
+          qty: boxesToPieces(boxes, item?.spq ?? 1),
+          ...(customerItemCode ? { customerItemCode } : {}),
+          itemCodeIsProvisional: false,
+          valid: Boolean(item && itemHasRequiredCode && requestedBoxes !== null && hasWholeCartonQuantity && hasEnoughStock),
+        };
+      }),
     );
     if (
       prepared.length === 0 ||
@@ -1031,11 +1039,12 @@ export function MultiItemPickListDraft({
       }
 
       const existingRequest = importRequests.get(matchedItemId);
+      const importedCustomerItemCode = optionalCustomerItemCode(draRow.customerItemCode, null);
       if (existingRequest) {
         existingRequest.requestedBoxes += requestedBoxes;
         existingRequest.labels.push(rowLabel);
-        if (!existingRequest.customerItemCode && draRow.customerItemCode) {
-          existingRequest.customerItemCode = draRow.customerItemCode.trim();
+        if (!existingRequest.customerItemCode && importedCustomerItemCode) {
+          existingRequest.customerItemCode = importedCustomerItemCode;
         }
       } else {
         importRequests.set(matchedItemId, {
@@ -1043,7 +1052,7 @@ export function MultiItemPickListDraft({
           spq,
           requestedBoxes,
           labels: [rowLabel],
-          customerItemCode: draRow.customerItemCode?.trim() ?? "",
+          customerItemCode: optionalCustomerItemCode(draRow.customerItemCode, null) ?? "",
         });
       }
     }
