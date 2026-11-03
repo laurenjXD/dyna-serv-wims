@@ -82,6 +82,20 @@ export function ScanDiscrepancyModal({
           recommendation: "Segregate this carton into the appropriate flow staging lane.",
           canEnroll: false,
         };
+      case "pick_not_completed":
+        return {
+          title: "Pick Stage Not Complete",
+          description: "This Pick List has not completed its approval and physical picking stage, so dispatch cannot be finalized yet.",
+          recommendation: "Approve the Pick List, scan each committed box, then confirm dispatch.",
+          canEnroll: false,
+        };
+      case "invalid_status":
+        return {
+          title: "Dispatch Not Ready",
+          description: "This Pick List is not currently in the dispatch scanning stage.",
+          recommendation: "Refresh the page and follow the approval or picking step shown above.",
+          canEnroll: false,
+        };
       case "wrong_item":
       case "wrong_lot":
         return {

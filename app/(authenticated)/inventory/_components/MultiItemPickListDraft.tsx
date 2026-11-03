@@ -857,10 +857,7 @@ export function MultiItemPickListDraft({
         boxes: String(request.requestedBoxes),
         sourceBalanceId: "",
         manualSplit: true,
-        manualAllocations: allocateFifoBoxes(candidateSources, request.requestedBoxes).map(({ source, boxes }) => ({
-          balanceId: source.balanceId,
-          boxes: String(boxes),
-        })),
+        manualAllocations: allocateDefaultFifoLocation(candidateSources, request.requestedBoxes),
         customerItemCode: request.customerItemCode,
       });
       totalBoxesAllocated += request.requestedBoxes;

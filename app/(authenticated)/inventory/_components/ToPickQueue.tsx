@@ -11,9 +11,6 @@ import {
   Building2,
   Clock,
   Sparkles,
-  Layers,
-  Check,
-  ChevronRight,
   ExternalLink,
 } from "@/components/ui/icons";
 import type { PickListRow } from "@/lib/db/queries/withdrawals";
@@ -311,7 +308,22 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                     { label: "Created", value: row.createdAt ? new Date(row.createdAt).toLocaleString() : "—" },
                     { label: "Status", value: "Ready to Pick" },
                   ]}
-                  actions={<><Link href={`/pick-lists/${row.id}/print`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant/60 px-4 font-label text-sm font-bold text-on-surface"><FileText size={15} /> PDF</Link><Link href={`/pick-lists/${row.id}/dispatch`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 font-label text-sm font-bold text-white">Pick &amp; Dispatch <ArrowRight size={15} /></Link></>}
+                  actions={<>
+                    <Link
+                      href={`/pick-lists/${row.id}/print`}
+                      className="inline-flex min-h-11 min-w-[5.5rem] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-outline-variant/60 px-4 font-label text-sm font-bold text-on-surface"
+                    >
+                      <FileText size={15} />
+                      <span>PDF</span>
+                    </Link>
+                    <Link
+                      href={`/pick-lists/${row.id}/dispatch`}
+                      className="inline-flex min-h-11 min-w-0 flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand-navy px-4 font-label text-sm font-bold text-white"
+                    >
+                      <span>Pick &amp; Dispatch</span>
+                      <ArrowRight size={15} />
+                    </Link>
+                  </>}
                 />
               );
             })}
@@ -335,7 +347,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                   <th className="px-5 py-3.5 text-left font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
                     Status
                   </th>
-                  <th className="px-5 py-3.5 text-right font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
+                  <th className="w-[16rem] whitespace-nowrap px-5 py-3.5 text-right font-label text-label-xs font-bold uppercase tracking-wider text-text-grey">
                     Actions
                   </th>
                 </tr>
@@ -399,12 +411,12 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
                       </td>
 
                       {/* Action Buttons */}
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="w-[16rem] whitespace-nowrap px-5 py-4 text-right">
+                        <div className="flex min-w-[15rem] items-center justify-end gap-2">
                           <Link
                             href={`/pick-lists/${row.id}/print`}
                             title="View / Print Pick List PDF"
-                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-on-surface shadow-sm hover:bg-surface-light-grey hover:border-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy transition-all"
+                            className="inline-flex h-10 min-w-[5.5rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-outline-variant/60 bg-surface-white px-3 font-label text-label-xs font-bold text-on-surface shadow-sm transition-all hover:border-brand-navy hover:bg-surface-light-grey focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
                           >
                             <FileText size={14} />
                             <span>PDF</span>
@@ -412,7 +424,7 @@ export function ToPickQueue({ rows, isDeleted = false }: ToPickQueueProps) {
 
                           <Link
                             href={`/pick-lists/${row.id}/dispatch`}
-                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-3.5 font-label text-label-xs font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy transition-all active:scale-[0.98]"
+                            className="inline-flex h-10 min-w-[9.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-brand-navy px-3.5 font-label text-label-xs font-bold text-surface-white shadow-sm transition-all hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy active:scale-[0.98]"
                           >
                             <span>Pick &amp; Dispatch</span>
                             <ArrowRight size={13} />

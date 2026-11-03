@@ -55,7 +55,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import {
-  ChevronLeft,
+  ArrowLeft,
   AlertTriangle,
   Truck,
   CheckCircle2,
@@ -112,7 +112,7 @@ export default async function DispatchConfirmationPage({
           href="/outgoing"
           className="mt-6 inline-flex h-14 items-center gap-2 font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
         >
-          <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
+          <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" />
           Return to Outgoing
         </Link>
       </div>
@@ -146,10 +146,11 @@ export default async function DispatchConfirmationPage({
   const totalLines = items.length;
   const totalRequiredBoxes = items.reduce((sum, item) => sum + item.numberOfBoxes, 0);
   const selectedBoxCount = selections.length;
-  const activeItem = pickList.status === "picked"
+  const scanReady = pickList.status === "picked";
+  const activeItem = scanReady
     ? items.find((item) => (selectionCountByLine.get(item.id) ?? 0) < item.numberOfBoxes)
     : undefined;
-  const allBoxesScanned = items.length > 0 && !activeItem;
+  const allBoxesScanned = scanReady && items.length > 0 && !activeItem;
 
   async function handleBoxScan(formData: FormData): Promise<void> {
     "use server";
@@ -227,24 +228,24 @@ export default async function DispatchConfirmationPage({
     <div className="flex min-h-screen flex-col bg-surface-white">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 pb-3 pt-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Back link — h-14 (56px) floor touch target per §3 */}
+      <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 py-3 shadow-sm">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            {/* Shared floor back-link pattern used by the receiving flow. */}
             <Link
               href="/inventory?tab=pick-lists"
-              className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-outline-variant/30 bg-surface-white text-on-surface shadow-elevation-2 focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-              aria-label="Back to Pick Lists"
+              className="inline-flex min-h-14 shrink-0 items-center gap-1 font-body text-body-sm text-text-grey transition-colors hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
             >
-              <ChevronLeft size={24} strokeWidth={2} aria-hidden="true" />
+              <ArrowLeft size={16} className="mr-1" aria-hidden="true" />
+              <span>Back to Pick Lists</span>
             </Link>
             <div className="min-w-0">
-              {/* "Dispatch" heading — Fira Sans Bold, text-headline-lg */}
-              <h1 className="font-heading text-headline-lg font-extrabold text-on-surface">
+              {/* Compact heading scale consistent with other floor flows. */}
+              <h1 className="font-heading text-headline-sm font-extrabold text-on-surface">
                 Dispatch
               </h1>
               {/* Pick list reference — Roboto Mono, secondary text */}
-              <p className="font-mono text-mono-lg text-text-grey">
+              <p className="font-mono text-mono-md text-text-grey">
                 {pickList.pickListNumber}
               </p>
             </div>
@@ -264,7 +265,7 @@ export default async function DispatchConfirmationPage({
       </div>
 
       {/* ── Main content (scrollable) ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-5 pb-8">
 
         {/* Updated Banner */}
         {result === "updated" && (
@@ -307,7 +308,7 @@ export default async function DispatchConfirmationPage({
             aria-live="polite"
             className="mb-3 rounded-xl bg-status-available/20 border border-status-available/40 px-4 py-4"
           >
-            <p className="font-heading text-headline-md font-bold text-on-surface">
+            <p className="font-heading text-headline-sm font-bold text-on-surface">
               Already Dispatched
             </p>
             <p className="mt-1 font-body text-body-md text-text-grey">
@@ -322,12 +323,15 @@ export default async function DispatchConfirmationPage({
               <div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-6 w-6 text-brand-navy" />
-                  <p className="font-heading text-headline-md font-bold text-on-surface">
+                  <p className="font-heading text-headline-sm font-bold text-on-surface">
                     Pick List Approval Gate
                   </p>
                 </div>
                 <p className="mt-2 font-body text-body-md text-text-grey">
                   This pick list is currently allocated. Per warehouse protocol, a Supervisor or Administrator must review and approve this list before Dispatch scanning can begin.
+                </p>
+                <p className="mt-2 font-body text-body-md font-semibold text-status-pending">
+                  Scanning will appear after approval. Use “Approve Pick List for Dispatch” to unlock the scanner.
                 </p>
               </div>
             </div>
@@ -383,7 +387,7 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <div>
-              <p className="font-heading text-headline-md font-bold text-on-surface">
+              <p className="font-heading text-headline-sm font-bold text-on-surface">
                 Dispatch Failed
               </p>
               <p className="mt-1 font-body text-body-md text-text-grey">
@@ -415,7 +419,7 @@ export default async function DispatchConfirmationPage({
 
         {/* ── Summary card ─────────────────────────────────────────────── */}
         {/* Floor card: solid bg-surface-white, no glassmorphism.          */}
-        <div className="mb-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-6 shadow-elevation-2">
+        <div className="mb-3 rounded-2xl border border-outline-variant/30 bg-surface-white p-4 shadow-elevation-2 sm:p-5">
           {/* Party name — Fira Sans SemiBold heading, floor minimum text */}
           <div className="flex items-start gap-3">
             <Truck
@@ -425,7 +429,7 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-text-grey"
             />
             <div className="min-w-0">
-              <p className="font-heading text-headline-md font-semibold text-on-surface">
+              <p className="font-heading text-headline-sm font-semibold text-on-surface">
                 {partyName}
               </p>
               <div className="mt-1 flex items-center gap-2">
@@ -463,9 +467,9 @@ export default async function DispatchConfirmationPage({
           scannedBarcode={barcodeParam}
         />
 
-        {!alreadyDispatched && !awaitingPickCompletion && activeItem && (
+        {!alreadyDispatched && scanReady && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
-            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
+            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-headline-sm font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
             <OfflineDispatchScanForm
               action={handleBoxScan}
               pickListId={pickListId}
@@ -540,11 +544,15 @@ export default async function DispatchConfirmationPage({
             <form action={handleDispatch}>
               <OnlineOnlySubmitButton
                 type="submit"
-                disabled={!allBoxesScanned}
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                disabled={!scanReady || !allBoxesScanned}
+                className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 <Truck size={24} strokeWidth={2} aria-hidden="true" />
-                {allBoxesScanned ? "Confirm Dispatch" : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
+                {awaitingPickCompletion
+                  ? "Approve Pick List Before Scanning"
+                  : allBoxesScanned
+                    ? "Confirm Dispatch"
+                    : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
               </OnlineOnlySubmitButton>
             </form>
           ) : (
