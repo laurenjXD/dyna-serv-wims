@@ -50,7 +50,7 @@ export function MasterDocumentHeader({
   return (
     <div
       data-document-header
-      className={`master-print-header w-full border-b-2 border-slate-900 pb-3 mb-4 font-body ${
+      className={`master-print-header w-full border-b-2 border-slate-900 pb-2 mb-3 font-body ${
         orientation === "landscape" ? "max-w-6xl" : "max-w-4xl"
       }`}
     >
@@ -73,7 +73,7 @@ export function MasterDocumentHeader({
 
       {/* Top Banner: Corporate Identity & Doc Metadata */}
       {headerAlignment === "center" ? (
-        <div className="flex flex-col items-center text-center space-y-0.5 mb-1.5">
+        <div className="flex flex-col items-center text-center space-y-1 mb-2">
           {logoUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -107,7 +107,7 @@ export function MasterDocumentHeader({
           )}
 
           {/* Document Reference Block for Centered Layout (No bulky card) */}
-          <div className="mt-1.5 flex w-full flex-wrap items-center justify-between gap-2 font-mono text-[8px] text-slate-600 border-t border-slate-200/80 pt-1">
+          <div className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 font-mono text-[8px] text-slate-600 border-t border-slate-200/80 pt-2">
             <div className="flex items-center gap-1.5 text-left">
               <span className="uppercase text-slate-500 text-[8px]">Doc Ref:</span>
               <strong className="font-bold text-slate-900 text-[9px]">{documentNumber ?? "OFFICIAL COPY"}</strong>
@@ -137,9 +137,9 @@ export function MasterDocumentHeader({
         </div>
       ) : (
         /* Left-aligned layout */
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           {/* Left: Organization & Facility Profile */}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
               {logoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
@@ -190,7 +190,7 @@ export function MasterDocumentHeader({
               </div>
             )}
 
-            <div className="sm:text-right font-mono text-[8px] space-y-0.5">
+            <div className="sm:text-right font-mono text-[8px] space-y-1">
               <div className="flex items-center sm:justify-end gap-1.5">
                 <span className="text-slate-500 uppercase text-[8px]">Doc Ref:</span>
                 <strong className="font-bold text-slate-900 text-[9px] tracking-tight">
@@ -212,7 +212,7 @@ export function MasterDocumentHeader({
 
       {/* Document Title Banner */}
       <div
-        className={`mt-1.5 flex items-center border-t border-slate-200 pt-1.5 ${
+        className={`mt-2 flex items-center border-t border-slate-200 pt-2 ${
           titleAlignment === "center"
             ? "flex-col justify-center text-center gap-0.5"
             : "justify-between"

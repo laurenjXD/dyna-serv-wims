@@ -77,6 +77,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       primary: "The selected location is not the current FIFO/FEFO source.",
       next: "Choose the recommended source or submit the required override request.",
     },
+    override_single_pallet_required: {
+      primary: "Supervisor approval can cover only one alternate pallet/location per request.",
+      next: "Keep the recommended FIFO/FEFO locations in the split, or submit approval for one alternate location at a time.",
+    },
     provisional_item_code: {
       primary: "This item is missing its enrolled supplier/DSGC item code.",
       next: "Open Item Master, add the required code for this Inventory Model, then refresh and try again.",

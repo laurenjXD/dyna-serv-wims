@@ -13,6 +13,10 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
         [data-document-root],
         [data-document-root] :where(h1, h2, h3, h4, h5, h6, p, span, strong, em, label, dt, dd, li, td, th, caption, button) {
           font-family: ${DOCUMENT_FONT_FAMILY} !important;
+        }
+        /* Keep the document's 11pt base size, but allow intentional compact
+           header/table utility sizes to control their own rhythm. */
+        [data-document-root] {
           font-size: ${DOCUMENT_FONT_SIZE}pt !important;
         }
         [data-document-root] * {

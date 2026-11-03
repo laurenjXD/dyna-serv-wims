@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
 import { parseDraDocumentAction } from "../_actions";
@@ -52,6 +53,30 @@ function blankDraftLine(id: string): DraftLine {
     manualAllocations: [],
     customerItemCode: "",
   };
+}
+
+function PendingActionButton({
+  children,
+  pendingLabel,
+  disabled = false,
+  className,
+}: {
+  children: ReactNode;
+  pendingLabel: string;
+  disabled?: boolean;
+  className: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+      className={className}
+    >
+      {pending ? pendingLabel : children}
+    </button>
+  );
 }
 
 type FifoBoxAllocation = {
@@ -311,6 +336,20 @@ function allocateDefaultFifoLocation(
   }];
 }
 
+function allocationsMatchFifoPlan(
+  selected: FifoBoxAllocation[],
+  fifoPlan: FifoBoxAllocation[],
+): boolean {
+  const selectedByBalance = new Map(selected.map(({ source, boxes }) => [source.balanceId, boxes]));
+  const fifoByBalance = new Map(fifoPlan.map(({ source, boxes }) => [source.balanceId, boxes]));
+  const balanceIds = new Set([...selectedByBalance.keys(), ...fifoByBalance.keys()]);
+  return [...balanceIds].every((balanceId) => (
+    selectedByBalance.get(balanceId) ?? 0
+  ) === (
+    fifoByBalance.get(balanceId) ?? 0
+  ));
+}
+
 function rebalanceManualAllocations(
   sources: StockSource[],
   existing: DraftLine["manualAllocations"],
@@ -435,12 +474,13 @@ export function MultiItemPickListDraft({
           }];
         })
       : null;
+    const fifoPlan = item && requestedBoxes ? allocateFifoBoxes(item.sources, requestedBoxes) : [];
     const fifoAllocations = manualAllocations ?? (item && requestedBoxes ? allocateFifoBoxes(allocationSources, requestedBoxes) : []);
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
     const requiresOverride = line.manualSplit
-      ? fifoAllocations.some(({ source }) => source.priority > 1)
+      ? !allocationsMatchFifoPlan(fifoAllocations, fifoPlan)
       : Boolean(selectedSource && selectedSource.priority > 1);
     return {
       line,
@@ -1513,14 +1553,14 @@ export function MultiItemPickListDraft({
               <form action={overrideAction}>
                 <input type="hidden" name="request" value={overrideRequest} />
                 <input type="hidden" name="reason" value={overrideReason} />
-                <button
-                  type="submit"
+                <PendingActionButton
+                  pendingLabel="Sending…"
                   disabled={!overrideRequest}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                 >
                   Request Approval
                   <ChevronRight size={16} aria-hidden="true" />
-                </button>
+                </PendingActionButton>
               </form>
             </div>
           ) : (
@@ -1528,15 +1568,14 @@ export function MultiItemPickListDraft({
               {!request && generationBlocker && <p className="max-w-sm text-right font-body text-xs text-amber-700">{generationBlocker}</p>}
               <form action={createAction}>
               <input type="hidden" name="request" value={request} />
-              <button
-                type="submit"
+              <PendingActionButton
+                pendingLabel="Creating…"
                 disabled={!request}
-                title={!request ? generationBlocker ?? "Complete the required fields." : undefined}
                 className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
               >
                 Generate Pick List
                 <ChevronRight size={16} aria-hidden="true" />
-              </button>
+              </PendingActionButton>
               </form>
             </div>
           )}

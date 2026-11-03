@@ -167,6 +167,37 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
   });
 
+  it("does not request approval when a split follows the normal FIFO plan", () => {
+    const stockWithSplitFifo = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithSplitFifo}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "15" } });
+    fireEvent.change(screen.getAllByLabelText("Add location to split")[0], { target: { value: "balance-2" } });
+    fireEvent.change(screen.getAllByLabelText("Boxes from C1-11")[0], { target: { value: "5" } });
+
+    expect(screen.getAllByLabelText("Boxes from C1-10")[0]).toHaveValue(10);
+    expect(screen.getAllByLabelText("Boxes from C1-11")[0]).toHaveValue(5);
+    expect(screen.queryByText(/Supervisor approval required/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+  });
+
   it("accepts boxes and derives the base-unit quantity from SPQ", () => {
     const boxedStock = [{ ...stock[0], spq: 100, availableQty: 2000 }];
 

@@ -28,6 +28,7 @@ import { listOutgoingLedger } from "@/lib/actions/withdrawals";
 import { listPickLists, type OutgoingLedgerRow } from "@/lib/db/queries/withdrawals";
 import { PickQueueSection } from "./_components/PickQueueSection";
 import { OutgoingLedgerClientTable } from "./_components/OutgoingLedgerClientTable";
+import { ReceiptUploadNotice } from "./_components/ReceiptUploadNotice";
 import { removeDeliveryReceipt, uploadDeliveryReceipt } from "../pick-lists/_actions";
 import { getStorageClient } from "@/lib/supabase/storage";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
@@ -150,7 +151,7 @@ async function OutgoingLedgerTab({
         Read-only record of outgoing inventory transactions (picks). No edits
         or deletions — corrections use new approved transactions.
       </p>
-      {receiptUpload && <p role="status" className="mt-3 rounded border border-status-available/30 bg-status-available/10 px-4 py-3 font-body text-body-sm text-on-surface">{receiptUpload === "success" ? "Delivery Receipt uploaded." : receiptUpload === "removed" ? "Delivery Receipt removed." : receiptUpload === "invalid" ? "Upload a PDF, PNG, or JPEG up to 10 MB." : receiptUpload === "forbidden" ? "You do not have permission to manage Delivery Receipts." : "Delivery Receipt action failed. Please try again."}</p>}
+      {receiptUpload && <ReceiptUploadNotice status={receiptUpload} />}
 
       <OutgoingLedgerClientTable
         rows={rowsWithReceiptUrls}

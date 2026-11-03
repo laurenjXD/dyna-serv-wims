@@ -199,7 +199,10 @@ export default async function DispatchConfirmationPage({
       pickListId,
       items.map((item) => item.id),
     );
-    if (dispatchResult.ok) {
+    // A duplicate submit means the first request already completed. Treat it
+    // as success for navigation so the operator is never left on a stale
+    // dispatch error screen after the stock has moved.
+    if (dispatchResult.ok || dispatchResult.errors[0] === "already_dispatched") {
       // Return to outgoing queue — dispatch is complete.
       revalidatePath("/outgoing");
       redirect("/outgoing");
@@ -211,7 +214,9 @@ export default async function DispatchConfirmationPage({
     );
   }
 
-  const dispatchError = result === "error";
+  // Do not show a stale error query alongside the authoritative dispatched
+  // state. This can happen when a duplicate request follows a successful one.
+  const dispatchError = result === "error" && !alreadyDispatched;
   const errorReason = reasonParam ?? "";
   const isDispatchError = dispatchError;
 
@@ -230,10 +235,10 @@ export default async function DispatchConfirmationPage({
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 py-3 shadow-sm">
-        <div className="mx-auto w-full max-w-container">
+        <div className="mx-auto w-full max-w-5xl">
           <PageBreadcrumb
-            backHref="/inventory?tab=pick-lists"
-            backLabel="Pick Lists"
+            backHref="/outgoing"
+            backLabel="Outgoing"
             currentLabel="Dispatch"
             className="mb-2"
           />
@@ -264,7 +269,7 @@ export default async function DispatchConfirmationPage({
       </div>
 
       {/* ── Main content (scrollable) ─────────────────────────────────────── */}
-      <div className="mx-auto flex w-full max-w-container flex-1 flex-col overflow-y-auto px-4 py-5 pb-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-5 pb-8">
 
         {/* Updated Banner */}
         {result === "updated" && (
@@ -539,44 +544,49 @@ export default async function DispatchConfirmationPage({
       {/* Exact boxes are scanned here, immediately before the final dispatch. */}
       {!alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          {totalLines > 0 ? (
-            <form action={handleDispatch}>
-              <OnlineOnlySubmitButton
-                type="submit"
-                disabled={!scanReady || !allBoxesScanned}
-                className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+          <div className="mx-auto w-full max-w-5xl">
+            {totalLines > 0 ? (
+              <form action={handleDispatch}>
+                <OnlineOnlySubmitButton
+                  type="submit"
+                  disabled={!scanReady || !allBoxesScanned}
+                  className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+                >
+                  <Truck size={24} strokeWidth={2} aria-hidden="true" />
+                  {awaitingPickCompletion
+                    ? "Approve Pick List Before Scanning"
+                    : allBoxesScanned
+                      ? "Confirm Dispatch"
+                      : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
+                </OnlineOnlySubmitButton>
+              </form>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                className="flex h-16 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
               >
                 <Truck size={24} strokeWidth={2} aria-hidden="true" />
-                {awaitingPickCompletion
-                  ? "Approve Pick List Before Scanning"
-                  : allBoxesScanned
-                    ? "Confirm Dispatch"
-                    : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
-              </OnlineOnlySubmitButton>
-            </form>
-          ) : (
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="flex h-16 w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-surface-light-grey font-label text-body-md uppercase tracking-wide text-status-neutral"
-            >
-              <Truck size={24} strokeWidth={2} aria-hidden="true" />
-              No Items to Dispatch
-            </button>
-          )}
+                No Items to Dispatch
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Post-dispatch navigation back to queue */}
       {alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          <Link
-            href="/outgoing"
-            className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border-2 border-outline-variant/30 bg-surface-white font-body text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-          >
-            Return to Outgoing
-          </Link>
+          <div className="mx-auto w-full max-w-5xl">
+            <Link
+              href="/outgoing"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand-navy font-label text-body-md font-bold text-surface-white transition-colors hover:bg-brand-navy/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 motion-safe:active:scale-[0.98]"
+            >
+              <ArrowLeft size={20} aria-hidden="true" />
+              Return to Outgoing
+            </Link>
+          </div>
         </div>
       )}
     </div>
