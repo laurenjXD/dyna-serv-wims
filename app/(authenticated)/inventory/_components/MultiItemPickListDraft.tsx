@@ -48,7 +48,7 @@ function blankDraftLine(id: string): DraftLine {
     itemId: "",
     boxes: "",
     sourceBalanceId: "",
-    manualSplit: false,
+    manualSplit: true,
     manualAllocations: [],
     customerItemCode: "",
   };
@@ -440,17 +440,36 @@ export function MultiItemPickListDraft({
     if (!detail) return;
 
     if (detail.line.manualSplit) {
-      updateLine(lineId, { manualSplit: false, manualAllocations: [], sourceBalanceId: "" });
+      const fixedSource = detail.item?.sources[0] ?? null;
+      const maxBoxes = fixedSource ? availableBoxesForSource(fixedSource) : detail.totalAvailableBoxes;
+      const currentBoxes = Number(detail.line.boxes);
+      updateLine(lineId, {
+        manualSplit: false,
+        manualAllocations: [],
+        sourceBalanceId: fixedSource?.balanceId ?? "",
+        boxes: Number.isInteger(currentBoxes) && currentBoxes > maxBoxes ? String(maxBoxes) : detail.line.boxes,
+      });
       return;
     }
 
     updateLine(lineId, {
       manualSplit: true,
       sourceBalanceId: "",
-      manualAllocations: detail.item?.sources.map((source) => ({
+      manualAllocations: detail.fifoAllocations.map(({ source, boxes }) => ({
         balanceId: source.balanceId,
-        boxes: String(detail.fifoAllocations.find((allocation) => allocation.source.balanceId === source.balanceId)?.boxes ?? ""),
-      })) ?? [],
+        boxes: String(boxes),
+      })),
+    });
+  };
+
+  const handleManualLocationToggle = (lineId: string, balanceId: string) => {
+    const detail = lineDetails.find(({ line }) => line.id === lineId);
+    const currentAllocations = detail?.line.manualAllocations ?? [];
+    const isSelected = currentAllocations.some((allocation) => allocation.balanceId === balanceId);
+    updateLine(lineId, {
+      manualAllocations: isSelected
+        ? currentAllocations.filter((allocation) => allocation.balanceId !== balanceId)
+        : [...currentAllocations, { balanceId, boxes: "" }],
     });
   };
 
@@ -773,8 +792,11 @@ export function MultiItemPickListDraft({
         itemId: request.itemId,
         boxes: String(request.requestedBoxes),
         sourceBalanceId: "",
-        manualSplit: false,
-        manualAllocations: [],
+        manualSplit: true,
+        manualAllocations: allocateFifoBoxes(candidateSources, request.requestedBoxes).map(({ source, boxes }) => ({
+          balanceId: source.balanceId,
+          boxes: String(boxes),
+        })),
         customerItemCode: request.customerItemCode,
       });
       totalBoxesAllocated += request.requestedBoxes;
@@ -1027,7 +1049,7 @@ export function MultiItemPickListDraft({
                             itemId,
                             boxes: "",
                             sourceBalanceId: "",
-                            manualSplit: false,
+                            manualSplit: true,
                             manualAllocations: [],
                             customerItemCode: selectedItem?.customerItemCode ?? "",
                           });
@@ -1058,14 +1080,14 @@ export function MultiItemPickListDraft({
                             disabled={!canEditLines}
                             className="font-label text-[11px] font-bold text-brand-navy underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
                           >
-                            {line.manualSplit ? "Use Auto FIFO" : "Split quantities manually"}
+                            {line.manualSplit ? "Use fixed location" : "Split quantities manually"}
                           </button>
                         )}
                       </div>
                       {!line.manualSplit ? (
                         <>
                           <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm font-normal text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
-                            <option value="">Auto FIFO / split across locations</option>
+                            <option value="">Select a fixed location</option>
                             {item?.sources.map((source) => (
                               <option key={source.balanceId} value={source.balanceId}>
                                 {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Supervisor approval"}
@@ -1083,13 +1105,21 @@ export function MultiItemPickListDraft({
                         </>
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
-                          <p className="text-[11px] font-semibold leading-4 text-slate-600">Enter boxes from each location. The total must equal the line quantity.</p>
+                          <p className="text-[11px] font-semibold leading-4 text-slate-600">Select one or more locations, then enter boxes for each. The total must equal the line quantity.</p>
                           {item?.sources.map((source) => {
                             const allocation = line.manualAllocations.find((entry) => entry.balanceId === source.balanceId);
                             return (
                               <label key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Use location ${source.locationLabel}`}
+                                  checked={Boolean(allocation)}
+                                  onChange={() => handleManualLocationToggle(line.id, source.balanceId)}
+                                  disabled={!canEditLines}
+                                  className="sr-only peer"
+                                />
                                 <span className="min-w-0">
-                                  <span className="block truncate font-semibold text-slate-800">{source.locationLabel}</span>
+                                  <span className={`block truncate font-semibold ${allocation ? "text-brand-navy" : "text-slate-800"}`}>{allocation ? "✓ " : ""}{source.locationLabel}</span>
                                   <span className="block truncate text-[10px] font-normal text-slate-500">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
                                 </span>
                                 <input
@@ -1099,7 +1129,7 @@ export function MultiItemPickListDraft({
                                   max={availableBoxesForSource(source)}
                                   value={allocation?.boxes ?? ""}
                                   onChange={(event) => handleManualAllocationChange(line.id, source.balanceId, event.target.value)}
-                                  disabled={!canEditLines}
+                                  disabled={!canEditLines || !allocation}
                                   className="h-9 w-full rounded-lg border border-slate-200 px-2 text-right font-mono text-sm font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
                                 />
                               </label>
@@ -1190,7 +1220,7 @@ export function MultiItemPickListDraft({
                             itemId,
                             boxes: "",
                             sourceBalanceId: "",
-                            manualSplit: false,
+                            manualSplit: true,
                             manualAllocations: [],
                             customerItemCode: selectedItem?.customerItemCode ?? "",
                           });
@@ -1241,14 +1271,14 @@ export function MultiItemPickListDraft({
                             disabled={!canEditLines}
                             className="font-label text-[10px] font-bold text-brand-navy underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
                           >
-                            {line.manualSplit ? "Use Auto FIFO" : "Split quantities manually"}
+                            {line.manualSplit ? "Use fixed location" : "Split quantities manually"}
                           </button>
                         )}
                       </div>
                       {!line.manualSplit ? (
                         <>
                           <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
-                            <option value="">Auto FIFO / split locations</option>
+                            <option value="">Select a fixed location</option>
                             {item?.sources.map((source) => (
                               <option key={source.balanceId} value={source.balanceId}>
                                 {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Approval"}
@@ -1266,13 +1296,21 @@ export function MultiItemPickListDraft({
                         </>
                       ) : (
                         <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
-                          <p className="font-body text-[11px] leading-4 text-slate-600">Enter the boxes taken from each location. The total must equal the line quantity.</p>
+                          <p className="font-body text-[11px] leading-4 text-slate-600">Select one or more locations, then enter boxes for each. The total must equal the line quantity.</p>
                           {item?.sources.map((source) => {
                             const allocation = line.manualAllocations.find((entry) => entry.balanceId === source.balanceId);
                             return (
                               <label key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Use location ${source.locationLabel}`}
+                                  checked={Boolean(allocation)}
+                                  onChange={() => handleManualLocationToggle(line.id, source.balanceId)}
+                                  disabled={!canEditLines}
+                                  className="sr-only peer"
+                                />
                                 <span className="min-w-0">
-                                  <span className="block truncate font-body text-xs font-semibold text-slate-800">{source.locationLabel}</span>
+                                  <span className={`block truncate font-body text-xs font-semibold ${allocation ? "text-brand-navy" : "text-slate-800"}`}>{allocation ? "✓ " : ""}{source.locationLabel}</span>
                                   <span className="block truncate font-body text-[10px] text-slate-500">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
                                 </span>
                                 <input
@@ -1282,7 +1320,7 @@ export function MultiItemPickListDraft({
                                   max={availableBoxesForSource(source)}
                                   value={allocation?.boxes ?? ""}
                                   onChange={(event) => handleManualAllocationChange(line.id, source.balanceId, event.target.value)}
-                                  disabled={!canEditLines}
+                                  disabled={!canEditLines || !allocation}
                                   className="h-8 w-full rounded-lg border border-slate-200 px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
                                 />
                               </label>
@@ -1298,7 +1336,7 @@ export function MultiItemPickListDraft({
                       )}
                       {!line.manualSplit && fifoAllocations.length > 0 && (
                         <span className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                          {selectedSource ? "Fixed source selected" : "FIFO allocation ready"}
+                          {selectedSource ? "Fixed location selected" : "FIFO allocation ready"}
                         </span>
                       )}
                       <p className="mt-2 font-body text-[11px] leading-4 text-slate-500">Max {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across FIFO locations"}.</p>

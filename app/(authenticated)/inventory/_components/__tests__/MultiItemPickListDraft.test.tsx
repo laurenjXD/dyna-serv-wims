@@ -131,6 +131,8 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
 
     fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "20" } });
+    fireEvent.click(screen.getAllByLabelText("Use location A4-01")[0]);
+    fireEvent.change(screen.getAllByLabelText("Boxes from A4-01")[0], { target: { value: "20" } });
 
     expect(screen.getAllByText("2000")).toHaveLength(2);
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
@@ -182,8 +184,11 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(quantityInputs[0], { target: { value: "20" } });
     expect(quantityInputs[0]).toHaveValue(15);
 
+    expect(screen.getAllByRole("button", { name: "Use fixed location" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "Use fixed location" })[0]);
+
     const locationSelectors = Array.from(container.querySelectorAll("select")).filter((select) =>
-      select.textContent?.includes("Auto FIFO / split"),
+      select.textContent?.includes("Select a fixed location"),
     );
     expect(locationSelectors.length).toBeGreaterThan(0);
     expect(locationSelectors[0].textContent).toContain("A4-01");
@@ -227,8 +232,8 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "12" } });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Split quantities manually" })[0]);
-
+    fireEvent.click(screen.getAllByLabelText("Use location A4-01")[0]);
+    fireEvent.click(screen.getAllByLabelText("Use location B2-05")[0]);
     const firstLocationBoxes = screen.getAllByLabelText("Boxes from A4-01")[0];
     const secondLocationBoxes = screen.getAllByLabelText("Boxes from B2-05")[0];
     fireEvent.change(firstLocationBoxes, { target: { value: "8" } });
