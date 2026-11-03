@@ -15,16 +15,27 @@ import { DayAuditDrawer } from "./DayAuditDrawer";
 interface MonthlyHeatmapProps {
   initialGrid?: HeatmapCellDatum[][];
   preview?: boolean;
+  selectedMonth?: { year: number; month: number };
 }
 
-const MONTHS = [
-  { name: "Aug 2026", key: "Aug", year: 2026 },
-  { name: "Jul 2026", key: "Jul", year: 2026 },
-  { name: "Jun 2026", key: "Jun", year: 2026 },
-];
+type HeatmapMonth = { year: number; month: number };
 
-export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapProps) {
-  const [selectedMonth, setSelectedMonth] = useState("Aug 2026");
+function formatMonth({ year, month }: HeatmapMonth) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" })
+    .format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function recentMonths(selectedMonth: HeatmapMonth): HeatmapMonth[] {
+  return Array.from({ length: 3 }, (_, offset) => {
+    const date = new Date(Date.UTC(selectedMonth.year, selectedMonth.month - 1 - offset, 1));
+    return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+  });
+}
+
+export function MonthlyHeatmap({ initialGrid, preview = false, selectedMonth }: MonthlyHeatmapProps) {
+  const activeMonth = selectedMonth ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+  const activeMonthLabel = formatMonth(activeMonth);
+  const monthOptions = recentMonths(activeMonth);
   const [metricView, setMetricView] = useState<HeatmapMetricView>("pickActivity");
   const [selectedAuditRecord, setSelectedAuditRecord] = useState<BinAuditRecord | null>(null);
   const [showMonthMenu, setShowMonthMenu] = useState(false);
@@ -37,6 +48,17 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
       : source;
   }, [initialGrid, preview]);
   const binRowNames = gridData.map((r) => (r[0] ? r[0].binRow : "BIN"));
+  const dayLabels = gridData[0]?.map((cell) => cell.auditRecord.dayNumber) ?? Array.from(
+    { length: new Date(Date.UTC(activeMonth.year, activeMonth.month, 0)).getUTCDate() },
+    (_, index) => index + 1,
+  );
+
+  const selectMonth = (month: HeatmapMonth) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("heatmapMonth", `${month.year}-${String(month.month).padStart(2, "0")}`);
+    window.location.assign(`${url.pathname}${url.search}`);
+    setShowMonthMenu(false);
+  };
 
   // Group cells by bin row
   const rowMap = useMemo(() => {
@@ -92,7 +114,7 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
               <span>Location Intelligence &amp; Bin Activity Heatmap</span>
             </h2>
             <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
-              31-Day Activity Matrix
+              {dayLabels.length}-Day Activity Matrix
             </span>
           </div>
           <p className="mt-0.5 font-body text-xs text-text-grey">
@@ -152,27 +174,24 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-mono text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-50"
             >
               <Calendar size={13} className="text-slate-500" />
-              <span>{selectedMonth}</span>
+              <span>{activeMonthLabel}</span>
               <ChevronDown size={13} className="text-slate-400" />
             </button>
 
             {showMonthMenu && (
               <div className="absolute right-0 top-full mt-1.5 z-30 w-36 rounded-xl border border-slate-200 bg-white p-1.5 shadow-elevation-3 font-mono text-xs">
-                {MONTHS.map((m) => (
+                {monthOptions.map((month) => (
                   <button
-                    key={m.key}
+                    key={`${month.year}-${month.month}`}
                     type="button"
-                    onClick={() => {
-                      setSelectedMonth(m.name);
-                      setShowMonthMenu(false);
-                    }}
+                    onClick={() => selectMonth(month)}
                     className={`w-full rounded-lg px-2.5 py-1.5 text-left transition-colors ${
-                      selectedMonth === m.name
+                      activeMonth.year === month.year && activeMonth.month === month.month
                         ? "bg-blue-50 font-bold text-brand-navy"
                         : "hover:bg-slate-100 text-slate-700"
                     }`}
                   >
-                    {m.name}
+                    {formatMonth(month)}
                   </button>
                 ))}
               </div>
@@ -186,8 +205,8 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
         <div className="min-w-[900px]">
           {/* Day Numbers Column Header (1 - 31) */}
           <div className="flex items-center gap-1 mb-1.5 pl-20">
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-              const isWeekend = day % 7 === 1 || day % 7 === 2;
+            {dayLabels.map((day, index) => {
+              const isWeekend = gridData[0]?.[index]?.isWeekend ?? false;
               return (
                 <div
                   key={day}
@@ -261,7 +280,7 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
         <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-xs font-black text-brand-navy">
-              Bin {mobileSelectedBin} (August 2026)
+              Bin {mobileSelectedBin} ({activeMonthLabel})
             </span>
             <span className="text-[11px] text-text-grey font-medium">
               Tap day for audit log
@@ -280,7 +299,7 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
                   className={`flex flex-col items-center justify-between p-1.5 min-h-[48px] rounded-xl font-mono shadow-2xs active:scale-95 transition-transform ${colorClass}`}
                 >
                   <span className="text-[10px] opacity-75 font-semibold">
-                    {cell.day}
+                    {cell.auditRecord.dayNumber}
                   </span>
                   <span className="text-xs font-black truncate">
                     {displayVal}

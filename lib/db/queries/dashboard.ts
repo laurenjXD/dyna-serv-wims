@@ -3,7 +3,7 @@
 // Real-time operations telemetry, inventory valuation, flow movement, and heatmap analytics
 // backing the Operations Dashboard (/dashboard).
 
-import { sql, eq, inArray, or } from "drizzle-orm";
+import { and, gte, inArray, lt, or, sql, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
@@ -357,10 +357,21 @@ export async function getDashboardDeliveryPerformance(): Promise<{
 }
 
 /**
- * 5. Live 31-Day Bin Activity Heatmap & Interactive Audit Drawer Data
+ * 5. Live monthly Bin Activity Heatmap & Interactive Audit Drawer Data
  */
-export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
+export async function getDashboardHeatmapData(
+  requestedMonth?: { year: number; month: number },
+): Promise<HeatmapCellDatum[][]> {
   try {
+    const now = new Date();
+    const year = Number.isInteger(requestedMonth?.year) ? requestedMonth!.year : now.getFullYear();
+    const month = Number.isInteger(requestedMonth?.month) && requestedMonth!.month >= 1 && requestedMonth!.month <= 12
+      ? requestedMonth!.month
+      : now.getMonth() + 1;
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const rangeStart = new Date(Date.UTC(year, month - 1, 1));
+    const rangeEnd = new Date(Date.UTC(year, month, 1));
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(rangeStart);
     const queriedLocRows = await db
       .select({
         label: locations.label,
@@ -382,12 +393,6 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
     const locIds = locRows.map((l) => l.id);
     const locMap = new Map(locRows.map((l) => [l.id, l.label]));
     const binRows = locRows.map((l) => l.label);
-    const dayDates = Array.from({ length: 31 }, (_, index) => {
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      date.setDate(date.getDate() - (30 - index));
-      return date;
-    });
     const grid: HeatmapCellDatum[][] = [];
 
     // Query transactions efficiently with limit
@@ -408,7 +413,14 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       .leftJoin(items, eq(inventoryTransactions.itemId, items.id))
       .leftJoin(lots, eq(inventoryTransactions.lotId, lots.id))
       .where(
-        sql`${inventoryTransactions.toLocationId} IN (${sql.join(locIds.map((id) => sql`${id}`), sql`, `)}) OR ${inventoryTransactions.fromLocationId} IN (${sql.join(locIds.map((id) => sql`${id}`), sql`, `)})`
+        and(
+          or(
+            inArray(inventoryTransactions.toLocationId, locIds),
+            inArray(inventoryTransactions.fromLocationId, locIds),
+          ),
+          gte(inventoryTransactions.createdAt, rangeStart),
+          lt(inventoryTransactions.createdAt, rangeEnd),
+        ),
       )
       .limit(300);
 
@@ -425,10 +437,10 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
       const rowData: HeatmapCellDatum[] = [];
       const binName = binRows[r];
 
-      for (let day = 1; day <= dayDates.length; day++) {
-        const currentDate = dayDates[day - 1];
-        const dateKey = currentDate.toISOString().slice(0, 10);
-        const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const currentDate = new Date(Date.UTC(year, month - 1, day));
+        const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const isWeekend = currentDate.getUTCDay() === 0 || currentDate.getUTCDay() === 6;
         const dayTxns = locationTxns.filter((t) => t.locationLabel === binName && t.dayDate === dateKey);
         const basePick = dayTxns.length;
 
@@ -443,8 +455,8 @@ export async function getDashboardHeatmapData(): Promise<HeatmapCellDatum[][]> {
             binId: binName,
             date: dateKey,
             dayNumber: day,
-            monthName: currentDate.toLocaleDateString("en-US", { month: "long" }),
-            year: currentDate.getFullYear(),
+            monthName,
+            year,
             metricType: "pickActivity",
             metricValue: basePick,
             metricFormatted: `${basePick} Picks`,

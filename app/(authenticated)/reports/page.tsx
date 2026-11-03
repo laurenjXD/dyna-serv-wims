@@ -54,7 +54,19 @@ async function loadReport<T>(loader: () => Promise<T>): Promise<T | undefined> {
   }
 }
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ heatmapMonth?: string }>;
+}) {
+  const params = await searchParams;
+  const requestedMonthMatch = params.heatmapMonth?.match(/^(\d{4})-(\d{2})$/);
+  const requestedMonth = requestedMonthMatch
+    ? { year: Number(requestedMonthMatch[1]), month: Number(requestedMonthMatch[2]) }
+    : undefined;
+  const heatmapMonth = requestedMonth && requestedMonth.month >= 1 && requestedMonth.month <= 12
+    ? requestedMonth
+    : { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
   const resolver = await createPageResolver();
   const permResult = await requirePermission(resolver, "reporting.read");
   const financialPerm = await requirePermission(resolver, "reporting.financial_read");
@@ -101,7 +113,7 @@ export default async function ReportsPage() {
     loadReport(() => getThroughputReport("daily")),
     loadReport(getDeliveryPerformanceReport),
     loadReport(getReportArchiveList),
-    loadReport(getDashboardHeatmapData),
+    loadReport(() => getDashboardHeatmapData(heatmapMonth)),
     getDocumentTemplate(db),
   ]);
 
@@ -115,6 +127,7 @@ export default async function ReportsPage() {
         deliverySla={deliverySla}
         archiveItems={archiveItems}
         heatmap={heatmap}
+        heatmapMonth={heatmapMonth}
         canReadFinancial={canReadFinancial}
         documentTemplate={documentTemplate}
       />
