@@ -79,8 +79,8 @@ function itemCodeFor(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "
   return enrolledCode?.trim() || item.itemCode;
 }
 
-function hasRequiredItemCode(item: Pick<CatalogItem, "supplierItemCode" | "dsgcItemNumber">, flowType: string): boolean {
-  const requiredCode = flowType === "vmi" ? item.supplierItemCode : item.dsgcItemNumber;
+function hasRequiredItemCode(item: Pick<CatalogItem, "itemCode" | "supplierItemCode" | "dsgcItemNumber">, flowType: string): boolean {
+  const requiredCode = flowType === "vmi" ? (item.supplierItemCode?.trim() || item.itemCode) : item.dsgcItemNumber;
   return Boolean(requiredCode?.trim());
 }
 
@@ -299,6 +299,45 @@ function allocateFifoBoxes(sources: StockSource[], requestedBoxes: number): Fifo
   return allocations;
 }
 
+function rebalanceManualAllocations(
+  sources: StockSource[],
+  existing: DraftLine["manualAllocations"],
+  requestedBoxes: number,
+): DraftLine["manualAllocations"] {
+  let remaining = requestedBoxes;
+  const existingByBalanceId = new Map(existing.map((allocation) => [allocation.balanceId, allocation]));
+  const sortedSources = [...sources].sort((a, b) => a.priority - b.priority);
+  const allocations: DraftLine["manualAllocations"] = [];
+
+  // Preserve the operator's selected locations first, while filling each one
+  // up to its on-hand quantity and the requested line quantity.
+  for (const source of sortedSources) {
+    const current = existingByBalanceId.get(source.balanceId);
+    if (!current) continue;
+    const availableBoxes = availableBoxesForSource(source);
+    const parsedBoxes = Number(current.boxes);
+    const boxes = Number.isInteger(parsedBoxes)
+      ? Math.min(Math.max(0, parsedBoxes), availableBoxes, Math.max(0, remaining))
+      : 0;
+    allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
+    remaining -= boxes;
+  }
+
+  // If the requested line is larger than the first FIFO location, append the
+  // next FIFO locations automatically instead of leaving the line partially
+  // allocated for the operator to repair manually.
+  for (const source of sortedSources) {
+    if (remaining <= 0) break;
+    if (existingByBalanceId.has(source.balanceId)) continue;
+    const boxes = Math.min(remaining, availableBoxesForSource(source));
+    if (boxes <= 0) continue;
+    allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
+    remaining -= boxes;
+  }
+
+  return allocations;
+}
+
 export function MultiItemPickListDraft({
   stock,
   customers,
@@ -429,26 +468,7 @@ export function MultiItemPickListDraft({
     const nextRequestedBoxes = Number(nextValue);
     let manualAllocationsPatch: DraftLine["manualAllocations"] | undefined;
     if (detail?.line.manualSplit && detail.item && Number.isInteger(nextRequestedBoxes) && nextRequestedBoxes > 0) {
-      if (detail.line.manualAllocations.length === 0) {
-        manualAllocationsPatch = allocateFifoBoxes(detail.item.sources, nextRequestedBoxes).map(({ source, boxes }) => ({
-          balanceId: source.balanceId,
-          boxes: String(boxes),
-        }));
-      } else {
-        let remainingBoxes = nextRequestedBoxes;
-        manualAllocationsPatch = detail.line.manualAllocations.map((allocation) => {
-          const source = detail.item?.sources.find((candidate) => candidate.balanceId === allocation.balanceId);
-          const availableBoxes = source ? availableBoxesForSource(source) : 0;
-          const requestedAllocation = Number(allocation.boxes);
-          const boxes = Math.min(
-            Math.max(0, Number.isInteger(requestedAllocation) ? requestedAllocation : 0),
-            availableBoxes,
-            remainingBoxes,
-          );
-          remainingBoxes -= boxes;
-          return { ...allocation, boxes: String(boxes) };
-        });
-      }
+      manualAllocationsPatch = rebalanceManualAllocations(detail.item.sources, detail.line.manualAllocations, nextRequestedBoxes);
     } else if (nextValue === "" && detail?.line.manualSplit) {
       manualAllocationsPatch = [];
     }

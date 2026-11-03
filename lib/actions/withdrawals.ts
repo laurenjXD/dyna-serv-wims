@@ -444,7 +444,7 @@ export async function commitWithdrawal(
       const itemCodeIsProvisional =
         (data.flowType === "trading" || data.flowType === "supplies")
           ? !item.dsgcItemNumber?.trim()
-          : !item.supplierItemCode?.trim();
+          : !item.supplierItemCode?.trim() && !item.itemCode?.trim();
       if (itemCodeIsProvisional) {
         throw new Error("provisional_item_code");
       }

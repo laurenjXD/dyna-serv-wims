@@ -110,7 +110,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(itemSearch).toHaveValue("SUP-ITEM-1");
   });
 
-  it("allows provisional items to be selected while clearly blocking generation", () => {
+  it("uses the displayed VMI item code when no separate supplier code is enrolled", () => {
     const stockWithoutSupplierCode = [{ ...stock[0], supplierItemCode: null }];
 
     render(
@@ -131,11 +131,40 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     const recommendation = screen.getByRole("button", { name: /ITEM-1/ });
     expect(recommendation).toBeEnabled();
-    expect(within(recommendation).getByText("Needs item code")).toBeInTheDocument();
+    expect(within(recommendation).getByText("Available")).toBeInTheDocument();
 
     fireEvent.click(recommendation);
     expect(itemSearch).toHaveValue("ITEM-1");
-    expect(screen.getByText(/enrolled supplier\/DSGC item code/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "1" } });
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+  });
+
+  it("fills the requested boxes across FIFO locations by default", () => {
+    const stockWithSplitFifo = [
+      { ...stock[0], availableQty: 2, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithSplitFifo}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "5" } });
+
+    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "2")).toBe(true);
+    expect(screen.getAllByLabelText("Boxes from C1-11").every((input) => (input as HTMLInputElement).value === "3")).toBe(true);
+    expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
   });
 
   it("accepts boxes and derives the base-unit quantity from SPQ", () => {
