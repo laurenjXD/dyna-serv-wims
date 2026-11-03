@@ -263,9 +263,12 @@ export function buildStockAllocationPreview(
       qtyCommitted: row.qtyCommitted,
       receivedAt: row.receivedAt,
       expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
+      lotNumber: row.lotNumber,
+      locationLabel: row.locationLabel,
     })),
     requestedQty,
     isPerishable,
+    itemRows[0]?.spq,
   );
 
   return result.ok

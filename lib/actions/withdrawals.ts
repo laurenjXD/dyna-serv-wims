@@ -246,7 +246,9 @@ export async function requestFifoOverride(
         qtyCommitted: row.qtyCommitted,
         receivedAt: row.receivedAt,
         expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
-      })), requested.qty, selected.isPerishable);
+        lotNumber: row.lotNumber,
+        locationLabel: row.locationLabel,
+      })), requested.qty, selected.isPerishable, positiveInteger(selected.spq));
       if (!standard.ok) throw new Error("unable_to_reserve_stock");
       if (standard.lines.length === 1 &&
           standard.lines[0].lotId === requested.lotId &&
@@ -508,9 +510,12 @@ export async function commitWithdrawal(
           qtyCommitted: row.qtyCommitted,
           receivedAt: row.receivedAt,
           expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
+          lotNumber: row.lotNumber,
+          locationLabel: row.locationLabel,
         })),
         requestedQty,
         item.isPerishable,
+        positiveInteger(item.spq),
       );
       if (!allocation.ok) {
         throw new Error("unable_to_reserve_stock");
