@@ -49,7 +49,7 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
     return <button type="button" onClick={() => setOpen(true)} className="inline-flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"><PackageCheck size={18} aria-hidden="true" />Create Pick List</button>;
   }
 
-  const isOverrideReady = Boolean(request);
+  const isOverrideReady = Boolean(request) && reason.trim().length >= 10;
 
   return (
     <div className="basis-full rounded border border-outline-variant bg-surface-white p-4 shadow-elevation-1 md:p-5">
@@ -78,8 +78,8 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
       {requiresOverride && <div className="mt-5 rounded border border-status-pending/40 bg-status-pending/5 p-4">
         <div className="flex items-start gap-3"><AlertTriangle size={22} className="mt-0.5 shrink-0 text-status-pending" aria-hidden="true" /><div><p className="font-heading text-body-md font-bold text-on-surface">FIFO/FEFO override</p><p className="mt-1 font-body text-body-sm text-text-grey">This location is not the recommended {strategy} source. Approval is locked to this lot, location, quantity, and stock version.</p></div></div>
         <label className="mt-4 grid gap-2 font-label text-label font-bold text-on-surface">Reason for choosing another pallet
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} placeholder="Optional comment about the alternate location." className="rounded border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary" />
-          <span className="font-body text-body-sm font-normal text-text-grey">Optional comment. The requester cannot approve their own request.</span>
+          <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} placeholder="Explain the alternate location (at least 10 characters)." className="rounded border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary" />
+          <span className="font-body text-body-sm font-normal text-text-grey">At least 10 characters are required. The requester cannot approve their own request.</span>
         </label>
       </div>}
 

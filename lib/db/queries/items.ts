@@ -90,14 +90,7 @@ export type WrrItemOption = {
   isPerishable: boolean;
 };
 
-/**
- * Lists active catalog items for the WRR office form. Existing inventory
- * imports predate the required item-to-organization field and therefore have
- * a nullable `defaultSupplierPartyId`; they must still be selectable so an
- * operator can receive them against the WRR's selected source organization.
- * The client marks those legacy rows as unassigned, while the server action
- * still rejects an explicitly assigned item from a different organization.
- */
+/** Only active, explicitly assigned materials can be selected for a new WRR. */
 export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOption[]> {
   try {
     const rows = (await db
@@ -116,7 +109,7 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
         isPerishable: items.isPerishable,
       })
       .from(items)
-      .where(eq(items.isActive, true))
+      .where(and(eq(items.isActive, true), isNotNull(items.defaultSupplierPartyId)))
       .orderBy(items.code)) as WrrItemOption[];
 
     return rows.map((r) => ({
@@ -144,7 +137,7 @@ export async function listActiveWrrItemOptions(db: DbLike): Promise<WrrItemOptio
           isPerishable: items.isPerishable,
         })
         .from(items)
-        .where(eq(items.isActive, true))
+        .where(and(eq(items.isActive, true), isNotNull(items.defaultSupplierPartyId)))
         .orderBy(items.code)) as Array<Omit<WrrItemOption, "supplierItemCode" | "dsgcItemNumber">>;
 
       return rows.map((row) => ({

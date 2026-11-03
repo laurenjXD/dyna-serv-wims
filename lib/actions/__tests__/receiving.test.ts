@@ -431,7 +431,7 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     expect(insertedLines[0].itemId).toBe("resolved-item-uuid");
   });
 
-  it("allows an imported legacy item with no default organization when the WRR supplies the source organization", async () => {
+  it("rejects an imported item until its source organization is assigned", async () => {
     const db = makeReceivingDb([], [{
       id: "legacy-item-uuid",
       defaultSupplierPartyId: null,
@@ -458,9 +458,8 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       mockRlsDeps(db).deps,
     );
 
-    expect(result.ok).toBe(true);
-    const insertedLines = db._inserted[1] as AnyRecord[];
-    expect(insertedLines[0].itemId).toBe("legacy-item-uuid");
+    expect(result).toEqual({ ok: false, errors: [expect.stringMatching(/not assigned to this organization/i)] });
+    expect(db.insert).not.toHaveBeenCalled();
   });
 
   it("rejects a selected item that is not assigned to the WRR organization", async () => {

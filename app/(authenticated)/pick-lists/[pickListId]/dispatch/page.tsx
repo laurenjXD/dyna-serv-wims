@@ -469,8 +469,13 @@ export default async function DispatchConfirmationPage({
             <OfflineDispatchScanForm
               action={handleBoxScan}
               pickListId={pickListId}
-              pickListItemId={activeItem.id}
-              locationId={activeItem.locationId}
+              lines={items.map((item) => ({
+                id: item.id, itemCode: item.itemCode, itemBarcode: item.itemBarcode,
+                lotId: item.lotId, lotNumber: item.lotNumber,
+                locationId: item.locationId, locationLabel: item.locationLabel,
+                numberOfBoxes: item.numberOfBoxes,
+                selectedCount: selectionCountByLine.get(item.id) ?? 0,
+              }))}
             />
           </section>
         )}

@@ -23,8 +23,9 @@ export function OfflineReceivingScanForm({
   const { connectivity, queueObservation, currentUserId } = useOfflineStatus();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [localState, setLocalState] = useState<{ actorId: string | null; counts: Record<string, number> }>({ actorId: currentUserId, counts: {} });
-  const localCounts = localState.actorId === currentUserId ? localState.counts : {};
+  const serverRevision = JSON.stringify(lines.map((line) => [line.id, line.scannedQty]));
+  const [localState, setLocalState] = useState<{ actorId: string | null; revision: string; counts: Record<string, number> }>({ actorId: currentUserId, revision: serverRevision, counts: {} });
+  const localCounts = localState.actorId === currentUserId && localState.revision === serverRevision ? localState.counts : {};
   const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,10 +40,10 @@ export function OfflineReceivingScanForm({
         const lineId = String(entry.payload.wrrItemId ?? "");
         if (lineId) restored[lineId] = (restored[lineId] ?? 0) + Number(entry.payload.scannedQty ?? 1);
       }
-      setLocalState({ actorId: currentUserId, counts: restored });
+      setLocalState({ actorId: currentUserId, revision: serverRevision, counts: restored });
     }).catch(() => {});
     return () => { active = false; };
-  }, [wrrId, currentUserId]);
+  }, [wrrId, currentUserId, serverRevision]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (connectivity !== "offline") return;
@@ -70,8 +71,8 @@ export function OfflineReceivingScanForm({
         scannedQty: result.scanQty,
       });
       setLocalState((current) => {
-        const counts = current.actorId === currentUserId ? current.counts : {};
-        return { actorId: currentUserId, counts: { ...counts, [result.line.id]: (counts[result.line.id] ?? 0) + result.scanQty } };
+        const counts = current.actorId === currentUserId && current.revision === serverRevision ? current.counts : {};
+        return { actorId: currentUserId, revision: serverRevision, counts: { ...counts, [result.line.id]: (counts[result.line.id] ?? 0) + result.scanQty } };
       });
       setFeedback("Saved locally — this scan will sync when the connection returns.");
       if (inputRef.current) inputRef.current.value = "";

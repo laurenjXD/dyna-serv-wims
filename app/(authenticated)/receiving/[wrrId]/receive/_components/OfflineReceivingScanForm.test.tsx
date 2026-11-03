@@ -34,6 +34,17 @@ describe("offline receiving shared-device isolation", () => {
     submit();
     await waitFor(() => expect(queue).toHaveBeenCalledOnce());
   });
+  it("drops acknowledged local counts after server lines refresh", async () => {
+    pending.mockResolvedValue([]);
+    const inspected = { ...line, expectedQty: 3, cartonCount: 3, disposition: "inspect" as const };
+    const view = render(<OfflineReceivingScanForm action={vi.fn()} wrrId="wrr" flowType="vmi" lines={[inspected]} />);
+    await act(async () => {});
+    submit(); await waitFor(() => expect(queue).toHaveBeenCalledTimes(1));
+    view.rerender(<OfflineReceivingScanForm action={vi.fn()} wrrId="wrr" flowType="vmi" lines={[{ ...inspected, scannedQty: 1 }]} />);
+    await act(async () => {});
+    submit(); await waitFor(() => expect(queue).toHaveBeenCalledTimes(2));
+    submit(); await waitFor(() => expect(queue).toHaveBeenCalledTimes(3));
+  });
   it("does not restore another actor's queue while signed out", async () => {
     state.currentUserId = null;
     render(form());

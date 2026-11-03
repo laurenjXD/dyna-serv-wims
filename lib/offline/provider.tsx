@@ -7,6 +7,8 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
+  type SetStateAction,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -55,7 +57,18 @@ export function OfflineRuntime({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState<OfflineStatus>(EMPTY_OFFLINE_STATUS);
+  const actorRef = useRef(currentUserId);
+  actorRef.current = currentUserId;
+  const [runtime, setRuntime] = useState({ actorId: currentUserId, status: EMPTY_OFFLINE_STATUS });
+  const status = runtime.actorId === currentUserId ? runtime.status : EMPTY_OFFLINE_STATUS;
+  const setStatus = useCallback((update: SetStateAction<OfflineStatus>) => {
+    if (actorRef.current !== currentUserId) return;
+    setRuntime((previous) => {
+      if (actorRef.current !== currentUserId) return previous;
+      const prior = previous.actorId === currentUserId ? previous.status : EMPTY_OFFLINE_STATUS;
+      return { actorId: currentUserId, status: typeof update === "function" ? update(prior) : update };
+    });
+  }, [currentUserId]);
 
   const refreshCounts = useCallback(async () => {
     if (!currentUserId) return;
@@ -65,7 +78,7 @@ export function OfflineRuntime({
     } catch {
       setStatus((current) => ({ ...current, sync: "attention" }));
     }
-  }, [currentUserId]);
+  }, [currentUserId, setStatus]);
 
   const probe = useCallback(async () => {
     const browserOnline = typeof navigator === "undefined" || navigator.onLine;
@@ -78,15 +91,16 @@ export function OfflineRuntime({
     const reachable = await pingServer();
     setStatus((current) => nextOfflineStatus(current, reachable ? "probe_online" : "probe_offline"));
     return reachable;
-  }, [refreshCounts]);
+  }, [refreshCounts, setStatus]);
 
   const retrySync = useCallback(async () => {
     if (!currentUserId) return;
     const reachable = await probe();
-    if (!reachable || !syncLockAvailable()) return;
+    if (!reachable || actorRef.current !== currentUserId || !syncLockAvailable()) return;
     setStatus((current) => nextOfflineStatus(current, "sync_start"));
     try {
-      const results = await replayStoredOfflineEntriesOnce(currentUserId, submitOfflineEntry);
+      const results = await replayStoredOfflineEntriesOnce(currentUserId, submitOfflineEntry, () => actorRef.current === currentUserId);
+      if (actorRef.current !== currentUserId) return;
       const attention = results.some((result) => result.outcome === "rejected" || result.outcome === "conflict");
       setStatus((current) => ({
         ...nextOfflineStatus(current, attention ? "sync_attention" : "sync_success"),
@@ -97,7 +111,7 @@ export function OfflineRuntime({
     } finally {
       releaseSyncLock();
     }
-  }, [currentUserId, probe, refreshCounts, router]);
+  }, [currentUserId, probe, refreshCounts, router, setStatus]);
 
   useEffect(() => {
     let active = true;
@@ -131,7 +145,7 @@ export function OfflineRuntime({
     ...status,
     currentUserId,
     queueObservation: async (actionType, payload) => {
-      if (!currentUserId) throw new Error("offline_user_unavailable");
+      if (!currentUserId || actorRef.current !== currentUserId) throw new Error("offline_user_unavailable");
       await queueOfflineObservation({ capturedByUserId: currentUserId, actionType, payload });
       await refreshCounts();
     },

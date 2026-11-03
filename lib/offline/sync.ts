@@ -53,24 +53,16 @@ export async function replayOfflineEntries(
 export async function replayStoredOfflineEntries(
   currentUserId: string,
   submit: SyncSubmitter,
+  isCurrentActor: () => boolean = () => true,
 ): Promise<StoredReplayResult[]> {
-  // Load all pending entries so observations captured under a revoked or
-  // changed session can be quarantined explicitly instead of disappearing
-  // from the replay scan.
-  const entries = await listPendingOfflineEntries();
+  // Other users' pending observations are private work, not conflicts.
+  const entries = await listPendingOfflineEntries(currentUserId);
   const ordered = [...entries].sort((a, b) => a.createdAt - b.createdAt);
   const results: StoredReplayResult[] = [];
 
   for (const entry of ordered) {
-    if (entry.capturedByUserId !== currentUserId) {
-      const quarantined: OfflineQueueEnvelope = {
-        ...entry,
-        status: "quarantined_actor_mismatch",
-      };
-      await updateOfflineEntry(quarantined);
-      results.push({ entry: quarantined, outcome: "conflict" });
-      continue;
-    }
+    if (!isCurrentActor()) break;
+    if (entry.capturedByUserId !== currentUserId) continue;
     const syncing: OfflineQueueEnvelope = {
       ...entry,
       status: "syncing",
@@ -78,6 +70,10 @@ export async function replayStoredOfflineEntries(
     };
     await updateOfflineEntry(syncing);
 
+    if (!isCurrentActor()) {
+      await updateOfflineEntry({ ...syncing, status: "pending" });
+      break;
+    }
     let submission: SyncSubmission;
     try {
       submission = await submit(syncing);
@@ -85,6 +81,12 @@ export async function replayStoredOfflineEntries(
       submission = { outcome: "transient" };
     }
 
+    if (!isCurrentActor()) {
+      // The request might have committed. Preserve the operation identity;
+      // its original actor will receive a durable duplicate acknowledgement.
+      await updateOfflineEntry({ ...syncing, status: "pending" });
+      break;
+    }
     if (submission.outcome === "applied" || submission.outcome === "duplicate") {
       await deleteOfflineEntry(entry.id);
     } else {
@@ -101,18 +103,21 @@ export async function replayStoredOfflineEntries(
   return results;
 }
 
-let activeReplay: Promise<StoredReplayResult[]> | null = null;
+const activeReplays = new Map<string, Promise<StoredReplayResult[]>>();
 
-/** Coalesces reconnect/visibility/manual triggers in this browser tab. */
+/** Coalesce triggers only within the same authenticated actor. */
 export function replayStoredOfflineEntriesOnce(
   currentUserId: string,
   submit: SyncSubmitter,
+  isCurrentActor: () => boolean = () => true,
 ): Promise<StoredReplayResult[]> {
-  if (activeReplay) return activeReplay;
-  activeReplay = replayStoredOfflineEntries(currentUserId, submit).finally(() => {
-    activeReplay = null;
+  const active = activeReplays.get(currentUserId);
+  if (active) return active;
+  const replay = replayStoredOfflineEntries(currentUserId, submit, isCurrentActor).finally(() => {
+    activeReplays.delete(currentUserId);
   });
-  return activeReplay;
+  activeReplays.set(currentUserId, replay);
+  return replay;
 }
 
 export async function getOfflineQueueCounts(currentUserId: string): Promise<{

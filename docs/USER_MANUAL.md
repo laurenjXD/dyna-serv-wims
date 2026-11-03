@@ -2,11 +2,15 @@
 
 **Document type:** Operational user guide  
 **System:** Dyna-Serv Warehouse Inventory Management System (WIMS)  
-**Version:** 1.3
-**Evidence baseline:** Application routes, components, approved specifications, and verified source behavior inspected 2026-10-27  
+**Version:** 2.0
+**Evidence baseline:** Implemented routes, components, approved specifications, and integration-candidate behavior inspected 2026-11-03  
 **Audience:** Administrators, supervisors, warehouse staff, organization users, and trained operational users
 
-> This guide explains what an authorized user can do. If a button, tab, or route is not visible, the account may not have the required permission or the feature may be planned/deferred.
+> This manual describes repository-supported operating procedures, not proof that every feature or database change is live in your deployment. Work through the actions visible to your signed-in account. A planned feature, an unconfigured service, and a missing permission require different remedies.
+
+For focused procedures, use the [companion guide library](user-manual/README.md). For deployment, database, permission, and support internals, use [System Documentation](System_Documentation.md). All organization names, codes, quantities and document references in examples are training examples.
+
+**How to use this manual:** read Sections 1–4 once, then open the chapter for your task. Major procedures explain who performs the work, what must be ready, what to enter, what success means, and how to recover. Section 15 joins the individual procedures into complete user cases. Section 16 covers interrupted work and recovery.
 
 ## Contents
 
@@ -291,192 +295,404 @@ Daily checklist: review scoped inventory/orders/documents; download permitted ar
 
 ## 4. Dashboard and navigation
 
-### 4.1 Dashboard purpose
+### 4.1 Find the right work area
 
-The dashboard summarizes operational queues, inventory health, inbound/outbound activity, low stock, quarantine/hold indicators, stock valuation, and report shortcuts according to the user’s grants. It is a starting point, not a replacement for the authoritative transaction screen.
+Start at the Dashboard after signing in. A queue count tells you which records need attention; it is not proof that all of them are ready for the next physical action. An open WRR still needs source-document and quantity checks. A reserved pick list still needs its required review and physical verification.
 
-### 4.2 Navigation groups
+The main work areas include **Receiving**, **Master Inventory**, **Outgoing**, **Approvals**, **Documents**, **Reports & Analytics**, **Data Management**, **Billing & Pricing**, and account/settings pages. Your permissions determine which appear. Master Inventory groups stock lookup, pick-list preparation, inspection and stock-count work.
 
-- **Main:** dashboard, receiving, inventory, outgoing, pick lists, approvals.
-- **Reports:** documents and reports.
-- **Master Data:** enrollment, billing/pricing, migration, items, locations, parties.
-- **Account:** profile and settings.
-- **Organization Portal:** organization-scoped portal screens.
+1. Open the relevant queue or work area.
+2. Confirm the active tab, Organization, Inventory Model, date range and status filters.
+3. Search for the document/item reference supplied by the person handing over the work.
+4. Open the record and read its current status before choosing an action.
+5. After success, return to the queue and check that the record moved to its expected state.
 
-### 4.3 Dashboard tutorial
+Counts can change while another operator works. Refresh the authoritative queue before reporting a mismatch. Do not recreate a transaction just to make a dashboard total change.
 
-1. Open `/` after signing in.
-2. Read the inbound/outbound queue cards.
-3. Check low-stock and quarantine indicators.
-4. Open the relevant queue using its primary action.
-5. Use **Refresh** when the screen says data may have changed.
-6. Use the desktop search or mobile scanner/manual fallback according to the device.
+### 4.2 Use the draggable mobile navigation sheet
 
-Expected result: you reach the authoritative work queue and can verify the record state before acting.
+On a narrow screen, open the menu or **More** control supplied by the shell. The sheet shows the signed-in identity, grouped links and a close control.
+
+- Drag the small top handle upward to expand the sheet.
+- Drag it downward to reduce its height; pull it far enough down to close it.
+- Release the handle to let the menu settle at a compact, normal or expanded height.
+- Swipe **inside the list** to reach lower links. Scrolling the list and dragging the handle are separate gestures.
+- Tap **×** or the shaded area outside the sheet to close it without choosing a destination.
+- With a keyboard, focus the handle and use **Arrow Up**, **Arrow Down**, **Home** or **End** to resize. **Escape** closes the menu.
+
+Dragging a menu item is not how to resize the sheet. During an active scan flow, ordinary navigation may be hidden to keep the current task clear. Use the flow's own back/exit action and verify whether work was saved before leaving.
+
+### 4.3 When a page or action is missing
+
+A role title is not an access guarantee. Two people with similarly named roles can have different effective permissions or Organization scope. If a page opens without its edit action, record the particular operation and ask an authorized administrator to check it. Do not switch to someone else's account or enter a hidden URL as a workaround.
+
+For account procedures, see [Section 14](#14-settings-and-account) and the [accounts and access guide](user-manual/accounts-roles-and-access.md).
 
 ## 5. Receiving
 
-### 5.1 Create a WRR manually
+**Creating a staged WRR records what is expected. Confirming Store/Hold records what was physically received and where it was placed.** Importing a CIPL, accepting an identifying scan or printing a WRR does not by itself make the declared stock available.
 
-**Role:** authorized receiving/office user  
-**Prerequisites:** item, organization, location/model data; expected quantity and shipment references.
+See the [incoming receiving and WRR guide](user-manual/incoming-receiving-and-wrr.md) for focused procedures.
 
-1. Open **Receiving** and choose **New WRR**.
-2. Complete header information: organization, inventory model, commercial/shipping references, and attachments where applicable.
-3. Add at least one incoming line.
-4. Select the item/DSGC number; confirm the description is filled or correct.
-5. Enter lot number, manufacturing/expiry dates, remarks, expected quantity, unit CBM, and UOM.
-6. Choose the correct disposition and save/stage the WRR.
-7. Review the confirmation and open the WRR detail.
+### 5.1 Before creating a WRR
 
-If a field is marked required, the record cannot safely proceed until it is valid. Do not use a random organization to bypass a missing supplier/VMI customer.
+**Who:** a user with the required receiving-creation permission. Read, floor-scan and confirmation permissions are separate; creating a WRR does not automatically grant all later actions.
 
-### 5.2 Import CIPL
+**Have ready:** the CIPL/commercial invoice or other approved inbound paperwork; source Organization; enrolled material and business lot references; declared quantities; packaging/SPQ; dates; and applicable shipping/customs references.
 
-1. Open the receiving creation workflow.
-2. Choose **Import CIPL**.
-3. Upload the supported workbook/document format.
-4. Review parsed rows, item matches, quantities, dates, and any validation messages.
-5. Correct rejected rows or complete missing fields.
-6. Confirm the import into the WRR form.
-7. Review all lines before saving.
-
-Expected result: imported values are visible in editable WRR lines and unresolved rows are not silently treated as valid.
-
-### 5.3 Receive and scan on the floor
-
-1. Open the WRR detail and choose **Start Receiving**.
-2. Start camera scanning on mobile, or use the provided manual entry fallback.
-3. Scan one valid carton/unit QR from the active line. The system resolves the line and shows the remaining expected carton work.
-4. Read the feedback: what happened, why it succeeded/failed, and the next action.
-5. Choose the disposition and assign each present carton to a storage or inspection location. A shortage remains explicitly unassigned rather than being forced into a location.
-6. Review the derived carton count, location allocations, and any shortage/inspection reason.
-7. Confirm **Store** or **Hold** only after the allocation total matches the physically present/declared result.
-8. After the server confirms the line, return to the first receiving screen to scan the next WRR line.
-
-Common rejection reasons include unknown item, wrong WRR, wrong flow type, duplicate label, over-quantity, fully scanned line, and insufficient/invalid location capacity.
-
-### 5.4 Inspection and discrepancy recovery
-
-For damaged, wrong, short, paperwork, TDC, quantity, or other non-conforming arrivals:
-
-1. Stop treating the line as an ordinary successful receipt.
-2. Choose the inspection/discrepancy action.
-3. Select the approved reason and record the evidence/remarks.
-4. Follow the resolution state shown by the screen.
-5. Do not force Store/Hold until the required inspection or approval is complete.
-
-#### Receiving decision table
-
-| Physical result | System action | Inventory result |
+| Check | Why it matters | If it is wrong |
 |---|---|---|
-| All expected cartons present and acceptable | Assign storage and choose **Store** | Present cartons become available after commit |
-| Present but damaged/non-conforming | Split good cartons from hold/reject cartons | Good cartons may be stored; held/rejected cartons remain unavailable |
-| Fewer cartons arrived | Assign present cartons; mark the remainder missing | Only present cartons are posted; shortage remains an OS&D discrepancy |
-| Item is unknown or belongs to another model | Stop and resolve master data/document mismatch | No forced receipt is created |
-| Location has insufficient CBM | Split across valid locations | Same lot may have multiple location balances |
+| Correct active source relationship | VMI uses a VMI Customer, Trading uses a Trading Supplier, and Supplies uses the eligible Internal Supplies context | Correct Organization enrollment; do not select a generic company just because its name looks similar |
+| One valid receiving Inventory Model | The current document workflow derives its model from the source Organization | Resolve a missing/ambiguous receiving relationship through master data; do not invent an override |
+| Material enrolled and assigned to that Organization | A new WRR must not use another Organization's or an unassigned legacy material | Ask the master-data owner to correct assignment, then refresh the picker |
+| Correct UOM and SPQ | Packaging converts declared base units into cartons/boxes | Correct enrollment rather than changing the shipment amount to hide a conversion problem |
+| Expiry information for perishable material | Dates influence receiving and later FEFO eligibility | Obtain the source information before creating a misleading line |
+| Paperwork versus actual arrival | Declared and physically received amounts can differ | Stage the correct declared document, then reconcile shortage/damage on the floor |
 
-Use the companion [receiving guide](user-manual/incoming-receiving-and-wrr.md) for the complete step-by-step SOP and the [edge-case guide](user-manual/edge-cases-and-troubleshooting.md#2-inbound-receiving-edge-cases--sops) for recovery messages.
+A historical import is not automatic permission to receive the same material against any company. Repair its missing Organization assignment before using it in a new WRR.
+
+### 5.2 Create a staged WRR manually
+
+**Start:** **Receiving** → the new-WRR action, or `/receiving/new` when authorized.
+
+1. Check that another WRR does not already represent this CIPL/shipment.
+2. In **Organization**, search for the company named on the source document. Read its relationship label as well as its name.
+3. Confirm the inherited **Inventory Model**. The current receiving form requires a valid, unambiguous receiving relationship. If it cannot derive one, correct the Organization's setup instead of choosing an unrelated company.
+4. Enter the **Commercial Invoice / CIPL Reference** and applicable **Import Permit** and **MAWB / MBL** references. Text references do not replace correct Organization/material matching.
+5. Search for and select each enrolled material. Confirm the actual selected result; typed search text alone is not an item selection.
+6. Check any **Customer Item Code** reference. This alias does not change the selected catalog item.
+7. Enter the shipment's **Lot Number**. A business lot number is different from an internal QR/unit identifier.
+8. Enter **Manufacturing Date**, required **Expiry Date**, and useful **Remarks**.
+9. Enter the declared quantity in the field's stated unit. Verify the inherited UOM/SPQ and calculated box/carton count.
+10. Add the other material/lot lines. Keep distinct business lots separate where the source paperwork does so.
+11. Review Organization, model, references, material, lot, date and packaging values against the source document.
+12. Choose **Create Staged WRR** once. While it says **Creating WRR…**, wait for the result.
+13. Open the resulting WRR and verify its reference and staged status. Give that reference to the floor receiver.
+
+**Expected result:** a staged document with expected lines. **Stock effect:** staging alone posts no incoming stock. **Next:** start receiving, identify the line, count the actual boxes and confirm their placement.
+
+If the button says **Reconnect to create WRR**, creation requires a live connection. It has not entered the scan-only offline queue. If submission times out, search for the existing WRR/CIPL reference before opening a new form. A retry of the same submission can return its existing result; a newly created second form can duplicate the business shipment.
+
+### 5.3 Import CIPL instead of retyping lines
+
+Import assists data entry; it does not approve the source document or certify the goods.
+
+1. Select the CIPL import action on the new-WRR screen.
+2. Choose the supported source file and wait for parsing.
+3. Review the identified source Organization first.
+4. Confirm that every recognized code maps to the enrolled material assigned to that Organization.
+5. Compare imported lot, date, quantity and reference values with the source. A parser's success message still requires human review.
+6. Resolve unmatched/ambiguous material. If an imported identifier is locked, correct the source file or use the displayed review route rather than hiding a wrong line with another field.
+7. Complete required fields and choose **Create Staged WRR**.
+8. Verify the created WRR before handing over the shipment.
+
+The current form does not require a separate manual CIPL attachment upload as an extra staging step. Import, a text CIPL reference and an archive attachment are different functions; use the document actions actually offered for the record.
+
+### 5.4 Start receiving and identify a line
+
+**Who:** an authorized floor receiver. **Have ready:** the correct receivable WRR, matching physical shipment and labels, enrolled material, usable scanner/device and suitable locations.
+
+1. Open the WRR from **Receiving**. Compare Organization, CIPL/reference, material, lot and declared quantity with the goods.
+2. Use **Start Receiving** or the record's receiving action when offered. If unavailable, check status/access rather than creating another WRR.
+3. On the floor screen, read the current line's boxes/cartons and base-unit amount.
+4. Scan the supported carton/item/lot label or use the supplied manual/camera input. A WRR header/document QR is not the physical line label requested here.
+5. Read the response. On rejection, correct the stated mismatch before moving stock.
+6. For a **Store** line, one valid identifying QR completes the line's remaining declared scan step and opens whole-line placement. Repeatedly scanning every box is not required just to raise that counter.
+7. Independently count and inspect the physical boxes. A label confirms identity; it does not prove that all declared boxes arrived or are good.
+8. Review the entire declared line's placement, shortage and hold decisions before attesting to the received amount.
+
+**Example:** 240 declared pieces at SPQ 20 represent 12 boxes. One accepted Store-line QR can open placement for all 12 declared boxes. You must still establish whether all 12, only 11, or another supported physical quantity is present.
+
+For inspection/Hold lines, the scan counter can advance differently from Store-line confirmation. A partial scan count is **not evidence that the other declared boxes are missing**. Reconcile the declared whole line physically and make explicit Missing/Shortage choices where boxes truly did not arrive. Never let a scan counter substitute for the actual count or QA decision.
+
+### 5.5 Place, split, hold and record shortages
+
+The placement control groups the work into **Primary location**, **Split Storage / Hold / Shortage per box**, and **Review**.
+
+**Complete, acceptable delivery:**
+
+1. Verify that the full declared amount is physically present and acceptable.
+2. Search for the correct **Primary location**.
+3. Confirm it is the intended active storage location and has sufficient capacity.
+4. Read the assigned boxes and corresponding units in the placement summary.
+5. Complete the physical-presence/placement confirmation only after checking the goods.
+6. Choose **Confirm & Store / Hold Boxes** as displayed.
+7. Wait for success, then verify the line's committed status before repeating an action or leaving the stock.
+
+**Split racks, damage or shortage:**
+
+1. Select a suitable primary destination for good stock.
+2. Expand **Split Storage / Hold / Shortage per box**.
+3. Review each numbered box entry. Place good boxes in valid storage locations; assign QA/nonconforming boxes to an offered **Inspection Bay / Hold**; choose **Missing / Shortage** only for boxes not actually received.
+4. Ensure the split matches the physical placement. Do not assign a missing box to a rack just to make the total look complete.
+5. Review **Boxes Assigned**, each location subtotal, quarantine/hold labels and any **OS&D shortage** amount.
+6. Attest to the physical amount and submit the line commit.
+7. Check the resulting WRR, inventory locations and remaining inspection/shortage work.
+
+**Worked example:** twelve boxes are declared at SPQ 20, but eleven arrive. Nine are good and two are damaged. Assign six good boxes to A1-01, three to A1-02, two to the inspection bay, and one declared box to **Missing / Shortage**. Received stock is eleven boxes/220 pieces; the missing box/20 pieces must not be created. Good and held boxes have different availability consequences. Held stock is not ordinary pickable stock.
+
+**Hold example:** twelve boxes are declared and twelve physically arrive, all awaiting QA. Put all twelve in the permitted inspection/hold location and confirm their physical presence. Do not mark eleven missing merely because one identifying QR was scanned. Only an explicit verified shortage changes the received quantity.
+
+Storage capacity is checked again when submitted. Another receiver can consume capacity while your screen is open. If rejected, refresh and choose a valid physical split. Do not alter CBM/SPQ merely to force an overfull rack to accept stock.
+
+### 5.6 Verify and hand over completion
+
+After a committed line, the floor flow can return to scanning for the next incomplete line. Check the new line identity before scanning again.
+
+1. Review every WRR line's committed/remaining state.
+2. Compare posted location totals with the boxes physically stored or held.
+3. Identify unresolved shortage, excess, damage, pre-alert or inspection work.
+4. Use the displayed discrepancy/OS&D workflow and supply required reasons/evidence.
+5. Verify the WRR's final status and relevant receipt/print result.
+6. Hand over the WRR reference, business lot, affected location and exact exception to the next responsible person.
+
+A document-generation delay is not a reason to receive the shipment again. An entirely missing line must use the explicit shortage/close route available for that state; never attest to nonexistent stock. Inspection resolution is a separate authorized decision from placing goods into a hold bay.
+
+### 5.7 Receiving decision reference
+
+| Result | Meaning | Next action |
+|---|---|---|
+| Unknown/mismatched label | No valid expected line can be confirmed | Check current document, material, lot and accepted label type |
+| Item not assigned to Organization | Material cannot be used in this new receiving context | Correct enrollment assignment and refresh |
+| Accepted identifying scan | The line can be reviewed for physical placement | Count, inspect, allocate and explicitly record Missing/Hold |
+| Quarantine / On Hold | Stock is restricted pending QA/disposition | Complete authorized inspection resolution before release |
+| OS&D shortage | Declared boxes were explicitly not received | Verify the missing amount and follow shortage resolution |
+| Commit response lost | The action may already have succeeded | Reopen the same WRR and inspect status before retrying |
+| Saved locally | A scan observation is preserved in this browser | Reconnect and sync; final Store/Hold still needs a live connection |
 
 ## 6. Inventory and master data
 
-### 6.1 Master Inventory
+### 6.1 Read stock correctly
 
-Open **Inventory** to view stock, pick lists, and inspection work. Use **Stock View** to search item, lot, location, and organization data. Expand an item to review its lots and locations. On mobile, read the lot card fields rather than looking for a wide table.
+**Start:** **Master Inventory** → **Stock View**. Search a meaningful material code/description/reference, set the permitted Organization and Inventory Model filters, then expand the item/lot/location detail.
 
-The inventory lot QR is one QR per lot and identifies aggregate lot information. A carton QR is a separate unique identity for one physical carton when exact units exist.
+Organization answers whose company/context is involved; Inventory Model describes ownership/operation; location says where the physical goods are stored. The correct material code alone does not authorize a release.
 
-### 6.2 Stock Count & Reconciliation
-
-1. Open **Inventory → Stock Count**.
-2. Search for a location by label, rack, zone, level, or position. Use the zone and state filters to narrow the list.
-3. Review the location overview: system stock-line count, system quantity, active count state, and any existing count session.
-4. Choose **Start Count**. If the action fails, read the displayed reason and correct the location/session issue before retrying.
-5. Count the physical stock and enter the observed quantity. A zero count is valid.
-6. Submit the count and review the immutable system snapshot and calculated variance.
-7. Add the required explanation for a positive variance or any discrepancy, then request a recount when the physical result needs verification.
-8. A supervisor reviews the evidence and approves or rejects the reconciliation. Only an approved post changes the inventory balance and creates the audit-linked reconciliation transaction.
-
-Do not use Stock Count to receive a shipment, import opening stock, or silently correct inventory. Use Receiving for inbound WRRs and Migration for opening/legacy balances.
-
-### 6.3 Generate a pick list from inventory
-
-1. Open Inventory and choose the pick-list work area.
-2. Select organization/inventory model and recipient fields.
-3. Select eligible stock lines and quantities.
-4. Review the selected lines, lot/location, and price behavior.
-5. Save or generate the pick list.
-6. Open the resulting queue and proceed to physical picking.
-
-### 6.4 Enroll an item
-
-1. Open **Enrollment** or **Master Data → Items**.
-2. Choose **New Item**.
-3. Select the model/category/type/subcategory hierarchy.
-4. Select the material-origin organization. The selector should show only permitted supplier/VMI-customer options for this workflow.
-5. Confirm the inherited inventory model.
-6. Complete item code, description, packaging, dimensions, UOM, CBM and classification fields.
-7. Save and review the resulting catalog record.
-
-### 6.5 Manage locations
-
-1. Open **Master Data → Locations**.
-2. Create one location or open the bulk generator.
-3. Define zone, rack, level, position, type, and capacity.
-4. Review generated labels/locations for duplicates and naming mistakes.
-5. Save/deactivate only when the operational impact is understood.
-
-### 6.6 Inventory balance and traceability rules
-
-For a standard packed item, the operational relationship is:
-
-`base-unit balance = cartons on hand × SPQ`, adjusted for any recorded loose-unit or partial-pack rule belonging to that inventory model.
-
-The lot is the business batch and remains the aggregate traceability anchor. A carton/unit identity is a separate physical identity. Migration therefore supports two valid states:
-
-| State | What can be traced | What cannot yet be traced |
+| Quantity/status | Meaning | Do not assume |
 |---|---|---|
-| Lot QR only | Item, lot, owner/model, locations, aggregate balance, source migration batch | Which exact carton was scanned |
-| Lot QR plus migration carton QRs | Everything above plus each confirmed carton identity and carton-level dispatch history | Nothing within the confirmed carton set |
+| Physical/on-hand/remaining | Amount still recorded in the warehouse | Every box can be promised to another request |
+| Committed/reserved | Amount promised by an active release plan | Goods have already left |
+| Available | Eligible amount left after commitments/status rules | It will remain available until your submission |
+| Held/quarantined | Restricted stock awaiting the required disposition | The picker may substitute it freely |
+| Dispatched | The final release and outgoing movement were confirmed | The document is only a draft |
 
-If the migration workbook has no reliable boxes-on-hand value, commit the lot balance with carton traceability marked pending. An administrator can later record the physically verified carton count, generate unique carton identities, and print the labels in bulk. Never invent carton IDs or silently change the lot balance to make carton count fit.
+**Example:** twenty boxes are on hand, five committed, and fifteen available. Generating another three-box pick list reserves three more: physical stock remains twenty, commitments become eight, and available becomes twelve. Final dispatch of the three boxes reduces physical stock to seventeen and releases that commitment.
+
+To investigate a discrepancy:
+
+1. Confirm Organization and Inventory Model.
+2. Clear accidental filters and open the exact material/lot.
+3. Inspect its distribution by location and status.
+4. Check units: 200 pieces at SPQ 20 and ten boxes represent the same amount.
+5. Review movements and source WRR/pick-list references.
+6. Check held/reserved status before concluding stock disappeared.
+7. Use the appropriate shortage, count, inspection or transfer workflow for a real mismatch; do not edit a catalog description to hide it.
+
+See the [inventory and withdrawals guide](user-manual/inventory-and-withdrawals.md).
+
+### 6.2 Prepare a pick-list draft
+
+**Who:** a user allowed to generate pick lists. **Have ready:** eligible stock, valid Organization relationships, required recipient, enrolled supplier/DSGC identity, correct SPQ and any source DRA.
+
+**Start:** **Master Inventory** → **Pick Lists**. This prepares a commitment; it does not confirm physical departure.
+
+1. Choose the stock **Organization**, not a similarly named recipient.
+2. Confirm the **Inventory Model**. In this stock-context workflow, use an explicit eligible model choice where offered.
+3. For **VMI**, select the required **End Customer / Recipient**. The VMI Customer/owner Organization and the downstream End Customer are different roles.
+4. For **Trading**, select the authorized **Trading Customer / Recipient**.
+5. For **Supplies**, use the eligible Internal Supplies context. If it cannot resolve correctly, ask for setup correction; do not substitute an external customer.
+6. Complete those controlling fields before entering the starter item row.
+7. Search/select the material and inspect its SPQ, availability and any **Needs item code** warning.
+8. Enter a positive whole number in **Qty (Boxes)**. Verify calculated **Qty (Units)**.
+9. Review the FIFO/FEFO source plan, lot/location breakdown and remaining amounts.
+10. Add other material lines with **Add item line**. Remove empty/accidental rows and keep one Organization and Inventory Model per draft.
+11. Review Customer PN, description, lot/manufacture information, boxes, derived units and sources.
+12. Choose **Generate Pick List** once when enabled and note the resulting reference.
+
+**Result:** a reserved/committed plan and priced pick list. **Stock effect:** availability changes; physical stock is not yet decremented. **Next:** review/approval where required, physical assembly and dispatch verification.
+
+Changing the controlling Organization or model clears/invalidates dependent choices. Rebuild and review the allocation after the change rather than reusing the old source plan.
+
+### 6.3 Boxes, units and SPQ
+
+The current multi-item draft accepts **boxes** and derives **units** using SPQ:
+
+`requested units = requested boxes × SPQ`
+
+| Intended release | Enter in Qty (Boxes) | Expected Qty (Units) |
+|---|---|---|
+| Three boxes, 20 pieces each | 3 | 60 |
+| Two boxes, 100 pieces each | 2 | 200 |
+| Eight packages with SPQ 1 | 8 | 8 |
+
+If the demand is 60 pieces at SPQ 20, enter **3**, not **60**, in the box field. If the requested demand cannot be expressed as permitted whole boxes, have the request/packaging requirement resolved; do not round without authority. Blank, zero, negative, fractional or nonnumeric box values are not valid lines.
+
+**Customer PN** is an optional release-document reference. It does not create another material or fill a missing required supplier/DSGC identity. Leaving it blank is allowed for an otherwise valid draft; a nonexistent customer alias should not prevent release.
+
+### 6.4 FIFO/FEFO, multiple locations and overrides
+
+FIFO uses the approved earlier-received source order. FEFO prioritizes eligible earlier expiry for perishable stock. The server rechecks the authoritative plan when you submit.
+
+**Ordinary multi-location example:** the earliest source has two boxes at C1-10; the next has twenty at C1-11. A five-box request can allocate two plus three. Using the second location to finish the normal FIFO demand is not automatically an override.
+
+1. Enter the requested total boxes.
+2. Inspect every source row and its allocated amount.
+3. When using manual split, ensure all selected sources total exactly the requested line quantity.
+4. Check remaining availability at each location.
+5. After changing a total/source, inspect the whole plan again; amounts may have been capped or rebalanced.
+6. Submit only a complete valid plan. If another operator changed availability, refresh and rebuild the stale allocation.
+
+**Override example:** the earliest eligible location still has ten boxes, but the operator wants two from a later location because of a documented access issue. This is out of sequence and requires its prescribed approval path.
+
+1. Confirm the alternative is permitted; an override is not a way to release quarantined/ineligible stock.
+2. Select the supported alternate source.
+3. Read **FIFO/FEFO override required**.
+4. Enter a meaningful reason of at least ten characters.
+5. Choose **Request Approval** and retain its reference.
+6. Wait for an authorized reviewer; requesting is not approval and approval is not dispatch.
+7. If rejected, expired, stale or mismatched to quantity/source, correct/recreate it through the supplied workflow.
+
+The current request contract supports **one alternate location/target per approval request**. An unsupported multi-location out-of-sequence plan remains blocked. Revise it with a supervisor; one approval must not be assumed to authorize arbitrary additional sources/items. Normal FIFO fulfillment across multiple locations remains valid without unnecessary override approval.
+
+### 6.5 Import a DRA
+
+A DRA fills a draft; it does not reserve stock at parsing time.
+
+1. Choose **Import DRA (Excel/PDF)** and the supported source file.
+2. Review the document's requesting Organization before item/quantity allocations. If it is missing, choose the correct stock Organization explicitly; do not infer it from an unrelated recipient.
+3. Review matched material and requested boxes, including SPQ-derived units.
+4. Read mapped-line, shortage and review messages.
+5. Check combined demand where repeated source rows refer to the same material. Three boxes plus two boxes means five boxes, not whichever row was parsed last.
+6. Resolve required recipient, unmatched material and source shortages.
+7. Review the completed draft and generate once.
+
+The actual generation command rechecks Organization, model, recipient, identifiers, live availability and allocation.
+
+### 6.6 Maintain Organizations and materials
+
+Use **Data Management** and the enrollment forms authorized for your account. Some legacy directory URLs redirect to the enrollment hub; follow the resulting tab.
+
+Organization roles are explicit: Supplier for Trading; Customer for either Trading or VMI; End Customer for VMI; Internal Supplies for internal-use stock. One role does not imply another. An End Customer is not automatically the VMI owner or a billable customer.
+
+For each material:
+
+1. Choose the required category/classification fields.
+2. Select the eligible **Material Origin Organization**, reading its relationship and inherited model.
+3. Enter the identifier, name/description and supplier/DSGC/customer cross-references.
+4. Enter UOM/SPQ for the actual package.
+5. Complete dimensions/CBM and boxes-per-pallet information as required.
+6. Set perishability and related date expectations correctly.
+7. Save, reopen and verify the persisted Organization, identifier and packaging before using it in operations.
+
+Trading/Supplies generation requires its enrolled DSGC identity; VMI generation requires its enrolled supplier identity. A visible generic code or typed Customer PN does not silently replace a missing required identifier.
+
+For imported/unassigned legacy material, correct the Organization assignment before new WRR entry. Creating a second material with altered spelling is not the default repair for a missing assignment. Deactivation is a lifecycle decision, not physical stock removal.
+
+See the [master-data and Organizations guide](user-manual/master-data-and-organizations.md).
+
+### 6.7 Maintain locations and transfers
+
+A location has a physical label, type, capacity and active status. Use its authorized form/bulk generator.
+
+1. Compare zone/rack, level and position with the real label.
+2. Confirm storage versus inspection/hold type.
+3. Set capacity in the requested unit.
+4. Check duplicates, then save and verify the final location.
+5. For bulk generation, review the whole range before confirming.
+
+Editing a location does not move its contents. For a real relocation, use the authorized transfer/placement workflow with source, destination, material/lot and quantity checks. Inspect and confirm the destination after the move. Do not deactivate an occupied rack to conceal a mismatch.
+
+### 6.8 Stock Count & Reconciliation
+
+**Purpose:** compare a location snapshot with a physical count, review the variance and post an authorized adjustment. **Start:** **Master Inventory** → **Stock Count & Reconciliation**.
+
+1. Find the correct location and review its stock-line/active-session overview.
+2. Start the count. If **Count could not be started** appears, resolve its cause before opening another session.
+3. Review each preloaded material/lot/UOM line and **System snapshot**.
+4. Count physically and enter **Physical count** in the displayed unit.
+5. For a genuine zero, enter zero and complete **Confirm zero**; blank is not a verified zero.
+6. Add required explanation, including surplus reasons, then save the line.
+7. Inspect **Variance** and check every preloaded line, including zeros.
+8. Complete the all-lines confirmation and choose **Submit for Review**.
+9. The authorized reviewer investigates. Use **Request Recount** with line/reason where needed, or **Approve Count** when justified.
+10. After approval, the authorized user chooses **Post Reconciliation**.
+11. Verify resulting stock and movement/audit references.
+
+Saving counts and submitting for review do not post stock adjustments. Approved posting is the controlled adjustment boundary.
+
+**Example:** the snapshot is 200 pieces. Nine boxes at SPQ 20 are physically present, so enter 180 pieces and investigate a −20 variance. Entering nine into a piece field would create a different, incorrect variance. Preserve evidence instead of overwriting the snapshot.
+
+If stock moved during counting or a negative adjustment would consume a commitment, follow the conflict/review response. Counting is not permission to erase reservations or traceability.
 
 ## 7. Picking and dispatch
 
-### 7.1 Pick workflow
+### 7.1 Understand the current work surface
 
-1. Open **Outgoing** or **Pick Lists**.
-2. Open the eligible pick list.
-3. Review organization, recipient, lot, location, quantity, and price.
-4. Start the floor pick screen.
-5. Scan/confirm each required carton or use the approved shared lot/item path.
-6. Resolve wrong-item, unavailable, already-selected, or quantity errors before continuing.
-7. Confirm physical picking and move to dispatch when the checklist is complete.
+A pick list is first committed/reserved, then physically assembled and verified, then finally dispatched. These are different business events even where one screen groups the work.
 
-### 7.2 Dispatch workflow
+The current `/pick-lists/[pickListId]/pick` bookmark redirects to the dispatch work surface. Do not search for a second active scan screen just because an older guide says “open Pick first.” On the destination page, read the status and gate presented for that record.
 
-1. Open the pick list’s **Dispatch** action.
-2. Confirm the list is in the required picked/approved state.
-3. Scan the lot/item QR or the exact carton QR.
-4. Verify the selected count and remaining count.
-5. Resolve any wrong lot, duplicate carton, line-complete, or unavailable-unit message.
-6. Confirm dispatch.
-7. Open or download the acknowledgement receipt when available.
-8. Confirm the resulting document is visible in Documents Center.
+For an allocated list, the page can show **Pick List Approval Gate** with **Approve Pick List for Dispatch**, **Review Pick List PDF**, a reservation-lock notice and a deletion/cancellation action where authorized. Approval is permission-controlled. A floor operator must not borrow a supervisor's account to pass the gate. A review-gate approval is also distinct from a FIFO override approval: they answer different questions.
 
-### 7.3 Dispatch correction
+Once the list is in the required picked/approved state, physical verification is available. There is no separate pre-dispatch QA route in this flow. Receiving inspection/hold must already have made the chosen stock eligible.
 
-Never repeat a dispatch submission solely because the browser appeared slow. Refresh the record and check the status/document archive first. If the operation did commit, a second submission may be rejected as duplicate or complete.
+### 7.2 Review and physically assemble the committed stock
 
-#### Dispatch safety rules
+**Who:** the assigned, authorized warehouse operator; an authorized reviewer handles the gate where required. **Have ready:** the exact pick-list reference, recipient, committed material/lot/location plan, physical stock and usable labels/device.
 
-- Trading prices on a pick list and acknowledgement receipt are final document prices.
-- VMI prices shown on a release document are reference values; the authoritative charge is the period-average VMI statement.
-- A lot QR can identify the aggregate lot, but a confirmed carton QR is required when the operation must prove which physical carton was dispatched.
-- A commitment reserves stock before physical decrement. Physical decrement occurs only at successful dispatch confirmation.
-- An expired or rejected commitment must be rechecked before creating a replacement list; do not assume the original reservation remains.
+1. Open the list from its queue or reference.
+2. Confirm Organization, Inventory Model and recipient. For VMI, distinguish the stock-owning VMI Customer from the End Customer receiving this release.
+3. Review the priced pick-list document and every committed line.
+4. If the review gate is shown, have the authorized reviewer complete it after checking the plan. Do not treat a visible button as permission to approve.
+5. Go to the stated rack/location, identify the correct material and business lot, and physically assemble the committed boxes.
+6. Count them against the line's required box quantity. Check condition and label identity before wrapping/handing over the group.
+7. If the rack is short or the material/lot differs, use the shortage/discrepancy route before final dispatch. Do not replace it with a convenient later lot or type the requested quantity as if it were counted.
 
-See the [outgoing guide](user-manual/outgoing-picking-and-dispatch.md) and the [dispatch exception matrix](user-manual/edge-cases-and-troubleshooting.md#5-physical-picking--dispatch-confirmation-edge-cases).
+**Stock effect:** assembly and verification do not themselves decrement on-hand. The commitment remains until the final permitted dispatch or an authorized release/cancellation.
+
+### 7.3 Verify a jackwrapped location line with one QR
+
+A matching carton/item/lot QR identifies its committed line. In the current batch-verification flow, one accepted identifying scan confirms that line's full committed box quantity and its internal box selections. It is not a reason to skip physical counting.
+
+1. Confirm the active line's material, lot, location and required boxes.
+2. Scan an accepted identifying QR using the provided field/camera, or enter the supported identity manually.
+3. Read feedback and line progress.
+4. For a line committed to five boxes, one valid identifying scan can complete five internal selections. Do not repeat the same scan four more times merely to imitate one-scan-per-box counting.
+5. Move to the next incomplete location line and repeat its physical checks and identifying scan.
+6. Confirm every committed line is complete before final submission.
+
+**Split-location example:** three boxes of one lot are committed at A1-01 and two at A1-02. Physically verify the three-box group at A1-01 and scan its identifying label. Then verify the two-box group at A1-02 and identify that location line. Completion of the first group does not automatically confirm the second location.
+
+A shared material QR can match more than one committed line. Online matching uses the owning workflow's incomplete-line rules. Read the resulting line/location, not only the success color. Where ambiguity remains, use the more specific accepted lot/carton identity or reconnect for authoritative matching. Do not intentionally identify a different line just because its count is still incomplete.
+
+### 7.4 Confirm final dispatch
+
+1. Review the complete list, correct recipient and physically assembled load.
+2. Check that all required location lines are verified and no shortage/discrepancy remains unresolved.
+3. Reconnect if offline. **Final dispatch always requires a live connection.**
+4. Choose the displayed final dispatch/confirmation action once.
+5. Wait for the outcome and resulting navigation/status.
+6. Verify the list is **Dispatched**, then open its acknowledgement/delivery receipt or locate it in **Documents**.
+7. If the document is delayed, verify dispatch status first and use document recovery; do not release the same stock again to obtain another PDF.
+
+At successful final dispatch the server rechecks the commitment, status, stock and physical evidence, decrements the authoritative remaining stock, releases the associated commitment and records the outgoing movement. Both the priced pick list and the priced acknowledgement receipt belong to the release record.
+
+For **Trading**, the document's trading price is final. For **VMI**, the release price is a reference; it is not the customer's period bill. Do not manually replace a VMI period's average-volume calculation with one receipt total.
+
+### 7.5 Shortage, duplicate scan and interrupted dispatch
+
+| Situation | Safe action |
+|---|---|
+| Fewer boxes physically present than committed | Stop, record the location shortage through the offered workflow, and let the authorized correction/release run before recounting |
+| Wrong material/lot/location QR | Recheck the physical group and document; do not continue with another line's label |
+| Completed line scanned again | Read the completion state; it is not another physical group to add |
+| Pick list still allocated/review-gated | Complete the required authorized review before scanning/finalization |
+| Commitment expired | Refresh and resolve/recreate the live plan as instructed; an expired promise is not a valid release |
+| Connection lost after submitting | Reopen the same list and inspect its status before repeating the command |
+| Already Dispatched | Retrieve the existing receipt; do not dispatch it again |
+| Offline saved observation | Synchronize and confirm the server's actual line progress before final dispatch |
+
+See the [outgoing, picking and dispatch guide](user-manual/outgoing-picking-and-dispatch.md) for handover and discrepancy cases.
 
 ## 8. Migration
 
