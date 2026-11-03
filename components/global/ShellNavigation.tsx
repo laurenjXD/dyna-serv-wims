@@ -351,13 +351,13 @@ function NavLink({
         aria-current={isActive ? "page" : undefined}
         onClick={onNavigate}
         title={label}
-        className={`flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1
-          font-label tracking-normal
-          active:scale-[0.97] active:opacity-75
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
+        className={`group relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1
+          font-label tracking-normal transition-[transform,color,background-color] duration-200 ease-out
+          active:scale-[0.94] active:opacity-75 hover:bg-primary/5
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none
           ${isActive ? "bg-primary/10 text-primary" : "text-text-secondary"}`}
       >
-        <Icon size={19} className="shrink-0" aria-hidden="true" />
+        <Icon size={19} className="shrink-0 transition-transform duration-200 ease-out group-active:scale-90 motion-reduce:transition-none" aria-hidden="true" />
         <span className="w-full truncate text-center font-label text-[11px] font-semibold leading-none tracking-[-0.01em]">
           {tabLabel}
         </span>
@@ -606,7 +606,7 @@ export function ShellNavigation({
         <nav
           data-testid="floor-tab-bar"
           aria-label="Primary navigation"
-          className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-border bg-surface shadow-elevation-2"
+          className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-40 flex items-stretch justify-around overflow-hidden rounded-full border border-border/80 bg-surface/95 shadow-[0_12px_36px_rgba(15,23,42,0.2)] backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none sm:inset-x-6"
         >
           {primaryFloorEntries.map((entry) => (
             <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />
@@ -615,10 +615,11 @@ export function ShellNavigation({
             <button
               type="button"
               onClick={() => setMoreOpen(true)}
+              aria-expanded={isMoreOpen}
               aria-label="More navigation options"
-              className="flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 font-label tracking-normal text-text-secondary active:scale-[0.97] active:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="group flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 font-label tracking-normal text-text-secondary transition-[transform,color,background-color] duration-200 ease-out hover:bg-primary/5 hover:text-primary active:scale-[0.94] active:opacity-75 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
             >
-              <Menu size={19} className="shrink-0" aria-hidden="true" />
+              <Menu size={19} className="shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-active:scale-90 motion-reduce:transition-none" aria-hidden="true" />
               <span className="w-full truncate text-center font-label text-[11px] font-semibold leading-none tracking-[-0.01em]">More</span>
             </button>
           )}
@@ -738,7 +739,7 @@ function MoreOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end"
+      className="fixed inset-0 z-50 flex flex-col justify-end animate-in fade-in duration-200 motion-reduce:animate-none"
       role="dialog"
       aria-modal="true"
       aria-label="Navigation menu"
@@ -748,12 +749,12 @@ function MoreOverlay({
         type="button"
         aria-hidden="true"
         tabIndex={-1}
-        className="fixed inset-0 bg-slate-950/70 transition-opacity"
+        className="fixed inset-0 bg-slate-950/65 transition-opacity duration-300 motion-reduce:transition-none"
         onClick={onClose}
       />
 
       {/* Bottom Sheet rising from bottom to up */}
-      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-lg border-t border-brand-navy bg-brand-navy transition-transform duration-300 ease-out animate-in slide-in-from-bottom">
+      <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-brand-navy bg-brand-navy shadow-[0_-16px_48px_rgba(15,23,42,0.24)] transition-transform duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] animate-in slide-in-from-bottom-6 motion-reduce:animate-none motion-reduce:transition-none">
         {/* Grab Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="h-1.5 w-12 rounded-full bg-white/30" aria-hidden="true" />
