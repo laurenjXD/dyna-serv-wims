@@ -37,6 +37,8 @@ type DraftLine = {
   itemId: string;
   boxes: string;
   sourceBalanceId: string;
+  manualSplit: boolean;
+  manualAllocations: Array<{ balanceId: string; boxes: string }>;
   customerItemCode: string;
 };
 
@@ -46,6 +48,8 @@ function blankDraftLine(id: string): DraftLine {
     itemId: "",
     boxes: "",
     sourceBalanceId: "",
+    manualSplit: false,
+    manualAllocations: [],
     customerItemCode: "",
   };
 }
@@ -368,13 +372,29 @@ export function MultiItemPickListDraft({
       0,
     ) ?? 0;
     const selectedSource = item?.sources.find((source) => source.balanceId === line.sourceBalanceId) ?? null;
-    const maxRequestBoxes = selectedSource ? availableBoxesForSource(selectedSource) : totalAvailableBoxes;
-    const allocationSources = selectedSource ? [selectedSource] : item?.sources ?? [];
-    const fifoAllocations = item && requestedBoxes ? allocateFifoBoxes(allocationSources, requestedBoxes) : [];
+    const maxRequestBoxes = selectedSource && !line.manualSplit ? availableBoxesForSource(selectedSource) : totalAvailableBoxes;
+    const allocationSources = selectedSource && !line.manualSplit ? [selectedSource] : item?.sources ?? [];
+    const manualAllocations = line.manualSplit && item
+      ? line.manualAllocations.flatMap(({ balanceId, boxes }) => {
+          const source = item.sources.find((candidate) => candidate.balanceId === balanceId);
+          const parsedBoxes = Number(boxes);
+          if (!source || !Number.isInteger(parsedBoxes) || parsedBoxes <= 0) return [];
+          const availableBoxes = availableBoxesForSource(source);
+          return [{
+            source,
+            boxes: Math.min(parsedBoxes, availableBoxes),
+            availableBoxes,
+            remainingBoxes: Math.max(0, availableBoxes - parsedBoxes),
+          }];
+        })
+      : null;
+    const fifoAllocations = manualAllocations ?? (item && requestedBoxes ? allocateFifoBoxes(allocationSources, requestedBoxes) : []);
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
-    const requiresOverride = Boolean(selectedSource && selectedSource.priority > 1);
+    const requiresOverride = line.manualSplit
+      ? fifoAllocations.some(({ source }) => source.priority > 1)
+      : Boolean(selectedSource && selectedSource.priority > 1);
     return {
       line,
       item,
@@ -386,6 +406,7 @@ export function MultiItemPickListDraft({
       totalAvailableBoxes,
       maxRequestBoxes,
       selectedSource,
+      manualAllocations,
       requiresOverride,
       hasWholeCartonQuantity,
       hasEnoughStock,
@@ -408,7 +429,45 @@ export function MultiItemPickListDraft({
     const currentBoxes = Number(detail?.line.boxes ?? "");
     updateLine(lineId, {
       sourceBalanceId,
+      manualSplit: false,
+      manualAllocations: [],
       boxes: Number.isInteger(currentBoxes) && currentBoxes > maxBoxes ? String(maxBoxes) : detail?.line.boxes ?? "",
+    });
+  };
+
+  const handleManualSplitToggle = (lineId: string) => {
+    const detail = lineDetails.find(({ line }) => line.id === lineId);
+    if (!detail) return;
+
+    if (detail.line.manualSplit) {
+      updateLine(lineId, { manualSplit: false, manualAllocations: [], sourceBalanceId: "" });
+      return;
+    }
+
+    updateLine(lineId, {
+      manualSplit: true,
+      sourceBalanceId: "",
+      manualAllocations: detail.item?.sources.map((source) => ({
+        balanceId: source.balanceId,
+        boxes: String(detail.fifoAllocations.find((allocation) => allocation.source.balanceId === source.balanceId)?.boxes ?? ""),
+      })) ?? [],
+    });
+  };
+
+  const handleManualAllocationChange = (lineId: string, balanceId: string, value: string) => {
+    const detail = lineDetails.find(({ line }) => line.id === lineId);
+    const source = detail?.item?.sources.find((candidate) => candidate.balanceId === balanceId);
+    const parsed = Number(value);
+    const nextValue = value === ""
+      ? ""
+      : Number.isFinite(parsed)
+        ? String(Math.min(Math.max(0, Math.floor(parsed)), source ? availableBoxesForSource(source) : 0))
+        : "";
+    const currentAllocations = detail?.line.manualAllocations ?? [];
+    updateLine(lineId, {
+      manualAllocations: currentAllocations.some((allocation) => allocation.balanceId === balanceId)
+        ? currentAllocations.map((allocation) => allocation.balanceId === balanceId ? { ...allocation, boxes: nextValue } : allocation)
+        : [...currentAllocations, { balanceId, boxes: nextValue }],
     });
   };
 
@@ -476,6 +535,8 @@ export function MultiItemPickListDraft({
             ? "Choose an item code for every line."
             : lineDetails.some(({ requestedBoxes }) => requestedBoxes === null)
               ? "Enter a positive whole-box quantity for every line."
+              : lineDetails.some(({ line, requestedBoxes, allocatedBoxes }) => line.manualSplit && requestedBoxes !== null && allocatedBoxes !== requestedBoxes)
+                ? "In manual split mode, allocate the full line quantity across the selected locations."
               : lineDetails.some(({ hasEnoughStock }) => !hasEnoughStock)
                 ? "Reduce the quantity to the on-hand boxes shown for this line."
                 : null;
@@ -712,6 +773,8 @@ export function MultiItemPickListDraft({
         itemId: request.itemId,
         boxes: String(request.requestedBoxes),
         sourceBalanceId: "",
+        manualSplit: false,
+        manualAllocations: [],
         customerItemCode: request.customerItemCode,
       });
       totalBoxesAllocated += request.requestedBoxes;
@@ -944,7 +1007,7 @@ export function MultiItemPickListDraft({
             </div>
           ) : (
             <MobileDataCardList>
-              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource }) => (
+              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
                 <MobileDataCard
                   key={line.id}
                   title={item ? itemCodeFor(item, flowType) : "Select an item"}
@@ -964,6 +1027,8 @@ export function MultiItemPickListDraft({
                             itemId,
                             boxes: "",
                             sourceBalanceId: "",
+                            manualSplit: false,
+                            manualAllocations: [],
                             customerItemCode: selectedItem?.customerItemCode ?? "",
                           });
                         }}
@@ -983,25 +1048,72 @@ export function MultiItemPickListDraft({
                       </label>
                     </div>
                     {item && <p className="font-body text-xs text-slate-500">Enter complete boxes. Units are calculated from SPQ {item.spq}.</p>}
-                    <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-                      Location
-                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
-                        <option value="">Auto FIFO / split across locations</option>
-                        {item?.sources.map((source) => (
-                          <option key={source.balanceId} value={source.balanceId}>
-                            {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Supervisor approval"}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-base text-slate-900">
-                        {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
-                          <div key={source.balanceId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                            <span className="truncate">{source.locationLabel} <span className="text-sm text-slate-500">({source.lotNumber})</span></span>
-                            <span className="font-mono text-sm font-semibold text-brand-navy">{boxes} boxes</span>
-                          </div>
-                        )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
+                    <div className="grid min-w-0 gap-2 font-label text-xs font-bold text-slate-700">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Location allocation</span>
+                        {item && (
+                          <button
+                            type="button"
+                            onClick={() => handleManualSplitToggle(line.id)}
+                            disabled={!canEditLines}
+                            className="font-label text-[11px] font-bold text-brand-navy underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                          >
+                            {line.manualSplit ? "Use Auto FIFO" : "Split quantities manually"}
+                          </button>
+                        )}
                       </div>
-                    </label>
+                      {!line.manualSplit ? (
+                        <>
+                          <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm font-normal text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                            <option value="">Auto FIFO / split across locations</option>
+                            {item?.sources.map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Supervisor approval"}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-base font-normal text-slate-900">
+                            {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
+                              <div key={source.balanceId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                                <span className="truncate">{source.locationLabel} <span className="text-sm text-slate-500">({source.lotNumber})</span></span>
+                                <span className="font-mono text-sm font-semibold text-brand-navy">{boxes} boxes</span>
+                              </div>
+                            )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
+                          <p className="text-[11px] font-semibold leading-4 text-slate-600">Enter boxes from each location. The total must equal the line quantity.</p>
+                          {item?.sources.map((source) => {
+                            const allocation = line.manualAllocations.find((entry) => entry.balanceId === source.balanceId);
+                            return (
+                              <label key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                                <span className="min-w-0">
+                                  <span className="block truncate font-semibold text-slate-800">{source.locationLabel}</span>
+                                  <span className="block truncate text-[10px] font-normal text-slate-500">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
+                                </span>
+                                <input
+                                  aria-label={`Boxes from ${source.locationLabel}`}
+                                  type="number"
+                                  min="0"
+                                  max={availableBoxesForSource(source)}
+                                  value={allocation?.boxes ?? ""}
+                                  onChange={(event) => handleManualAllocationChange(line.id, source.balanceId, event.target.value)}
+                                  disabled={!canEditLines}
+                                  className="h-9 w-full rounded-lg border border-slate-200 px-2 text-right font-mono text-sm font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                                />
+                              </label>
+                            );
+                          })}
+                          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-[11px]">
+                            <span className="text-slate-500">Allocated</span>
+                            <span className={allocatedBoxes === requestedBoxes && requestedBoxes !== null ? "font-mono font-bold text-emerald-700" : "font-mono font-bold text-amber-700"}>
+                              {allocatedBoxes} / {requestedBoxes ?? "—"} boxes
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <p className="font-body text-xs text-slate-500">Maximum for this line: {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across available FIFO locations"}.</p>
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
@@ -1010,7 +1122,7 @@ export function MultiItemPickListDraft({
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
                     </dl>
-                    {selectedSource && selectedSource.priority > 1 && <p className="text-sm font-medium text-amber-700">This location is outside the recommended FIFO/FEFO source and needs supervisor approval.</p>}
+                    {requiresOverride && <p className="text-sm font-medium text-amber-700">{selectedSource ? "This location is outside the recommended FIFO/FEFO source and needs supervisor approval." : "One or more selected locations are outside the recommended FIFO/FEFO source and need supervisor approval."}</p>}
                   </div>
                 </MobileDataCard>
               ))}
@@ -1020,10 +1132,10 @@ export function MultiItemPickListDraft({
 
         {/* Pick List Table: desktop */}
         <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-          <table aria-label="Pick list lines" className="w-full min-w-[1610px] table-fixed border-collapse text-left">
+          <table aria-label="Pick list lines" className="w-full min-w-[1700px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
-              <col className="w-[195px]" />
+              <col className="w-[280px]" />
               <col className="w-[72px]" />
               <col className="w-[108px]" />
               <col className="w-[118px]" />
@@ -1064,7 +1176,7 @@ export function MultiItemPickListDraft({
                   </td>
                 </tr>
               ) : (
-                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource }) => (
+                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
                   <tr key={line.id} className="bg-white transition-colors hover:bg-[#F8FAFC]">
                     {/* ITEM CODE */}
                     <td className="px-4 py-4 align-top">
@@ -1078,6 +1190,8 @@ export function MultiItemPickListDraft({
                             itemId,
                             boxes: "",
                             sourceBalanceId: "",
+                            manualSplit: false,
+                            manualAllocations: [],
                             customerItemCode: selectedItem?.customerItemCode ?? "",
                           });
                         }}
@@ -1116,32 +1230,79 @@ export function MultiItemPickListDraft({
 
                     {/* LOCATION */}
                     <td className="px-4 py-4 align-top">
-                      <p className="mb-1.5 font-label text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
-                        Source strategy
-                      </p>
-                      <select value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
-                        <option value="">Auto FIFO / split locations</option>
-                        {item?.sources.map((source) => (
-                          <option key={source.balanceId} value={source.balanceId}>
-                            {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Approval"}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-900">
-                        {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
-                          <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
-                            <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{source.locationLabel}</span>
-                            <span className="shrink-0 font-mono font-semibold text-brand-navy">{boxes} boxes</span>
-                          </div>
-                        )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <p className="font-label text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                          Location allocation
+                        </p>
+                        {item && (
+                          <button
+                            type="button"
+                            onClick={() => handleManualSplitToggle(line.id)}
+                            disabled={!canEditLines}
+                            className="font-label text-[10px] font-bold text-brand-navy underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                          >
+                            {line.manualSplit ? "Use Auto FIFO" : "Split quantities manually"}
+                          </button>
+                        )}
                       </div>
-                      {fifoAllocations.length > 0 && (
+                      {!line.manualSplit ? (
+                        <>
+                          <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                            <option value="">Auto FIFO / split locations</option>
+                            {item?.sources.map((source) => (
+                              <option key={source.balanceId} value={source.balanceId}>
+                                {source.locationLabel} · Lot {source.lotNumber} · {availableBoxesForSource(source)} boxes{source.priority === 1 ? " · Recommended" : " · Approval"}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-900">
+                            {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
+                              <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
+                                <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{source.locationLabel}</span>
+                                <span className="shrink-0 font-mono font-semibold text-brand-navy">{boxes} boxes</span>
+                              </div>
+                            )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
+                          <p className="font-body text-[11px] leading-4 text-slate-600">Enter the boxes taken from each location. The total must equal the line quantity.</p>
+                          {item?.sources.map((source) => {
+                            const allocation = line.manualAllocations.find((entry) => entry.balanceId === source.balanceId);
+                            return (
+                              <label key={source.balanceId} className="grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
+                                <span className="min-w-0">
+                                  <span className="block truncate font-body text-xs font-semibold text-slate-800">{source.locationLabel}</span>
+                                  <span className="block truncate font-body text-[10px] text-slate-500">Lot {source.lotNumber} · {availableBoxesForSource(source)} available</span>
+                                </span>
+                                <input
+                                  aria-label={`Boxes from ${source.locationLabel}`}
+                                  type="number"
+                                  min="0"
+                                  max={availableBoxesForSource(source)}
+                                  value={allocation?.boxes ?? ""}
+                                  onChange={(event) => handleManualAllocationChange(line.id, source.balanceId, event.target.value)}
+                                  disabled={!canEditLines}
+                                  className="h-8 w-full rounded-lg border border-slate-200 px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50"
+                                />
+                              </label>
+                            );
+                          })}
+                          <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 font-body text-[11px]">
+                            <span className="text-slate-500">Allocated</span>
+                            <span className={allocatedBoxes === requestedBoxes && requestedBoxes !== null ? "font-mono font-bold text-emerald-700" : "font-mono font-bold text-amber-700"}>
+                              {allocatedBoxes} / {requestedBoxes ?? "—"} boxes
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {!line.manualSplit && fifoAllocations.length > 0 && (
                         <span className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 font-label text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                           {selectedSource ? "Fixed source selected" : "FIFO allocation ready"}
                         </span>
                       )}
                       <p className="mt-2 font-body text-[11px] leading-4 text-slate-500">Max {maxRequestBoxes} boxes on hand{selectedSource ? ` at ${selectedSource.locationLabel}` : " across FIFO locations"}.</p>
-                      {selectedSource && selectedSource.priority > 1 && <p className="mt-1 text-[11px] font-semibold leading-4 text-amber-700">Supervisor approval required for this source.</p>}
+                      {requiresOverride && <p className="mt-1 text-[11px] font-semibold leading-4 text-amber-700">{selectedSource ? "Supervisor approval required for this source." : "Supervisor approval required for one or more selected sources."}</p>}
                     </td>
 
                     {/* REMAINING (after this FIFO allocation) */}

@@ -203,6 +203,44 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(JSON.parse(request.value).lines[0].customerItemCode).toBe("CUSTOMER-PN-42");
   });
 
+  it("lets the operator split one line across multiple locations with explicit box quantities", () => {
+    const stockWithSources = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
+      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithSources}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "12" } });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Split quantities manually" })[0]);
+
+    const firstLocationBoxes = screen.getAllByLabelText("Boxes from A4-01")[0];
+    const secondLocationBoxes = screen.getAllByLabelText("Boxes from B2-05")[0];
+    fireEvent.change(firstLocationBoxes, { target: { value: "8" } });
+    fireEvent.change(secondLocationBoxes, { target: { value: "4" } });
+
+    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
+    expect(JSON.parse(request.value).lines.map((line: { locationId: string; qty: number }) => [line.locationId, line.qty])).toEqual([
+      ["location-1", 8],
+      ["location-2", 4],
+    ]);
+  });
+
   it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
     render(
       <MultiItemPickListDraft
