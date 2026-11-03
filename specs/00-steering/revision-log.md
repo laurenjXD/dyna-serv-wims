@@ -2073,3 +2073,20 @@ Resolved the pick-draft content conflict; blank Customer PN is omitted from the 
 Verification: 2,364 unit/component tests; seven real PostgreSQL 16 migration/retry/concurrency/rollback/permission tests using Drizzle; scoped lint; typecheck; production build; independent integration/RBAC review. Temporary local verification uses only the explicitly named disposable database. The candidate is isolated in `D:/dyna-serv/bam-premerge-fixes` on `fix/bam-premerge`. No merge into `v1`, remote push, deployment, or live migration has been performed. Migration 0072 must be applied through the normal reviewed deployment process before the repaired sync endpoint is enabled; without it sync fails closed with retryable responses.
 
 Source snapshots: the tested candidate contains the reviewed `bam` snapshot `c87f8e85` combined with `v1` snapshot `51eeb3b2` and the repairs above. It is recorded directly on top of the v1 snapshot so the prepared conflict resolutions are preserved without a merge commit. During verification, `origin/bam` advanced by three commits through `f75620e3`; those later allocation/dispatch changes are outside this tested candidate and need a separate review before inclusion.
+
+## Current bam allocation update merged (2026-11-03)
+
+After the Product Owner explicitly requested fetching and merging the current
+`bam` branch, `origin/bam` was fetched at `5bd3391d` and merged into `v1` as
+`b56d3324`. This later authorization supersedes the no-merge scope of the
+earlier pre-integration repair request. The merge brings in the lot-first
+FIFO/FEFO allocation plan, shared plan ordering, complete-box validation at
+commit, perishable FEFO behavior, and the associated pick-list and inventory
+query changes. The pick-list component and allocation helper conflicts were
+resolved in favor of the fetched lot-first implementation. Duplicate preview
+rows were removed so users see the requested quantity and actual allocated
+locations without the repeated `0 / available` plan panel. DRA quantities
+continue to allocate across eligible locations and later FIFO/FEFO lots when
+the first location or lot cannot satisfy the full request. Verification:
+TypeScript check and 88 focused allocation, withdrawal, inventory, and
+pick-list tests passed. The merge is local; no push or deployment was done.
