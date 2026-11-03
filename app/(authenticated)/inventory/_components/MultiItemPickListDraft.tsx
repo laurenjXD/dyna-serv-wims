@@ -236,13 +236,12 @@ function PickListItemSearch({
                 <button
                   key={item.itemId}
                   type="button"
-                  disabled={codeIsProvisional}
                   onClick={() => {
                     onSelectItem(item.itemId);
                     setInputValue(formattedCode);
                     setIsOpen(false);
                   }}
-                  className={`flex w-full items-start justify-between gap-3 rounded-lg p-2.5 text-left transition-colors ${codeIsProvisional ? "cursor-not-allowed bg-slate-50 opacity-70" : isSelected ? "bg-brand-navy/10 text-brand-navy" : "text-slate-900 hover:bg-slate-50"}`}
+                  className={`flex w-full items-start justify-between gap-3 rounded-lg p-2.5 text-left transition-colors ${isSelected ? "bg-brand-navy/10 text-brand-navy" : codeIsProvisional ? "bg-amber-50/50 text-slate-900 hover:bg-amber-50" : "text-slate-900 hover:bg-slate-50"}`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">

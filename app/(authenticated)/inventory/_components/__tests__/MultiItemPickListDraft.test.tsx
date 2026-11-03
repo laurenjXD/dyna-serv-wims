@@ -110,7 +110,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(itemSearch).toHaveValue("SUP-ITEM-1");
   });
 
-  it("does not allow an item with a missing VMI supplier code to be selected", () => {
+  it("allows provisional items to be selected while clearly blocking generation", () => {
     const stockWithoutSupplierCode = [{ ...stock[0], supplierItemCode: null }];
 
     render(
@@ -130,8 +130,12 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "ITEM-1" } });
 
     const recommendation = screen.getByRole("button", { name: /ITEM-1/ });
-    expect(recommendation).toBeDisabled();
+    expect(recommendation).toBeEnabled();
     expect(within(recommendation).getByText("Needs item code")).toBeInTheDocument();
+
+    fireEvent.click(recommendation);
+    expect(itemSearch).toHaveValue("ITEM-1");
+    expect(screen.getByText(/enrolled supplier\/DSGC item code/)).toBeInTheDocument();
   });
 
   it("accepts boxes and derives the base-unit quantity from SPQ", () => {
