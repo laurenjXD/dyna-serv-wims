@@ -407,11 +407,6 @@ export function WrrLineItems({
               <div>
                 <label className="block font-label text-label text-text-grey">
                   Carton QR Labels
-                  {selectedItem && (
-                    <span className="ml-2 font-mono text-[11px] font-semibold text-brand-navy">
-                      SPQ detected: {selectedItem.spq} units/carton
-                    </span>
-                  )}
                 </label>
                 {(() => {
                   const spq = selectedItem?.spq ?? 0;
@@ -434,7 +429,16 @@ export function WrrLineItems({
                     </>
                   );
                 })()}
-                <p className="mt-1 font-body text-[11px] text-text-grey">Derived from total units ÷ enrolled SPQ.</p>
+                <p className="mt-1 font-body text-[11px] text-text-grey">
+                  {selectedItem && (
+                    <>
+                      <span className="font-mono font-semibold text-brand-navy">
+                        SPQ detected: {selectedItem.spq} units/carton
+                      </span>{" "}
+                    </>
+                  )}
+                  Derived from total units ÷ enrolled SPQ.
+                </p>
               </div>
 
               {/* Col 3: Unit CBM */}
