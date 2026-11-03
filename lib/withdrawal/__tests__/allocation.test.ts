@@ -93,6 +93,7 @@ function makeRow(overrides: {
   qtyCommitted?: number;
   receivedAt?: Date;
   expiryDate?: Date | null;
+  locationPickSequence?: number | null;
 }) {
   return {
     lotId: overrides.lotId ?? "lot-uuid-1",
@@ -104,6 +105,7 @@ function makeRow(overrides: {
     qtyCommitted: overrides.qtyCommitted ?? 0,
     receivedAt: overrides.receivedAt ?? BASE_DATE,
     expiryDate: overrides.expiryDate ?? null,
+    locationPickSequence: overrides.locationPickSequence ?? null,
   };
 }
 
@@ -140,6 +142,30 @@ describe("lot-first allocation plans", () => {
       { lotId: "lot-a", locationId: "loc-a", qtyAllocated: 2 },
       { lotId: "lot-a", locationId: "loc-z", qtyAllocated: 2 },
       { lotId: "lot-b", locationId: "loc-b", qtyAllocated: 4 },
+    ]);
+  });
+
+  it("orders distinct lots received on the same date by their recorded receipt timestamp", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-later", lotNumber: "LOT-A", locationId: "loc-a", qtyRemaining: 5, receivedAt: new Date("2026-10-20T15:00:00Z") }),
+      makeRow({ lotId: "lot-earlier", lotNumber: "LOT-Z", locationId: "loc-z", qtyRemaining: 5, receivedAt: new Date("2026-10-20T08:00:00Z") }),
+    ], 5, false);
+
+    expect(plan.lots.map(({ lotId }) => lotId)).toEqual(["lot-earlier", "lot-later"]);
+    expect(plan.lines).toEqual([{ lotId: "lot-earlier", locationId: "loc-z", qtyAllocated: 5 }]);
+  });
+
+  it("uses a location pick sequence before the stable location-label fallback", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-sequenced", locationId: "loc-label-first", locationLabel: "A-01", locationPickSequence: 20, qtyRemaining: 5 }),
+      makeRow({ lotId: "lot-sequenced", locationId: "loc-sequence-first", locationLabel: "Z-01", locationPickSequence: 10, qtyRemaining: 5 }),
+      makeRow({ lotId: "lot-sequenced", locationId: "loc-label-fallback", locationLabel: "B-01", locationPickSequence: null, qtyRemaining: 5 }),
+    ], 15, false);
+
+    expect(plan.lots[0].locations.map(({ locationId }) => locationId)).toEqual([
+      "loc-sequence-first",
+      "loc-label-first",
+      "loc-label-fallback",
     ]);
   });
 

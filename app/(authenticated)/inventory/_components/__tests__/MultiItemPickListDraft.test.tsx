@@ -71,17 +71,17 @@ describe("MultiItemPickListDraft organization selection", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.replace(/\s+/g, " ").trim());
 
-    expect(headers.slice(0, 10)).toEqual([
+    expect(headers.slice(0, 11)).toEqual([
       "Item Code",
       "SPQ",
       "Qty (Boxes)",
       "Qty (Units)",
       "Location",
-      "Remaining",
       "Cust PN",
       "Item Description",
       "Lot Number",
       "Mfg Date",
+      "Actions",
     ]);
   });
 
@@ -167,7 +167,26 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "5")).toBe(true);
     expect(screen.queryByLabelText("Boxes from C1-11")).not.toBeInTheDocument();
-    expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
+    expect(screen.getAllByLabelText("Allocation summary").some((element) => element.textContent?.includes("Allocated: 5"))).toBe(true);
+  });
+
+  it("tops up existing FIFO locations when demand increases", () => {
+    const splitStock = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10" },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11" },
+    ];
+    render(<MultiItemPickListDraft stock={splitStock} customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]} endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]} createAction={vi.fn()} overrideAction={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const search = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(search, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    const qty = screen.getByLabelText("Qty (Boxes)");
+    fireEvent.change(qty, { target: { value: "3" } });
+    fireEvent.change(screen.getAllByLabelText("Boxes from C1-10")[0], { target: { value: "3" } });
+    fireEvent.change(qty, { target: { value: "30" } });
+    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "10")).toBe(true);
+    expect(screen.getAllByLabelText("Boxes from C1-11").every((input) => (input as HTMLInputElement).value === "20")).toBe(true);
   });
 
   it("allocates FEFO lot-first across locations and only uses the later lot for the remainder", () => {
@@ -404,7 +423,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
     expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(20);
     expect(screen.getByText(/requested 20, available 10, short 10 boxes/i)).toBeInTheDocument();
-    expect(screen.getAllByText("10 / 20 boxes")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Allocation summary").some((element) => /Requested:\s*20/.test(element.textContent ?? "") && /Available:\s*10/.test(element.textContent ?? "") && /Allocated:\s*10/.test(element.textContent ?? "") && /Stock short:\s*10/.test(element.textContent ?? ""))).toBe(true);
     expect(screen.getByRole("list", { name: "DRA rows to review" })).toHaveTextContent(/description alone is not a unique identifier/i);
     expect(screen.getByRole("list", { name: "DRA rows to review" })).toHaveTextContent(/unit quantity is invalid/i);
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();

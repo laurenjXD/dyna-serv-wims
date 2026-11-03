@@ -26,6 +26,7 @@ export type LotLocationRow = {
   expiryDate: Date | null; // non-null for perishable items → FEFO ordering
   lotNumber?: string | null;
   locationLabel?: string | null;
+  locationPickSequence?: number | null;
 };
 
 export type AllocationLineResult = {
@@ -101,6 +102,22 @@ function compareText(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 }
 
+function compareLocations(a: PreparedLocation, b: PreparedLocation): number {
+  const aSequence = a.row.locationPickSequence;
+  const bSequence = b.row.locationPickSequence;
+  if (aSequence != null && bSequence != null && aSequence !== bSequence) return aSequence - bSequence;
+  if (aSequence != null && bSequence == null) return -1;
+  if (aSequence == null && bSequence != null) return 1;
+
+  // The locations table currently has no pick-sequence column. Use its
+  // numeric-aware label order as fallback, then the stable location ID.
+  const labelOrder = compareText(
+    text(a.row.locationLabel, a.row.locationId),
+    text(b.row.locationLabel, b.row.locationId),
+  );
+  return labelOrder !== 0 ? labelOrder : compareText(a.row.locationId, b.row.locationId);
+}
+
 function compareLots(a: PreparedLot, b: PreparedLot, isPerishable: boolean): number {
   if (isPerishable) {
     const expiryOrder = dateTime(a.expiryDate) - dateTime(b.expiryDate);
@@ -153,17 +170,7 @@ function prepareLotGroups(
   return [...grouped.values()]
     .map((lot) => ({
       ...lot,
-      locations: [...lot.locations].sort((a, b) => {
-        // The locations model has no dedicated pick-sequence column yet.
-        // Use its label as the numeric-aware warehouse sequence, then ID.
-        const labelOrder = compareText(
-          text(a.row.locationLabel, a.row.locationId),
-          text(b.row.locationLabel, b.row.locationId),
-        );
-        return labelOrder !== 0
-          ? labelOrder
-          : compareText(a.row.locationId, b.row.locationId);
-      }),
+      locations: [...lot.locations].sort(compareLocations),
     }))
     .sort((a, b) => compareLots(a, b, isPerishable));
 }
@@ -259,7 +266,7 @@ export function buildAllocationPlan(
 //   2. Available qty per row = qtyRemaining - qtyCommitted; rows where this
 //      is ≤ 0 are skipped.
 //   3. Same lotId rows are one lot group. Groups are ordered FEFO/FIFO first.
-//   4. Locations inside one lot are ordered by label, then location ID.
+//   4. Locations inside one lot use pick sequence when present, then label and location ID.
 //   5. Fill greedily across all locations in the current lot before the next.
 //   6. Optional wholeBoxSize keeps every authoritative allocation line at a
 //      complete SPQ/box boundary.

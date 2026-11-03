@@ -35,6 +35,7 @@ type StockSource = {
   expiryDate?: string | null;
   isPerishable?: boolean;
   priority?: number;
+  locationPickSequence?: number | null;
 };
 
 type DraftLine = {
@@ -87,7 +88,6 @@ type FifoBoxAllocation = {
   source: StockSource;
   boxes: number;
   availableBoxes: number;
-  remainingBoxes: number;
 };
 
 type CatalogItem = {
@@ -319,6 +319,7 @@ function sourceAsBoxPlanRow(source: StockSource) {
     expiryDate: source.expiryDate ? new Date(`${source.expiryDate}T00:00:00.000Z`) : null,
     lotNumber: source.lotNumber,
     locationLabel: source.locationLabel,
+    locationPickSequence: source.locationPickSequence,
   };
 }
 
@@ -344,7 +345,7 @@ function buildBoxAllocationPlan(
     const source = byKey.get(`${line.lotId}:${line.locationId}`);
     if (!source || line.qtyAllocated <= 0) return [];
     const availableBoxes = availableBoxesForSource(source);
-    return [{ source, boxes: line.qtyAllocated, availableBoxes, remainingBoxes: availableBoxes - line.qtyAllocated }];
+    return [{ source, boxes: line.qtyAllocated, availableBoxes }];
   });
   return { plan, allocations };
 }
@@ -399,14 +400,20 @@ function rebalanceManualAllocations(
     remaining -= boxes;
   }
 
-  // If demand grew or a selected location was exhausted, continue in the
-  // authoritative FIFO/FEFO order so quantity entry never silently loses demand.
+  // If demand grew, first use spare capacity in already-selected locations,
+  // then add further locations, all in authoritative FIFO/FEFO order.
   for (const source of sortedSources) {
-    if (existingByBalanceId.has(source.balanceId)) continue;
     if (remaining <= 0) break;
-    const boxes = Math.min(availableBoxesForSource(source), remaining);
+    const existingIndex = allocations.findIndex((allocation) => allocation.balanceId === source.balanceId);
+    const currentBoxes = existingIndex >= 0 ? Number(allocations[existingIndex].boxes) : 0;
+    const current = Number.isInteger(currentBoxes) ? currentBoxes : 0;
+    const boxes = Math.min(Math.max(0, availableBoxesForSource(source) - current), remaining);
     if (boxes <= 0) continue;
-    allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
+    if (existingIndex >= 0) {
+      allocations[existingIndex] = { balanceId: source.balanceId, boxes: String(current + boxes) };
+    } else {
+      allocations.push({ balanceId: source.balanceId, boxes: String(boxes) });
+    }
     remaining -= boxes;
   }
 
@@ -491,7 +498,7 @@ export function MultiItemPickListDraft({
       0,
     ) ?? 0;
     const selectedSource = item?.sources.find((source) => source.balanceId === line.sourceBalanceId) ?? null;
-    const maxRequestBoxes = selectedSource && !line.manualSplit ? availableBoxesForSource(selectedSource) : totalAvailableBoxes;
+    const selectedAvailableBoxes = selectedSource && !line.manualSplit ? availableBoxesForSource(selectedSource) : totalAvailableBoxes;
     const manualAllocations = line.manualSplit && item
       ? line.manualAllocations.flatMap(({ balanceId, boxes }) => {
           const source = item.sources.find((candidate) => candidate.balanceId === balanceId);
@@ -502,7 +509,6 @@ export function MultiItemPickListDraft({
             source,
             boxes: Math.min(parsedBoxes, availableBoxes),
             availableBoxes,
-            remainingBoxes: Math.max(0, availableBoxes - parsedBoxes),
           }];
         })
       : null;
@@ -517,6 +523,8 @@ export function MultiItemPickListDraft({
       ?? selectedPlanResult?.allocations
       ?? (requestedBoxes !== null ? fifoPlan : []);
     const allocatedBoxes = fifoAllocations.reduce((sum, allocation) => sum + allocation.boxes, 0);
+    const stockShortageBoxes = requestedBoxes === null ? 0 : Math.max(0, requestedBoxes - totalAvailableBoxes);
+    const allocationShortageBoxes = requestedBoxes === null ? 0 : Math.max(0, requestedBoxes - allocatedBoxes);
     const hasWholeCartonQuantity = requestedBoxes !== null;
     const hasEnoughStock = requestedBoxes !== null && allocatedBoxes === requestedBoxes;
     const requiresOverride = hasEnoughStock && (line.manualSplit
@@ -531,8 +539,10 @@ export function MultiItemPickListDraft({
       fifoAllocations,
       allocationPlan: standardPlanResult?.plan ?? null,
       allocatedBoxes,
+      stockShortageBoxes,
+      allocationShortageBoxes,
       totalAvailableBoxes,
-      maxRequestBoxes,
+      selectedAvailableBoxes,
       selectedSource,
       manualAllocations,
       requiresOverride,
@@ -546,10 +556,18 @@ export function MultiItemPickListDraft({
     const detail = lineDetails.find(({ line }) => line.id === lineId);
     const parsed = Number(val);
     const nextValue = val;
-    const nextRequestedBoxes = Number(nextValue);
+    const nextRequestedBoxes = parsed;
     let manualAllocationsPatch: DraftLine["manualAllocations"] | undefined;
     if (detail?.line.manualSplit && detail.item && Number.isInteger(nextRequestedBoxes) && nextRequestedBoxes > 0) {
-      manualAllocationsPatch = rebalanceManualAllocations(detail.item.sources, detail.line.manualAllocations, nextRequestedBoxes, detail.item.isPerishable);
+      const previousRequestedBoxes = Number(detail.line.boxes);
+      const previousPlan = Number.isInteger(previousRequestedBoxes) && previousRequestedBoxes > 0
+        ? buildBoxAllocationPlan(detail.item.sources, previousRequestedBoxes, detail.item.isPerishable).allocations
+        : [];
+      const isStillFollowingDefaultPlan = detail.line.manualAllocations.length === 0
+        || allocationsMatchFifoPlan(detail.fifoAllocations, previousPlan);
+      manualAllocationsPatch = isStillFollowingDefaultPlan
+        ? allocateDefaultFifoLocation(detail.item.sources, nextRequestedBoxes, detail.item.isPerishable)
+        : rebalanceManualAllocations(detail.item.sources, detail.line.manualAllocations, nextRequestedBoxes, detail.item.isPerishable);
     } else if (nextValue === "" && detail?.line.manualSplit) {
       manualAllocationsPatch = [];
     }
@@ -690,12 +708,12 @@ export function MultiItemPickListDraft({
               ? "This item needs its enrolled supplier/DSGC item code before a pick list can be created."
             : lineDetails.some(({ requestedBoxes }) => requestedBoxes === null)
               ? "Enter a positive whole-box quantity for every line."
-              : lineDetails.some(({ requestedBoxes, totalAvailableBoxes }) => requestedBoxes !== null && requestedBoxes > totalAvailableBoxes)
+              : lineDetails.some(({ stockShortageBoxes }) => stockShortageBoxes > 0)
                 ? "One or more lines exceed available stock. Add/receive stock or intentionally adjust the requested quantity; generation stays blocked while any shortage remains."
-              : lineDetails.some(({ line, requestedBoxes, allocatedBoxes }) => line.manualSplit && requestedBoxes !== null && allocatedBoxes !== requestedBoxes)
+              : lineDetails.some(({ line, allocationShortageBoxes }) => line.manualSplit && allocationShortageBoxes > 0)
                 ? "Some requested boxes still need a location. Add a FIFO/FEFO location or complete the split allocation."
-              : lineDetails.some(({ hasEnoughStock }) => !hasEnoughStock)
-                ? "Complete each line’s location allocation before generating the pick list."
+              : lineDetails.some(({ allocationShortageBoxes }) => allocationShortageBoxes > 0)
+                ? "The selected location cannot cover the request. Switch to multi-location allocation or choose a location with enough boxes."
                 : null;
 
   const addLine = () => setLines((current) => [...current, blankDraftLine(crypto.randomUUID())]);
@@ -844,6 +862,7 @@ export function MultiItemPickListDraft({
     const newDraftLines: DraftLine[] = [];
     let mappedCount = 0;
     let totalBoxesRequested = 0;
+    let totalBoxesAllocated = 0;
     const reviewItems: string[] = [
       ...draErrors.map((error) => `DRA: ${error} Correct the file and re-import the affected rows.`),
       ...draWarnings.map((warning) => `DRA: ${warning} Check the affected rows before generating the pick list.`),
@@ -954,22 +973,29 @@ export function MultiItemPickListDraft({
       if (availableBoxes < request.requestedBoxes) {
         reviewItems.push(`${request.labels.join(" + ")}: requested ${request.requestedBoxes}, available ${availableBoxes}, short ${request.requestedBoxes - availableBoxes} boxes. The demand is kept in the draft with a partial FIFO/FEFO allocation; receive/locate stock or intentionally reduce the requested quantity.`);
       }
+      const previewAllocations = allocateDefaultFifoLocation(
+        orderedCandidateSources,
+        request.requestedBoxes,
+        orderedCandidateSources[0]?.isPerishable ?? false,
+      );
+      const previewAllocatedBoxes = previewAllocations.reduce((sum, allocation) => sum + Number(allocation.boxes), 0);
       newDraftLines.push({
         id: crypto.randomUUID(),
         itemId: request.itemId,
         boxes: String(request.requestedBoxes),
         sourceBalanceId: "",
         manualSplit: true,
-        manualAllocations: allocateDefaultFifoLocation(orderedCandidateSources, request.requestedBoxes, orderedCandidateSources[0]?.isPerishable ?? false),
+        manualAllocations: previewAllocations,
         customerItemCode: request.customerItemCode,
       });
       totalBoxesRequested += request.requestedBoxes;
+      totalBoxesAllocated += previewAllocatedBoxes;
       mappedCount++;
     }
 
     if (newDraftLines.length > 0) {
       setLines(newDraftLines);
-      const summaryMsg = `Imported ${mappedCount} line(s) with ${totalBoxesRequested} boxes requested. Review the row details below; lines with a shortage remain in the draft and cannot be generated yet.`;
+      const summaryMsg = `Imported ${mappedCount} line(s): ${totalBoxesRequested} boxes requested, ${totalBoxesAllocated} allocated in preview. Review the row details below; lines with a shortage remain in the draft and cannot be generated yet.`;
       setImportSummary({
         type: reviewItems.length > 0 ? "warning" : "success",
         message: summaryMsg,
@@ -1199,7 +1225,7 @@ export function MultiItemPickListDraft({
             </div>
           ) : (
             <MobileDataCardList>
-              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocationPlan, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
+              {lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocationPlan, allocatedBoxes, stockShortageBoxes, allocationShortageBoxes, hasWholeCartonQuantity, totalAvailableBoxes, selectedAvailableBoxes, selectedSource, requiresOverride }) => (
                 <MobileDataCard
                   key={line.id}
                   title={item ? itemCodeFor(item, flowType) : "Select an item"}
@@ -1230,7 +1256,7 @@ export function MultiItemPickListDraft({
                     <div className="grid grid-cols-2 gap-3">
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Boxes)
-                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" step="1" disabled={!canEditLines || !item || maxRequestBoxes === 0} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
+                        <input value={line.boxes} onChange={(event) => handleBoxesChange(line.id, event.target.value)} type="number" min="1" step="1" disabled={!canEditLines || !item} className="h-11 min-w-0 max-w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50" placeholder="0" />
                       </label>
                       <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
                         Qty (Units)
@@ -1319,23 +1345,28 @@ export function MultiItemPickListDraft({
                               </option>
                             ))}
                           </select>
-                          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-[11px]">
-                            <span className="text-slate-500">Allocated</span>
-                            <span className={allocatedBoxes === requestedBoxes && requestedBoxes !== null ? "font-mono font-bold text-emerald-700" : "font-mono font-bold text-amber-700"}>
-                              {allocatedBoxes} / {requestedBoxes ?? "—"} boxes
-                            </span>
-                          </div>
                         </div>
                       )}
                     </div>
                     {requestedBoxes !== null && allocatedBoxes < requestedBoxes && (
                       <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs leading-5 text-amber-900">
-                        {!line.manualSplit && selectedSource && requestedBoxes > maxRequestBoxes
-                          ? `This location has ${maxRequestBoxes} boxes; ${totalAvailableBoxes} are available across FIFO/FEFO locations${requestedBoxes > totalAvailableBoxes ? `, leaving ${requestedBoxes - totalAvailableBoxes} boxes short` : ""}. Keep the ${requestedBoxes}-box request and split across locations${requestedBoxes > totalAvailableBoxes ? " or receive/locate more stock" : ""}.`
+                        {!line.manualSplit && selectedSource && requestedBoxes > selectedAvailableBoxes
+                          ? `This location has ${selectedAvailableBoxes} boxes; ${totalAvailableBoxes} are available across FIFO/FEFO locations${requestedBoxes > totalAvailableBoxes ? `, leaving ${stockShortageBoxes} boxes short` : ""}. Keep the ${requestedBoxes}-box request and split across locations${stockShortageBoxes > 0 ? " or receive/locate more stock" : ""}.`
                           : requestedBoxes > totalAvailableBoxes
                             ? `Short ${requestedBoxes - allocatedBoxes} boxes: ${requestedBoxes} requested, ${totalAvailableBoxes} available. Add/receive stock or intentionally adjust the request.`
                             : `${requestedBoxes - allocatedBoxes} requested boxes still need a location. Add a location or complete the split.`}
                       </p>
+                    )}
+                    {requestedBoxes !== null && item && (
+                      <div aria-label="Allocation summary" className="flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-body text-[11px] leading-4 text-slate-600">
+                        <span><strong className="text-slate-800">Requested:</strong> {requestedBoxes}</span>
+                        <span><strong className="text-slate-800">Available:</strong> {totalAvailableBoxes}</span>
+                        {selectedSource && <span><strong className="text-slate-800">Selected:</strong> {selectedAvailableBoxes} at {selectedSource.locationLabel}</span>}
+                        <span><strong className="text-slate-800">Allocated:</strong> {allocatedBoxes}</span>
+                        <span><strong className="text-slate-800">Remaining:</strong> {Math.max(0, totalAvailableBoxes - allocatedBoxes)}</span>
+                        {allocationShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Unallocated:</strong> {allocationShortageBoxes}</span>}
+                        {stockShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Stock short:</strong> {stockShortageBoxes}</span>}
+                      </div>
                     )}
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
@@ -1354,7 +1385,7 @@ export function MultiItemPickListDraft({
 
         {/* Pick List Table: desktop */}
         <div className="hidden min-w-0 max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-          <table aria-label="Pick list lines" className="w-full min-w-[1850px] table-fixed border-collapse text-left">
+          <table aria-label="Pick list lines" className="w-full min-w-[1720px] table-fixed border-collapse text-left">
             <caption className="sr-only">Pick list lines and selected inventory sources</caption>
             <colgroup>
               <col className="w-[280px]" />
@@ -1362,7 +1393,6 @@ export function MultiItemPickListDraft({
               <col className="w-[108px]" />
               <col className="w-[118px]" />
               <col className="w-[360px]" />
-              <col className="w-[130px]" />
               <col className="w-[180px]" />
               <col className="w-[220px]" />
               <col className="w-[170px]" />
@@ -1376,7 +1406,6 @@ export function MultiItemPickListDraft({
                 <th scope="col" className="h-14 px-3 text-right">Qty (Boxes)</th>
                 <th scope="col" className="h-14 px-3 text-right">Qty (Units)</th>
                 <th scope="col" className="h-14 px-4 text-left">Location</th>
-                <th scope="col" className="h-14 px-3 text-left">Remaining</th>
                 <th scope="col" className="h-14 px-4 text-left">Cust PN</th>
                 <th scope="col" className="h-14 px-4 text-left">Item Description</th>
                 <th scope="col" className="h-14 px-4 text-left">Lot Number</th>
@@ -1387,7 +1416,7 @@ export function MultiItemPickListDraft({
             <tbody className="divide-y divide-slate-100">
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-12 px-4 text-center">
+                  <td colSpan={10} className="py-12 px-4 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3">
                       <FileSpreadsheet className="h-6 w-6" />
                     </div>
@@ -1398,7 +1427,7 @@ export function MultiItemPickListDraft({
                   </td>
                 </tr>
               ) : (
-                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocationPlan, allocatedBoxes, hasWholeCartonQuantity, totalAvailableBoxes, maxRequestBoxes, selectedSource, requiresOverride }) => (
+                lineDetails.map(({ line, item, requestedUnits, requestedBoxes, fifoAllocations, allocationPlan, allocatedBoxes, stockShortageBoxes, allocationShortageBoxes, hasWholeCartonQuantity, totalAvailableBoxes, selectedAvailableBoxes, selectedSource, requiresOverride }) => (
                   <tr key={line.id} className="bg-white transition-colors hover:bg-[#F8FAFC]">
                     {/* ITEM CODE */}
                     <td className="px-4 py-4 align-top">
@@ -1436,7 +1465,7 @@ export function MultiItemPickListDraft({
                         type="number"
                         min="1"
                         step="1"
-                        disabled={!canEditLines || !item || maxRequestBoxes === 0}
+                        disabled={!canEditLines || !item}
                         className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-right font-mono text-sm font-semibold text-slate-900 shadow-2xs outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50 disabled:text-slate-400"
                         placeholder="0"
                         title="Quantity in complete boxes"
@@ -1532,12 +1561,6 @@ export function MultiItemPickListDraft({
                               </option>
                             ))}
                           </select>
-                          <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 font-body text-[11px]">
-                            <span className="text-slate-500">Allocated</span>
-                            <span className={allocatedBoxes === requestedBoxes && requestedBoxes !== null ? "font-mono font-bold text-emerald-700" : "font-mono font-bold text-amber-700"}>
-                              {allocatedBoxes} / {requestedBoxes ?? "—"} boxes
-                            </span>
-                          </div>
                         </div>
                       )}
                       {!line.manualSplit && fifoAllocations.length > 0 && (
@@ -1547,23 +1570,25 @@ export function MultiItemPickListDraft({
                       )}
                       {requestedBoxes !== null && allocatedBoxes < requestedBoxes && (
                         <p role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 font-body text-[11px] leading-4 text-amber-900">
-                          {!line.manualSplit && selectedSource && requestedBoxes > maxRequestBoxes
-                            ? `This location has ${maxRequestBoxes} boxes; ${totalAvailableBoxes} are available across FIFO/FEFO locations${requestedBoxes > totalAvailableBoxes ? `, leaving ${requestedBoxes - totalAvailableBoxes} boxes short` : ""}. Keep the ${requestedBoxes}-box request and split across locations${requestedBoxes > totalAvailableBoxes ? " or receive/locate more stock" : ""}.`
+                          {!line.manualSplit && selectedSource && requestedBoxes > selectedAvailableBoxes
+                            ? `This location has ${selectedAvailableBoxes} boxes; ${totalAvailableBoxes} are available across FIFO/FEFO locations${requestedBoxes > totalAvailableBoxes ? `, leaving ${stockShortageBoxes} boxes short` : ""}. Keep the ${requestedBoxes}-box request and split across locations${stockShortageBoxes > 0 ? " or receive/locate more stock" : ""}.`
                             : requestedBoxes > totalAvailableBoxes
                               ? `Short ${requestedBoxes - allocatedBoxes} boxes: ${requestedBoxes} requested, ${totalAvailableBoxes} available. Add/receive stock or intentionally adjust the request.`
                               : `${requestedBoxes - allocatedBoxes} requested boxes still need a location. Add a location or complete the split.`}
                         </p>
                       )}
+                      {requestedBoxes !== null && item && (
+                        <div aria-label="Allocation summary" className="mt-2 flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 font-body text-[11px] leading-4 text-slate-600">
+                          <span><strong className="text-slate-800">Requested:</strong> {requestedBoxes}</span>
+                          <span><strong className="text-slate-800">Available:</strong> {totalAvailableBoxes}</span>
+                          {selectedSource && <span><strong className="text-slate-800">Selected:</strong> {selectedAvailableBoxes} at {selectedSource.locationLabel}</span>}
+                          <span><strong className="text-slate-800">Allocated:</strong> {allocatedBoxes}</span>
+                          <span><strong className="text-slate-800">Remaining:</strong> {Math.max(0, totalAvailableBoxes - allocatedBoxes)}</span>
+                          {allocationShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Unallocated:</strong> {allocationShortageBoxes}</span>}
+                          {stockShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Stock short:</strong> {stockShortageBoxes}</span>}
+                        </div>
+                      )}
                       {requiresOverride && <p className="mt-1 text-[11px] font-semibold leading-4 text-amber-700">{selectedSource ? "Supervisor approval required for this source." : "Supervisor approval required for one or more selected sources."}</p>}
-                    </td>
-
-                    {/* REMAINING (after this FIFO allocation) */}
-                    <td className="px-3 py-4 align-top">
-                      <div className="space-y-1 font-mono text-xs text-slate-700">
-                        {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, remainingBoxes }) => (
-                          <div key={source.balanceId}>{remainingBoxes} boxes</div>
-                        )) : <span className="text-slate-400">{item ? `${Math.max(0, totalAvailableBoxes - allocatedBoxes)} boxes` : "—"}</span>}
-                      </div>
                     </td>
 
                     {/* CUST PN */}
