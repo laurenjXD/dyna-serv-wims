@@ -6,9 +6,9 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
-import { WrrBarcode } from "../print/_components/WrrBarcode";
 import { PrintButton } from "../print/_components/PrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
 import { boxesToPieces } from "@/lib/inventory/quantities";
 
@@ -89,39 +89,24 @@ export default async function InboundTurnoverReceiptPage({ params }: PageProps) 
 
       {/* Official Inbound Goods Turnover Document Sheet */}
       <div className="rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
-        {/* Header */}
-        <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={template.logoUrl || "/logo-hd.png"} alt={template.companyName} className="h-7 w-auto" />
-              <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
-                {template.companyName}
-              </span>
-            </div>
-            <h1 className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
-              Inbound Goods Turnover Receipt
-            </h1>
-            <p className="font-mono text-[10px] text-slate-500">
-              Official Carrier Dock Handover &amp; Physical Receipt Record
-            </p>
-          </div>
-
-          <div className="text-right">
-            <p className="font-mono text-[10px] uppercase font-bold text-slate-500">
-              Receipt No.
-            </p>
-            <p className="font-mono text-xs font-extrabold text-brand-navy">
-              {receiptNumber}
-            </p>
-            <p className="font-mono text-[10px] text-slate-500">
-              Ref WRR: {wrr.wrrNumber}
-            </p>
-            <div className="mt-1.5 flex justify-end">
-              <WrrBarcode wrrNumber={receiptNumber} />
-            </div>
-          </div>
-        </div>
+        <MasterDocumentHeader
+          documentTitle="Inbound Goods Turnover Receipt"
+          documentNumber={receiptNumber}
+          documentDate={wrr.confirmedAt ?? wrr.createdAt}
+          status={wrr.status.toUpperCase()}
+          companyName={template.companyName}
+          logoUrl={template.logoUrl}
+          subtitle="Official carrier dock handover and physical receipt record"
+          facilityAddress={template.facilityAddress}
+          contactInfo={template.contactInfo}
+          taxOrPezaReg={template.taxOrPezaReg}
+          isoAccreditation={template.isoAccreditation}
+          headerAlignment={template.headerAlignment}
+          titleAlignment={template.titleAlignment}
+          orientation="portrait"
+          showPrintButton={false}
+          documentQrValue={receiptNumber}
+        />
 
         {/* Handover & Vendor Logistics Details */}
         <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 font-mono text-[11px] sm:grid-cols-4">

@@ -11,9 +11,9 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
-import { WrrBarcode } from "../print/_components/WrrBarcode";
 import { PrintButton } from "../print/_components/PrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
 
 const FLOW_LABELS: Record<string, string> = {
@@ -45,13 +45,13 @@ export default async function PreAlertExportPage({ params }: PageProps) {
 
   return (
       <div data-document-root className="mx-auto max-w-5xl bg-surface-white px-4 py-8 print:max-w-none print:p-0">
-      <DocumentPrintStyles orientation="portrait" />
+      <DocumentPrintStyles orientation="landscape" />
       {/* Print media styling */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
             @page {
-              size: A4 portrait;
+              size: A4 landscape;
               margin: 10mm 12mm 12mm 12mm;
             }
             @media print {
@@ -93,39 +93,25 @@ export default async function PreAlertExportPage({ params }: PageProps) {
 
       {/* Formal Pre-Alert Document Container */}
       <article className="rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:border-0 print:p-0 print:shadow-none">
-        {/* Header with Logo and Title */}
-        <header className="border-b-2 border-slate-800 pb-4">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={template.logoUrl || "/logo-hd.png"} alt={template.companyName} className="h-7 w-auto object-contain" />
-                <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-800">
-                  {template.companyName}
-                </span>
-              </div>
-              <h1 className="mt-1 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
-                Pre-Alert / Incoming Shipment Advice
-              </h1>
-              <p className="font-mono text-[10px] text-slate-500">
-                Official Advance Inbound Freight &amp; Cargo Notification
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="font-mono text-[10px] uppercase font-bold text-slate-500">
-                Document Ref
-              </p>
-              <p className="mt-0.5 font-mono text-xs font-black text-brand-navy">
-                {wrr.wrrNumber}
-              </p>
-              <p className="mt-1 font-mono text-[10px] text-slate-500">
-                Generated: {new Date().toLocaleDateString()}
-              </p>
-              <div className="mt-1.5 flex justify-end">
-                <WrrBarcode wrrNumber={wrr.wrrNumber} />
-              </div>
-            </div>
-          </div>
+        <header>
+          <MasterDocumentHeader
+            documentTitle="Pre-Alert / Incoming Shipment Advice"
+            documentNumber={wrr.wrrNumber}
+            documentDate={wrr.createdAt}
+            status={wrr.status.replace(/_/g, " ").toUpperCase()}
+            companyName={template.companyName}
+            logoUrl={template.logoUrl}
+            subtitle="Official advance inbound freight and cargo notification"
+            facilityAddress={template.facilityAddress}
+            contactInfo={template.contactInfo}
+            taxOrPezaReg={template.taxOrPezaReg}
+            isoAccreditation={template.isoAccreditation}
+            headerAlignment={template.headerAlignment}
+            titleAlignment={template.titleAlignment}
+            orientation="landscape"
+            showPrintButton={false}
+            documentQrValue={wrr.wrrNumber}
+          />
 
           {/* Shipment Summary Grid */}
           <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 font-mono text-[11px] sm:grid-cols-4">
