@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { vmiBillingPeriods, vmiPayments } from "@/lib/db/schema/vmi_billing";
+import { normalizeTextInput } from "@/lib/billing/input-validation";
 
 export const VMI_PAYMENT_TYPES = ["payment", "credit_memo", "adjustment"] as const;
 export type VmiPaymentType = (typeof VMI_PAYMENT_TYPES)[number];
@@ -54,12 +55,13 @@ export function validateRecordVmiPaymentInput(
   input: Partial<RecordVmiPaymentInput>,
 ): string[] {
   const errors: string[] = [];
-  if (!input.partyId) errors.push("party_id_required");
-  if (!input.periodId) errors.push("period_id_required");
-  if (!input.recordedByUserId) errors.push("recorded_by_user_id_required");
-  if (!input.amountUsd || !isMoney(input.amountUsd)) errors.push("amount_must_be_positive");
-  if (!input.paymentDate || !isIsoDate(input.paymentDate)) errors.push("payment_date_invalid");
+  if (typeof input.partyId !== "string" || input.partyId.trim().length === 0) errors.push("party_id_required");
+  if (typeof input.periodId !== "string" || input.periodId.trim().length === 0) errors.push("period_id_required");
+  if (typeof input.recordedByUserId !== "string" || input.recordedByUserId.trim().length === 0) errors.push("recorded_by_user_id_required");
+  if (typeof input.amountUsd !== "string" || !isMoney(input.amountUsd.trim())) errors.push("amount_must_be_positive");
+  if (typeof input.paymentDate !== "string" || !isIsoDate(input.paymentDate.trim())) errors.push("payment_date_invalid");
   if (!input.type || !VMI_PAYMENT_TYPES.includes(input.type)) errors.push("payment_type_invalid");
+  if (typeof input.notes === "string" && input.notes.length > 4000) errors.push("notes_too_long");
   return errors;
 }
 
@@ -75,6 +77,8 @@ export async function recordVmiPayment(
 ): Promise<RecordVmiPaymentResult> {
   const validationErrors = validateRecordVmiPaymentInput(input);
   if (validationErrors.length > 0) return { ok: false, errors: validationErrors };
+  const partyId = input.partyId.trim();
+  const periodId = input.periodId.trim();
 
   const [period] = await database
     .select({
@@ -83,24 +87,36 @@ export async function recordVmiPayment(
       status: vmiBillingPeriods.status,
       soaOpeningBalanceUsd: vmiBillingPeriods.soaOpeningBalanceUsd,
       soaPaymentsAppliedUsd: vmiBillingPeriods.soaPaymentsAppliedUsd,
+      soaClosingBalanceUsd: vmiBillingPeriods.soaClosingBalanceUsd,
       billingStatementTotalUsd: vmiBillingPeriods.billingStatementTotalUsd,
+      storageChargeUsd: vmiBillingPeriods.storageChargeUsd,
+      handlingInUsd: vmiBillingPeriods.handlingInUsd,
+      handlingOutUsd: vmiBillingPeriods.handlingOutUsd,
+      documentationUsd: vmiBillingPeriods.documentationUsd,
+      deliveryUsd: vmiBillingPeriods.deliveryUsd,
+      recurringFeesUsd: vmiBillingPeriods.recurringFeesUsd,
+      adHocChargesUsd: vmiBillingPeriods.adHocChargesUsd,
+      creditsAppliedUsd: vmiBillingPeriods.creditsAppliedUsd,
     })
     .from(vmiBillingPeriods)
-    .where(and(eq(vmiBillingPeriods.id, input.periodId), eq(vmiBillingPeriods.partyId, input.partyId)))
+    .where(and(eq(vmiBillingPeriods.id, periodId), eq(vmiBillingPeriods.partyId, partyId)))
     .limit(1);
 
   if (!period) return { ok: false, errors: ["period_not_found"] };
   if (period.status === "voided") return { ok: false, errors: ["period_voided"] };
+  if (period.status === "issued" && input.type !== "payment") {
+    return { ok: false, errors: ["credits_require_draft_period"] };
+  }
 
   const [payment] = await database
     .insert(vmiPayments)
     .values({
-      partyId: input.partyId,
-      appliedToPeriodId: input.periodId,
-      paymentDate: input.paymentDate,
-      amountUsd: input.amountUsd,
+      partyId,
+      appliedToPeriodId: periodId,
+      paymentDate: input.paymentDate.trim(),
+      amountUsd: input.amountUsd.trim(),
       type: input.type,
-      notes: input.notes?.trim() || null,
+      notes: normalizeTextInput(input.notes),
       recordedByUserId: input.recordedByUserId,
     })
     .returning({ id: vmiPayments.id });
@@ -121,21 +137,36 @@ export async function recordVmiPayment(
   const paymentRows = await database
     .select({ amountUsd: vmiPayments.amountUsd, type: vmiPayments.type })
     .from(vmiPayments)
-    .where(and(eq(vmiPayments.partyId, input.partyId), eq(vmiPayments.appliedToPeriodId, input.periodId)));
+    .where(and(eq(vmiPayments.partyId, partyId), eq(vmiPayments.appliedToPeriodId, periodId)));
 
   const paymentsApplied = paymentRows
     .filter((row: { type: string }) => row.type === "payment")
     .reduce((total: number, row: { amountUsd: string }) => total + Number(row.amountUsd), 0);
+  const creditsApplied = paymentRows
+    .filter((row: { type: string }) => row.type === "credit_memo" || row.type === "adjustment")
+    .reduce((total: number, row: { amountUsd: string }) => total + Number(row.amountUsd), 0);
+  const statementBeforeCredits = [
+    period.storageChargeUsd,
+    period.handlingInUsd,
+    period.handlingOutUsd,
+    period.documentationUsd,
+    period.deliveryUsd,
+    period.recurringFeesUsd,
+    period.adHocChargesUsd,
+  ].reduce((total, amount) => total + Number(amount ?? 0), 0);
+  const statementTotal = Math.max(0, statementBeforeCredits - creditsApplied);
   const closingBalance =
-    Number(period.soaOpeningBalanceUsd) + Number(period.billingStatementTotalUsd) - paymentsApplied;
+    Number(period.soaOpeningBalanceUsd) + statementTotal - paymentsApplied;
 
   await database
     .update(vmiBillingPeriods)
     .set({
+      creditsAppliedUsd: creditsApplied.toFixed(4),
+      billingStatementTotalUsd: statementTotal.toFixed(4),
       soaPaymentsAppliedUsd: paymentsApplied.toFixed(4),
       soaClosingBalanceUsd: closingBalance.toFixed(4),
     })
-    .where(eq(vmiBillingPeriods.id, input.periodId));
+    .where(eq(vmiBillingPeriods.id, periodId));
 
   return {
     ok: true,

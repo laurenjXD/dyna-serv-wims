@@ -40,6 +40,14 @@ describe("VMI payment recording", () => {
       status: "draft",
       soaOpeningBalanceUsd: "100.0000",
       billingStatementTotalUsd: "500.0000",
+      storageChargeUsd: "500.0000",
+      handlingInUsd: "0.0000",
+      handlingOutUsd: "0.0000",
+      documentationUsd: "0.0000",
+      deliveryUsd: "0.0000",
+      recurringFeesUsd: "0.0000",
+      adHocChargesUsd: "0.0000",
+      creditsAppliedUsd: "0.0000",
     }]);
     const selectPaymentsRows = [
       { amountUsd: "75.0000", type: "payment" },
@@ -49,6 +57,7 @@ describe("VMI payment recording", () => {
       from: vi.fn(() => selectPayments),
       where: vi.fn(async () => selectPaymentsRows),
     };
+    const updateSet = vi.fn(() => ({ where: vi.fn(async () => []) }));
     const db = {
       select: vi.fn()
         .mockReturnValueOnce(selectPeriod)
@@ -58,9 +67,7 @@ describe("VMI payment recording", () => {
           returning: vi.fn(async () => [{ id: "payment-1" }]),
         })),
       })),
-      update: vi.fn(() => ({
-        set: vi.fn(() => ({ where: vi.fn(async () => []) })),
-      })),
+      update: vi.fn(() => ({ set: updateSet })),
     };
 
     const result = await recordVmiPayment(db, {
@@ -76,9 +83,15 @@ describe("VMI payment recording", () => {
       ok: true,
       paymentId: "payment-1",
       soaPaymentsAppliedUsd: 75,
-      soaClosingBalanceUsd: 525,
+      soaClosingBalanceUsd: 500,
     });
     expect(db.update).toHaveBeenCalled();
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      creditsAppliedUsd: "25.0000",
+      billingStatementTotalUsd: "475.0000",
+      soaPaymentsAppliedUsd: "75.0000",
+      soaClosingBalanceUsd: "500.0000",
+    }));
   });
 
   it("does not update an issued period's immutable SOA snapshot", async () => {

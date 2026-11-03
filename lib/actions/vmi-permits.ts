@@ -44,6 +44,7 @@ import type { RlsTransactionDeps } from "@/lib/db/rls-transaction";
 import { rlsPool } from "@/lib/db/rls-pool";
 import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { vmiPermits } from "@/lib/db/schema/vmi_billing";
+import { isDecimalInput, isIsoCalendarDate } from "@/lib/billing/input-validation";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -63,8 +64,8 @@ type DbLike = {
 type AnyRecord = Record<string, any>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-function isBlank(value: string | undefined | null): boolean {
-  return value === undefined || value === null || value.trim().length === 0;
+function isBlank(value: unknown): boolean {
+  return typeof value !== "string" || value.trim().length === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +150,7 @@ function validateCreateInput(
   const raw = input as AnyRecord;
   const errors: string[] = [];
 
-  if (typeof raw.partyId !== "string" || raw.partyId.length === 0) {
+  if (typeof raw.partyId !== "string" || raw.partyId.trim().length === 0) {
     errors.push("party_id_required");
   }
   if (isBlank(raw.permitNumber)) {
@@ -167,6 +168,14 @@ function validateCreateInput(
   if (isBlank(raw.monthlyFeeUsd)) {
     errors.push("monthly_fee_usd_required");
   }
+  if (typeof raw.permitNumber === "string" && raw.permitNumber.trim().length > 100) errors.push("permit_number_too_long");
+  if (typeof raw.itemScope === "string" && raw.itemScope.trim().length > 2000) errors.push("item_scope_too_long");
+  if (raw.isActive !== undefined && typeof raw.isActive !== "boolean") errors.push("is_active_invalid");
+  if (!isBlank(raw.validFrom) && !isIsoCalendarDate(raw.validFrom)) errors.push("valid_from_invalid");
+  if (!isBlank(raw.validTo) && !isIsoCalendarDate(raw.validTo)) errors.push("valid_to_invalid");
+  if (isIsoCalendarDate(raw.validFrom) && isIsoCalendarDate(raw.validTo) && raw.validFrom > raw.validTo) errors.push("validity_range_invalid");
+  if (!isBlank(raw.monthlyFeeUsd) && !isDecimalInput(raw.monthlyFeeUsd, 10, 2)) errors.push("monthly_fee_usd_invalid");
+  if (raw.monthlyFeeUsd !== undefined && raw.monthlyFeeUsd !== null && typeof raw.monthlyFeeUsd !== "string") errors.push("monthly_fee_usd_invalid");
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -175,12 +184,12 @@ function validateCreateInput(
   return {
     ok: true,
     data: {
-      partyId: raw.partyId,
-      permitNumber: raw.permitNumber,
-      itemScope: raw.itemScope,
-      validFrom: raw.validFrom,
-      validTo: raw.validTo,
-      monthlyFeeUsd: raw.monthlyFeeUsd,
+      partyId: raw.partyId.trim(),
+      permitNumber: raw.permitNumber.trim(),
+      itemScope: raw.itemScope.trim(),
+      validFrom: raw.validFrom.trim(),
+      validTo: raw.validTo.trim(),
+      monthlyFeeUsd: raw.monthlyFeeUsd.trim(),
       isActive: typeof raw.isActive === "boolean" ? raw.isActive : true,
     },
   };
@@ -253,19 +262,27 @@ function validateUpdateInput(
     return { ok: false, errors: ["invalid_input"] };
   }
   const raw = input as AnyRecord;
+  const errors: string[] = [];
+  if (raw.permitNumber !== undefined && (isBlank(raw.permitNumber) || raw.permitNumber.trim().length > 100)) errors.push("permit_number_invalid");
+  if (raw.itemScope !== undefined && (isBlank(raw.itemScope) || raw.itemScope.trim().length > 2000)) errors.push("item_scope_invalid");
+  if (raw.validFrom !== undefined && !isIsoCalendarDate(raw.validFrom)) errors.push("valid_from_invalid");
+  if (raw.validTo !== undefined && !isIsoCalendarDate(raw.validTo)) errors.push("valid_to_invalid");
+  if (raw.monthlyFeeUsd !== undefined && !isDecimalInput(raw.monthlyFeeUsd, 10, 2)) errors.push("monthly_fee_usd_invalid");
+  if (raw.isActive !== undefined && typeof raw.isActive !== "boolean") errors.push("is_active_invalid");
+  if (errors.length > 0) return { ok: false, errors };
 
   return {
     ok: true,
     data: {
       permitNumber:
-        typeof raw.permitNumber === "string" ? raw.permitNumber : undefined,
+        typeof raw.permitNumber === "string" ? raw.permitNumber.trim() : undefined,
       itemScope:
-        typeof raw.itemScope === "string" ? raw.itemScope : undefined,
+        typeof raw.itemScope === "string" ? raw.itemScope.trim() : undefined,
       validFrom:
-        typeof raw.validFrom === "string" ? raw.validFrom : undefined,
-      validTo: typeof raw.validTo === "string" ? raw.validTo : undefined,
+        typeof raw.validFrom === "string" ? raw.validFrom.trim() : undefined,
+      validTo: typeof raw.validTo === "string" ? raw.validTo.trim() : undefined,
       monthlyFeeUsd:
-        typeof raw.monthlyFeeUsd === "string" ? raw.monthlyFeeUsd : undefined,
+        typeof raw.monthlyFeeUsd === "string" ? raw.monthlyFeeUsd.trim() : undefined,
       isActive:
         typeof raw.isActive === "boolean" ? raw.isActive : undefined,
     },
@@ -295,9 +312,10 @@ export async function updateVmiPermit(
   }
   const data = validation.data;
 
-  if (typeof permitId !== "string" || permitId.length === 0) {
+  if (typeof permitId !== "string" || permitId.trim().length === 0) {
     return { ok: false, errors: ["permit_id_required"] };
   }
+  permitId = permitId.trim();
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;
@@ -311,6 +329,12 @@ export async function updateVmiPermit(
     const existing = existingRows[0];
     if (!existing) {
       return { ok: false as const, errors: ["not_found"] };
+    }
+
+    const effectiveValidFrom = data.validFrom ?? String(existing.validFrom).slice(0, 10);
+    const effectiveValidTo = data.validTo ?? String(existing.validTo).slice(0, 10);
+    if (effectiveValidFrom > effectiveValidTo) {
+      return { ok: false as const, errors: ["validity_range_invalid"] };
     }
 
     // Step 4: plain guarded update — fields not supplied are left

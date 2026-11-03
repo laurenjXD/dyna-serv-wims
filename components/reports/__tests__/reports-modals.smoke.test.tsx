@@ -34,13 +34,17 @@ describe("reports modal smoke render", () => {
       id: "1",
       clientName: "Org",
       clientCode: "ORG-1",
-      allocatedSpaceCbm: 100,
+      cbmThresholdType: "minimum_billable",
+      cbmThresholdCbm: 100,
       occupiedCbm: 50,
-      utilizationPct: 50,
       contractedRatePerCbmDay: 0.5,
       mtdAccruedStorage: 20,
       unbilledDays: 3,
       billingStatus: "Ready to Invoice",
+      currentPeriodNumber: null,
+      currentPeriodTotalUsd: null,
+      soaBalanceUsd: null,
+      dailyLedgerRows: [],
       contactPerson: "Ops",
       currency: "USD",
     }]} />);
@@ -53,7 +57,7 @@ describe("reports modal smoke render", () => {
     expect(() => render(
       <WarehouseReportsHub
         kpis={{ valuationTotal: 100, vmiAccruedStorage: 20, tradingGrossRevenue: 80, tradingMarginPct: 25, tradingCogs: 60, otifRatePct: 98, activeLotsCount: 3 }}
-        vmiBillingRows={[{ id: "1", clientName: "Org", clientCode: "ORG-1", allocatedSpaceCbm: 100, occupiedCbm: 50, utilizationPct: 50, contractedRatePerCbmDay: 0.5, mtdAccruedStorage: 20, unbilledDays: 3, billingStatus: "Ready to Invoice", contactPerson: "Ops", currency: "USD" }]}
+        vmiBillingRows={[{ id: "1", clientName: "Org", clientCode: "ORG-1", cbmThresholdType: "minimum_billable", cbmThresholdCbm: 100, occupiedCbm: 50, contractedRatePerCbmDay: 0.5, mtdAccruedStorage: 20, unbilledDays: 3, billingStatus: "Ready to Invoice", currentPeriodNumber: null, currentPeriodTotalUsd: null, soaBalanceUsd: null, dailyLedgerRows: [], contactPerson: "Ops", currency: "USD" }]}
         tradingMargin={{ marginHistory: [{ period: "Oct 2026", grossRevenue: 80, cogs: 60, marginPct: 25, targetMarginPct: 20 }], categoryBreakdown: [{ category: "General", unitsSold: 4, grossRevenue: 80, cogs: 60, netMargin: 20, marginPct: 25, deltaVsSlaPct: 5 }] }}
         throughput={[{ label: "Oct 01", inboundQty: 4, outboundQty: 2, vmiQty: 2, tradingQty: 2 }]}
         deliverySla={[{ period: "Oct 2026", otifRate: 98, otdRate: 99, fillRate: 99, targetOtif: 95 }]}

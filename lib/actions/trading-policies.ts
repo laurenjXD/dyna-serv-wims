@@ -65,6 +65,7 @@ import {
   tradingPolicies,
   tradingMarginTypeEnum,
 } from "@/lib/db/schema/trading_pricing";
+import { isDecimalInput, isIsoDateOrTimestamp } from "@/lib/billing/input-validation";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -94,8 +95,12 @@ function isValidMarginType(value: unknown): value is TradingMarginType {
   );
 }
 
-function isBlank(value: string | undefined | null): boolean {
-  return value === undefined || value === null || value.trim().length === 0;
+function isBlank(value: unknown): boolean {
+  return typeof value !== "string" || value.trim().length === 0;
+}
+
+function isCurrency(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Z]{3}$/.test(value.trim().toUpperCase());
 }
 
 function toDate(value: unknown): Date {
@@ -228,10 +233,10 @@ function validateCreateInput(
   const raw = input as AnyRecord;
   const errors: string[] = [];
 
-  if (typeof raw.partyId !== "string" || raw.partyId.length === 0) {
+  if (typeof raw.partyId !== "string" || raw.partyId.trim().length === 0) {
     errors.push("party_id_required");
   }
-  if (typeof raw.itemId !== "string" || raw.itemId.length === 0) {
+  if (typeof raw.itemId !== "string" || raw.itemId.trim().length === 0) {
     errors.push("item_id_required");
   }
   if (isBlank(raw.buyCost)) {
@@ -246,6 +251,12 @@ function validateCreateInput(
   if (isBlank(raw.sellPrice)) {
     errors.push("sell_price_required");
   }
+  if (!isBlank(raw.buyCost) && !isDecimalInput(raw.buyCost, 12, 4, { allowZero: false })) errors.push("buy_cost_invalid");
+  if (!isBlank(raw.marginValue) && !isDecimalInput(raw.marginValue, 10, 4)) errors.push("margin_value_invalid");
+  if (!isBlank(raw.sellPrice) && !isDecimalInput(raw.sellPrice, 12, 4, { allowZero: false })) errors.push("sell_price_invalid");
+  if (raw.buyCost !== undefined && typeof raw.buyCost !== "string") errors.push("buy_cost_invalid");
+  if (raw.marginValue !== undefined && typeof raw.marginValue !== "string") errors.push("margin_value_invalid");
+  if (raw.sellPrice !== undefined && typeof raw.sellPrice !== "string") errors.push("sell_price_invalid");
 
   const buyCurrency =
     typeof raw.buyCurrency === "string" && raw.buyCurrency.length > 0
@@ -255,7 +266,13 @@ function validateCreateInput(
     typeof raw.sellCurrency === "string" && raw.sellCurrency.length > 0
       ? raw.sellCurrency
       : "PHP";
+  if (!isCurrency(buyCurrency)) errors.push("buy_currency_invalid");
+  if (!isCurrency(sellCurrency)) errors.push("sell_currency_invalid");
   const fxSource = typeof raw.fxSource === "string" ? raw.fxSource : undefined;
+  if (raw.buyCurrency !== undefined && typeof raw.buyCurrency !== "string") errors.push("buy_currency_invalid");
+  if (raw.sellCurrency !== undefined && typeof raw.sellCurrency !== "string") errors.push("sell_currency_invalid");
+  if (raw.fxSource !== undefined && typeof raw.fxSource !== "string") errors.push("fx_source_invalid");
+  if (fxSource && fxSource.trim().length > 50) errors.push("fx_source_too_long");
 
   validateFxSource(buyCurrency, sellCurrency, fxSource, errors);
 
@@ -266,19 +283,19 @@ function validateCreateInput(
   return {
     ok: true,
     data: {
-      partyId: raw.partyId,
-      itemId: raw.itemId,
-      buyCost: raw.buyCost,
-      buyCurrency,
+      partyId: raw.partyId.trim(),
+      itemId: raw.itemId.trim(),
+      buyCost: raw.buyCost.trim(),
+      buyCurrency: buyCurrency.trim().toUpperCase(),
       marginType: raw.marginType as TradingMarginType,
-      marginValue: raw.marginValue,
-      sellPrice: raw.sellPrice,
+      marginValue: raw.marginValue.trim(),
+      sellPrice: raw.sellPrice.trim(),
       sellPriceIsOverride:
         typeof raw.sellPriceIsOverride === "boolean"
           ? raw.sellPriceIsOverride
           : false,
-      sellCurrency,
-      fxSource,
+      sellCurrency: sellCurrency.trim().toUpperCase(),
+      fxSource: fxSource?.trim() || undefined,
     },
   };
 }
@@ -384,6 +401,17 @@ function validateUpdateInput(
   if (raw.marginType !== undefined && !isValidMarginType(raw.marginType)) {
     errors.push("invalid_margin_type");
   }
+  if (raw.buyCost !== undefined && !isDecimalInput(raw.buyCost, 12, 4, { allowZero: false })) errors.push("buy_cost_invalid");
+  if (raw.marginValue !== undefined && !isDecimalInput(raw.marginValue, 10, 4)) errors.push("margin_value_invalid");
+  if (raw.sellPrice !== undefined && !isDecimalInput(raw.sellPrice, 12, 4, { allowZero: false })) errors.push("sell_price_invalid");
+  if (raw.buyCurrency !== undefined && !isCurrency(raw.buyCurrency)) errors.push("buy_currency_invalid");
+  if (raw.sellCurrency !== undefined && !isCurrency(raw.sellCurrency)) errors.push("sell_currency_invalid");
+  if (raw.fxSource !== undefined && typeof raw.fxSource !== "string") errors.push("fx_source_invalid");
+  if (typeof raw.fxSource === "string" && raw.fxSource.trim().length > 50) errors.push("fx_source_too_long");
+  if (raw.effectiveDate !== undefined && !isIsoDateOrTimestamp(raw.effectiveDate)) errors.push("effective_date_invalid");
+  if (raw.sellPriceIsOverride !== undefined && typeof raw.sellPriceIsOverride !== "boolean") errors.push("sell_price_override_invalid");
+  if (raw.buyCurrency !== undefined && typeof raw.buyCurrency !== "string") errors.push("buy_currency_invalid");
+  if (raw.sellCurrency !== undefined && typeof raw.sellCurrency !== "string") errors.push("sell_currency_invalid");
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -392,26 +420,26 @@ function validateUpdateInput(
   return {
     ok: true,
     data: {
-      buyCost: typeof raw.buyCost === "string" ? raw.buyCost : undefined,
+      buyCost: typeof raw.buyCost === "string" ? raw.buyCost.trim() : undefined,
       buyCurrency:
-        typeof raw.buyCurrency === "string" ? raw.buyCurrency : undefined,
+        typeof raw.buyCurrency === "string" ? raw.buyCurrency.trim().toUpperCase() : undefined,
       marginType:
         raw.marginType !== undefined
           ? (raw.marginType as TradingMarginType)
           : undefined,
       marginValue:
-        typeof raw.marginValue === "string" ? raw.marginValue : undefined,
+        typeof raw.marginValue === "string" ? raw.marginValue.trim() : undefined,
       sellPrice:
-        typeof raw.sellPrice === "string" ? raw.sellPrice : undefined,
+        typeof raw.sellPrice === "string" ? raw.sellPrice.trim() : undefined,
       sellPriceIsOverride:
         typeof raw.sellPriceIsOverride === "boolean"
           ? raw.sellPriceIsOverride
           : undefined,
       sellCurrency:
-        typeof raw.sellCurrency === "string" ? raw.sellCurrency : undefined,
-      fxSource: typeof raw.fxSource === "string" ? raw.fxSource : undefined,
+        typeof raw.sellCurrency === "string" ? raw.sellCurrency.trim().toUpperCase() : undefined,
+      fxSource: typeof raw.fxSource === "string" ? raw.fxSource.trim() : undefined,
       effectiveDate:
-        typeof raw.effectiveDate === "string" ? raw.effectiveDate : undefined,
+        typeof raw.effectiveDate === "string" ? raw.effectiveDate.trim() : undefined,
     },
   };
 }

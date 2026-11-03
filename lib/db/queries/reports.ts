@@ -4,7 +4,7 @@
 // Live analytics, financial settlement, and operational reporting queries
 // backing the Reports Hub (/reports).
 
-import { sql, eq, desc, and, inArray } from "drizzle-orm";
+import { sql, eq, desc, and, inArray, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { lots } from "@/lib/db/schema/lots";
 import { lotLocationBalances } from "@/lib/db/schema/lot_location_balances";
@@ -12,7 +12,9 @@ import { items, itemCategories } from "@/lib/db/schema/items";
 import { parties, partyRoles } from "@/lib/db/schema/parties";
 import { pickLists, pickListItems } from "@/lib/db/schema/pick_lists";
 import { inventoryTransactions } from "@/lib/db/schema/transactions";
-import { vmiContractTerms, vmiDailyBalanceLedger } from "@/lib/db/schema/vmi_billing";
+import { vmiBillingPeriods, vmiContractTerms, vmiDailyBalanceLedger, vmiPayments } from "@/lib/db/schema/vmi_billing";
+import { tradingInvoiceLines } from "@/lib/db/schema/trading_pricing";
+import { resolveManilaLedgerDate } from "@/lib/billing/vmi-manila-time";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { userProfiles } from "@/lib/db/schema/rbac";
 import { locations } from "@/lib/db/schema/locations";
@@ -51,23 +53,28 @@ export async function getReportsExecutiveKpis(filters?: ReportFilterParams) {
       .leftJoin(items, eq(lots.itemId, items.id));
 
     // VMI Accrued Storage (from vmi_daily_balance_ledger)
+    const reportToday = resolveManilaLedgerDate(new Date());
+    const reportMonthStart = `${reportToday.slice(0, 7)}-01`;
     const [vmiAccruedRow] = await db
       .select({
         accrued: sql<string>`coalesce(sum(${vmiDailyBalanceLedger.storageAmountUsd}), 0)`,
       })
-      .from(vmiDailyBalanceLedger);
+      .from(vmiDailyBalanceLedger)
+      .where(and(
+        gte(vmiDailyBalanceLedger.ledgerDate, reportMonthStart),
+        lte(vmiDailyBalanceLedger.ledgerDate, reportToday),
+      ));
 
     // Trading Gross Revenue & Margin Realized
     const [tradingMarginAgg] = await db
       .select({
-        // Historical Trading revenue must use the immutable document snapshot;
-        // never fall back to mutable master-item sellingPrice.
-        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, 0)), 0)`,
-        cogs: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0)), 0)`,
+        grossRevenue: sql<string>`coalesce(sum(${tradingInvoiceLines.qty} * coalesce(${tradingInvoiceLines.sellPrice}, 0)), 0)`,
+        cogs: sql<string>`coalesce(sum(${tradingInvoiceLines.qty} * ${tradingInvoiceLines.buyCost}), 0)`,
       })
-      .from(pickListItems)
-      .leftJoin(lots, eq(pickListItems.lotId, lots.id))
-      .leftJoin(items, eq(pickListItems.itemId, items.id));
+      .from(tradingInvoiceLines)
+      .innerJoin(pickListItems, eq(tradingInvoiceLines.pickListItemId, pickListItems.id))
+      .innerJoin(pickLists, eq(pickListItems.pickListId, pickLists.id))
+      .where(and(eq(tradingInvoiceLines.direction, "sale"), eq(pickLists.flowType, "trading"), eq(pickLists.status, "dispatched")));
 
     // Delivery OTIF from pickLists
     const [otifRow] = await db
@@ -118,51 +125,122 @@ export async function getReportsExecutiveKpis(filters?: ReportFilterParams) {
  */
 export async function getVmiBillingReconciliationReport(): Promise<VmiBillingRow[]> {
   try {
-    const rawClients = await db
+    const today = resolveManilaLedgerDate(new Date());
+    const monthStart = `${today.slice(0, 7)}-01`;
+    const clientRows = await db
       .select({
         id: parties.id,
         name: parties.name,
         code: parties.code,
         contactPerson: parties.contactPerson,
         cbmRate: vmiContractTerms.storageRatePerCbmDay,
+        cbmThresholdType: vmiContractTerms.cbmThresholdType,
         cbmThreshold: vmiContractTerms.cbmThreshold,
         currency: vmiContractTerms.billingCurrency,
-        accruedStorage: sql<string>`coalesce(sum(${vmiDailyBalanceLedger.storageAmountUsd}), 0)`,
-        occupiedCbm: sql<string>`coalesce(avg(${vmiDailyBalanceLedger.endingCbm}), 0)`,
       })
       .from(parties)
-      .leftJoin(partyRoles, eq(parties.id, partyRoles.partyId))
-      .leftJoin(vmiContractTerms, and(eq(parties.id, vmiContractTerms.partyId), eq(vmiContractTerms.isActive, true)))
-      .leftJoin(vmiDailyBalanceLedger, eq(parties.id, vmiDailyBalanceLedger.partyId))
-      .where(sql`${partyRoles.role} = 'customer'`)
-      .groupBy(parties.id, parties.name, parties.code, parties.contactPerson, vmiContractTerms.storageRatePerCbmDay, vmiContractTerms.cbmThreshold, vmiContractTerms.billingCurrency);
+      .innerJoin(partyRoles, eq(parties.id, partyRoles.partyId))
+      .innerJoin(vmiContractTerms, and(eq(parties.id, vmiContractTerms.partyId), eq(vmiContractTerms.isActive, true)))
+      .where(sql`${partyRoles.role} = 'customer'`);
 
-    if (rawClients.length > 0) {
-        return rawClients.map((c) => {
-        const alloc = parseFloat(c.cbmThreshold || "0") || 0;
-        const occ = Math.round(parseFloat(c.occupiedCbm || "0")) || 0;
-        const rate = parseFloat(c.cbmRate || "0") || 0;
-        const accrued = parseFloat(c.accruedStorage || "0") || 0;
-        const util = alloc > 0 ? Math.min(100, Math.round((occ / alloc) * 100)) : 0;
+    const dailyRows = await db
+      .select({
+        partyId: vmiDailyBalanceLedger.partyId,
+        date: vmiDailyBalanceLedger.ledgerDate,
+        beginningCbm: vmiDailyBalanceLedger.beginningCbm,
+        inboundFgCbm: vmiDailyBalanceLedger.inboundCbmFg,
+        inboundRawCbm: vmiDailyBalanceLedger.inboundCbmRawMaterial,
+        outboundFgCbm: vmiDailyBalanceLedger.outboundCbmFg,
+        outboundRawCbm: vmiDailyBalanceLedger.outboundCbmRawMaterial,
+        endingCbm: vmiDailyBalanceLedger.endingCbm,
+        billedBalanceCbm: vmiDailyBalanceLedger.billedBalanceCbm,
+        appliedRateUsd: vmiDailyBalanceLedger.appliedStorageRateUsd,
+        storageAmountUsd: vmiDailyBalanceLedger.storageAmountUsd,
+      })
+      .from(vmiDailyBalanceLedger)
+      .where(and(gte(vmiDailyBalanceLedger.ledgerDate, monthStart), lte(vmiDailyBalanceLedger.ledgerDate, today)))
+      .orderBy(vmiDailyBalanceLedger.ledgerDate);
 
-        return {
-          id: c.id,
-          clientName: c.name,
-          clientCode: c.code,
-          allocatedSpaceCbm: alloc,
-          occupiedCbm: occ,
-          utilizationPct: util,
-          contractedRatePerCbmDay: rate,
-          mtdAccruedStorage: accrued,
-          unbilledDays: 0,
-          billingStatus: "Draft Generated" as const,
-          contactPerson: c.contactPerson || "",
-          currency: c.currency || "USD",
-        };
-      });
+    const periodRows = await db
+      .select({
+        partyId: vmiBillingPeriods.partyId,
+        periodNumber: vmiBillingPeriods.periodNumber,
+        status: vmiBillingPeriods.status,
+        totalUsd: vmiBillingPeriods.billingStatementTotalUsd,
+        closingBalanceUsd: vmiBillingPeriods.soaClosingBalanceUsd,
+        closedAt: vmiBillingPeriods.closedAt,
+        createdAt: vmiBillingPeriods.createdAt,
+        id: vmiBillingPeriods.id,
+      })
+      .from(vmiBillingPeriods)
+      .where(and(eq(vmiBillingPeriods.periodStartDate, monthStart), ne(vmiBillingPeriods.status, "voided")))
+      .orderBy(desc(vmiBillingPeriods.createdAt));
+
+    const paymentRows = periodRows.length > 0
+      ? await db
+        .select({ periodId: vmiPayments.appliedToPeriodId, amountUsd: vmiPayments.amountUsd, type: vmiPayments.type, createdAt: vmiPayments.createdAt })
+        .from(vmiPayments)
+        .where(inArray(vmiPayments.appliedToPeriodId, periodRows.map((period) => period.id)))
+      : [];
+
+    const dailyByParty = new Map<string, typeof dailyRows>();
+    for (const row of dailyRows) {
+      const existing = dailyByParty.get(row.partyId) ?? [];
+      existing.push(row);
+      dailyByParty.set(row.partyId, existing);
+    }
+    const periodByParty = new Map<string, (typeof periodRows)[number]>();
+    for (const period of periodRows) {
+      if (!periodByParty.has(period.partyId)) periodByParty.set(period.partyId, period);
     }
 
-    return [];
+    return clientRows.map((client) => {
+      const clientDailyRows = dailyByParty.get(client.id) ?? [];
+      const accrued = clientDailyRows.reduce((sum, row) => sum + Number(row.storageAmountUsd ?? 0), 0);
+      const occupied = clientDailyRows.length > 0
+        ? clientDailyRows.reduce((sum, row) => sum + Number(row.endingCbm ?? 0), 0) / clientDailyRows.length
+        : 0;
+      const period = periodByParty.get(client.id);
+      const postIssuePayments = period?.status === "issued" && period.closedAt
+        ? paymentRows
+          .filter((payment) => payment.periodId === period.id && payment.type === "payment" && payment.createdAt > period.closedAt!)
+          .reduce((sum, payment) => sum + Number(payment.amountUsd ?? 0), 0)
+        : 0;
+      const soaBalance = period ? Number(period.closingBalanceUsd ?? 0) - postIssuePayments : null;
+      const billingStatus = period?.status === "draft"
+        ? "Draft Generated" as const
+        : period?.status === "issued"
+          ? (soaBalance === 0 ? "Paid" as const : (soaBalance !== null && soaBalance < 0 ? "Credit Balance" as const : "Issued" as const))
+          : clientDailyRows.length > 0 ? "Ready to Invoice" as const : "No Data" as const;
+      const threshold = client.cbmThreshold === null ? null : Number(client.cbmThreshold);
+
+      return {
+        id: client.id,
+        clientName: client.name,
+        clientCode: client.code,
+        cbmThresholdType: client.cbmThresholdType,
+        cbmThresholdCbm: threshold,
+        occupiedCbm: occupied,
+        contractedRatePerCbmDay: Number(client.cbmRate ?? 0),
+        mtdAccruedStorage: accrued,
+        unbilledDays: period?.status === "issued" ? 0 : clientDailyRows.length,
+        billingStatus,
+        currentPeriodNumber: period?.periodNumber ?? null,
+        currentPeriodTotalUsd: period ? Number(period.totalUsd ?? 0) : null,
+        soaBalanceUsd: soaBalance,
+        dailyLedgerRows: clientDailyRows.map((row) => ({
+          date: String(row.date),
+          beginningCbm: Number(row.beginningCbm ?? 0),
+          inboundCbm: Number(row.inboundFgCbm ?? 0) + Number(row.inboundRawCbm ?? 0),
+          outboundCbm: Number(row.outboundFgCbm ?? 0) + Number(row.outboundRawCbm ?? 0),
+          billedBalanceCbm: Number(row.billedBalanceCbm ?? 0),
+          appliedRateUsd: Number(row.appliedRateUsd ?? 0),
+          storageAmountUsd: Number(row.storageAmountUsd ?? 0),
+        })),
+        contactPerson: client.contactPerson || "",
+        currency: client.currency || "USD",
+      };
+    });
   } catch (error) {
     console.error("Error fetching VMI billing reconciliation:", error);
     return [];
@@ -179,17 +257,17 @@ export async function getTradingMarginReport(): Promise<{
   try {
     const monthlyAgg = await db
       .select({
-        period: sql<string>`to_char(${pickLists.createdAt}, 'Mon YYYY')`,
-        monthNum: sql<number>`extract(month from ${pickLists.createdAt})::int`,
-        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, 0)), 0)`,
-        cogs: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0)), 0)`,
+        period: sql<string>`to_char(${tradingInvoiceLines.lockedAt}, 'Mon YYYY')`,
+        monthNum: sql<number>`extract(month from ${tradingInvoiceLines.lockedAt})::int`,
+        grossRevenue: sql<string>`coalesce(sum(${tradingInvoiceLines.qty} * coalesce(${tradingInvoiceLines.sellPrice}, 0)), 0)`,
+        cogs: sql<string>`coalesce(sum(${tradingInvoiceLines.qty} * ${tradingInvoiceLines.buyCost}), 0)`,
       })
-      .from(pickLists)
-      .innerJoin(pickListItems, eq(pickLists.id, pickListItems.pickListId))
-      .leftJoin(lots, eq(pickListItems.lotId, lots.id))
-      .leftJoin(items, eq(pickListItems.itemId, items.id))
-      .groupBy(sql`to_char(${pickLists.createdAt}, 'Mon YYYY')`, sql`extract(month from ${pickLists.createdAt})`)
-      .orderBy(sql`extract(month from ${pickLists.createdAt})`);
+      .from(tradingInvoiceLines)
+      .innerJoin(pickListItems, eq(tradingInvoiceLines.pickListItemId, pickListItems.id))
+      .innerJoin(pickLists, eq(pickListItems.pickListId, pickLists.id))
+      .where(and(eq(tradingInvoiceLines.direction, "sale"), eq(pickLists.flowType, "trading"), eq(pickLists.status, "dispatched")))
+      .groupBy(sql`to_char(${tradingInvoiceLines.lockedAt}, 'Mon YYYY')`, sql`extract(month from ${tradingInvoiceLines.lockedAt})`)
+      .orderBy(sql`date_trunc('month', ${tradingInvoiceLines.lockedAt})`);
 
     const marginHistory: TradingMarginRow[] = monthlyAgg.map((m) => {
       const rev = parseFloat(m.grossRevenue) || 0;
@@ -207,14 +285,16 @@ export async function getTradingMarginReport(): Promise<{
     const catAgg = await db
       .select({
         category: sql<string>`coalesce(${itemCategories.name}, 'General')`,
-        unitsSold: sql<number>`coalesce(sum(${pickListItems.qty}), 0)::int`,
-        grossRevenue: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${pickListItems.unitPrice}, 0)), 0)`,
-        cogs: sql<string>`coalesce(sum(${pickListItems.qty} * coalesce(${lots.unitCost}, ${items.buyingPrice}, 0)), 0)`,
+        unitsSold: sql<number>`coalesce(sum(${tradingInvoiceLines.qty}), 0)::int`,
+        grossRevenue: sql<string>`coalesce(sum(${tradingInvoiceLines.qty} * coalesce(${tradingInvoiceLines.sellPrice}, 0)), 0)`,
+        cogs: sql<string>`coalesce(sum(${tradingInvoiceLines.qty} * ${tradingInvoiceLines.buyCost}), 0)`,
       })
-      .from(pickListItems)
-      .innerJoin(items, eq(pickListItems.itemId, items.id))
+      .from(tradingInvoiceLines)
+      .innerJoin(pickListItems, eq(tradingInvoiceLines.pickListItemId, pickListItems.id))
+      .innerJoin(pickLists, eq(pickListItems.pickListId, pickLists.id))
+      .innerJoin(items, eq(tradingInvoiceLines.itemId, items.id))
       .leftJoin(itemCategories, eq(items.categoryId, itemCategories.id))
-      .leftJoin(lots, eq(pickListItems.lotId, lots.id))
+      .where(and(eq(tradingInvoiceLines.direction, "sale"), eq(pickLists.flowType, "trading"), eq(pickLists.status, "dispatched")))
       .groupBy(itemCategories.name);
 
     const categoryBreakdown: TradingCategoryPerformance[] = catAgg.map((c) => {

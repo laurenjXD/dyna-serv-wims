@@ -25,13 +25,19 @@ import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCa
 
 interface VmiBillingTableProps {
   initialData?: VmiBillingRow[];
-  onGenerateInvoicePdf: (row: VmiBillingRow) => void;
   onAuditDwellTime: (row: VmiBillingRow) => void;
+}
+
+function formatCurrency(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
+  } catch {
+    return `${currency} ${value.toFixed(2)}`;
+  }
 }
 
 export function VmiBillingTable({
   initialData,
-  onGenerateInvoicePdf,
   onAuditDwellTime,
 }: VmiBillingTableProps) {
   const [data] = useState<VmiBillingRow[]>(initialData || []);
@@ -65,17 +71,8 @@ export function VmiBillingTable({
         },
       },
       {
-        accessorKey: "allocatedSpaceCbm",
-        header: "Allocated CBM",
-        cell: ({ row }) => (
-          <span className="font-mono text-text-secondary text-xs">
-            {row.original.allocatedSpaceCbm} m³
-          </span>
-        ),
-      },
-      {
         accessorKey: "occupiedCbm",
-        header: "Occupied CBM",
+        header: "Avg. Occupied CBM (MTD)",
         cell: ({ row }) => (
           <span className="font-mono font-bold text-text-primary text-xs">
             {row.original.occupiedCbm} m³
@@ -83,33 +80,22 @@ export function VmiBillingTable({
         ),
       },
       {
-        accessorKey: "utilizationPct",
-        header: "Utilization",
-        cell: ({ row }) => {
-          const pct = row.original.utilizationPct;
-          return (
-            <div className="flex items-center gap-2">
-              <div className="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                <div
-                  className={`h-1.5 rounded-full ${
-                    pct > 80 ? "bg-amber-500" : "bg-primary"
-                  }`}
-                  style={{ width: `${Math.min(pct, 100)}%` }}
-                />
-              </div>
-              <span className="font-mono text-xs font-semibold text-text-primary">
-                {pct}%
-              </span>
-            </div>
-          );
-        },
+        accessorKey: "cbmThresholdCbm",
+        header: "Contract CBM Threshold",
+        cell: ({ row }) => (
+          <span className="font-mono text-text-secondary text-xs">
+            {row.original.cbmThresholdType === "none" || row.original.cbmThresholdCbm === null
+              ? "None"
+              : `${row.original.cbmThresholdType.replaceAll("_", " ")} · ${row.original.cbmThresholdCbm.toLocaleString()} m³`}
+          </span>
+        ),
       },
       {
         accessorKey: "contractedRatePerCbmDay",
         header: "Rate / m³ / Day",
         cell: ({ row }) => (
           <span className="font-mono text-text-secondary text-xs">
-            ${row.original.contractedRatePerCbmDay}
+            {formatCurrency(row.original.contractedRatePerCbmDay, row.original.currency)}
           </span>
         ),
       },
@@ -127,6 +113,24 @@ export function VmiBillingTable({
         ),
       },
       {
+        accessorKey: "currentPeriodNumber",
+        header: "Current Period",
+        cell: ({ row }) => (
+          <span className="font-mono text-text-secondary text-xs">
+            {row.original.currentPeriodNumber ? `#${row.original.currentPeriodNumber} · ${formatCurrency(row.original.currentPeriodTotalUsd ?? 0, "USD")}` : "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "soaBalanceUsd",
+        header: "SOA Balance",
+        cell: ({ row }) => (
+          <span className="font-mono font-bold text-text-primary text-xs">
+            {row.original.soaBalanceUsd === null ? "—" : formatCurrency(row.original.soaBalanceUsd, "USD")}
+          </span>
+        ),
+      },
+      {
         accessorKey: "billingStatus",
         header: "Status",
         cell: ({ row }) => {
@@ -135,7 +139,7 @@ export function VmiBillingTable({
             <Badge
               size="sm"
               variant={
-                status === "Ready to Invoice"
+                status === "Ready to Invoice" || status === "Paid"
                   ? "success"
                   : status === "Draft Generated"
                   ? "primary"
@@ -163,15 +167,6 @@ export function VmiBillingTable({
                 <Clock size={12} className="text-brand-navy/70" />
                 <span>Audit</span>
               </button>
-              <button
-                type="button"
-                onClick={() => onGenerateInvoicePdf(item)}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-surface-white px-2.5 py-1 font-label text-xs font-semibold text-brand-navy hover:bg-blue-50/60 hover:border-blue-200 transition-colors shadow-2xs cursor-pointer"
-                title={`Preview invoice PDF for ${item.clientName}`}
-              >
-                <Receipt size={12} className="text-brand-navy/70" />
-                <span>Invoice</span>
-              </button>
               <Link
                 href={`/billing-pricing/soa/${item.id || item.clientCode}?partyId=${item.id}`}
                 className="inline-flex items-center gap-1 rounded-lg bg-brand-navy px-2.5 py-1 font-label text-xs font-bold text-white hover:bg-brand-navy/90 transition-colors shadow-2xs"
@@ -185,7 +180,7 @@ export function VmiBillingTable({
         },
       },
     ],
-    [onAuditDwellTime, onGenerateInvoicePdf]
+    [onAuditDwellTime]
   );
 
   const filteredData = useMemo(() => {
@@ -276,13 +271,13 @@ export function VmiBillingTable({
               key={row.id}
               title={item.clientName}
               subtitle={`${item.clientCode} · ${item.contactPerson}`}
-              badge={<Badge size="sm" variant={item.billingStatus === "Ready to Invoice" ? "success" : item.billingStatus === "Draft Generated" ? "primary" : "neutral"}>{item.billingStatus}</Badge>}
+              badge={<Badge size="sm" variant={item.billingStatus === "Ready to Invoice" || item.billingStatus === "Paid" ? "success" : item.billingStatus === "Draft Generated" ? "primary" : "neutral"}>{item.billingStatus}</Badge>}
               fields={[
-                { label: "Allocated CBM", value: `${item.allocatedSpaceCbm} m³` },
-                { label: "Occupied CBM", value: `${item.occupiedCbm} m³` },
-                { label: "Utilization", value: `${item.utilizationPct}%` },
-                { label: "Rate / CBM / day", value: `$${item.contractedRatePerCbmDay}` },
+                { label: "Avg. Occupied CBM (MTD)", value: `${item.occupiedCbm.toFixed(2)} m³` },
+                { label: "Contract CBM threshold", value: item.cbmThresholdType === "none" || item.cbmThresholdCbm === null ? "None" : `${item.cbmThresholdType.replaceAll("_", " ")} · ${item.cbmThresholdCbm} m³` },
+                { label: "Rate / CBM / day", value: `${formatCurrency(item.contractedRatePerCbmDay, item.currency)} / m³ / day` },
                 { label: "MTD accrued", value: `$${item.mtdAccruedStorage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, className: "col-span-2" },
+                ...(item.currentPeriodNumber ? [{ label: "Current period", value: `#${item.currentPeriodNumber} · ${formatCurrency(item.currentPeriodTotalUsd ?? 0, "USD")}` }, { label: "SOA balance", value: formatCurrency(item.soaBalanceUsd ?? 0, "USD") }] : []),
               ]}
               actions={<><button type="button" onClick={() => onAuditDwellTime(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 font-label text-sm font-bold text-brand-navy"><Clock size={15} /> Audit</button><Link href={`/billing-pricing/soa/${item.id || item.clientCode}?partyId=${item.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-navy px-3 font-label text-sm font-bold text-white"><FileText size={15} /> SOA</Link></>}
             />

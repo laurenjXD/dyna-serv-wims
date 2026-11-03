@@ -58,6 +58,7 @@ import {
 } from "@/lib/db/schema/vmi_billing";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { resolveContractTermsForDate } from "@/lib/billing/vmi-daily-balance";
+import { isDecimalInput, isIsoCalendarDate, normalizeTextInput } from "@/lib/billing/input-validation";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -87,8 +88,8 @@ function isValidChargeType(value: unknown): value is VmiChargeType {
   );
 }
 
-function isBlank(value: string | undefined | null): boolean {
-  return value === undefined || value === null || value.trim().length === 0;
+function isBlank(value: unknown): boolean {
+  return typeof value !== "string" || value.trim().length === 0;
 }
 
 function toDate(value: unknown): Date {
@@ -195,16 +196,16 @@ function validateCreateInput(
   const raw = input as AnyRecord;
   const errors: string[] = [];
 
-  if (typeof raw.partyId !== "string" || raw.partyId.length === 0) {
+  if (typeof raw.partyId !== "string" || raw.partyId.trim().length === 0) {
     errors.push("party_id_required");
   }
   if (
     typeof raw.acknowledgementReceiptId !== "string" ||
-    raw.acknowledgementReceiptId.length === 0
+    raw.acknowledgementReceiptId.trim().length === 0
   ) {
     errors.push("acknowledgement_receipt_id_required");
   }
-  if (typeof raw.chargeDate !== "string" || raw.chargeDate.length === 0) {
+  if (!isIsoCalendarDate(raw.chargeDate)) {
     errors.push("charge_date_required");
   }
   if (!isValidChargeType(raw.chargeType)) {
@@ -218,21 +219,29 @@ function validateCreateInput(
   const chargeType = raw.chargeType as VmiChargeType;
   const amount = typeof raw.amount === "string" ? raw.amount : undefined;
   const notes = typeof raw.notes === "string" ? raw.notes : undefined;
+  if (raw.amount !== undefined && raw.amount !== null && typeof raw.amount !== "string") return { ok: false, errors: ["amount_invalid"] };
+  if (raw.notes !== undefined && raw.notes !== null && typeof raw.notes !== "string") return { ok: false, errors: ["notes_invalid"] };
 
   // Amount-required-upfront rejection, before any DB access (FR-4.3/4.4).
   if (amountRequiredUpfront(chargeType, amount)) {
     return { ok: false, errors: ["amount_required"] };
   }
+  if (!isBlank(amount) && !isDecimalInput(amount, 14, 4)) {
+    return { ok: false, errors: ["amount_invalid"] };
+  }
+  if (notes && notes.length > 4000) {
+    return { ok: false, errors: ["notes_too_long"] };
+  }
 
   return {
     ok: true,
     data: {
-      partyId: raw.partyId,
-      acknowledgementReceiptId: raw.acknowledgementReceiptId,
+      partyId: raw.partyId.trim(),
+      acknowledgementReceiptId: raw.acknowledgementReceiptId.trim(),
       chargeType,
       chargeDate: raw.chargeDate,
-      amount,
-      notes,
+      amount: amount?.trim(),
+      notes: notes === undefined ? undefined : normalizeTextInput(notes) ?? undefined,
     },
   };
 }
@@ -259,7 +268,7 @@ function validateUpdateInput(
   const raw = input as AnyRecord;
   const errors: string[] = [];
 
-  if (typeof raw.chargeLineId !== "string" || raw.chargeLineId.length === 0) {
+  if (typeof raw.chargeLineId !== "string" || raw.chargeLineId.trim().length === 0) {
     errors.push("charge_line_id_required");
   }
 
@@ -267,14 +276,30 @@ function validateUpdateInput(
     return { ok: false, errors };
   }
 
+  if (raw.amount !== undefined && raw.amount !== null && raw.amount !== "" &&
+      !isDecimalInput(raw.amount, 14, 4)) {
+    return { ok: false, errors: ["amount_invalid"] };
+  }
+  if (raw.chargeDate !== undefined && raw.chargeDate !== null && raw.chargeDate !== "" &&
+      !isIsoCalendarDate(raw.chargeDate)) {
+    return { ok: false, errors: ["charge_date_invalid"] };
+  }
+  if (typeof raw.notes === "string" && raw.notes.length > 4000) {
+    return { ok: false, errors: ["notes_too_long"] };
+  }
+  if (raw.amount !== undefined && raw.amount !== null && typeof raw.amount !== "string") return { ok: false, errors: ["amount_invalid"] };
+  if (raw.notes !== undefined && raw.notes !== null && typeof raw.notes !== "string") return { ok: false, errors: ["notes_invalid"] };
+
   return {
     ok: true,
     data: {
-      chargeLineId: raw.chargeLineId,
-      amount: typeof raw.amount === "string" ? raw.amount : undefined,
+      chargeLineId: raw.chargeLineId.trim(),
+      amount: typeof raw.amount === "string" ? raw.amount.trim() : undefined,
       chargeDate:
-        typeof raw.chargeDate === "string" ? raw.chargeDate : undefined,
-      notes: typeof raw.notes === "string" ? raw.notes : undefined,
+        typeof raw.chargeDate === "string" && raw.chargeDate.trim().length > 0
+          ? raw.chargeDate.trim()
+          : undefined,
+      notes: typeof raw.notes === "string" ? normalizeTextInput(raw.notes) ?? undefined : undefined,
     },
   };
 }

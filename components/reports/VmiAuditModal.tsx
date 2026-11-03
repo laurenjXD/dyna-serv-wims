@@ -1,16 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
 import {
   X,
   Clock,
   Download,
-  Building2,
-  Calendar,
-  Layers,
-  ArrowDownRight,
-  ArrowUpRight,
-  ShieldCheck,
 } from "@/components/ui/icons";
 import type { VmiBillingRow } from "./types";
 
@@ -21,15 +14,10 @@ interface VmiAuditModalProps {
 }
 
 export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
-  const [activeAuditTab, setActiveAuditTab] = useState<"daily_cbm" | "lot_dwell">("daily_cbm");
-
   if (!isOpen || !row) return null;
 
-  // Audit rows must come from the VMI ledger and inventory tables. Do not
-  // synthesize movements or lot identities in a financial audit surface.
-  const dailyAuditRows: Array<{
+  const dailyAuditRows = row.dailyLedgerRows.reduce<Array<{
     date: string;
-    dayNumber: number;
     openingCbm: number;
     inboundCbm: number;
     outboundCbm: number;
@@ -37,17 +25,20 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
     rate: number;
     dailyFee: number;
     cumulativeCost: number;
-  }> = [];
-  const lotDwellRows: Array<{
-    lotNumber: string;
-    itemCode: string;
-    itemName: string;
-    intakeDate: string;
-    qty: number;
-    cbm: number;
-    dwellDays: number;
-    status: string;
-  }> = [];
+  }>>((rows, day) => {
+    const cumulativeCost = (rows.at(-1)?.cumulativeCost ?? 0) + day.storageAmountUsd;
+    rows.push({
+      date: day.date,
+      openingCbm: day.beginningCbm,
+      inboundCbm: day.inboundCbm,
+      outboundCbm: day.outboundCbm,
+      closingCbm: day.billedBalanceCbm,
+      rate: day.appliedRateUsd,
+      dailyFee: day.storageAmountUsd,
+      cumulativeCost,
+    });
+    return rows;
+  }, []);
   const rate = row.contractedRatePerCbmDay;
 
   const handleExportAuditCsv = () => {
@@ -129,10 +120,12 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
               <p className="font-label text-[10px] font-bold uppercase tracking-wider text-text-grey">
-                Utilization
+                Contract CBM Threshold
               </p>
               <p className="mt-1 font-mono text-title-sm font-bold text-slate-800">
-                {row.utilizationPct}% <span className="text-xs font-normal text-text-grey">of allocated</span>
+                {row.cbmThresholdType === "none" || row.cbmThresholdCbm === null
+                  ? "None"
+                  : `${row.cbmThresholdType.replaceAll("_", " ")} · ${row.cbmThresholdCbm.toLocaleString()} m³`}
               </p>
             </div>
 
@@ -146,34 +139,9 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
             </div>
           </div>
 
-          {/* Audit Sub-Tabs */}
-          <div className="flex border-b border-slate-200">
-            <button
-              type="button"
-              onClick={() => setActiveAuditTab("daily_cbm")}
-              className={`border-b-2 px-4 py-2 font-label text-xs font-bold transition-all ${
-                activeAuditTab === "daily_cbm"
-                  ? "border-brand-navy text-brand-navy font-extrabold"
-                  : "border-transparent text-text-grey hover:text-slate-900"
-              }`}
-            >
-              Day-by-Day CBM Ledger (30 Days)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveAuditTab("lot_dwell")}
-              className={`border-b-2 px-4 py-2 font-label text-xs font-bold transition-all ${
-                activeAuditTab === "lot_dwell"
-                  ? "border-brand-navy text-brand-navy font-extrabold"
-                  : "border-transparent text-text-grey hover:text-slate-900"
-              }`}
-            >
-              Active Lot Dwell Times ({lotDwellRows.length} Lots)
-            </button>
-          </div>
+          <h4 className="border-b border-slate-200 pb-2 font-label text-xs font-bold text-brand-navy">Day-by-Day CBM Ledger · Current Month</h4>
 
           {/* Content Views */}
-          {activeAuditTab === "daily_cbm" ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -208,45 +176,6 @@ export function VmiAuditModal({ isOpen, onClose, row }: VmiAuditModalProps) {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-[#F8FAFC] text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                    <th className="px-3 py-2.5">Lot Number</th>
-                    <th className="px-3 py-2.5">Item Description</th>
-                    <th className="px-3 py-2.5">Intake Date</th>
-                    <th className="px-3 py-2.5 text-right">Quantity</th>
-                    <th className="px-3 py-2.5 text-right">Volume</th>
-                    <th className="px-3 py-2.5 text-right">Dwell Time</th>
-                    <th className="px-3 py-2.5">Storage Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-mono">
-                  {lotDwellRows.length === 0 ? (
-                    <tr><td colSpan={7} className="px-3 py-8 text-center font-body text-sm text-text-grey">No active lot dwell records are available.</td></tr>
-                  ) : lotDwellRows.map((lot) => (
-                    <tr key={lot.lotNumber} className="hover:bg-blue-50/40 transition-colors">
-                      <td className="px-3 py-2 font-bold text-brand-navy">{lot.lotNumber}</td>
-                      <td className="px-3 py-2 font-body text-slate-800">
-                        <span className="font-mono text-xs font-bold text-slate-700 mr-1">{lot.itemCode}</span>
-                        {lot.itemName}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">{lot.intakeDate}</td>
-                      <td className="px-3 py-2 text-right font-bold">{lot.qty.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right text-text-grey">{lot.cbm} m³</td>
-                      <td className="px-3 py-2 text-right font-bold text-amber-700">{lot.dwellDays} Days</td>
-                      <td className="px-3 py-2">
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                          {lot.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
         {/* Modal Footer */}

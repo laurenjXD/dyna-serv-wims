@@ -182,14 +182,6 @@ export function WarehouseReportsHub({
     setIsPdfPreviewOpen(true);
   };
 
-  // VMI Billing Row PDF
-  const handleGenerateInvoicePdf = (row: VmiBillingRow) => {
-    setPdfModalTitle(`Statement of Account — ${row.clientName}`);
-    setPdfModalSubtitle(`CBM Storage & Consignment Handling for Period (${row.unbilledDays} Unbilled Days)`);
-    setPdfModalRef(`SOA-${row.clientCode}-202608`);
-    setIsPdfPreviewOpen(true);
-  };
-
   const handleAuditDwellTime = (row: VmiBillingRow) => {
     setAuditRow(row);
     setIsAuditModalOpen(true);
@@ -434,7 +426,6 @@ export function WarehouseReportsHub({
           {/* A. VMI Client Storage & CBM Billing Reconciliation */}
           <VmiBillingTable
             initialData={activeVmiBillingRows}
-            onGenerateInvoicePdf={handleGenerateInvoicePdf}
             onAuditDwellTime={handleAuditDwellTime}
           />
 

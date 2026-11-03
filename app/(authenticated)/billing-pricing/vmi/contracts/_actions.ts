@@ -52,6 +52,7 @@ export async function createVmiContractTermsAction(
   }
 
   revalidatePath("/billing-pricing");
+  revalidatePath("/reports");
   return { ok: true };
 }
 
@@ -92,6 +93,7 @@ export async function updateVmiContractTermsAction(
   }
 
   revalidatePath("/billing-pricing");
+  revalidatePath("/reports");
   return { ok: true };
 }
 
@@ -129,6 +131,7 @@ export async function createVmiPermitAction(
   }
 
   revalidatePath("/billing-pricing");
+  revalidatePath("/reports");
   revalidatePath(`/billing-pricing/vmi/permits/${partyId}`);
   return { ok: true };
 }

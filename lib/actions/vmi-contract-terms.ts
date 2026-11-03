@@ -73,6 +73,7 @@ import {
   vmiBillingTimingEnum,
   vmiCbmThresholdTypeEnum,
 } from "@/lib/db/schema/vmi_billing";
+import { isDecimalInput, isIsoDateOrTimestamp } from "@/lib/billing/input-validation";
 
 const defaultRlsDeps: RlsTransactionDeps = {
   getAuthenticatedSession,
@@ -111,8 +112,8 @@ function isValidThresholdType(value: unknown): value is VmiCbmThresholdType {
   );
 }
 
-function isBlank(value: string | undefined | null): boolean {
-  return value === undefined || value === null || value.trim().length === 0;
+function isBlank(value: unknown): boolean {
+  return typeof value !== "string" || value.trim().length === 0;
 }
 
 function toDate(value: unknown): Date {
@@ -247,7 +248,7 @@ function validateCreateInput(
   const raw = input as AnyRecord;
   const errors: string[] = [];
 
-  if (typeof raw.partyId !== "string" || raw.partyId.length === 0) {
+  if (typeof raw.partyId !== "string" || raw.partyId.trim().length === 0) {
     errors.push("party_id_required");
   }
   if (isBlank(raw.storageRatePerCbmDay)) {
@@ -261,6 +262,18 @@ function validateCreateInput(
   }
   if (isBlank(raw.documentationDefaultRateUsd)) {
     errors.push("documentation_default_rate_usd_required");
+  }
+  const numericFields = [
+    ["storage_rate_per_cbm_day_invalid", raw.storageRatePerCbmDay, 10, 6],
+    ["handling_in_rate_per_cbm_invalid", raw.handlingInRatePerCbm, 10, 4],
+    ["handling_out_rate_per_cbm_invalid", raw.handlingOutRatePerCbm, 10, 4],
+    ["documentation_default_rate_usd_invalid", raw.documentationDefaultRateUsd, 10, 4],
+    ["cbm_threshold_invalid", raw.cbmThreshold, 12, 4],
+    ["over_threshold_rate_invalid", raw.overThresholdRate, 10, 6],
+  ] as const;
+  for (const [error, value, precision, scale] of numericFields) {
+    if (value !== undefined && value !== null && typeof value !== "string") errors.push(error);
+    if (!isBlank(value) && !isDecimalInput(value, precision, scale)) errors.push(error);
   }
 
   const billingTiming =
@@ -293,8 +306,9 @@ function validateCreateInput(
 
   const billingCurrency =
     typeof raw.billingCurrency === "string" && raw.billingCurrency.length > 0
-      ? raw.billingCurrency
+      ? raw.billingCurrency.trim().toUpperCase()
       : "USD";
+  if (billingCurrency !== "USD" && billingCurrency !== "PHP") errors.push("invalid_billing_currency");
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -303,15 +317,15 @@ function validateCreateInput(
   return {
     ok: true,
     data: {
-      partyId: raw.partyId,
-      storageRatePerCbmDay: raw.storageRatePerCbmDay,
+      partyId: raw.partyId.trim(),
+      storageRatePerCbmDay: raw.storageRatePerCbmDay.trim(),
       billingTiming: billingTiming as VmiBillingTiming,
       cbmThresholdType: cbmThresholdType as VmiCbmThresholdType,
-      cbmThreshold,
-      overThresholdRate,
-      handlingInRatePerCbm: raw.handlingInRatePerCbm,
-      handlingOutRatePerCbm: raw.handlingOutRatePerCbm,
-      documentationDefaultRateUsd: raw.documentationDefaultRateUsd,
+      cbmThreshold: cbmThreshold?.trim(),
+      overThresholdRate: overThresholdRate?.trim(),
+      handlingInRatePerCbm: raw.handlingInRatePerCbm.trim(),
+      handlingOutRatePerCbm: raw.handlingOutRatePerCbm.trim(),
+      documentationDefaultRateUsd: raw.documentationDefaultRateUsd.trim(),
       billingCurrency,
     },
   };
@@ -428,6 +442,25 @@ function validateUpdateInput(
   ) {
     errors.push("invalid_cbm_threshold_type");
   }
+  const numericFields = [
+    ["storage_rate_per_cbm_day_invalid", raw.storageRatePerCbmDay, 10, 6],
+    ["handling_in_rate_per_cbm_invalid", raw.handlingInRatePerCbm, 10, 4],
+    ["handling_out_rate_per_cbm_invalid", raw.handlingOutRatePerCbm, 10, 4],
+    ["documentation_default_rate_usd_invalid", raw.documentationDefaultRateUsd, 10, 4],
+    ["cbm_threshold_invalid", raw.cbmThreshold, 12, 4],
+    ["over_threshold_rate_invalid", raw.overThresholdRate, 10, 6],
+  ] as const;
+  for (const [error, value, precision, scale] of numericFields) {
+    if (value !== undefined && value !== null && typeof value !== "string") errors.push(error);
+    if (value !== undefined && !isBlank(value) && !isDecimalInput(value, precision, scale)) errors.push(error);
+  }
+  if (raw.billingCurrency !== undefined &&
+      (typeof raw.billingCurrency !== "string" || !["USD", "PHP"].includes(raw.billingCurrency.trim().toUpperCase()))) {
+    errors.push("invalid_billing_currency");
+  }
+  if (raw.effectiveDate !== undefined && raw.effectiveDate !== "" && !isIsoDateOrTimestamp(raw.effectiveDate)) {
+    errors.push("effective_date_invalid");
+  }
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -438,7 +471,7 @@ function validateUpdateInput(
     data: {
       storageRatePerCbmDay:
         typeof raw.storageRatePerCbmDay === "string"
-          ? raw.storageRatePerCbmDay
+          ? raw.storageRatePerCbmDay.trim()
           : undefined,
       billingTiming:
         raw.billingTiming !== undefined
@@ -449,29 +482,29 @@ function validateUpdateInput(
           ? (raw.cbmThresholdType as VmiCbmThresholdType)
           : undefined,
       cbmThreshold:
-        typeof raw.cbmThreshold === "string" ? raw.cbmThreshold : undefined,
+        typeof raw.cbmThreshold === "string" ? raw.cbmThreshold.trim() : undefined,
       overThresholdRate:
         typeof raw.overThresholdRate === "string"
-          ? raw.overThresholdRate
+          ? raw.overThresholdRate.trim()
           : undefined,
       handlingInRatePerCbm:
         typeof raw.handlingInRatePerCbm === "string"
-          ? raw.handlingInRatePerCbm
+          ? raw.handlingInRatePerCbm.trim()
           : undefined,
       handlingOutRatePerCbm:
         typeof raw.handlingOutRatePerCbm === "string"
-          ? raw.handlingOutRatePerCbm
+          ? raw.handlingOutRatePerCbm.trim()
           : undefined,
       documentationDefaultRateUsd:
         typeof raw.documentationDefaultRateUsd === "string"
-          ? raw.documentationDefaultRateUsd
+          ? raw.documentationDefaultRateUsd.trim()
           : undefined,
       billingCurrency:
         typeof raw.billingCurrency === "string"
-          ? raw.billingCurrency
+          ? raw.billingCurrency.trim().toUpperCase()
           : undefined,
       effectiveDate:
-        typeof raw.effectiveDate === "string" ? raw.effectiveDate : undefined,
+        typeof raw.effectiveDate === "string" ? raw.effectiveDate.trim() : undefined,
     },
   };
 }
@@ -501,9 +534,10 @@ export async function updateVmiContractTerms(
   const data = validation.data;
   const userId = perm.context.userId;
 
-  if (typeof partyId !== "string" || partyId.length === 0) {
+  if (typeof partyId !== "string" || partyId.trim().length === 0) {
     return { ok: false, errors: ["party_id_required"] };
   }
+  partyId = partyId.trim();
 
   const rlsResult = await withRlsTransaction(rlsDeps, async (tx) => {
     const db = tx.db as DbLike;

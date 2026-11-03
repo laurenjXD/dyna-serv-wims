@@ -6,7 +6,6 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { closeVmiPeriod, type VmiPeriodCloseResult } from "@/lib/billing/vmi-period-close";
 import { recordVmiPayment, type VmiPaymentType } from "@/lib/billing/vmi-payments";
-import { listParties } from "@/lib/db/queries/parties";
 import { createVmiChargeLine } from "@/lib/actions/vmi-charge-lines";
 import { ensureVmiDocumentArtifacts } from "@/lib/billing/vmi-document-artifacts";
 import { issueVmiPeriodDocuments } from "@/lib/billing/vmi-period-issuance";
@@ -16,6 +15,7 @@ import { eq, inArray } from "drizzle-orm";
 import { parties } from "@/lib/db/schema/parties";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { vmiBillingPeriods } from "@/lib/db/schema/vmi_billing";
+import { escapeHtmlText } from "@/lib/billing/input-validation";
 
 export type PeriodCloseState = {
   ok?: boolean;
@@ -39,21 +39,24 @@ export async function closeVmiPeriodAction(
     return { ok: false, error: "Only an Administrator can create VMI billing drafts." };
   }
 
-  const partyId = String(formData.get("partyId") ?? "");
-  const monthStr = String(formData.get("month") ?? "");
-  const yearStr = String(formData.get("year") ?? "");
+  const partyId = String(formData.get("partyId") ?? "").trim();
+  const monthStr = String(formData.get("month") ?? "").trim();
+  const yearStr = String(formData.get("year") ?? "").trim();
 
   if (!partyId) return { ok: false, error: "Organization is required." };
-  const month = parseInt(monthStr, 10);
-  const year = parseInt(yearStr, 10);
-
-  if (isNaN(month) || isNaN(year)) {
+  if (!/^(?:[0-9]|1[01])$/.test(monthStr) || !/^\d{4}$/.test(yearStr)) {
     return { ok: false, error: "Valid month and year are required." };
   }
+  const month = Number(monthStr);
+  const year = Number(yearStr);
+  if (year < 2000 || year > 2100) return { ok: false, error: "Year must be between 2000 and 2100." };
 
   // Look up party code
-  const partiesResult = await listParties(db, { limit: 100 });
-  const party = partiesResult.rows.find((p) => p.id === partyId);
+  const [party] = await db
+    .select({ id: parties.id, code: parties.code })
+    .from(parties)
+    .where(eq(parties.id, partyId))
+    .limit(1);
   if (!party) return { ok: false, error: "Selected Organization not found." };
 
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -93,6 +96,7 @@ export async function closeVmiPeriodAction(
     }
 
     revalidatePath("/billing-pricing");
+    revalidatePath("/reports");
     revalidatePath(`/billing-pricing/vmi/periods/${result.id}`);
     return { ok: true, result, documentWarning };
   } catch (err) {
@@ -133,7 +137,9 @@ export async function redeliverVmiDocumentsAction(_prev: VmiRedeliveryState, for
     const { Resend } = await import("resend");
     const from = process.env.RESEND_FROM_OPERATIONS ?? process.env.RESEND_FROM_EMAIL;
     if (!from) return { ok: false, error: "RESEND_FROM_EMAIL is not configured." };
-    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to: [period.email], subject: `VMI billing documents — ${period.periodNumber}`, html: `<p>Dear ${period.partyName},</p><p>Your issued VMI billing documents for <strong>${period.periodNumber}</strong> are attached.</p><p>Regards,<br/>Dyna-Serv Operations Team</p>`, attachments });
+    const safePartyName = escapeHtmlText(period.partyName);
+    const safePeriodNumber = escapeHtmlText(period.periodNumber);
+    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to: [period.email], subject: `VMI billing documents — ${period.periodNumber}`, html: `<p>Dear ${safePartyName},</p><p>Your issued VMI billing documents for <strong>${safePeriodNumber}</strong> are attached.</p><p>Regards,<br/>Dyna-Serv Operations Team</p>`, attachments });
     if (sent.error) return { ok: false, error: sent.error.message };
     return { ok: true };
   } catch (cause) { return { ok: false, error: cause instanceof Error ? cause.message : "Unable to redeliver documents." }; }
@@ -155,7 +161,9 @@ export async function correctVmiPeriodAction(_prev: VmiPeriodCorrectionState, fo
     });
     revalidatePath("/billing-pricing");
     revalidatePath(`/billing-pricing/vmi/periods/${periodId}`);
+    revalidatePath("/reports");
     revalidatePath(`/billing-pricing/vmi/periods/${replacement.id}`);
+    revalidatePath("/reports");
     return { ok: true, replacementId: replacement.id };
   } catch (cause) { return { ok: false, error: cause instanceof Error ? cause.message : "Unable to create correction." }; }
 }
@@ -180,6 +188,7 @@ export async function issueVmiPeriodAction(
     revalidatePath("/billing-pricing");
     revalidatePath(`/billing-pricing/vmi/periods/${periodId}`);
     revalidatePath("/documents");
+    revalidatePath("/reports");
     return { ok: true };
   } catch (cause) {
     return { ok: false, error: cause instanceof Error ? cause.message : "Unable to issue the billing period." };
@@ -201,12 +210,12 @@ export async function recordVmiPaymentAction(
     return { ok: false, error: "Only an Administrator can record billing payments." };
   }
 
-  const partyId = String(formData.get("partyId") ?? "");
-  const periodId = String(formData.get("periodId") ?? "");
-  const amountUsd = String(formData.get("amountUsd") ?? "");
-  const paymentDate = String(formData.get("paymentDate") ?? "");
-  const type = String(formData.get("type") ?? "payment") as VmiPaymentType;
-  const notes = String(formData.get("notes") ?? "");
+  const partyId = String(formData.get("partyId") ?? "").trim();
+  const periodId = String(formData.get("periodId") ?? "").trim();
+  const amountUsd = String(formData.get("amountUsd") ?? "").trim();
+  const paymentDate = String(formData.get("paymentDate") ?? "").trim();
+  const type = String(formData.get("type") ?? "payment").trim() as VmiPaymentType;
+  const notes = String(formData.get("notes") ?? "").trim();
 
   try {
     const result = await recordVmiPayment(db, {
@@ -225,6 +234,7 @@ export async function recordVmiPaymentAction(
 
     revalidatePath("/billing-pricing");
     revalidatePath("/billing-pricing/soa");
+    revalidatePath("/reports");
     return { ok: true, paymentId: result.paymentId };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Payment recording failed.";
@@ -243,7 +253,7 @@ export async function createVmiChargeLineAction(
   formData: FormData,
 ): Promise<VmiChargeLineState> {
   const resolver = await createPageResolver();
-  const partyId = String(formData.get("partyId") ?? "");
+  const partyId = String(formData.get("partyId") ?? "").trim();
   const result = await createVmiChargeLine(resolver, {
     partyId,
     acknowledgementReceiptId: String(formData.get("acknowledgementReceiptId") ?? ""),
@@ -259,5 +269,6 @@ export async function createVmiChargeLineAction(
 
   revalidatePath(`/billing-pricing/vmi/periods/${formData.get("periodId") ?? ""}`);
   revalidatePath("/billing-pricing");
+  revalidatePath("/reports");
   return { ok: true, chargeLineId: result.chargeLine.id };
 }

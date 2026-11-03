@@ -32,13 +32,25 @@ export interface VmiBillingRow {
   id: string;
   clientName: string;
   clientCode: string;
-  allocatedSpaceCbm: number;
+  cbmThresholdType: "none" | "minimum_billable" | "included_allowance";
+  cbmThresholdCbm: number | null;
   occupiedCbm: number;
-  utilizationPct: number;
   contractedRatePerCbmDay: number;
   mtdAccruedStorage: number;
   unbilledDays: number;
-  billingStatus: "Ready to Invoice" | "Draft Generated" | "Paid";
+  billingStatus: "No Data" | "Ready to Invoice" | "Draft Generated" | "Issued" | "Paid" | "Credit Balance";
+  currentPeriodNumber: string | null;
+  currentPeriodTotalUsd: number | null;
+  soaBalanceUsd: number | null;
+  dailyLedgerRows: Array<{
+    date: string;
+    beginningCbm: number;
+    inboundCbm: number;
+    outboundCbm: number;
+    billedBalanceCbm: number;
+    appliedRateUsd: number;
+    storageAmountUsd: number;
+  }>;
   contactPerson: string;
   currency: string;
 }

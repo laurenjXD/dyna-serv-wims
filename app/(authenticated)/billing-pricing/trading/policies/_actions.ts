@@ -55,6 +55,7 @@ export async function createTradingPolicyAction(
 
   revalidatePath("/billing-pricing");
   revalidatePath("/billing-pricing/trading/policies");
+  revalidatePath("/reports");
   return { ok: true };
 }
 
@@ -95,5 +96,6 @@ export async function updateTradingPolicyAction(
 
   revalidatePath("/billing-pricing");
   revalidatePath("/billing-pricing/trading/policies");
+  revalidatePath("/reports");
   return { ok: true };
 }
