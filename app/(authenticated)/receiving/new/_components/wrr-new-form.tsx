@@ -15,6 +15,7 @@
 //     design — `cipl-documents` bucket, object path convention)
 
 import { useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
@@ -36,6 +37,20 @@ function getBusinessRoleLabel(party: SupplierPartyOption): string {
     .map((role) => BUSINESS_ROLE_LABELS[role] ?? role)
     .filter(Boolean)
     .join(" / ") || "Organization";
+}
+
+function CreateWrrSubmitButton({ offline, disabled }: { offline: boolean; disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled || offline || pending}
+      className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {offline ? "Reconnect to create WRR" : pending ? "Creating WRR…" : "Create Staged WRR"}
+    </button>
+  );
 }
 
 interface WrrNewFormProps {
@@ -374,13 +389,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
 
       {/* Form actions */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={vendorParties.length === 0 || offline}
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
-        >
-          {offline ? "Reconnect to create WRR" : "Create Staged WRR"}
-        </button>
+        <CreateWrrSubmitButton offline={offline} disabled={vendorParties.length === 0} />
         <Link
           href="/receiving"
           className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-surface-white px-6 font-label text-label text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"

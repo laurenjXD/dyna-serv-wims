@@ -434,7 +434,7 @@ export async function createWrr(
         }
       }
 
-      const [inserted] = await db
+      const insertedRows = await db
         .insert(wrrDocuments)
         .values({
           // Reuses the client-generated id (see CreateWrrInput's doc comment
@@ -454,7 +454,31 @@ export async function createWrr(
           ipNumber: data.ipNumber ?? null,
           mawbMblNumber: data.mawbMblNumber ?? null,
         })
+        // The form generates a stable client-side WRR id so an uploaded CIPL
+        // can be associated with the eventual document. Treat a repeated
+        // submit of that same id as an idempotent retry instead of surfacing
+        // a duplicate-key error after the first request already committed.
+        .onConflictDoNothing({ target: wrrDocuments.id })
         .returning({ id: wrrDocuments.id });
+
+      if (insertedRows.length === 0) {
+        if (!data.id) {
+          return { ok: false, errors: ["The WRR could not be created. Refresh the page and try again."] } satisfies CreateWrrActionResult;
+        }
+
+        const existingRows = await db
+          .select({ id: wrrDocuments.id, stagedByUserId: wrrDocuments.stagedByUserId, status: wrrDocuments.status })
+          .from(wrrDocuments)
+          .where(eq(wrrDocuments.id, data.id))
+          .limit(1);
+        const existing = existingRows[0] as { id: string; stagedByUserId: string; status: string } | undefined;
+        if (existing?.stagedByUserId === userId && existing.status !== "cancelled") {
+          return { ok: true, wrrId: existing.id } satisfies CreateWrrActionResult;
+        }
+        return { ok: false, errors: ["This WRR draft already exists. Refresh the page and create a new form."] } satisfies CreateWrrActionResult;
+      }
+
+      const [inserted] = insertedRows;
 
       // A line's itemCode is a free-text field on the create-WRR form — it is
       // never checked against the items catalog at entry time. Without this

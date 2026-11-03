@@ -197,9 +197,11 @@ function makeReceivingDb(
     insert: vi.fn().mockImplementation(() => ({
       values: vi.fn().mockImplementation((row: unknown) => {
         inserted.push(row);
-        return {
+        const query = {
+          onConflictDoNothing: vi.fn(() => query),
           returning: vi.fn().mockResolvedValue([{ id: "new-wrr-uuid" }]),
         };
+        return query;
       }),
     })),
 
@@ -527,6 +529,42 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       ok: false,
       errors: [expect.stringMatching(/already submitted|new form/i)],
     });
+  });
+
+  it("treats a repeated submit of the same client-generated WRR id as success", async () => {
+    const existingId = "22222222-2222-2222-2222-222222222222";
+    const db = makeReceivingDb([{
+      id: existingId,
+      stagedByUserId: "user-uuid-staff",
+      status: "staged_pending_arrival",
+    }], [{
+      id: "item-master-uuid-1",
+      defaultSupplierPartyId: "party-uuid-vendor",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+      uom: "piece",
+    }]);
+    db.insert.mockImplementationOnce(() => {
+      const query = {
+        values: vi.fn().mockImplementation((row: unknown) => {
+          db._inserted.push(row);
+          return query;
+        }),
+        onConflictDoNothing: vi.fn(() => query),
+        returning: vi.fn().mockResolvedValue([]),
+      };
+      return query;
+    });
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      { ...validCreateWrrInput(), id: existingId },
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, wrrId: existingId });
+    expect(db.insert).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -142,16 +142,6 @@ export function PutawayLocationSelector({
     <div className="flex flex-col gap-4">
       <input type="hidden" name="allocations" value={JSON.stringify(allocations)} />
       <input type="hidden" name="unitLocationIds" value={JSON.stringify(locationsBySlot)} />
-      <input
-        type="text"
-        name="allocationReady"
-        value={readyToStore ? "ready" : ""}
-        readOnly
-        required
-        tabIndex={-1}
-        aria-hidden="true"
-        className="sr-only"
-      />
 
       <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

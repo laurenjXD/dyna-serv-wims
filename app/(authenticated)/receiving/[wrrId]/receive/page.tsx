@@ -297,13 +297,25 @@ export default async function ReceiveFloorPage({
         `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
       );
     }
-    const actionResolver = await createPageResolver();
-    const commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
-      locationId,
-      allocations,
-      unitLocationIds,
-      presenceAttested,
-    });
+    let commitResult: Awaited<ReturnType<typeof commitWrrLine>>;
+    try {
+      const actionResolver = await createPageResolver();
+      commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
+        locationId,
+        allocations,
+        unitLocationIds,
+        presenceAttested,
+      });
+    } catch (error) {
+      console.error("Unable to submit receiving line from floor form", {
+        wrrId,
+        wrrItemId,
+        error,
+      });
+      redirect(
+        `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("commit_failed")}`
+      );
+    }
     if (commitResult.ok) {
       redirect(
         `/receiving/${wrrId}/receive?stage=scan&result=committed&line=${encodeURIComponent(wrrItemId)}`
@@ -405,10 +417,9 @@ export default async function ReceiveFloorPage({
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
-            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex min-h-14 items-center gap-1 font-body text-body-sm text-text-grey transition-colors hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
-            {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
-            <ArrowLeft size={18} aria-hidden="true" />
+            <ArrowLeft size={16} className="mr-1" aria-hidden="true" />
             <span>Back to WRR</span>
           </Link>
           {/* WRR reference — Roboto Mono per §9 */}
