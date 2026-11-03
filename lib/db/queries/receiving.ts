@@ -152,6 +152,11 @@ type RawJoinRow = {
  * Orders by createdAt ASC (oldest first).
  * Returns { rows, total } where total is the unpaginated count.
  *
+ * The total is returned by the same query using COUNT(*) OVER (). Keeping the
+ * page rows and count in one round trip matters on the Supabase transaction
+ * pooler: issuing two concurrent requests here can contend for a short-lived
+ * serverless connection and make the receiving queue appear to time out.
+ *
  * Authorization is enforced at the call site — not re-checked here.
  */
 export async function listWrrDocuments(
@@ -160,6 +165,7 @@ export async function listWrrDocuments(
 ): Promise<{ rows: WrrDocumentRow[]; total: number }> {
   // Left-join to parties to resolve the human-readable vendor name for the
   // list-view display. getWrrDocument uses the same join for the detail view.
+  // COUNT(*) OVER () preserves the unpaginated total without a second query.
   const dataBase = db
     .select({
       id: wrrDocuments.id,
@@ -172,28 +178,34 @@ export async function listWrrDocuments(
       stagedByUserId: wrrDocuments.stagedByUserId,
       createdAt: wrrDocuments.createdAt,
       confirmedAt: wrrDocuments.confirmedAt,
+      totalCount: sql<string>`count(*) over ()`,
     })
     .from(wrrDocuments)
     .leftJoin(partiesTable, eq(partiesTable.id, wrrDocuments.vendorPartyId));
 
-  const countBase = db
-    .select({ count: sql<string>`count(*)` })
-    .from(wrrDocuments);
-
   if (opts.status) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const whereExpr = eq(wrrDocuments.status, opts.status as any);
-    const [rows, countResult] = await Promise.all([
-      dataBase.where(whereExpr).orderBy(asc(wrrDocuments.createdAt)).limit(opts.limit).offset(opts.offset),
-      countBase.where(whereExpr),
-    ]);
-    return { rows: rows as WrrDocumentRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
+    const resultRows = await dataBase
+      .where(whereExpr)
+      .orderBy(asc(wrrDocuments.createdAt))
+      .limit(opts.limit)
+      .offset(opts.offset);
+    const rows = resultRows as Array<WrrDocumentRow & { totalCount: string | number }>;
+    return {
+      rows: rows as WrrDocumentRow[],
+      total: rows.length > 0 ? Number(rows[0].totalCount) : 0,
+    };
   } else {
-    const [rows, countResult] = await Promise.all([
-      dataBase.orderBy(asc(wrrDocuments.createdAt)).limit(opts.limit).offset(opts.offset),
-      countBase,
-    ]);
-    return { rows: rows as WrrDocumentRow[], total: Number((countResult as Array<{ count: string }>)[0].count) };
+    const resultRows = await dataBase
+      .orderBy(asc(wrrDocuments.createdAt))
+      .limit(opts.limit)
+      .offset(opts.offset);
+    const rows = resultRows as Array<WrrDocumentRow & { totalCount: string | number }>;
+    return {
+      rows: rows as WrrDocumentRow[],
+      total: rows.length > 0 ? Number(rows[0].totalCount) : 0,
+    };
   }
 }
 

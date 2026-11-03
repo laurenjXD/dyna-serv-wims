@@ -58,13 +58,11 @@
 // ---------------------------------------------------------------------------
 // Mock pattern used in this file:
 //
-// listWrrDocuments issues two db.select() calls:
-//   1. Data query  — fluent chain ending in .offset() which resolves to rows.
-//   2. Count query — thenable chain resolving to [{ count: String(n) }].
+// listWrrDocuments issues one db.select() call. The returned rows include a
+// windowed totalCount field, so the page and unpaginated count share a query.
 //
-// makeDataChain(rows)   — fluent chain; .offset() resolves to rows.
-// makeCountChain(n)     — thenable chain resolving to [{ count: String(n) }].
-// makeListDb(rows, total) — wires both via mockReturnValueOnce.
+// makeDataChain(rows) — fluent chain; .offset() resolves to rows.
+// makeListDb(rows, total) — adds the windowed totalCount to each fixture row.
 //
 // getWrrDocument issues one db.select() that left-joins wrr_documents to
 // wrr_items; raw join rows (one per item, or one null-item row when no items
@@ -102,27 +100,14 @@ function makeDataChain(resolvedRows: unknown[]) {
   return chain;
 }
 
-// Count chain: thenable chain resolving to [{ count: String(n) }].
-function makeCountChain(count: number) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: Record<string, any> = {};
-  for (const method of ["from", "where", "leftJoin", "innerJoin", "orderBy"]) {
-    chain[method] = vi.fn(() => chain);
-  }
-  const resolved = Promise.resolve([{ count: String(count) }]);
-  chain["then"] = resolved.then.bind(resolved) as AnyFn;
-  chain["catch"] = resolved.catch.bind(resolved) as AnyFn;
-  chain["finally"] = resolved.finally.bind(resolved) as AnyFn;
-  return chain;
-}
-
-// Wires one data + one count query for listWrrDocuments.
+// Wires the single data/count query for listWrrDocuments.
 function makeListDb(dataRows: unknown[], total: number) {
+  const rows = (dataRows as Array<Record<string, unknown>>).map((row) => ({
+    ...row,
+    totalCount: String(total),
+  }));
   return {
-    select: vi
-      .fn()
-      .mockReturnValueOnce(makeDataChain(dataRows))
-      .mockReturnValueOnce(makeCountChain(total)),
+    select: vi.fn().mockReturnValueOnce(makeDataChain(rows)),
   };
 }
 
@@ -250,10 +235,7 @@ describe("listWrrDocuments — status filter (R2.5, design.md §4)", () => {
   it("calls where() on the data chain when a status filter is supplied (no full-table scan without filter application)", async () => {
     const dataChain = makeDataChain([]);
     const db = {
-      select: vi
-        .fn()
-        .mockReturnValueOnce(dataChain)
-        .mockReturnValueOnce(makeCountChain(0)),
+      select: vi.fn().mockReturnValueOnce(dataChain),
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -320,10 +302,7 @@ describe("listWrrDocuments — pagination (R2.5, design.md §4)", () => {
   it("applies the provided limit and offset via the Drizzle chain", async () => {
     const dataChain = makeDataChain([]);
     const db = {
-      select: vi
-        .fn()
-        .mockReturnValueOnce(dataChain)
-        .mockReturnValueOnce(makeCountChain(0)),
+      select: vi.fn().mockReturnValueOnce(dataChain),
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
