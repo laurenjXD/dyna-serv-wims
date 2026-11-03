@@ -98,7 +98,7 @@ const config: Config = {
         full: "9999px",
       },
       maxWidth: {
-        container: "1280px",
+        container: "100%",
       },
       boxShadow: {
         "elevation-1": "0 1px 2px rgba(15,23,42,0.08)",
