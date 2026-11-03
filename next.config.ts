@@ -30,7 +30,16 @@ const nextConfig: NextConfig = {
       });
     }
 
-    return [{ source: "/(.*)", headers }];
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          ...headers,
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+      { source: "/(.*)", headers },
+    ];
   },
 };
 

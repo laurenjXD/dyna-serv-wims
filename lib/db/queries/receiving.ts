@@ -76,6 +76,8 @@ export type WrrItemRow = {
   // via a join on wrr_items.item_id. Null when the line's item is not yet
   // enrolled, matching the itemId nullability pattern above.
   itemCode: string | null;
+  /** Canonical enrolled barcode used by the offline floor matcher. */
+  itemBarcode?: string | null;
   // items.name — resolved via the same join as itemCode above. Required by
   // design.md §5.3's printed per-line field contract ("item name/description").
   itemName: string | null;
@@ -127,6 +129,7 @@ type RawJoinRow = {
   itemDisposition: string | null;
   itemItemId: string | null;
   itemItemCode: string | null;
+  itemItemBarcode?: string | null;
   itemItemName: string | null;
   itemSupplierItemCode: string | null;
   itemCustomerItemCode: string | null;
@@ -285,6 +288,7 @@ export async function getWrrDocument(
       itemDisposition: wrrItems.disposition,
       itemItemId: wrrItems.itemId,
       itemItemCode: itemsTable.code,
+      itemItemBarcode: itemsTable.barcode,
       itemItemName: itemsTable.name,
       itemSupplierItemCode: wrrItems.itemCode,
       itemCustomerItemCode: wrrItems.customerItemCode,
@@ -323,6 +327,7 @@ export async function getWrrDocument(
       disposition: row.itemDisposition ?? "store",
       itemId: row.itemItemId,
       itemCode: row.itemItemCode ?? row.itemSupplierItemCode,
+      itemBarcode: row.itemItemBarcode ?? row.itemItemCode ?? row.itemSupplierItemCode,
       itemName: row.itemItemName ?? row.itemSupplierItemCode,
       supplierItemCode: row.itemSupplierItemCode,
       customerItemCode: row.itemCustomerItemCode,

@@ -163,6 +163,13 @@ function makeSelectChain(rows: unknown[]) {
 function makeReceivingDb(
   wrrRows: AnyRecord[],
   wrrItemRows: AnyRecord[] = [],
+  organizationRows: AnyRecord[] = [{
+    id: "party-uuid-vendor",
+    isActive: true,
+    role: "customer",
+    relationship: "vmi_customer",
+    relationshipIsActive: true,
+  }],
 ) {
   const inserted: unknown[] = [];
   const updated: unknown[] = [];
@@ -177,13 +184,7 @@ function makeReceivingDb(
       const chain = makeSelectChain(allRows);
       chain.from.mockImplementation((table: Record<PropertyKey, unknown>) => {
         if (table[Symbol.for("drizzle:Name")] === "parties") {
-          return makeSelectChain([{
-            id: "party-uuid-vendor",
-            isActive: true,
-            role: "customer",
-            relationship: "vmi_customer",
-            relationshipIsActive: true,
-          }]);
+          return makeSelectChain(organizationRows);
         }
         if (table[Symbol.for("drizzle:Name")] === "locations") {
           return makeSelectChain([{ id: "location-storage-uuid" }]);
@@ -196,9 +197,11 @@ function makeReceivingDb(
     insert: vi.fn().mockImplementation(() => ({
       values: vi.fn().mockImplementation((row: unknown) => {
         inserted.push(row);
-        return {
+        const query = {
+          onConflictDoNothing: vi.fn(() => query),
           returning: vi.fn().mockResolvedValue([{ id: "new-wrr-uuid" }]),
         };
+        return query;
       }),
     })),
 
@@ -428,6 +431,38 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
     expect(insertedLines[0].itemId).toBe("resolved-item-uuid");
   });
 
+  it("allows an imported legacy item with no default organization when the WRR supplies the source organization", async () => {
+    const db = makeReceivingDb([], [{
+      id: "legacy-item-uuid",
+      defaultSupplierPartyId: null,
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+      uom: "piece",
+    }]);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      {
+        vendorPartyId: "party-uuid-vendor",
+        flowType: "vmi",
+        lines: [{
+          lotNumber: "LOT-LEGACY-001",
+          expectedQty: 10,
+          unitCbm: 0.5,
+          uom: "CTN",
+          disposition: "store",
+          itemCode: "LEGACY-PART-001",
+        }],
+      },
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result.ok).toBe(true);
+    const insertedLines = db._inserted[1] as AnyRecord[];
+    expect(insertedLines[0].itemId).toBe("legacy-item-uuid");
+  });
+
   it("rejects a selected item that is not assigned to the WRR organization", async () => {
     const db = makeReceivingDb([], [{
       id: "item-master-uuid-1",
@@ -449,6 +484,87 @@ describe("createWrr — success (R1.1, R1.4, design.md §4)", () => {
       errors: [expect.stringMatching(/not assigned to this organization/i)],
     });
     expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns a recovery message when the selected organization became inactive before submit", async () => {
+    const db = makeReceivingDb([], [], []);
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      validCreateWrrInput(),
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringMatching(/inactive|active organization/i)],
+    });
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("does not mislabel a duplicate WRR draft as an inactive organization", async () => {
+    const db = makeReceivingDb([], [{
+      id: "item-master-uuid-1",
+      defaultSupplierPartyId: "party-uuid-vendor",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+      uom: "piece",
+    }]);
+    const databaseError = Object.assign(new Error("duplicate key value violates unique constraint \"wrr_documents_pkey\""), {
+      table_name: "wrr_documents",
+      constraint_name: "wrr_documents_pkey",
+    });
+    db.insert.mockImplementationOnce(() => {
+      throw Object.assign(new Error("Failed query includes vendor_party_id"), { cause: databaseError });
+    });
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      validCreateWrrInput(),
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errors: [expect.stringMatching(/already submitted|new form/i)],
+    });
+  });
+
+  it("treats a repeated submit of the same client-generated WRR id as success", async () => {
+    const existingId = "22222222-2222-2222-2222-222222222222";
+    const db = makeReceivingDb([{
+      id: existingId,
+      stagedByUserId: "user-uuid-staff",
+      status: "staged_pending_arrival",
+    }], [{
+      id: "item-master-uuid-1",
+      defaultSupplierPartyId: "party-uuid-vendor",
+      isActive: true,
+      isPerishable: false,
+      spq: 1,
+      uom: "piece",
+    }]);
+    db.insert.mockImplementationOnce(() => {
+      const query = {
+        values: vi.fn().mockImplementation((row: unknown) => {
+          db._inserted.push(row);
+          return query;
+        }),
+        onConflictDoNothing: vi.fn(() => query),
+        returning: vi.fn().mockResolvedValue([]),
+      };
+      return query;
+    });
+
+    const result = await createWrr(
+      authorizedConfirmResolver(),
+      { ...validCreateWrrInput(), id: existingId },
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, wrrId: existingId });
+    expect(db.insert).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -659,6 +775,32 @@ describe("recordScan — valid scan (R3.1, R3.2, design.md §5.2, §6)", () => {
     );
 
     expect(result.ok).toBe(true);
+    expect(db.update).toHaveBeenCalled();
+  });
+
+  it("matches an enrolled item's alternate DSGC label identity", async () => {
+    const line = wrrItemRow({
+      barcode: "MASTER-BARCODE",
+      expectedQty: 90,
+      scannedQty: 0,
+      items: {
+        id: "item-master-uuid-1",
+        barcode: "MASTER-BARCODE",
+        dsgcItemNumber: "101379104",
+        spq: 30,
+        flowType: "vmi",
+      },
+    });
+    const db = makeReceivingDb([wrrDocRow()], [line]);
+
+    const result = await recordScan(
+      scanOnlyResolver(),
+      "wrr-uuid-existing",
+      "101379104",
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, remainingQty: 0, disposition: "store" });
     expect(db.update).toHaveBeenCalled();
   });
 });

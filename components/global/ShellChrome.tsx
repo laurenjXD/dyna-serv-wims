@@ -12,6 +12,7 @@ import { resolveSessionPresentationTier } from "@/lib/shell/surface";
 import { isScanLoopRoute } from "@/lib/shell/scan-loop";
 import { useShellSidebar, useDesktopSidebar } from "@/lib/shell/state";
 import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
+import { useOfflineStatus } from "@/lib/offline/provider";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
 import { filterVisibleRoutes, selectRoutesForPresentation } from "@/lib/shell/navigation";
@@ -65,6 +66,15 @@ export function ShellChrome({ children }: { children: ReactNode }) {
   const { isOpen, toggle, close } = useShellSidebar();
   const { isOpen: isDesktopOpen, toggle: toggleDesktop } = useDesktopSidebar();
   const connectivityStatus = useConnectivityStatus();
+  const offlineStatus = useOfflineStatus();
+  const effectiveConnectivity = offlineStatus.connectivity === "checking"
+    ? connectivityStatus
+    : offlineStatus.connectivity;
+  const statusLabel = offlineStatus.sync === "syncing"
+    ? "Syncing queued scans…"
+    : effectiveConnectivity === "offline"
+      ? "Offline"
+      : CONNECTIVITY_LABEL[connectivityStatus];
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [organizationScope, setOrganizationScope] = useState<string | null>(null);
@@ -340,17 +350,17 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           </span>
           <span
             data-testid="connectivity-indicator-mobile"
-            aria-label={CONNECTIVITY_LABEL[connectivityStatus]}
+            aria-label={statusLabel}
             className="ml-auto flex shrink-0 items-center"
           >
-            {connectivityStatus === "offline" ? (
+            {effectiveConnectivity === "offline" ? (
               <WifiOff size={18} aria-hidden="true" className="text-warning" />
             ) : (
               <Wifi
                 size={18}
                 aria-hidden="true"
                 className={
-                  connectivityStatus === "online"
+                  effectiveConnectivity === "online" && offlineStatus.sync !== "syncing"
                     ? "text-status-available"
                     : "text-status-neutral"
                 }
@@ -444,20 +454,20 @@ export function ShellChrome({ children }: { children: ReactNode }) {
               data-testid="connectivity-indicator"
               className="flex shrink-0 items-center gap-1.5 rounded-full border border-status-available/20 bg-status-available/[0.06] px-3 py-1.5 text-body-md font-bold text-text-primary shadow-sm"
             >
-              {connectivityStatus === "offline" ? (
+              {effectiveConnectivity === "offline" ? (
                 <WifiOff size={18} aria-hidden="true" className="text-warning" />
               ) : (
                 <Wifi
                   size={18}
                   aria-hidden="true"
                   className={
-                    connectivityStatus === "online"
+                    effectiveConnectivity === "online" && offlineStatus.sync !== "syncing"
                       ? "text-status-available"
                       : "text-status-neutral"
                   }
                 />
               )}
-              {CONNECTIVITY_LABEL[connectivityStatus]}
+              {statusLabel}
             </span>
             <button
               ref={desktopBellRef}

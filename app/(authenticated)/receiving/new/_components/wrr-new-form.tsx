@@ -15,11 +15,14 @@
 //     design — `cipl-documents` bucket, object path convention)
 
 import { useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
 import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search } from "@/components/ui/icons";
+import { useOfflineStatus } from "@/lib/offline/provider";
 
 const BUSINESS_ROLE_LABELS: Record<string, string> = {
   supplier: "Supplier",
@@ -36,6 +39,20 @@ function getBusinessRoleLabel(party: SupplierPartyOption): string {
     .join(" / ") || "Organization";
 }
 
+function CreateWrrSubmitButton({ offline, disabled }: { offline: boolean; disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled || offline || pending}
+      className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {offline ? "Reconnect to create WRR" : pending ? "Creating WRR…" : "Create Staged WRR"}
+    </button>
+  );
+}
+
 interface WrrNewFormProps {
   action: (formData: FormData) => void;
   vendorParties: SupplierPartyOption[];
@@ -43,6 +60,7 @@ interface WrrNewFormProps {
 }
 
 export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormProps) {
+  const router = useRouter();
   const [flowType, setFlowType] = useState("");
   const [vendorPartyId, setVendorPartyId] = useState("");
   const [vendorSearch, setVendorSearch] = useState("");
@@ -54,6 +72,8 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
   const [wrrId] = useState(() => crypto.randomUUID());
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedLines, setImportedLines] = useState<ImportedWrrLine[]>([]);
+  const { connectivity } = useOfflineStatus();
+  const offline = connectivity === "offline";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -175,17 +195,19 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {/* Organization — dropdown of active receiving source parties */}
           <div>
-            <label
-              htmlFor="vendorPartyId"
-              className="block font-label text-label text-text-grey"
-            >
-              Organization{" "}
-              <span aria-hidden="true" className="text-brand-red">
-                *
-              </span>
-              <span className="sr-only">(required)</span>
-            </label>
-            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
+            <div className="flex h-7 items-center">
+              <label
+                htmlFor="vendorPartyId"
+                className="block font-label text-label text-text-grey"
+              >
+                Organization{" "}
+                <span aria-hidden="true" className="text-brand-red">
+                  *
+                </span>
+                <span className="sr-only">(required)</span>
+              </label>
+            </div>
+            <p className="mt-1 h-10 overflow-hidden font-body text-xs leading-5 text-text-grey">Select the organization named on the CIPL; the relationship label identifies VMI Customer or Trading Supplier.</p>
             <div className="relative mt-1" ref={vendorSearchRef}>
               <input type="hidden" name="vendorPartyId" value={vendorPartyId} />
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-text-grey" />
@@ -268,7 +290,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
 
           {/* Inventory Model — inherited from the selected Organization */}
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex h-7 items-center justify-between gap-3">
               <label
                 htmlFor="flowType"
                 className="block font-label text-label text-text-grey"
@@ -283,7 +305,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
                 Inherited from organization
               </span>
             </div>
-            <p className="mt-1 min-h-[2.5rem] font-body text-xs leading-5 text-text-grey">
+            <p className="mt-1 h-10 overflow-hidden font-body text-xs leading-5 text-text-grey">
               The Inventory Model is inherited from the organization&apos;s active receiving relationship and cannot be overridden here.
             </p>
             <div className={`mt-1 flex h-11 items-center justify-between rounded-lg border px-3 font-body text-body-md ${inheritedModel ? "border-emerald-200 bg-emerald-50/60 text-on-surface" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
@@ -357,19 +379,19 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
           </p>
         </div>
         <div>
-          <WrrLineItems flowType={flowType} vendorPartyId={vendorPartyId} itemOptions={itemOptions} importedLines={importedLines} />
+          <WrrLineItems
+            flowType={flowType}
+            vendorPartyId={vendorPartyId}
+            itemOptions={itemOptions}
+            importedLines={importedLines}
+            onRefresh={() => router.refresh()}
+          />
         </div>
       </div>
 
       {/* Form actions */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={vendorParties.length === 0}
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-navy px-7 font-label text-label font-bold text-surface-white shadow-sm hover:bg-brand-navy/90 motion-safe:active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-brand-navy disabled:opacity-50"
-        >
-          Create Staged WRR
-        </button>
+        <CreateWrrSubmitButton offline={offline} disabled={vendorParties.length === 0} />
         <Link
           href="/receiving"
           className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-surface-white px-6 font-label text-label text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy"

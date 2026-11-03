@@ -444,8 +444,8 @@ export async function commitWithdrawal(
       }
       const itemCodeIsProvisional =
         (data.flowType === "trading" || data.flowType === "supplies")
-          ? !item.dsgcItemNumber
-          : !item.supplierItemCode;
+          ? !item.dsgcItemNumber?.trim()
+          : !item.supplierItemCode?.trim();
       if (itemCodeIsProvisional) {
         throw new Error("provisional_item_code");
       }
@@ -475,7 +475,11 @@ export async function commitWithdrawal(
             ${overridePickListId}::uuid
           )
         `);
-        verifiedLines.push({ ...selected, qty: requestedQty });
+        verifiedLines.push({
+          ...selected,
+          qty: requestedQty,
+          customerItemCode: requestedLine.customerItemCode ?? selected.customerItemCode,
+        });
         continue;
       }
 
@@ -524,7 +528,16 @@ export async function commitWithdrawal(
             row.locationId === allocatedLine.locationId,
         );
         if (!source) throw new Error("unable_to_reserve_stock");
-        verifiedLines.push({ ...source, qty: allocatedLine.qtyAllocated });
+        const requestedLine = data.lines.find((line) =>
+          line.itemId === source.itemId &&
+          line.lotId === source.lotId &&
+          line.locationId === source.locationId,
+        );
+        verifiedLines.push({
+          ...source,
+          qty: allocatedLine.qtyAllocated,
+          customerItemCode: requestedLine?.customerItemCode ?? source.customerItemCode,
+        });
       }
     }
 
@@ -725,6 +738,7 @@ export async function selectPickUnit(
   pickListId: string,
   rawBarcode: string,
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+  expectedPickListItemId?: string,
 ): Promise<SelectPickUnitResult> {
   const perm = await requirePermission(resolver, "dispatch.execute");
   if (perm.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
@@ -864,6 +878,7 @@ export async function selectPickUnit(
         if (unit.status !== "available" || unit.pickListItemId) return { ok: false as const, errors: ["box_already_selected"] };
         const line = lineRows.find((candidate) => candidate.lotId === unit.lotId && candidate.locationId === unit.locationId);
         if (!line) return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
+        if (expectedPickListItemId && line.id !== expectedPickListItemId) return { ok: false as const, errors: ["stale_scan"] };
         return await selectWholeLine(line);
       }
 
@@ -871,7 +886,7 @@ export async function selectPickUnit(
       // item or lot QR may be scanned repeatedly. When an item appears on
       // multiple lines, scan the lot QR to target a specific lot; otherwise
       // the first incomplete matching line is counted.
-      const matchingLines = lineRows.filter((candidate) => [
+      const matchingLines = lineRows.filter((candidate) => (!expectedPickListItemId || candidate.id === expectedPickListItemId) && [
         candidate.itemBarcode,
         candidate.itemCode,
         candidate.lotId,

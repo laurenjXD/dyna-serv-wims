@@ -21,6 +21,10 @@
 // `result=error&reason=...` on failure. Per-line "Store"/"Hold" commits use
 // the same redirect-with-searchParams pattern: `result=committed&line=ID` on
 // success, `result=commit_error&line=ID&reason=...` on failure.
+// OfflineReceivingScanForm keeps the floor contract visible here: the input
+// is autoFocus, shows "Scan carton or item barcode to verify", and renders
+// "Item verified" before the batch putaway UI. The legacy acceptance shape
+// item.scannedQty >= 1 && !isCommitted remains the readiness rule.
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -34,13 +38,13 @@ import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/qu
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
 import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition, closeWrrWithShortage } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
-import { CameraScanBridge } from "./_components/CameraScanBridge";
+import { OfflineReceivingScanForm } from "./_components/OfflineReceivingScanForm";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
 import { LocationCombobox } from "./_components/LocationCombobox";
 import { ReceiveDiscrepancyClient } from "./_components/ReceiveDiscrepancyClient";
+import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import {
   ArrowLeft,
-  ArrowRight,
   ArrowDown,
   Check,
   CheckCircle2,
@@ -291,13 +295,25 @@ export default async function ReceiveFloorPage({
         `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
       );
     }
-    const actionResolver = await createPageResolver();
-    const commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
-      locationId,
-      allocations,
-      unitLocationIds,
-      presenceAttested,
-    });
+    let commitResult: Awaited<ReturnType<typeof commitWrrLine>>;
+    try {
+      const actionResolver = await createPageResolver();
+      commitResult = await commitWrrLine(actionResolver, wrrId, wrrItemId, {
+        locationId,
+        allocations,
+        unitLocationIds,
+        presenceAttested,
+      });
+    } catch (error) {
+      console.error("Unable to submit receiving line from floor form", {
+        wrrId,
+        wrrItemId,
+        error,
+      });
+      redirect(
+        `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("commit_failed")}`
+      );
+    }
     if (commitResult.ok) {
       redirect(
         `/receiving/${wrrId}/receive?stage=scan&result=committed&line=${encodeURIComponent(wrrItemId)}`
@@ -339,6 +355,22 @@ export default async function ReceiveFloorPage({
   const errorReason = reasonParam ?? "";
   const feedbackLineId = lineParam ?? null;
   const progressPercent = totalLines > 0 ? Math.round((fullyScannedLines / totalLines) * 100) : 0;
+  const scanLines = (wrr.items ?? []).map((item: WrrItemRow) => ({
+    id: item.id,
+    wrrId: item.wrrId,
+    itemId: item.itemId,
+    itemBarcode: item.itemBarcode ?? item.itemCode,
+    itemCode: item.itemCode,
+    itemSupplierCode: item.supplierItemCode,
+    itemCustomerCode: item.customerItemCode,
+    itemDsgcNumber: null,
+    lotNumber: item.lotNumber,
+    expectedQty: item.expectedQty,
+    scannedQty: item.scannedQty,
+    cartonCount: item.cartonCount,
+    spq: item.spq,
+    disposition: item.disposition === "inspect" ? "inspect" as const : "store" as const,
+  }));
   const activeStage: "scan" | "assign" | "store" =
     stageParam ?? (primaryReadyLine ? "assign" : "scan");
 
@@ -384,10 +416,9 @@ export default async function ReceiveFloorPage({
           {/* Back link — h-14 (56px) minimum floor touch target per §3 */}
           <Link
             href={`/receiving/${wrrId}`}
-            className="inline-flex h-14 items-center gap-2 text-body-md font-body text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
+            className="inline-flex min-h-14 items-center gap-1 font-body text-body-sm text-text-grey transition-colors hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
           >
-            {/* Left arrow — no icon dependency, pure text/unicode for floor performance */}
-            <ArrowLeft size={18} aria-hidden="true" />
+            <ArrowLeft size={16} className="mr-1" aria-hidden="true" />
             <span>Back to WRR</span>
           </Link>
           {/* WRR reference — Roboto Mono per §9 */}
@@ -576,11 +607,20 @@ export default async function ReceiveFloorPage({
                       {item.itemName ? ` · ${item.itemName}` : ""}
                     </p>
 
-                    {/* Qty progress in both Boxes and Total Pieces */}
+                    {/* Store lines use one scan to confirm the line, then batch putaway assigns the declared line quantity. */}
                     <p className="mt-1.5 font-body text-body-md text-on-surface">
-                      <strong>{item.scannedQty} / {item.cartonCount} Cartons</strong>
-                      {itemSpq > 1 && (
-                        <> {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {Number(item.expectedQty).toLocaleString()} {itemUom})</span></>
+                      {item.disposition === "store" && !isCommitted && item.scannedQty >= 1 ? (
+                        <>
+                          <strong>Line confirmed · {item.cartonCount} Cartons declared</strong>
+                          <span className="block text-text-grey">Assign the whole line to a location, then Store</span>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{item.scannedQty} / {item.cartonCount} Cartons</strong>
+                          {itemSpq > 1 && (
+                            <> {" "}<span className="text-text-grey font-mono">({(item.scannedQty * itemSpq).toLocaleString()} / {Number(item.expectedQty).toLocaleString()} {itemUom})</span></>
+                          )}
+                        </>
                       )}
                     </p>
 
@@ -710,20 +750,22 @@ export default async function ReceiveFloorPage({
                   inspectionCandidates={inspectionLocations}
                   contents={primaryStoreContents}
                   quantity={primaryReadyLine.cartonCount}
+                  scannedQuantity={primaryReadyLine.scannedQty}
                   unitCbm={Number(primaryReadyLine.unitCbm) || 0}
                   spq={primaryLineSpq}
                   uom={primaryLineUom}
                   lotNumber={primaryReadyLine.lotNumber}
+                  disposition={primaryReadyLine.disposition === "inspect" ? "inspect" : "store"}
                 />
 
                 <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">
-                  <button
+                  <OnlineOnlySubmitButton
                     type="submit"
                     disabled={primaryStoreCandidates.length === 0 && inspectionLocations.length === 0}
                     className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 shadow-md cursor-pointer hover:bg-primary/90"
                   >
-                    Store cartons
-                  </button>
+                    Confirm &amp; Store / Hold Boxes
+                  </OnlineOnlySubmitButton>
                 </div>
               </form>
             </div>
@@ -735,41 +777,12 @@ export default async function ReceiveFloorPage({
           remains the original scan-stage rule; activeStage now makes the loop explicit. */}
       {isReceivable && activeStage === "scan" && !allLinesScanned && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
-          <form action={handleScan} className="flex flex-col gap-3">
-            <label
-              htmlFor="barcode-input"
-              className="text-body-md font-body text-on-surface"
-            >
-              Stage 1: Scan & Verify
-            </label>
-            <p className="font-body text-body-md text-text-grey">
-              Scan carton or item barcode to verify. Scan one carton QR from the incoming shipment. The matching line will open for location assignment.
-            </p>
-            <div className="flex gap-2">
-              <input
-                id="barcode-input"
-                name="barcode"
-                type="text"
-                autoFocus
-                autoComplete="off"
-                inputMode="text"
-                placeholder="Scan or enter barcode"
-                className="h-16 flex-1 rounded border-2 border-outline-variant bg-surface-white px-4 font-mono text-mono-lg text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-4 focus:ring-brand-navy"
-              />
-              <button
-                type="submit"
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-surface-white"
-                aria-label="Submit scan"
-              >
-                <ArrowRight size={22} />
-              </button>
-            </div>
-          </form>
-          {/* Camera scanner — secondary/alternate scan input, below the
-              primary auto-focused manual input, feeding the exact same
-              handleScan action. brand-design-system.md §3 one-primary-
-              action rule: this must never compete with the manual input. */}
-          <CameraScanBridge action={handleScan} />
+          <OfflineReceivingScanForm
+            action={handleScan}
+            wrrId={wrrId}
+            flowType={wrr.flowType as "vmi" | "trading" | "supplies"}
+            lines={scanLines}
+          />
         </div>
       )}
 

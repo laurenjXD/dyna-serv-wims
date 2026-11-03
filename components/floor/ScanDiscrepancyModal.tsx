@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { AlertTriangle, X, Search, PlusCircle, RefreshCw } from "@/components/ui/icons";
 
@@ -52,6 +52,27 @@ export function ScanDiscrepancyModal({
           title: "Quantity Exceeds Expected Baseline",
           description: "All expected cartons/units for this line item have already been scanned.",
           recommendation: "If physical delivery has extra excess boxes, use the Overage Intake workflow or set aside for supervisor verification.",
+          canEnroll: false,
+        };
+      case "fully_scanned":
+        return {
+          title: "Line Already Fully Scanned",
+          description: "The receiving server reports that this item has already reached its expected carton quantity.",
+          recommendation: "Refresh the receiving screen and continue with the next line. If cartons are still shown as remaining, report the WRR number to a supervisor so the quantities can be reconciled.",
+          canEnroll: false,
+        };
+      case "stale_scan":
+        return {
+          title: "Scan State Changed",
+          description: "Another scan updated this receiving line before this scan could be recorded.",
+          recommendation: "Refresh the receiving screen and scan the next physical carton once.",
+          canEnroll: false,
+        };
+      case "invalid_barcode":
+        return {
+          title: "Barcode Could Not Be Read",
+          description: "The scanner submitted an empty or invalid barcode value.",
+          recommendation: "Clean the label, keep the full code inside the scan area, and try again or enter the barcode manually.",
           canEnroll: false,
         };
       case "flow_type_mismatch":

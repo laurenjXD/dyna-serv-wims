@@ -1156,15 +1156,13 @@ export function ApprovalsFilterableTable({
                 </select>
               </div>
 
-              {/* Justification Note */}
+              {/* Optional Justification Note */}
               <div>
                 <label className="block font-label text-xs font-bold uppercase tracking-wider text-text-grey mb-1">
-                  Justification Note <span className="text-brand-red">*</span>
+                  Justification Note <span className="font-body text-[10px] font-normal normal-case text-text-grey">(optional)</span>
                 </label>
                 <textarea
-                  required
                   rows={3}
-                  minLength={5}
                   value={reasonNote}
                   onChange={(e) => setReasonNote(e.target.value)}
                   placeholder="Explain why this lot is being picked instead of standard FIFO order…"
@@ -1182,7 +1180,7 @@ export function ApprovalsFilterableTable({
                 </button>
                 <button
                   type="submit"
-                  disabled={!selectedItemId || !selectedLotId || !requestedQty || !reasonNote}
+                  disabled={!selectedItemId || !selectedLotId || !requestedQty}
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-navy px-5 font-label text-xs font-bold text-white hover:bg-brand-royal-blue active:scale-95 transition-all shadow-xs disabled:opacity-50"
                 >
                   <span>Submit Override Request</span>

@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
+import { validateWithdrawal } from "@/lib/withdrawal/withdrawal-validator";
 
 vi.mock("../../_actions", () => ({
   parseDraDocumentAction: vi.fn(),
@@ -46,7 +47,8 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     fireEvent.change(organizationSelect, { target: { value: "party-vmi-owner" } });
 
-    expect(screen.getByRole("option", { name: "VMI (Consignment)" })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Inventory Model" })).toHaveTextContent("VMI (Consignment)");
+    expect(screen.getByText("Inherited from organization")).toBeInTheDocument();
     expect(screen.queryByText("VMI Customer / Stock Owner")).not.toBeInTheDocument();
   });
 
@@ -67,13 +69,15 @@ describe("MultiItemPickListDraft organization selection", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.replace(/\s+/g, " ").trim());
 
-    expect(headers.slice(0, 8)).toEqual([
-      "Item",
+    expect(headers.slice(0, 10)).toEqual([
+      "Item Code",
       "SPQ",
       "Qty (Boxes)",
       "Qty (Units)",
       "Location",
       "Remaining",
+      "Cust PN",
+      "Item Description",
       "Lot Number",
       "Mfg Date",
     ]);
@@ -91,7 +95,9 @@ describe("MultiItemPickListDraft organization selection", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
-    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+    const recipientSelect = screen.getByRole("combobox", { name: "End Customer / Recipient" });
+    fireEvent.change(recipientSelect, { target: { value: "party-end-customer" } });
+    expect(recipientSelect).toHaveValue("party-end-customer");
 
     const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
@@ -103,5 +109,223 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     expect(itemSearch).toHaveValue("SUP-ITEM-1");
+  });
+
+  it("blocks a provisional VMI code until its supplier code is enrolled", () => {
+    const stockWithoutSupplierCode = [{ ...stock[0], supplierItemCode: null }];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithoutSupplierCode}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "ITEM-1" } });
+
+    const recommendation = screen.getByRole("button", { name: /ITEM-1/ });
+    expect(recommendation).toBeEnabled();
+    expect(within(recommendation).getByText("Needs item code")).toBeInTheDocument();
+
+    fireEvent.click(recommendation);
+    expect(itemSearch).toHaveValue("ITEM-1");
+    fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "1" } });
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+  });
+
+  it("fills the requested boxes across FIFO locations by default", () => {
+    const stockWithSplitFifo = [
+      { ...stock[0], availableQty: 2, balanceId: "balance-1", locationId: "location-1", locationLabel: "C1-10", priority: 1 },
+      { ...stock[0], availableQty: 20, balanceId: "balance-2", locationId: "location-2", locationLabel: "C1-11", priority: 2 },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithSplitFifo}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "5" } });
+
+    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "2")).toBe(true);
+    expect(screen.getAllByLabelText("Boxes from C1-11").every((input) => (input as HTMLInputElement).value === "3")).toBe(true);
+    expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
+    const generate = screen.getByRole("button", { name: /Generate Pick List/i });
+    expect(generate).toBeEnabled();
+    const payload = JSON.parse(generate.closest("form")!.querySelector<HTMLInputElement>('input[name="request"]')!.value);
+    expect(payload.lines.map((line: { qty: number }) => line.qty)).toEqual([2, 3]);
+    expect(payload.lines.every((line: { customerItemCode?: string }) => line.customerItemCode === undefined)).toBe(true);
+    expect(validateWithdrawal(payload).ok).toBe(true);
+  });
+
+  it("accepts boxes and derives the base-unit quantity from SPQ", () => {
+    const boxedStock = [{ ...stock[0], spq: 100, availableQty: 2000 }];
+
+    render(
+      <MultiItemPickListDraft
+        stock={boxedStock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+
+    fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "20" } });
+    fireEvent.change(screen.getAllByLabelText("Boxes from A4-01")[0], { target: { value: "20" } });
+
+    expect(screen.getAllByText("2000")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
+    expect(JSON.parse(request.value).lines[0].qty).toBe(2000);
+  });
+
+  it("explains why VMI generation stays disabled until an end customer is selected", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
+    expect(screen.getByText(/Required: select the downstream End Customer/)).toBeInTheDocument();
+  });
+
+  it("limits quantity to on-hand boxes, exposes source locations, and preserves Customer PN input", () => {
+    const stockWithSources = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
+      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
+    ];
+
+    const { container } = render(
+      <MultiItemPickListDraft
+        stock={stockWithSources}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+
+    const quantityInputs = screen.getAllByLabelText("Qty (Boxes)");
+    fireEvent.change(quantityInputs[0], { target: { value: "20" } });
+    expect(quantityInputs[0]).toHaveValue(15);
+
+    expect(screen.getAllByRole("button", { name: "Use fixed location" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "Use fixed location" })[0]);
+
+    const locationSelectors = Array.from(container.querySelectorAll("select")).filter((select) =>
+      select.textContent?.includes("Select a fixed location"),
+    );
+    expect(locationSelectors.length).toBeGreaterThan(0);
+    expect(locationSelectors[0].textContent).toContain("A4-01");
+    expect(locationSelectors[0].textContent).toContain("B2-05");
+
+    fireEvent.change(locationSelectors[0], { target: { value: "balance-2" } });
+    expect(quantityInputs[0]).toHaveValue(5);
+    expect(screen.getAllByText(/Supervisor approval required for this source/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Insufficient/)).not.toBeInTheDocument();
+
+    fireEvent.change(locationSelectors[0], { target: { value: "" } });
+
+    const customerPnInputs = screen.getAllByTitle("Customer part number snapshot");
+    fireEvent.change(customerPnInputs[0], { target: { value: "CUSTOMER-PN-42" } });
+
+    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
+    expect(JSON.parse(request.value).lines[0].customerItemCode).toBe("CUSTOMER-PN-42");
+  });
+
+  it("lets the operator split one line across multiple locations with explicit box quantities", () => {
+    const stockWithSources = [
+      { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
+      { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
+    ];
+
+    render(
+      <MultiItemPickListDraft
+        stock={stockWithSources}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
+    fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "2" } });
+
+    fireEvent.change(screen.getAllByLabelText("Add location to split")[0], { target: { value: "balance-2" } });
+    const firstLocationBoxes = screen.getAllByLabelText("Boxes from A4-01")[0];
+    const secondLocationBoxes = screen.getAllByLabelText("Boxes from B2-05")[0];
+    fireEvent.change(firstLocationBoxes, { target: { value: "1" } });
+    fireEvent.change(secondLocationBoxes, { target: { value: "1" } });
+
+    expect(screen.getByRole("button", { name: "Request Approval" })).toBeDisabled();
+    expect(screen.getByText("Select one alternate location per approval request.")).toBeInTheDocument();
+  });
+
+  it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
+    render(
+      <MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    const itemSearch = screen.getAllByRole("combobox", { name: "Search item code" })[0];
+    expect(itemSearch).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Add item line/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+
+    expect(screen.getAllByRole("combobox", { name: "Search item code" })[0]).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Add item line/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
+    expect(screen.getByText("2 lines")).toBeInTheDocument();
   });
 });

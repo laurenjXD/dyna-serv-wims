@@ -19,6 +19,7 @@ export const preferredRegion = "hnd1";
 export const metadata: Metadata = {
   title: "Dyna-Serv WIMS",
   description: "Dyna-Serv Warehouse Inventory Management System",
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({

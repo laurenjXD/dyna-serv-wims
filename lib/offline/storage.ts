@@ -60,7 +60,13 @@ export async function listPendingOfflineEntries(capturedByUserId?: string): Prom
       ? store.getAll()
       : store.index("capturedByUserId").getAll(capturedByUserId),
   );
-  return rows.filter((row) => row.status === "pending" || row.status === "failed");
+  // A tab can close after marking an entry syncing. Treat that state as
+  // resumable work on the next startup rather than stranding the scan.
+  return rows.filter((row) => row.status === "pending" || row.status === "failed" || row.status === "syncing");
+}
+
+export async function listOfflineEntries(): Promise<OfflineQueueEnvelope[]> {
+  return transact<OfflineQueueEnvelope[]>(OUTBOX_STORE, "readonly", (store) => store.getAll());
 }
 
 export async function updateOfflineEntry(entry: OfflineQueueEnvelope): Promise<void> {
@@ -95,7 +101,9 @@ export async function clearExpiredOfflineData(now = Date.now()): Promise<void> {
         if (!cursor) return;
         const value = cursor.value as { createdAt?: number; cachedAt?: number; status?: string };
         const age = now - (value.createdAt ?? value.cachedAt ?? now);
-        const maxAge = value.status === "pending" ? 7 * 86400000 : 30 * 86400000;
+        const maxAge = value.status === "pending" || value.cachedAt !== undefined
+          ? 7 * 86400000
+          : 30 * 86400000;
         if (age > maxAge) cursor.delete();
         cursor.continue();
       };

@@ -2061,3 +2061,15 @@ command remains the only inventory-decrement boundary. The 08 requirements,
 design, and tasks now record this contract. The implementation retains the
 server-side pick-list line lock and assigns no more than the exact committed
 internal unit count; repeated scans after line completion are rejected.
+
+## Pending cross-track requests: bam pre-integration repair (2026-11-03)
+
+The Product Owner requested fixes before any merge. Work is isolated on `fix/bam-premerge`; `v1` remains unchanged. Root owns all shared files for this repair; independent integration/RBAC review was completed after implementation. Reserve `0072_offline_scan_replay_receipts.sql` for the approved 01/03 receipt repair, preserving `0071_dynamic_rbac_administration.sql`. Restore the approved approval-reason requirement and remove bam's conflicting policy-relaxation migration. Resolve the pick-draft conflict while preserving box quantities, server-authoritative FIFO/FEFO, provisional-code gating, and the mobile drag work. No production migration or branch merge is authorized by this repair request.
+
+### Pre-integration repair verification
+
+Resolved the pick-draft content conflict; blank Customer PN is omitted from the request rather than serialized as null. Normal multi-location FIFO allocation proceeds without a spurious override, while out-of-sequence allocation retains server validation and the existing one-alternate-location approval boundary. Required approval reasons and provisional supplier/DSGC-code checks remain enforced. Shared-device receiving restores only the signed-in actor's pending counts, and carton-specific dispatch replay validates its bound line before mutation.
+
+Verification: 2,364 unit/component tests; seven real PostgreSQL 16 migration/retry/concurrency/rollback/permission tests using Drizzle; scoped lint; typecheck; production build; independent integration/RBAC review. Temporary local verification uses only the explicitly named disposable database. The candidate is isolated in `D:/dyna-serv/bam-premerge-fixes` on `fix/bam-premerge`. No merge into `v1`, remote push, deployment, or live migration has been performed. Migration 0072 must be applied through the normal reviewed deployment process before the repaired sync endpoint is enabled; without it sync fails closed with retryable responses.
+
+Source snapshots: the tested candidate contains the reviewed `bam` snapshot `c87f8e85` combined with `v1` snapshot `51eeb3b2` and the repairs above. It is recorded directly on top of the v1 snapshot so the prepared conflict resolutions are preserved without a merge commit. During verification, `origin/bam` advanced by three commits through `f75620e3`; those later allocation/dispatch changes are outside this tested candidate and need a separate review before inclusion.

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, ChevronRight, MapPin, PackageCheck, ShieldCheck } from "@/components/ui/icons";
+import { useOfflineStatus } from "@/lib/offline/provider";
 
 type Pallet = {
   balanceId: string;
@@ -31,6 +32,8 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
   const [qty, setQty] = useState("");
   const [selectedBalanceId, setSelectedBalanceId] = useState("");
   const [reason, setReason] = useState("");
+  const { connectivity } = useOfflineStatus();
+  const offline = connectivity === "offline";
   const requestedQty = Number(qty);
   const totalAvailable = pallets.reduce((sum, pallet) => sum + pallet.availableQty, 0);
   const selected = pallets.find((pallet) => pallet.balanceId === selectedBalanceId) ?? null;
@@ -46,7 +49,7 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
     return <button type="button" onClick={() => setOpen(true)} className="inline-flex h-11 items-center gap-2 rounded bg-brand-navy px-4 font-label text-label font-bold text-surface-white shadow-elevation-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"><PackageCheck size={18} aria-hidden="true" />Create Pick List</button>;
   }
 
-  const isOverrideReady = Boolean(request && reason.trim().length >= 10);
+  const isOverrideReady = Boolean(request);
 
   return (
     <div className="basis-full rounded border border-outline-variant bg-surface-white p-4 shadow-elevation-1 md:p-5">
@@ -75,8 +78,8 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
       {requiresOverride && <div className="mt-5 rounded border border-status-pending/40 bg-status-pending/5 p-4">
         <div className="flex items-start gap-3"><AlertTriangle size={22} className="mt-0.5 shrink-0 text-status-pending" aria-hidden="true" /><div><p className="font-heading text-body-md font-bold text-on-surface">FIFO/FEFO override</p><p className="mt-1 font-body text-body-sm text-text-grey">This location is not the recommended {strategy} source. Approval is locked to this lot, location, quantity, and stock version.</p></div></div>
         <label className="mt-4 grid gap-2 font-label text-label font-bold text-on-surface">Reason for choosing another pallet
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={10} rows={3} placeholder="Example: Assigned aisle is temporarily inaccessible." className="rounded border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary" />
-          <span className="font-body text-body-sm font-normal text-text-grey">Minimum 10 characters. The requester cannot approve their own request.</span>
+          <textarea value={reason} onChange={(event) => setReason(event.target.value)} rows={3} placeholder="Optional comment about the alternate location." className="rounded border border-outline-variant bg-surface-white px-3 py-3 font-body text-body-md font-normal text-on-surface outline-none focus:ring-2 focus:ring-primary" />
+          <span className="font-body text-body-sm font-normal text-text-grey">Optional comment. The requester cannot approve their own request.</span>
         </label>
       </div>}
 
@@ -84,7 +87,7 @@ export function PickListGenerator({ itemId, flowType, organizationId, strategy, 
       <form action={requiresOverride ? overrideAction : createAction} className="mt-5 flex justify-end">
         <input type="hidden" name="request" value={request} />
         {requiresOverride && <input type="hidden" name="reason" value={reason} />}
-        <button type="submit" disabled={requiresOverride ? !isOverrideReady : !request} className="inline-flex h-12 items-center gap-2 rounded bg-primary px-5 font-label text-body-md font-bold text-surface-white disabled:cursor-not-allowed disabled:opacity-45">{requiresOverride ? "Send for Approval" : "Generate Pick List"}<ChevronRight size={18} aria-hidden="true" /></button>
+        <button type="submit" disabled={offline || (requiresOverride ? !isOverrideReady : !request)} title={offline ? "Reconnect to generate or approve a pick list." : undefined} className="inline-flex h-12 items-center gap-2 rounded bg-primary px-5 font-label text-body-md font-bold text-surface-white disabled:cursor-not-allowed disabled:opacity-45">{offline ? "Reconnect to continue" : requiresOverride ? "Send for Approval" : "Generate Pick List"}<ChevronRight size={18} aria-hidden="true" /></button>
       </form>
     </div>
   );

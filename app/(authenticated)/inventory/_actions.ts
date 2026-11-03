@@ -35,7 +35,7 @@ export async function generatePickList(
   if (!result.ok) {
     const messages: Record<string, string> = {
       forbidden: "You do not have permission to generate pick lists.",
-      provisional_item_code: "This item needs its DSGC/supplier item code before a pick list can be created.",
+      provisional_item_code: "This item needs its enrolled supplier/DSGC item code before a pick list can be created.",
       invalid_end_customer: "The selected end customer is inactive or is not enrolled with the End Customer role.",
       organization_inactive_or_not_found: "The selected Organization is inactive or no longer enrolled.",
       organization_relationship_required: "The selected Organization is not authorized for this Inventory Model.",

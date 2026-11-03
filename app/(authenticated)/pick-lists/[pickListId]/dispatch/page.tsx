@@ -44,6 +44,11 @@
 //
 // Physical evidence is recorded here, at dispatch. The pick screen only stages
 // committed boxes and never prompts for a barcode/QR scan.
+// The offline-aware child renders the barcode input and replaces the legacy
+// CameraScanBridge while preserving the same selectPickUnit server action
+// (the child input remains name="barcode").
+// The child retains the established "Scan item or lot QR" prompt and the
+// "matching unfinished line is counted automatically" behavior.
 
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -65,7 +70,8 @@ import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
 import { dispatchPickList, selectPickUnit, reportLocationShortage } from "@/lib/actions/withdrawals";
 import { approvePickList, deletePickList } from "../../_actions";
-import { CameraScanBridge } from "@/components/floor/CameraScanBridge";
+import { OfflineDispatchScanForm } from "./_components/OfflineDispatchScanForm";
+import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
 import { PickListInteractiveChecklist } from "./_components/PickListInteractiveChecklist";
 
@@ -460,24 +466,12 @@ export default async function DispatchConfirmationPage({
         {!alreadyDispatched && !awaitingPickCompletion && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
             <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-title-md font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
-            <form action={handleBoxScan} className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <input
-                name="barcode"
-                required
-                autoFocus
-                autoComplete="off"
-                placeholder="Scan item or lot QR (or enter carton barcode)..."
-                className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
-              />
-              <button
-                type="submit"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-brand-navy px-6 font-label text-body-md font-bold text-surface-white transition-colors hover:bg-brand-navy/90 active:scale-[0.99]"
-              >
-                <ScanLine size={18} aria-hidden="true" />
-                <span>Verify Box</span>
-              </button>
-            </form>
-            <div className="mt-3"><CameraScanBridge action={handleBoxScan} /></div>
+            <OfflineDispatchScanForm
+              action={handleBoxScan}
+              pickListId={pickListId}
+              pickListItemId={activeItem.id}
+              locationId={activeItem.locationId}
+            />
           </section>
         )}
 
@@ -544,14 +538,14 @@ export default async function DispatchConfirmationPage({
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           {totalLines > 0 ? (
             <form action={handleDispatch}>
-              <button
+              <OnlineOnlySubmitButton
                 type="submit"
                 disabled={!allBoxesScanned}
                 className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
               >
                 <Truck size={24} strokeWidth={2} aria-hidden="true" />
                 {allBoxesScanned ? "Confirm Dispatch" : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
-              </button>
+              </OnlineOnlySubmitButton>
             </form>
           ) : (
             <button

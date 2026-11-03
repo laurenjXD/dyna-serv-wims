@@ -204,3 +204,7 @@ not the authoritative physical stock-owner field. At receipt, Trading lots are
 owned by Dyna-Serv and VMI lots are owned by the selected VMI Customer. The
 additive compatibility contract and migration path for this default belong to
 the reapproved `06-party-and-item-enrollment` amendment.
+
+## Offline scan receipt repair (2026-11-03)
+
+Approved repair requested by the Product Owner before integrating `bam`. Offline receiving/pick scan replay SHALL store an immutable receipt keyed by authenticated actor plus outbox operation identity. The receipt binds command type, normalized command SHA-256 fingerprint, and successful result. Receipt and owning scan mutation commit atomically; retries return the recorded result, and reusing a key for another command fails closed. Anonymous/browser table writes are forbidden.
