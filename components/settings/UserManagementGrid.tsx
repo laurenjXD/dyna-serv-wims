@@ -1,11 +1,10 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   flexRender,
   type ColumnDef,
@@ -29,6 +28,7 @@ import { SuspendUserDialog } from "./SuspendUserDialog";
 import { CancelInviteDialog } from "./CancelInviteDialog";
 import { UserAuditDrawer } from "./UserAuditDrawer";
 import { RoleManagementModal } from "./RoleManagementModal";
+import { UserAccessModal } from "./UserAccessModal";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type {
@@ -52,7 +52,9 @@ export function UserManagementGrid({
   reactivateUser,
   resendInvite = defaultResendInvite,
   cancelInvite = defaultCancelInvite,
+  canManageAccess = false,
 }: {
+  canManageAccess?: boolean;
   initialMembers: TeamMember[];
   parties: ActivePartyOption[];
   inviteUser: (input: InviteUserInput) => Promise<{ ok: boolean; error?: string }>;
@@ -71,12 +73,14 @@ export function UserManagementGrid({
   const [cancelTarget, setCancelTarget] = useState<TeamMember | null>(null);
   const [auditTarget, setAuditTarget] = useState<TeamMember | null>(null);
   const [rolesModalOpen, setRolesModalOpen] = useState(false);
+  const [accessTarget, setAccessTarget] = useState<TeamMember | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     listRoles().then((res) => {
       if (res.ok) setRoles(res.data);
+      else setFeedback({ type: "error", message: res.error });
     });
   }, []);
 
@@ -86,10 +90,11 @@ export function UserManagementGrid({
     });
     listRoles().then((res) => {
       if (res.ok) setRoles(res.data);
+      else setFeedback({ type: "error", message: res.error });
     });
   }
 
-  async function handleReactivate(member: TeamMember) {
+  const handleReactivate = useCallback(async (member: TeamMember) => {
     setFeedback(null);
     try {
       const res = await reactivateUser(member.id);
@@ -104,9 +109,9 @@ export function UserManagementGrid({
     } catch {
       setFeedback({ type: "error", message: "The reactivation request failed. Check the connection and try again." });
     }
-  }
+  }, [reactivateUser]);
 
-  async function handleResendInvite(member: TeamMember) {
+  const handleResendInvite = useCallback(async (member: TeamMember) => {
     setResendingId(member.id);
     setFeedback(null);
     try {
@@ -130,7 +135,7 @@ export function UserManagementGrid({
     } finally {
       setResendingId(null);
     }
-  }
+  }, [resendInvite]);
 
   const filteredMembers = useMemo(() => {
     return members.filter((m) => {
@@ -179,7 +184,7 @@ export function UserManagementGrid({
         header: "Work Email",
         cell: ({ row }) => (
           <span className="font-body text-xs text-slate-600">
-            {row.original.email || <span className="text-slate-400">—</span>}
+            {row.original.email || <span className="text-slate-400">â€”</span>}
           </span>
         ),
       },
@@ -245,7 +250,10 @@ export function UserManagementGrid({
               >
                 Audit Log
               </button>
-              {member.status === "invited" && (
+              {canManageAccess && (
+                <button type="button" className="min-h-11 rounded-lg border border-border bg-surface px-3 py-2 font-label text-label text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setAccessTarget(member)}>Manage Access</button>
+              )}
+              {canManageAccess && member.status === "invited" && (
                 <>
                   <button
                     type="button"
@@ -260,7 +268,7 @@ export function UserManagementGrid({
                     ) : (
                       <Mail className="h-3 w-3 text-brand-navy" />
                     )}
-                    <span>{resendingId === member.id ? "Sending…" : "Resend Invite"}</span>
+                    <span>{resendingId === member.id ? "Sendingâ€¦" : "Resend Invite"}</span>
                   </button>
                   <button
                     type="button"
@@ -274,7 +282,7 @@ export function UserManagementGrid({
                   </button>
                 </>
               )}
-              {member.status === "active" && (
+              {canManageAccess && member.status === "active" && (
                 <button
                   type="button"
                   data-testid={`suspend-${member.id}`}
@@ -284,7 +292,7 @@ export function UserManagementGrid({
                   Suspend
                 </button>
               )}
-              {member.status === "inactive" && (
+              {canManageAccess && member.status === "inactive" && (
                 <button
                   type="button"
                   data-testid={`reactivate-${member.id}`}
@@ -299,7 +307,7 @@ export function UserManagementGrid({
         },
       },
     ],
-    [resendingId],
+    [resendingId, canManageAccess, handleReactivate, handleResendInvite],
   );
 
   const table = useReactTable({
@@ -349,7 +357,7 @@ export function UserManagementGrid({
       <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h2 className="font-heading text-lg font-bold text-slate-900">
                 Team &amp; Dynamic RBAC Directory
               </h2>
@@ -358,28 +366,28 @@ export function UserManagementGrid({
               </span>
             </div>
             <p className="mt-0.5 font-body text-xs text-slate-500">
-              Searchable employee accounts directory, approved role assignment, and capability reference.
+              Searchable employee accounts directory, configurable role assignment, and effective permissions.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
               onClick={() => setRolesModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-label text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 font-label text-label text-text-primary shadow-elevation-1 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Sliders className="h-4 w-4 text-slate-500" />
-              Role Capability Reference
+              {canManageAccess ? "Manage Roles" : "Role Capability Reference"}
             </button>
-            <button
+            {canManageAccess && <button
               type="button"
               data-testid="open-invite-user"
               onClick={() => setInviteOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 font-label text-xs font-bold text-white shadow-sm hover:bg-brand-navy/90 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 font-label text-label text-white shadow-elevation-1 hover:bg-brand-navy/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <UserPlus className="h-4 w-4" />
               Invite Operator
-            </button>
+            </button>}
           </div>
         </div>
 
@@ -485,11 +493,11 @@ export function UserManagementGrid({
             const targetId = cancelTarget.id;
             const res = await cancelInvite(targetId);
             if (res.ok) {
-              setMembers((curr) => curr.filter((m) => m.id !== targetId));
+              setMembers((curr) => curr.map((m) => m.id === targetId ? { ...m, status: "inactive", roleKeys: [], partyNames: [] } : m));
               setCancelTarget(null);
               setFeedback({
                 type: "success",
-                message: `Invitation for ${cancelTarget.displayName} was removed.`,
+                message: `Invitation for ${cancelTarget.displayName} was cancelled. The account is retained as inactive.`,
               });
               refreshData();
             }
@@ -529,7 +537,10 @@ export function UserManagementGrid({
         isOpen={rolesModalOpen}
         onClose={() => setRolesModalOpen(false)}
         roles={roles}
+        canManageAccess={canManageAccess}
+        onSaved={refreshData}
       />
+      {canManageAccess && <UserAccessModal isOpen={Boolean(accessTarget)} member={accessTarget} roles={roles} onClose={() => setAccessTarget(null)} onSaved={refreshData} />}
     </div>
   );
 }

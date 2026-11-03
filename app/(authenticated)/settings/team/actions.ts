@@ -3,14 +3,12 @@
 // Server Actions backing `/settings/team` — Team directory, Dynamic RBAC roles,
 // granular permission matrix, and per-user audit trails.
 
-import { eq, isNull, and, desc, sql } from "drizzle-orm";
+import { eq, isNull, and, desc, sql, gt, lte, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   userProfiles,
   userRoles,
   roles,
-  permissions,
-  rolePermissions,
   userPartyScopes,
   parties,
   auditLog,
@@ -26,6 +24,10 @@ import { withSettingsTimeout } from "@/lib/user-settings/with-timeout";
 import { Resend } from "resend";
 import { generateTeamInvitationEmailHtml } from "@/lib/notifications/email-composer-templates";
 import { roleLabel } from "@/lib/user-settings/roles";
+import { z } from "zod";
+import { saveRoleSchema, replaceUserRolesSchema, roleChangeSchema, type SaveRoleInput } from "@/lib/rbac/admin-schemas";
+import type { EffectiveGrant, PermissionOption, UserAccess } from "@/lib/rbac/admin-types";
+export type { EffectiveGrant, PermissionOption } from "@/lib/rbac/admin-types";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -156,6 +158,8 @@ export interface DynamicRole {
   description: string;
   color: string;
   isSystem: boolean;
+  isActive: boolean;
+  grants: EffectiveGrant[];
   capabilities: Array<{
     module: string;
     view: boolean;
@@ -224,7 +228,7 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
           .select({ userId: userRoles.userId, roleKey: roles.key })
           .from(userRoles)
           .innerJoin(roles, eq(userRoles.roleId, roles.id))
-          .where(isNull(userRoles.revokedAt)),
+          .where(and(isNull(userRoles.revokedAt), lte(userRoles.validFrom, new Date()), or(isNull(userRoles.validUntil), gt(userRoles.validUntil, new Date())), eq(roles.isActive, true))),
         [],
       ),
       withSettingsTimeout(
@@ -232,7 +236,7 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
           .select({ userId: userPartyScopes.userId, partyName: parties.name })
           .from(userPartyScopes)
           .innerJoin(parties, eq(userPartyScopes.partyId, parties.id))
-          .where(isNull(userPartyScopes.revokedAt)),
+          .where(and(isNull(userPartyScopes.revokedAt), lte(userPartyScopes.validFrom, new Date()), or(isNull(userPartyScopes.validUntil), gt(userPartyScopes.validUntil, new Date())), eq(parties.isActive, true))),
         [],
       ),
       withSettingsTimeout(
@@ -293,7 +297,7 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
         phone: (auth?.user_metadata?.phone as string) || (auth?.phone ?? "—"),
         avatarUrl: (auth?.user_metadata?.avatar_url as string) || null,
         status: p.status,
-        roleKeys: userRoleList.length > 0 ? userRoleList : ["warehouse_staff"],
+        roleKeys: userRoleList,
         partyNames: activeScopeRows.filter((s) => s.userId === p.id).map((s) => s.partyName),
         activeDevice,
         sessionStatus,
@@ -305,223 +309,121 @@ export async function listTeamMembers(): Promise<ActionResult<TeamMember[]>> {
     return { ok: true, data: members };
   } catch (err) {
     console.error("Failed to list team members:", err);
-    return { ok: true, data: [] };
+    return { ok: false, error: "Unable to load the team directory. Refresh and try again." };
   }
 }
 
 // ── Dynamic RBAC Roles & Permissions ────────────────────────
 
-const DEFAULT_MODULE_CAPS = [
-  { module: "Dashboard", view: true, create: false, edit: false, approve: false, delete: false },
-  { module: "Receiving (WRR)", view: true, create: true, edit: true, approve: false, delete: false },
-  { module: "Master Inventory", view: true, create: false, edit: true, approve: false, delete: false },
-  { module: "Outgoing & Picking", view: true, create: true, edit: true, approve: false, delete: false },
-  { module: "Approvals", view: false, create: false, edit: false, approve: false, delete: false },
-  { module: "Documents", view: true, create: true, edit: false, approve: false, delete: false },
-  { module: "Reports & Billing", view: false, create: false, edit: false, approve: false, delete: false },
-  { module: "Master Data", view: false, create: false, edit: false, approve: false, delete: false },
-];
+// Every role operation uses an authenticated, transaction-local identity. The
+// internal database functions independently authorize and audit the operation;
+// no direct table mutation or process-local role fallback is permitted here.
+async function runRbacCommand<T>(userId: string, statement: SQL): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('role', ${"authenticated"}, true)`);
+    await tx.execute(sql`select set_config('request.jwt.claims', ${JSON.stringify({ sub: userId })}, true)`);
+    return await tx.execute(statement) as unknown as T;
+  });
+}
 
-const MODULE_PERMISSION_MAP: Record<string, Array<{ resource: string; action: string; field: "view" | "create" | "edit" | "approve" | "delete" }>> = {
-  Dashboard: [{ resource: "reporting", action: "read", field: "view" }],
-  "Receiving (WRR)": [
-    { resource: "receiving", action: "view", field: "view" },
-    { resource: "receiving", action: "scan", field: "create" },
-    { resource: "receiving", action: "confirm", field: "approve" },
-  ],
-  "Master Inventory": [
-    { resource: "inventory", action: "read", field: "view" },
-    { resource: "inventory", action: "manage", field: "edit" },
-  ],
-  "Outgoing & Picking": [
-    { resource: "pick_list", action: "read", field: "view" },
-    { resource: "pick_list", action: "generate", field: "create" },
-    { resource: "pick_list", action: "execute", field: "edit" },
-  ],
-  Approvals: [{ resource: "fifo_override", action: "approve", field: "approve" }],
-  Documents: [
-    { resource: "documents", action: "read", field: "view" },
-    { resource: "documents", action: "generate", field: "create" },
-    { resource: "documents", action: "download", field: "edit" },
-  ],
-  "Reports & Billing": [
-    { resource: "reporting", action: "read", field: "view" },
-    { resource: "reporting", action: "export", field: "create" },
-    { resource: "vmi_statements", action: "read", field: "view" },
-  ],
-  "Master Data": [
-    { resource: "parties", action: "read", field: "view" },
-    { resource: "parties", action: "manage", field: "edit" },
-    { resource: "items", action: "read", field: "view" },
-    { resource: "items", action: "manage", field: "edit" },
-    { resource: "locations", action: "read", field: "view" },
-    { resource: "locations", action: "manage", field: "edit" },
-  ],
-};
+async function requireAccessAdministration(write: boolean) {
+  const resolver = await createPageResolver();
+  const result = await requirePermission(resolver, "access_assignments.read");
+  if (result.kind !== "authorized" || !write) return result;
+  if (!result.context.activeRoleKeys.includes("administrator")) return { kind: "forbidden" as const };
+  for (const capability of ["access_assignments.grant", "access_assignments.revoke"]) {
+    const permission = await requirePermission(resolver, capability);
+    if (permission.kind !== "authorized") return permission;
+  }
+  return result;
+}
 
-let runtimeCustomRoles: DynamicRole[] = [
-  {
-    id: "role-admin",
-    key: "administrator",
-    name: "System Administrator",
-    description: "Unrestricted platform governance, user administration, and financial approvals.",
-    color: "bg-purple-100 text-purple-800 border-purple-200",
-    isSystem: true,
-    capabilities: DEFAULT_MODULE_CAPS.map((m) => ({ ...m, view: true, create: true, edit: true, approve: true, delete: true })),
-  },
-  {
-    id: "role-sup",
-    key: "supervisor",
-    name: "Shift Supervisor",
-    description: "Floor oversight, FIFO/FEFO override sign-offs, and stock quarantine management.",
-    color: "bg-blue-100 text-blue-800 border-blue-200",
-    isSystem: true,
-    capabilities: DEFAULT_MODULE_CAPS.map((m) => ({ ...m, view: true, create: true, edit: true, approve: m.module === "Approvals" || m.module === "Receiving (WRR)", delete: false })),
-  },
-  {
-    id: "role-staff",
-    key: "warehouse_staff",
-    name: "Floor Operator",
-    description: "Physical receiving intake, mobile barcode scanning, and pick execution.",
-    color: "bg-emerald-100 text-emerald-800 border-emerald-200",
-    isSystem: true,
-    capabilities: DEFAULT_MODULE_CAPS,
-  },
-  {
-    id: "role-audit",
-    key: "audit_lead",
-    name: "Audit & Inventory Clerk",
-    description: "Cycle count verification, stock adjustment reviews, and discrepancy audits.",
-    color: "bg-amber-100 text-amber-800 border-amber-200",
-    isSystem: false,
-    capabilities: DEFAULT_MODULE_CAPS.map((m) => ({ ...m, view: true, create: false, edit: m.module === "Master Inventory", approve: false, delete: false })),
-  },
-];
+function rbacError(error: unknown): string {
+  // PostgreSQL exception messages from these controlled functions are deliberately
+  // user-safe. Never send query text, parameters, stack traces or connection data.
+  const message = error instanceof Error ? error.message : "";
+  if (/^(Access denied|Only an active|Only existing active|Only pending|System roles|System-defined roles|Role not found|User not found|Account not found|Unsupported permission|Unsupported or inactive|Invalid |Duplicate |The last |Cannot |Organization|An Organization-scoped|Scoped |Global |A role cannot|A saved role|A role with|A change reason|A status|A reason|Too many|Role key|Role name|Role is |Permission |Selected |Custom role)/i.test(message)) return message;
+  return "Unable to update or read access settings. Refresh and try again. If this continues, contact an administrator.";
+}
+
+function refreshAccessViews() {
+  revalidatePath("/settings/team");
+  revalidatePath("/", "layout");
+}
+
+export async function listPermissionCatalog(): Promise<ActionResult<PermissionOption[]>> {
+  const permission = await requireAccessAdministration(false);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  try {
+    const rows = await runRbacCommand<Array<{ permission_id: string; resource: string; action: string; description: string | null; scope_kind: "global" | "assigned_party" }>>(
+      permission.context.userId, sql`select * from rbac_internal.admin_permission_catalog()`,
+    );
+    return { ok: true, data: rows.map((row) => ({ permissionId: row.permission_id, resource: row.resource, action: row.action, description: row.description, scopeKind: row.scope_kind })) };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
+}
 
 export async function listRoles(): Promise<ActionResult<DynamicRole[]>> {
-  const permission = await requireUsersCapability("read");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
-  }
-
+  const permission = await requireAccessAdministration(false);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
   try {
-    const dbRoles = await db.select().from(roles).where(eq(roles.isActive, true));
-    if (dbRoles.length > 0) {
-      const grants = await db
-        .select({ roleId: rolePermissions.roleId, resource: permissions.resource, action: permissions.action })
-        .from(rolePermissions)
-        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id));
-      const mapped: DynamicRole[] = dbRoles.map((r) => {
-        const matchingRuntime = runtimeCustomRoles.find((cr) => cr.key === r.key);
-        const roleGrants = grants.filter((grant) => grant.roleId === r.id);
-        const capabilities = DEFAULT_MODULE_CAPS.map((moduleCap) => ({ ...moduleCap }));
-        for (const mapping of Object.values(MODULE_PERMISSION_MAP).flat()) {
-          const moduleName = Object.entries(MODULE_PERMISSION_MAP).find(([, entries]) => entries.includes(mapping))?.[0];
-          const target = capabilities.find((cap) => cap.module === moduleName);
-          if (target && roleGrants.some((grant) => grant.resource === mapping.resource && grant.action === mapping.action)) {
-            target[mapping.field] = true;
-          }
-        }
-        return {
-          id: r.id,
-          key: r.key,
-          name: r.name,
-          description: r.description ?? "",
-          color: matchingRuntime?.color || (r.key === "administrator" ? "bg-purple-100 text-purple-800 border-purple-200" : "bg-blue-100 text-blue-800 border-blue-200"),
-          isSystem: r.isSystem,
-          capabilities: r.isSystem && matchingRuntime ? matchingRuntime.capabilities : capabilities,
-        };
-      });
-      return { ok: true, data: mapped };
-    }
-  } catch {
-    // fallback
-  }
-
-  return { ok: true, data: runtimeCustomRoles };
+    const rows = await runRbacCommand<Array<{ data: Array<Omit<DynamicRole, "color" | "capabilities">> }>>(
+      permission.context.userId, sql`select rbac_internal.admin_list_roles() as data`,
+    );
+    return { ok: true, data: (rows[0]?.data ?? []).map((role) => ({ ...role, color: "bg-slate-100 text-slate-800 border-slate-200", capabilities: [] })) };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
 }
 
-export async function saveDynamicRole(role: DynamicRole): Promise<ActionResult> {
-  const permission = await requireUsersCapability("activate");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
-  }
-
+export async function saveDynamicRole(input: SaveRoleInput): Promise<ActionResult> {
+  const permission = await requireAccessAdministration(true);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  const parsed = saveRoleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role" };
+  const role = parsed.data;
   try {
-    const result = await db.transaction(async (tx) => {
-      const existing = await tx.select().from(roles).where(eq(roles.key, role.key)).limit(1);
-      const current = existing[0];
-      if (current?.isSystem) {
-        throw new Error("System-defined roles cannot be edited.");
-      }
-
-      const saved = current
-        ? (await tx.update(roles).set({ name: role.name, description: role.description, isActive: true, updatedAt: new Date() }).where(eq(roles.id, current.id)).returning({ id: roles.id }))[0]
-        : (await tx.insert(roles).values({ key: role.key, name: role.name, description: role.description, isSystem: false, isActive: true }).returning({ id: roles.id }))[0];
-      if (!saved) throw new Error("Unable to save role.");
-
-      await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, saved.id));
-      const catalog = await tx.select({ id: permissions.id, resource: permissions.resource, action: permissions.action }).from(permissions).where(eq(permissions.isActive, true));
-      const grants = role.capabilities.flatMap((cap) => (MODULE_PERMISSION_MAP[cap.module] ?? [])
-        .filter((entry) => cap[entry.field])
-        .map((entry) => {
-          const permissionRow = catalog.find((p) => p.resource === entry.resource && p.action === entry.action);
-          return permissionRow ? { roleId: saved.id, permissionId: permissionRow.id, scopeKind: "global" as const } : null;
-        }).filter((grant): grant is { roleId: string; permissionId: string; scopeKind: "global" } => Boolean(grant)));
-      if (grants.length > 0) await tx.insert(rolePermissions).values(grants).onConflictDoNothing();
-
-      return saved.id;
-    });
-
-    const existingIdx = runtimeCustomRoles.findIndex((r) => r.id === role.id || r.key === role.key);
-    const persistedRole = { ...role, id: result, isSystem: false };
-    if (existingIdx >= 0) runtimeCustomRoles[existingIdx] = persistedRole;
-    else runtimeCustomRoles.push(persistedRole);
-
-    // Write audit record
-    await db.insert(auditLog).values({
-      actorUserId: permission.context.userId,
-      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-      action: "dynamic_role_saved",
-      entityType: "roles",
-      entityId: result,
-      diffData: {
-        roleKey: role.key,
-        name: role.name,
-        capabilities: role.capabilities,
-      },
-      correlationId: `ROLE-${Date.now()}`,
-    }).catch(() => {});
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Unable to persist custom role." };
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+    await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_save_role(
+      ${role.id ?? null}::uuid, ${role.key}, ${role.name}, ${role.description}, ${JSON.stringify(role.grants)}::jsonb, ${role.reason}
+    ) as id`);
+    refreshAccessViews();
+    return { ok: true, data: undefined };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
 }
 
-export async function deleteDynamicRole(roleId: string): Promise<ActionResult> {
-  const permission = await requireUsersCapability("deactivate");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
-  }
-
+export async function deleteDynamicRole(roleId: string, reason: string): Promise<ActionResult> {
+  const permission = await requireAccessAdministration(true);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  const parsed = roleChangeSchema.safeParse({ roleId, reason });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role change" };
   try {
-    const target = (await db.select().from(roles).where(eq(roles.id, roleId)).limit(1))[0];
-    if (!target) return { ok: false, error: "Role not found." };
-    if (target.isSystem) return { ok: false, error: "System-defined roles cannot be deleted." };
-    await db.update(roles).set({ isActive: false, updatedAt: new Date() }).where(eq(roles.id, roleId));
-    runtimeCustomRoles = runtimeCustomRoles.filter((r) => r.id !== roleId);
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Unable to deactivate role." };
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+    await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_deactivate_role(${parsed.data.roleId}::uuid, ${parsed.data.reason})`);
+    refreshAccessViews();
+    return { ok: true, data: undefined };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
 }
 
-// ── Per-User Administrative Audit Trail ─────────────────────
+export async function getUserAccess(userId: string): Promise<ActionResult<UserAccess>> {
+  const permission = await requireAccessAdministration(false);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Invalid account" };
+  try {
+    const rows = await runRbacCommand<Array<{ data: UserAccess }>>(permission.context.userId, sql`select rbac_internal.admin_get_user_access(${userId}::uuid) as data`);
+    if (!rows[0]?.data) return { ok: false, error: "User not found." };
+    return { ok: true, data: rows[0].data };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
+}
 
+export async function replaceUserRoles(input: { userId: string; roleIds: string[]; reason: string }): Promise<ActionResult> {
+  const permission = await requireAccessAdministration(true);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  const parsed = replaceUserRolesSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid role assignment" };
+  try {
+    await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_replace_user_roles(
+      ${parsed.data.userId}::uuid, ARRAY[${sql.join(parsed.data.roleIds.map((id) => sql`${id}::uuid`), sql`, `)}]::uuid[] , ${parsed.data.reason}
+    )`);
+    refreshAccessViews();
+    return { ok: true, data: undefined };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
+}
 function formatTeamActionLabel(rawAction: string): string {
   const map: Record<string, string> = {
     profile_updated: "Identity Details Updated",
@@ -599,40 +501,19 @@ export async function getUserAuditTrail(userId: string): Promise<ActionResult<Us
 
 export async function revokeUserSession(userId: string): Promise<ActionResult> {
   const permission = await requireUsersCapability("deactivate");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "Access denied." };
-  }
-
-  const serviceClient = createServiceRoleClient();
-  await serviceClient.auth.admin.signOut(userId).catch(() => {});
-
-  // Write audit record
-  try {
-    await db.insert(auditLog).values({
-      actorUserId: permission.context.userId,
-      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-      action: "session_revoked",
-      entityType: "user_sessions",
-      entityId: userId,
-      diffData: {
-        event: "emergency_session_revoked",
-        targetUserId: userId,
-      },
-      correlationId: `REVOKE-${Date.now()}`,
-    });
-  } catch {
-    // ignore logging failure
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+  if (permission.kind !== "authorized" || !z.string().uuid().safeParse(userId).success) return { ok: false, error: "Access denied." };
+  // Supabase's admin signOut accepts an access token, not an account ID.
+  // Never claim successful revocation for a request that cannot perform it.
+  return { ok: false, error: "Session-only revocation is unavailable. Suspend the account to block its next protected request." };
 }
-
 export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{ userId: string }>> {
   const permission = await requireUsersCapability("invite");
   if (permission.kind !== "authorized") {
     return { ok: false, error: "You don't have access to invite team members." };
   }
+
+  const access = await requireAccessAdministration(true);
+  if (access.kind !== "authorized") return { ok: false, error: "Only an access administrator can invite and assign account roles." };
 
   const parsed = inviteUserSchema.safeParse(input);
   if (!parsed.success) {
@@ -702,57 +583,31 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
   const newUserId = authData.user.id;
 
   try {
-    // Persist the local account before reporting success. If this fails after
-    // Supabase created/sent the invite, remove the orphaned auth user.
-    await db.insert(userProfiles).values({
-      id: newUserId,
-      displayName: parsed.data.displayName,
-      status: "invited",
-      activatedByUserId: permission.context.userId,
-    });
-
-    // Assign the pre-validated role and optional party scope.
-    const [roleRow] = await db
-      .select({ id: roles.id })
-      .from(roles)
-      .where(and(eq(roles.key, parsed.data.role), eq(roles.isActive, true)))
-      .limit(1);
-
-    if (!roleRow) throw new Error("Selected role is no longer available.");
-    await db.insert(userRoles).values({
-      userId: newUserId,
-      roleId: roleRow.id,
-      grantedByUserId: permission.context.userId,
-    });
-
-    // 3. Assign party scope if provided
-    if (parsed.data.partyId) {
-      await db.insert(userPartyScopes).values({
-        userId: newUserId,
-        partyId: parsed.data.partyId,
-        grantedByUserId: permission.context.userId,
+    // Provision profile, scope, controlled role assignment and audit together.
+    // If any step fails the local transaction rolls back before Auth cleanup.
+    await db.transaction(async (tx) => {
+      await tx.insert(userProfiles).values({
+        id: newUserId, displayName: parsed.data.displayName, status: "invited",
+        activatedByUserId: permission.context.userId,
       });
-    }
-
-    // Log to audit_log; an audit failure must not invalidate an otherwise
-    // complete invitation.
-    await db.insert(auditLog).values({
-      actorUserId: permission.context.userId,
-      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-      action: "user_invited",
-      entityType: "user_profiles",
-      entityId: newUserId,
-      diffData: {
-        email: parsed.data.email,
-        displayName: parsed.data.displayName,
-        role: parsed.data.role,
-      },
-      correlationId: `INVITE-${Date.now()}`,
-    }).catch(() => {});
-  } catch (error) {
-    await db.delete(userPartyScopes).where(eq(userPartyScopes.userId, newUserId)).catch(() => {});
-    await db.delete(userRoles).where(eq(userRoles.userId, newUserId)).catch(() => {});
-    await db.delete(userProfiles).where(eq(userProfiles.id, newUserId)).catch(() => {});
+      const [roleRow] = await tx.select({ id: roles.id }).from(roles)
+        .where(and(eq(roles.key, parsed.data.role), eq(roles.isActive, true))).limit(1);
+      if (!roleRow) throw new Error("Selected role is no longer available.");
+      if (parsed.data.partyId) {
+        await tx.insert(userPartyScopes).values({ userId: newUserId, partyId: parsed.data.partyId, grantedByUserId: permission.context.userId });
+      }
+      // Write the invitation event before switching to authenticated, which
+      // intentionally has no direct INSERT policy on audit_log.
+      await tx.insert(auditLog).values({
+        actorUserId: permission.context.userId, actorRole: "administrator",
+        action: "user_invited", entityType: "user_profiles", entityId: newUserId,
+        diffData: { email: parsed.data.email, displayName: parsed.data.displayName, role: parsed.data.role },
+        correlationId: crypto.randomUUID(),
+      });
+      await tx.execute(sql`select set_config('role', ${"authenticated"}, true)`);
+      await tx.execute(sql`select set_config('request.jwt.claims', ${JSON.stringify({ sub: permission.context.userId })}, true)`);
+      await tx.execute(sql`select rbac_internal.admin_replace_user_roles(${newUserId}::uuid, ARRAY[${roleRow.id}::uuid], ${"Initial administrator invitation assignment"})`);
+    });  } catch (error) {
     await serviceClient.auth.admin.deleteUser(newUserId).catch(() => {});
     return { ok: false, error: error instanceof Error ? error.message : "Unable to finish setting up the invited account." };
   }
@@ -763,90 +618,28 @@ export async function inviteUser(input: InviteUserInput): Promise<ActionResult<{
 
 export async function suspendUser(input: { userId: string; reason: string }): Promise<ActionResult> {
   const permission = await requireUsersCapability("deactivate");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "You don't have access to suspend users." };
-  }
-
+  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Access denied." };
   const parsed = suspendUserSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  }
-
-  await db
-    .update(userProfiles)
-    .set({
-      status: "inactive",
-      deactivatedAt: new Date(),
-      deactivatedByUserId: permission.context.userId,
-      deactivationReason: parsed.data.reason,
-      updatedAt: new Date(),
-    })
-    .where(eq(userProfiles.id, parsed.data.userId));
-
-  const serviceClient = createServiceRoleClient();
-  await serviceClient.auth.admin.signOut(parsed.data.userId).catch(() => {});
-
-  // Log to auditLog
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   try {
-    await db.insert(auditLog).values({
-      actorUserId: permission.context.userId,
-      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-      action: "user_suspended",
-      entityType: "user_profiles",
-      entityId: parsed.data.userId,
-      diffData: {
-        status: { before: "active", after: "inactive" },
-        reason: parsed.data.reason,
-      },
-      correlationId: `SUSPEND-${Date.now()}`,
-    });
-  } catch {
-    // ignore logging failure
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+    await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_set_user_active(${parsed.data.userId}::uuid, false, ${parsed.data.reason})`);
+    // Database profile checks deny the next protected request immediately;
+    // do not claim Auth session revocation by passing a user UUID as a JWT.
+    refreshAccessViews();
+    return { ok: true, data: undefined };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
 }
 
 export async function reactivateUser(userId: string): Promise<ActionResult> {
   const permission = await requireUsersCapability("activate");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "You don't have access to reactivate users." };
-  }
-
-  await db
-    .update(userProfiles)
-    .set({
-      status: "active",
-      activatedAt: new Date(),
-      activatedByUserId: permission.context.userId,
-      deactivatedAt: null,
-      deactivationReason: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(userProfiles.id, userId));
-
-  // Log to auditLog
+  if (permission.kind !== "authorized" || !permission.context.activeRoleKeys.includes("administrator")) return { ok: false, error: "Access denied." };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Invalid account" };
   try {
-    await db.insert(auditLog).values({
-      actorUserId: permission.context.userId,
-      actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-      action: "user_reactivated",
-      entityType: "user_profiles",
-      entityId: userId,
-      diffData: {
-        status: { before: "inactive", after: "active" },
-      },
-      correlationId: `REACTIVATE-${Date.now()}`,
-    });
-  } catch {
-    // ignore logging failure
-  }
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+    await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_set_user_active(${userId}::uuid, true, ${"Administrator reactivated account"})`);
+    refreshAccessViews();
+    return { ok: true, data: undefined };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
 }
-
 export async function resendInvite(userId: string): Promise<ActionResult> {
   const permission = await requireUsersCapability("invite");
   if (permission.kind !== "authorized") {
@@ -926,45 +719,12 @@ export async function resendInvite(userId: string): Promise<ActionResult> {
 }
 
 export async function cancelInvite(userId: string): Promise<ActionResult> {
-  const permission = await requireUsersCapability("deactivate");
-  if (permission.kind !== "authorized") {
-    return { ok: false, error: "You don't have access to cancel invitations." };
-  }
-
-  const [profile] = await db
-    .select({ id: userProfiles.id, displayName: userProfiles.displayName, status: userProfiles.status })
-    .from(userProfiles)
-    .where(eq(userProfiles.id, userId))
-    .limit(1);
-
-  if (!profile || profile.status !== "invited") {
-    return { ok: false, error: "Only pending invitations can be removed." };
-  }
-
-  // 1. Remove scopes and roles
-  await db.delete(userPartyScopes).where(eq(userPartyScopes.userId, userId)).catch(() => {});
-  await db.delete(userRoles).where(eq(userRoles.userId, userId)).catch(() => {});
-
-  // 2. Remove user profile
-  await db.delete(userProfiles).where(eq(userProfiles.id, userId));
-
-  // 3. Remove auth user from Supabase
-  const serviceClient = createServiceRoleClient();
-  await serviceClient.auth.admin.deleteUser(userId).catch(() => {});
-
-  // 4. Audit log
-  await db.insert(auditLog).values({
-    actorUserId: permission.context.userId,
-    actorRole: permission.context.activeRoleKeys[0] ?? "administrator",
-    action: "invite_cancelled",
-    entityType: "user_profiles",
-    entityId: userId,
-    diffData: {
-      displayName: profile.displayName,
-    },
-    correlationId: `CANCEL-${Date.now()}`,
-  }).catch(() => {});
-
-  revalidatePath("/settings/team");
-  return { ok: true, data: undefined };
+  const permission = await requireAccessAdministration(true);
+  if (permission.kind !== "authorized") return { ok: false, error: "Access denied." };
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: "Invalid account" };
+  try {
+    await runRbacCommand(permission.context.userId, sql`select rbac_internal.admin_cancel_invite(${userId}::uuid, ${"Administrator cancelled pending invitation"})`);
+    refreshAccessViews();
+    return { ok: true, data: undefined };
+  } catch (error) { return { ok: false, error: rbacError(error) }; }
 }

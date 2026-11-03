@@ -2029,3 +2029,20 @@ The authoritative implementation references are commits `a12508d` through
 `64947af` on the 2026-10-27 release line; this register summarizes the
 user-visible and operationally material changes rather than replacing commit
 history.
+
+## Dynamic RBAC implementation approved (2026-11-03)
+
+Lauren approved the audit recommendation and implementation in this session.
+The signed contract is appended to 02 requirements/design/tasks and supersedes
+older v1 read-only/custom-role deferrals. Root coordinates shared-file writes;
+database-builder owns 0071, frontend-builder owns the Team role/account access
+components; root owns Team actions, tests, and spec records. Migration 0071 is
+reserved for controlled dynamic role administration. No other track should edit
+these files during this work. Verification sign-offs remain separate from approval.
+
+Implementation result: migration 0071 and Team custom-role/multi-role editors are
+implemented locally, with scoped authorization and transactional audit. Independent
+real-PostgreSQL WASM verification passed 21 tests after applying all 80 migrations;
+full unit/component suite passed 2,299 tests. Hosted migration application, actual
+Supabase/PgBouncer concurrency and authenticated browser E2E remain separate checks.
+No real staff accounts or hosted database were modified in this session.

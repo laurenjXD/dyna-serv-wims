@@ -146,3 +146,24 @@ describe("lib/shell/surface — resolveSessionPresentationTier (requirements.md 
     expect(resolveSessionPresentationTier(["party_user", "administrator"])).toBe("office");
   });
 });
+
+// Custom role names must not determine the user-facing shell surface.
+describe("custom-role presentation from effective grants", () => {
+  it("routes a custom reporting reader to office presentation", async () => {
+    const { resolveSessionPresentationTier } = await import("../surface");
+    expect(resolveSessionPresentationTier(["custom_reports"], { grants: [{resource:"reporting",action:"read",scopeKind:"global"}], partyScopes: [] })).toBe("office");
+  });
+  it("routes a custom scoped reader to Organization presentation", async () => {
+    const { resolveSessionPresentationTier } = await import("../surface");
+    expect(resolveSessionPresentationTier(["custom_client"], { grants: [{resource:"pick_list",action:"read",scopeKind:"assigned_party"}], partyScopes: [{partyId:"org-a",flowType:"vmi"}] })).toBe("party");
+  });
+  it("keeps a custom receiving operator on the floor", async () => {
+    const { resolveSessionPresentationTier } = await import("../surface");
+    expect(resolveSessionPresentationTier(["custom_receiver"], { grants: [{resource:"receiving",action:"view",scopeKind:"global"}], partyScopes: [] })).toBe("floor");
+  });
+});
+
+it.each(["documents", "parties"])("custom %s reader receives its office navigation surface", async (resource) => {
+  const { resolveSessionPresentationTier } = await import("../surface");
+  expect(resolveSessionPresentationTier(["custom_reader"], { grants: [{ resource, action: "read", scopeKind: "global" }], partyScopes: [] })).toBe("office");
+});

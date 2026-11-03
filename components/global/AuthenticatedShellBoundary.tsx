@@ -53,9 +53,11 @@ export function AuthenticatedShellBoundary({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [resolution, setResolution] = useState<AuthorizationResolution | null>(
+  const [clientResolution, setResolution] = useState<AuthorizationResolution | null>(
     initialResolution ?? null,
   );
+
+  const resolution = initialResolution ?? clientResolution;
 
   useEffect(() => {
     if (initialResolution || !resolver) return;

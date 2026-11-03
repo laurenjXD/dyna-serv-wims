@@ -1,262 +1,161 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { X } from "@/components/ui/icons";
 import {
-  X,
-  Sliders,
-  Info,
-  CheckCircle2,
-  AlertCircle,
-} from "@/components/ui/icons";
-import type { DynamicRole } from "@/app/(authenticated)/settings/team/actions";
+  deleteDynamicRole,
+  listPermissionCatalog,
+  saveDynamicRole,
+  type DynamicRole,
+  type EffectiveGrant,
+  type PermissionOption,
+} from "@/app/(authenticated)/settings/team/actions";
 
-const MODULE_NAMES = [
-  { id: "Dashboard", desc: "View metrics, financial cards, location heatmap, export PDF" },
-  { id: "Receiving (WRR)", desc: "View incoming, scan/receive pallets, override discrepancies, sign off intake" },
-  { id: "Master Inventory", desc: "View live stock, lot numbers, adjust stock counts, quarantine lots" },
-  { id: "Outgoing & Picking", desc: "View pick lists, execute pick runs, assign staging bays, dispatch orders" },
-  { id: "Approvals", desc: "View approval queue, approve stock scrap/holds, approve high-value discrepancies" },
-  { id: "Documents", desc: "View uploaded PODs, upload new scans, delete document records" },
-  { id: "Reports & Billing", desc: "View financial margins, run VMI billing reconciliations, issue invoices, download CSV/PDF" },
-  { id: "Master Data", desc: "Register new SKUs, modify CBM rates, edit vendor contracts" },
-];
+export const scopeLabel = (scope: string) => scope === "global" ? "Warehouse-wide" : "Assigned Organizations";
+const grantKey = (grant: { permissionId: string; scopeKind: string }) => `${grant.permissionId}:${grant.scopeKind}`;
+const button = "min-h-11 rounded-lg border border-border px-4 py-2 font-label text-label focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50";
+const input = "min-h-11 w-full rounded-lg border border-border bg-surface px-3 py-2 font-body text-body-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:bg-background";
 
-const COLOR_OPTIONS = [
-  { label: "Purple (Admin)", value: "bg-purple-100 text-purple-800 border-purple-200" },
-  { label: "Blue (Supervisor)", value: "bg-blue-100 text-blue-800 border-blue-200" },
-  { label: "Emerald (Floor/Ops)", value: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  { label: "Amber (Audit)", value: "bg-amber-100 text-amber-800 border-amber-200" },
-  { label: "Rose (Security)", value: "bg-rose-100 text-rose-800 border-rose-200" },
-  { label: "Slate (Default)", value: "bg-slate-100 text-slate-800 border-slate-200" },
-];
+// A small office dialog shared by the two access editors. Focus is contained,
+// Escape closes it outside a pending mutation, and closing restores focus.
+export function AccessDialog({ title, onClose, busy = false, children }: { title: string; onClose: () => void; busy?: boolean; children: ReactNode }) {
+  const titleId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  const busyRef = useRef(busy);
+  closeRef.current = onClose;
+  busyRef.current = busy;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    panel.current?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busyRef.current) {
+        event.preventDefault();
+        closeRef.current();
+      }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex="0"]') ?? []);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener("keydown", keydown);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener("keydown", keydown);
+      previous?.focus();
+    };
+  }, []);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/60 p-4 sm:p-6">
+      <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy} className="max-h-full w-full max-w-4xl overflow-y-auto rounded-xl border border-border bg-surface shadow-elevation-2 outline-none">
+        <div className="flex items-center justify-between gap-4 border-b border-border p-4 sm:px-6">
+          <h2 id={titleId} className="font-heading text-headline-sm text-heading">{title}</h2>
+          <button type="button" className={`${button} flex min-w-11 items-center justify-center px-2`} aria-label="Close access editor" onClick={onClose} disabled={busy}><X className="h-5 w-5" /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function GrantList({ grants }: { grants: EffectiveGrant[] }) {
+  if (grants.length === 0) return <p className="font-body text-body-sm text-text-secondary">No permissions granted.</p>;
+  return <ul className="divide-y divide-border rounded-lg border border-border">{grants.map((grant) => <li key={grantKey(grant)} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 font-body text-body-sm"><code className="break-all font-body text-body-sm text-text-primary">{grant.resource}.{grant.action}</code><span className="text-text-secondary">{scopeLabel(grant.scopeKind)}</span></li>)}</ul>;
+}
 
 interface RoleManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   roles: DynamicRole[];
+  canManageAccess?: boolean;
+  onSaved?: () => void;
 }
 
-export function RoleManagementModal({
-  isOpen,
-  onClose,
-  roles,
-}: RoleManagementModalProps) {
-  const [selectedRole, setSelectedRole] = useState<DynamicRole | null>(null);
-
-  const activeRole = selectedRole ?? roles[0] ?? null;
-
-  useEffect(() => {
-    if (!selectedRole && roles.length > 0) {
-      setSelectedRole(roles[0]);
-    }
-  }, [roles, selectedRole]);
-
-  if (!isOpen || !activeRole) return null;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="role-capability-reference-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
-    >
-      <div className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-[#F8FAFC] px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-navy text-white shadow-xs">
-              <Sliders className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 id="role-capability-reference-title" className="font-heading text-base font-bold text-slate-900">
-                Approved Role Capability Reference
-              </h3>
-              <p className="font-body text-xs text-slate-500">
-                Review the approved capability reference before assigning a role.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Modal Body: Two-Column Layout */}
-        <div className="flex-1 overflow-y-auto grid md:grid-cols-[260px_1fr] divide-y md:divide-y-0 md:divide-x divide-slate-100">
-          {/* Left Rail: Roles List */}
-          <div className="p-4 bg-[#F8FAFC]/50 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 font-label">
-                Roles Catalog
-              </span>
-              <span className="rounded bg-slate-100 px-2 py-1 font-mono text-[9px] font-bold uppercase text-slate-500">
-                System roles
-              </span>
-            </div>
-
-            <div className="space-y-1.5">
-              {roles.map((r) => {
-                const isSelected = activeRole.id === r.id;
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole(r);
-                    }}
-                    className={`w-full text-left p-3 rounded-xl border transition-all text-xs ${
-                      isSelected
-                        ? "bg-white border-brand-navy shadow-sm ring-1 ring-brand-navy/10"
-                        : "bg-white/60 border-slate-200 hover:bg-white"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="font-heading font-bold text-slate-900 truncate">{r.name}</span>
-                      {r.isSystem && (
-                        <span className="rounded bg-slate-100 px-1 py-0.2 font-mono text-[9px] font-bold text-slate-500 uppercase">
-                          System
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-body text-[11px] text-slate-500 line-clamp-1">{r.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right Rail: Role Config & Permission Matrix */}
-          <div className="p-6 space-y-6 overflow-y-auto">
-            {/* Identity & Color Badge */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block font-label text-xs font-bold text-slate-700 mb-1">
-                  Role Name
-                </label>
-                <input
-                  type="text"
-                  value={activeRole.name}
-                  readOnly
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-900 shadow-2xs outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-label text-xs font-bold text-slate-700 mb-1">
-                  Badge Color Style
-                </label>
-                <select
-                  value={activeRole.color}
-                  disabled
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-900 shadow-2xs outline-none disabled:opacity-100"
-                >
-                  {COLOR_OPTIONS.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-label text-xs font-bold text-slate-700 mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={activeRole.description}
-                  readOnly
-                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 font-body text-xs text-slate-900 shadow-2xs outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
-              <p>
-                Capability grants are managed by the approved RBAC migrations and are read-only here.
-                Use <strong>Invite Operator</strong> to assign one of these roles to a new user.
-              </p>
-            </div>
-
-            {/* Approved capability reference — intentionally read-only in v1. */}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-3 font-label">
-                Approved capability reference
-              </span>
-
-              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-[#F8FAFC] font-bold uppercase tracking-wider text-[10px] text-slate-600">
-                      <th className="py-2.5 px-3 min-w-[160px]">Module</th>
-                      <th className="py-2.5 px-2 text-center w-14">View</th>
-                      <th className="py-2.5 px-2 text-center w-14">Create</th>
-                      <th className="py-2.5 px-2 text-center w-14">Edit</th>
-                      <th className="py-2.5 px-2 text-center w-14">Approve</th>
-                      <th className="py-2.5 px-2 text-center w-14">Delete</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {MODULE_NAMES.map((mod) => {
-                      const currentCap = activeRole.capabilities.find((c) => c.module === mod.id) || {
-                        module: mod.id,
-                        view: false,
-                        create: false,
-                        edit: false,
-                        approve: false,
-                        delete: false,
-                      };
-
-                      return (
-                        <tr key={mod.id} className="hover:bg-slate-50/60">
-                          <td className="py-2.5 px-3">
-                            <span className="font-heading font-bold text-slate-900 block">{mod.id}</span>
-                            <span className="font-body text-[10px] text-slate-500 block line-clamp-1">{mod.desc}</span>
-                          </td>
-                          {(["view", "create", "edit", "approve", "delete"] as const).map((capKey) => (
-                            <td key={capKey} className="py-2.5 px-2 text-center align-middle">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(currentCap[capKey])}
-                                readOnly
-                                disabled
-                                aria-label={`${mod.id} ${capKey}`}
-                                className="h-4 w-4 rounded text-brand-navy focus:ring-brand-navy disabled:opacity-100"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-100 bg-[#F8FAFC] px-6 py-3">
-          <p className="font-body text-[11px] text-slate-500">
-            Role definitions are versioned with the RBAC schema.
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 font-label text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+export function RoleManagementModal({ isOpen, onClose, roles, canManageAccess = false, onSaved }: RoleManagementModalProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!isOpen) return null;
+  const selected = roles.find((role) => role.id === selectedId) ?? roles[0] ?? null;
+  const creating = selectedId === "__new__";
+  return <AccessDialog title="Roles & permissions" onClose={onClose} busy={busy}>
+    <div className="grid gap-6 p-4 sm:p-6 md:grid-cols-3">
+      <div className="space-y-3">
+        <h3 className="font-heading text-body-md text-heading">Role catalog</h3>
+        {canManageAccess && <button className={`${button} w-full bg-brand-navy text-white`} type="button" disabled={busy} onClick={() => setSelectedId("__new__")}>Create role</button>}
+        <div className="space-y-2">{roles.map((role) => <button key={role.id} type="button" disabled={busy} aria-pressed={!creating && selected?.id === role.id} onClick={() => setSelectedId(role.id)} className={`${button} w-full text-left ${!creating && selected?.id === role.id ? "bg-background text-heading" : "bg-surface text-text-primary"}`}><span className="block break-words">{role.name}</span><span className="block font-body text-body-sm text-text-secondary">{role.isSystem ? "Protected system role" : "Custom role"}{!role.isActive ? " · Inactive" : ""}</span></button>)}</div>
+      </div>
+      <div className="min-w-0 md:col-span-2">
+        {!selected && !creating ? <p className="font-body text-body-sm text-text-secondary">No roles are available.</p> : <RoleEditor key={creating ? "__new__" : selected?.id} role={creating ? null : selected} canManageAccess={canManageAccess} onBusy={setBusy} onSaved={() => { onSaved?.(); onClose(); }} />}
       </div>
     </div>
-  );
+  </AccessDialog>;
+}
+
+function RoleEditor({ role, canManageAccess, onBusy, onSaved }: { role: DynamicRole | null; canManageAccess: boolean; onBusy: (busy: boolean) => void; onSaved: () => void }) {
+  const editable = canManageAccess && !role?.isSystem;
+  const [key, setKey] = useState(role?.key ?? "");
+  const [name, setName] = useState(role?.name ?? "");
+  const [description, setDescription] = useState(role?.description ?? "");
+  const [grants, setGrants] = useState((role?.grants ?? []).map(({ permissionId, scopeKind }) => ({ permissionId, scopeKind })));
+  const [catalog, setCatalog] = useState<PermissionOption[] | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [filter, setFilter] = useState("");
+  useEffect(() => {
+    if (!editable) return;
+    let active = true;
+    listPermissionCatalog().then((result) => {
+      if (!active) return;
+      if (result.ok) setCatalog(result.data);
+      else setCatalogError(result.error);
+    }).catch(() => { if (active) setCatalogError("Permission catalog could not be loaded. Check your connection and reopen the editor."); });
+    return () => { active = false; };
+  }, [editable]);
+  const mixedScopes = new Set(grants.map((grant) => grant.scopeKind)).size > 1;
+  const ready = confirmed && reason.trim().length >= 3 && reason.trim().length <= 1000 && !pending;
+  async function mutate(deactivate: boolean) {
+    if (!ready || !editable) return;
+    setPending(true); onBusy(true); setError(null);
+    try {
+      const result = deactivate && role ? await deleteDynamicRole(role.id, reason.trim()) : await saveDynamicRole({ ...(role ? { id: role.id } : {}), key, name, description, grants, reason: reason.trim() });
+      if (result.ok) onSaved();
+      else setError(result.error);
+    } catch { setError("The change could not be saved. Check your connection and try again."); }
+    finally { setPending(false); onBusy(false); }
+  }
+  if (!editable) return <div className="space-y-4"><h3 className="font-heading text-headline-sm text-heading">{role?.name}</h3><p className="font-body text-body-sm text-text-secondary">{role?.description}</p>{role?.isSystem && <p className="rounded-lg bg-background p-3 font-body text-body-sm text-text-primary">System roles are protected. Create a custom role for a different permission bundle.</p>}<h4 className="font-label text-label text-heading">Exact permissions</h4><GrantList grants={role?.grants ?? []} /></div>;
+  return <form onSubmit={(event) => { event.preventDefault(); void mutate(false); }} className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2">
+      <label className="space-y-1 font-label text-label text-heading">Role key<input className={input} value={key} onChange={(event) => setKey(event.target.value)} disabled={Boolean(role) || pending} required pattern="[a-z][a-z0-9_]+" minLength={2} maxLength={100} /></label>
+      <label className="space-y-1 font-label text-label text-heading">Role name<input className={input} value={name} onChange={(event) => setName(event.target.value)} disabled={pending} required minLength={2} maxLength={255} /></label>
+    </div>
+    <label className="block space-y-1 font-label text-label text-heading">Description<textarea className={input} value={description} onChange={(event) => setDescription(event.target.value)} disabled={pending} maxLength={2000} /></label>
+    <div className="rounded-lg bg-background p-3 font-body text-body-sm text-text-primary">Permissions combine across assigned roles. Warehouse-wide permissions apply across Organizations. Assigned Organization permissions are limited by each account’s active Organization and Inventory Model scope. Scoped and warehouse-wide grants cannot be mixed in one role. Organization accounts must keep scoped access. Removing a grant here changes access for every account assigned this role.</div>
+    <fieldset disabled={pending || !catalog} className="space-y-3">
+      <legend className="font-label text-label text-heading">Permissions ({grants.length} selected)</legend>
+      {catalogError ? <p role="alert" className="font-body text-body-sm text-status-held">{catalogError}</p> : !catalog ? <p role="status" className="font-body text-body-sm text-text-secondary">Loading permission catalog…</p> : <>
+        <label className="block font-label text-label text-heading">Find permissions<input className={input} value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Resource or action" /></label>
+        <div className="max-h-80 overflow-y-auto rounded-lg border border-border">{catalog.filter((option) => `${option.resource}.${option.action}`.includes(filter.toLowerCase())).map((option) => <label key={grantKey(option)} className="flex min-h-11 cursor-pointer items-start gap-3 border-b border-border px-3 py-3 last:border-0"><input type="checkbox" className="mt-1 h-5 w-5 accent-primary" aria-label={`${option.resource}.${option.action} — ${scopeLabel(option.scopeKind)}`} checked={grants.some((grant) => grantKey(grant) === grantKey(option))} onChange={(event) => setGrants((current) => event.target.checked ? [...current, { permissionId: option.permissionId, scopeKind: option.scopeKind }] : current.filter((grant) => grantKey(grant) !== grantKey(option)))} /><span className="min-w-0"><code className="block break-all font-body text-body-sm text-text-primary">{option.resource}.{option.action}</code><span className="block font-body text-body-sm text-text-secondary">{scopeLabel(option.scopeKind)}{option.description ? ` · ${option.description}` : ""}</span></span></label>)}</div>
+      </>}
+    </fieldset>
+    {mixedScopes && <p role="alert" className="font-body text-body-sm text-status-held">Choose either warehouse-wide or assigned Organization permissions for this role.</p>}
+    <label className="block space-y-1 font-label text-label text-heading">Reason for change<textarea className={input} required value={reason} onChange={(event) => setReason(event.target.value)} disabled={pending} maxLength={1000} minLength={3} /></label>
+    <label className="flex min-h-11 items-center gap-3 font-body text-body-sm text-text-primary"><input type="checkbox" className="h-5 w-5 accent-primary" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} disabled={pending} />I confirm these access changes and their effect on assigned accounts.</label>
+    {error && <p role="alert" className="font-body text-body-sm text-status-held">{error}</p>}
+    <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
+      {role?.isActive && <button className={`${button} bg-surface text-status-held`} type="button" disabled={!ready} onClick={() => void mutate(true)}>Deactivate role</button>}
+      <button className={`${button} bg-brand-navy text-white`} type="submit" disabled={!ready || mixedScopes || !catalog || Boolean(catalogError)}>{pending ? "Saving…" : role && !role.isActive ? "Reactivate role" : "Save role"}</button>
+    </div>
+  </form>;
 }

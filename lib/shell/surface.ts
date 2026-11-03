@@ -1,3 +1,4 @@
+import type { AuthorizationContext } from "@/lib/rbac/session";
 // Route-surface lookup and session -> presentation-tier resolution.
 //
 // Traceability: specs/05-ui-shell-and-navigation/design.md §3.3 (surface
@@ -26,6 +27,7 @@ const PARTY_ROLE_KEY = "party_user";
 // safety bias — over-target floor, never assume office).
 export function resolveSessionPresentationTier(
   activeRoleKeys: readonly string[],
+  context?: Pick<AuthorizationContext, "grants" | "partyScopes">,
 ): SessionPresentationTier {
   if (activeRoleKeys.some((role) => OFFICE_ROLE_KEYS.has(role))) {
     return "office";
@@ -33,6 +35,10 @@ export function resolveSessionPresentationTier(
   if (activeRoleKeys.includes(PARTY_ROLE_KEY)) {
     return "party";
   }
+  if (context?.grants.length && context.grants.every((grant) => grant.scopeKind === "assigned_party")) return "party";
+  if (activeRoleKeys.includes("warehouse_staff")) return "floor";
+  const officeResources = new Set(["reporting", "users", "access_assignments", "party_scopes", "security_events", "audit_log", "vmi_statements", "vmi_contract_terms", "vmi_billing_periods", "trading_pricing"]);
+  if (context?.grants.some((grant) => grant.scopeKind === "global" && (officeResources.has(grant.resource) || ROUTE_REGISTRY.some((route) => route.surface === "office" && route.capability === `${grant.resource}.${grant.action}`)))) return "office";
   return "floor";
 }
 

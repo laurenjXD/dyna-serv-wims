@@ -1,7 +1,7 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 //
-// Tests <UserManagementGrid>'s search/filter and suspend/reactivate logic
-// (specs/21-user-profile-and-settings design.md §1.2, §2.2, tasks.md Tasks
+// Tests <UserManagementGrid canManageAccess>'s search/filter and suspend/reactivate logic
+// (specs/21-user-profile-and-settings design.md Â§1.2, Â§2.2, tasks.md Tasks
 // 21.6/21.8). FR-3.1 ("searchable, filterable data grid").
 
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@/app/(authenticated)/settings/team/actions", () => ({
+  getUserAccess: vi.fn().mockResolvedValue({ ok: true, data: { roleIds: [], grants: [] } }),
+  replaceUserRoles: vi.fn().mockResolvedValue({ ok: true }),
   listRoles: vi.fn().mockResolvedValue({ ok: true, data: [] }),
   listTeamMembers: vi.fn().mockResolvedValue({ ok: false, error: "test fixture refresh disabled" }),
   resendInvite: vi.fn().mockResolvedValue({ ok: true }),
@@ -29,7 +31,7 @@ const members: TeamMember[] = [
     status: "active",
     roleKeys: ["warehouse_staff"],
     partyNames: [],
-    activeDevice: "BYOD Mobile · Safari iOS",
+    activeDevice: "BYOD Mobile Â· Safari iOS",
     sessionStatus: "connected",
     sessionUuid: "SESS-4011-B891",
     lastSignInAt: null,
@@ -44,9 +46,9 @@ const members: TeamMember[] = [
     status: "invited",
     roleKeys: ["party_user"],
     partyNames: ["UBoT"],
-    activeDevice: "—",
+    activeDevice: "â€”",
     sessionStatus: "offline",
-    sessionUuid: "—",
+    sessionUuid: "â€”",
     lastSignInAt: null,
   },
 ];
@@ -58,7 +60,7 @@ function noop() {
 describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
   it("renders every member row initially", () => {
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -73,7 +75,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
   it("filters rows by search query across name and email", async () => {
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -91,7 +93,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
   it("filters rows by status", async () => {
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -109,7 +111,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
   it("shows an empty-state row when the search matches nothing", async () => {
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -126,7 +128,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
   it("opens the Invite User modal from the header button", async () => {
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -144,7 +146,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     const suspendUser = vi.fn(async () => ({ ok: true }));
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -176,7 +178,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     ];
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={inactiveMembers}
         parties={[]}
         inviteUser={noop}
@@ -196,7 +198,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     const resendInvite = vi.fn(async () => ({ ok: true }));
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -217,11 +219,11 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     ).toBeInTheDocument();
   });
 
-  it("cancels an invite after confirmation in dialog and removes row", async () => {
+  it("cancels an invite after confirmation and retains an inactive account", async () => {
     const cancelInvite = vi.fn(async () => ({ ok: true }));
     const user = userEvent.setup();
     render(
-      <UserManagementGrid
+      <UserManagementGrid canManageAccess
         initialMembers={members}
         parties={[]}
         inviteUser={noop}
@@ -243,7 +245,25 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("cancel-invite-dialog")).not.toBeInTheDocument(),
     );
-    expect(screen.queryByText("Vendor Contact")).not.toBeInTheDocument();
+    expect(screen.getByText("Vendor Contact")).toBeInTheDocument();
+    expect(within(screen.getByText("Vendor Contact").closest("tr")!).getByText("inactive")).toBeInTheDocument();
   });
 });
 
+
+
+
+it("hides invitation and access mutation entry points from a read-only account", () => {
+  render(<UserManagementGrid initialMembers={members} parties={[]} inviteUser={noop} suspendUser={noop} reactivateUser={noop} />);
+  expect(screen.queryByTestId("open-invite-user")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Manage Access" })).not.toBeInTheDocument();
+});
+
+it("opens a specific account's multi-role access editor for an administrator", async () => {
+  const user = userEvent.setup();
+  render(<UserManagementGrid canManageAccess initialMembers={members} parties={[]} inviteUser={noop} suspendUser={noop} reactivateUser={noop} />);
+  const row = screen.getByText("Jane Staff").closest("tr")!;
+  await user.click(within(row).getByRole("button", { name: "Manage Access" }));
+  expect(await screen.findByRole("dialog", { name: "Account access: Jane Staff" })).toBeInTheDocument();
+  expect(await screen.findByText("No active roles are available.")).toBeInTheDocument();
+});

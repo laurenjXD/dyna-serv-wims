@@ -797,3 +797,60 @@ cross-relationship combination, including a multi-role Organization, a revoked
 relationship, a stale browser request, direct Server Action invocation, signed
 document URL access, and offline replay. Tests must also prove legacy field
 adapters cannot expand scope.
+
+## Dynamic RBAC implementation approval â€” 2026-11-03
+
+Status: Approved. Supersedes conflicting v1 read-only/custom-role deferral text
+for this amendment only. The Product Owner approved implementation of the
+2026-11-03 dynamic RBAC audit recommendation in this session.
+
+- [x] Product Owner sign-off: Lauren ("okay implement that i sign and approve"), 2026-11-03.
+- [x] Second sign-off: System standing approval convention, 2026-11-03.
+
+Approved implementation contract (also appended to requirements/design):
+configurable custom roles; exact canonical permission IDs with explicit global
+or assigned_party scopes; additive multi-role assignment to existing accounts;
+no direct per-user grants or explicit denies. Built-in roles remain immutable.
+Only a current active built-in administrator with access_assignments.grant and
+access_assignments.revoke may manage roles/assignments. Database-controlled
+functions independently enforce that rule using auth.uid(), validate complete
+payloads, serialize administrative mutations, preserve the last active built-in
+administrator, and append before/after audit events in the mutation transaction.
+Role deletion is soft deactivation to preserve history. No scope may silently
+broaden. Only canonical permission/scope pairs seeded by migrations are allowed.
+Organization scope assignment remains a separate existing data boundary;
+assigning a scoped role requires valid Organization scope. Existing invitation
+remains compatible with its built-in single-role contract; custom/multiple roles
+can be assigned afterward through the account access editor. Role/catalog
+readouts must use live data and fail explicitly. The editor shows exact grants,
+resulting effective access, confirmation, and a required reason. Permission changes
+apply to the next protected request; already-rendered pages refresh on navigation.
+Supabase Auth session revocation remains separate from database authorization.
+
+Implementation tasks:
+- [ ] Add migration 0071 for canonical scope catalog and controlled admin functions.
+- [ ] Replace unsafe role mutations/readouts; add atomic existing-user role replacement.
+- [ ] Add custom role editor and existing-account multi-role/effective-grants editor.
+- [ ] Add last-admin-safe account suspension and honest directory state.
+- [ ] Convert the seven audit expected failures to normal regression tests.
+- [ ] Run unit/component/type/lint/build checks and independent RBAC/RLS review.
+- [ ] Verify actual migration/function/RLS behavior in disposable Postgres.
+- [ ] Exercise browser E2E with independent account sessions.
+
+Runtime/database/E2E verification remains unchecked until actually executed;
+this approval authorizes implementation and does not certify test results.
+
+
+### Implementation clarifications — 2026-11-03
+
+Organization-scoped and warehouse-wide role bundles cannot be mixed. A custom
+scoped role requires an active Organization/Inventory Model scope before account
+assignment; a scoped account cannot receive global grants. This is enforced again
+when editing a role already assigned to accounts. Custom reporting roles select
+office presentation and custom scoped roles select Organization presentation;
+operational receiving/picking roles retain floor presentation. The shell consumes
+fresh server authorization on navigation rather than retaining its initial grants.
+Cancellation retains an inactive profile and revoked assignments/scopes with audit
+history; acceptance uses an invited-only compare-and-set and cannot override a
+concurrent suspension/cancellation. Session-only Auth revocation is explicitly
+unavailable; account suspension blocks the next protected request instead.

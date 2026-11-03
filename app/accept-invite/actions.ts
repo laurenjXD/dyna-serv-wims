@@ -135,7 +135,7 @@ export async function completeInvitationAcceptance(input: {
     return { ok: false, error: passwordError.message };
   }
 
-  const { error: profileUpdateError } = await admin
+  const { data: activatedProfile, error: profileUpdateError } = await admin
     .from("user_profiles")
     .update({
       display_name: nameParsed.data.displayName,
@@ -144,8 +144,11 @@ export async function completeInvitationAcceptance(input: {
       activated_by_user_id: data.user.id,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", data.user.id);
-  if (profileUpdateError) {
+    .eq("id", data.user.id)
+    .eq("status", "invited")
+    .select("id")
+    .maybeSingle();
+  if (profileUpdateError || !activatedProfile) {
     return { ok: false, error: "Your password was updated, but account activation could not be saved. Please try again." };
   }
 

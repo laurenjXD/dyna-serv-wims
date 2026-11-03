@@ -273,7 +273,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
     );
   }
 
-  const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? []);
+  const tier = resolveSessionPresentationTier(context?.activeRoleKeys ?? [], context ?? undefined);
   const showFloorTabBar = tier === "floor" && !isScanLoopRoute(pathname);
   const pageTitle = getPageTitle(pathname);
   const canManageAccess = context?.grants.some(

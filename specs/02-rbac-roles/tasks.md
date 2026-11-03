@@ -2,10 +2,10 @@
 
 ## Arbitrary custom RBAC amendment (2026-10-27)
 
-- [ ] Add the persistent custom-role mutation contract and migration.
-- [ ] Add server-side permission validation and transactional grant replacement.
-- [ ] Add custom-role create/update/deactivate/delete administration UI.
-- [ ] Add multi-role assignment and effective-permission display.
+- [x] Add the persistent custom-role mutation contract and migration.
+- [x] Add server-side permission validation and transactional grant replacement.
+- [x] Add custom-role create/update/deactivate/delete administration UI.
+- [x] Add multi-role assignment and effective-permission display.
 - [ ] Add audit, RLS, unit, integration, and E2E coverage for custom roles.
 
 Status: Approved
@@ -269,3 +269,98 @@ Conditional recommendations were resolved as `1F=B` (party plus optional `flow_t
 - [x] Product Owner approval — User, 2026-10-22 (cross-cutting plan).
 - [ ] Technical/RBAC review and real-Postgres verification.
 - [x] Second amendment sign-off — System standing approval, 2026-10-22.
+
+## Dynamic RBAC implementation approval — 2026-11-03
+
+Status: Approved. Supersedes conflicting v1 read-only/custom-role deferral text
+for this amendment only. The Product Owner approved implementation of the
+2026-11-03 dynamic RBAC audit recommendation in this session.
+
+- [x] Product Owner sign-off: Lauren ("okay implement that i sign and approve"), 2026-11-03.
+- [x] Second sign-off: System standing approval convention, 2026-11-03.
+
+Approved implementation contract (also appended to requirements/design):
+configurable custom roles; exact canonical permission IDs with explicit global
+or assigned_party scopes; additive multi-role assignment to existing accounts;
+no direct per-user grants or explicit denies. Built-in roles remain immutable.
+Only a current active built-in administrator with access_assignments.grant and
+access_assignments.revoke may manage roles/assignments. Database-controlled
+functions independently enforce that rule using auth.uid(), validate complete
+payloads, serialize administrative mutations, preserve the last active built-in
+administrator, and append before/after audit events in the mutation transaction.
+Role deletion is soft deactivation to preserve history. No scope may silently
+broaden. Only canonical permission/scope pairs seeded by migrations are allowed.
+Organization scope assignment remains a separate existing data boundary;
+assigning a scoped role requires valid Organization scope. Existing invitation
+remains compatible with its built-in single-role contract; custom/multiple roles
+can be assigned afterward through the account access editor. Role/catalog
+readouts must use live data and fail explicitly. The editor shows exact grants,
+resulting effective access, confirmation, and a required reason. Permission changes
+apply to the next protected request; already-rendered pages refresh on navigation.
+Supabase Auth session revocation remains separate from database authorization.
+
+Implementation tasks:
+- [x] Add migration 0071 for canonical scope catalog and controlled admin functions.
+- [x] Replace unsafe role mutations/readouts; add atomic existing-user role replacement.
+- [x] Add custom role editor and existing-account multi-role/effective-grants editor.
+- [x] Add last-admin-safe account suspension and honest directory state.
+- [x] Convert the seven audit expected failures to normal regression tests.
+- [x] Run unit/component/type/lint/build checks and independent RBAC/RLS review.
+- [x] Verify actual migration/function/RLS behavior in disposable Postgres.
+- [ ] Exercise browser E2E with independent account sessions.
+
+Runtime/database/E2E verification remains unchecked until actually executed;
+this approval authorizes implementation and does not certify test results.
+
+### Local implementation and verification — 2026-11-03
+
+Implemented configurable custom roles with exact canonical permission/scope
+selection, multi-role account assignment and effective-access summaries. All
+role/assignment mutations, including initial invitation assignment, use controlled
+SQL functions under the authenticated transaction-local actor. Added immutable
+system roles, serialized last-administrator protection, scoped/global separation,
+atomic audit records, and race-safe invitation cancellation/acceptance. Cancelled
+accounts retain inactive profiles and revoked assignment history.
+
+Migration `0071_dynamic_rbac_administration.sql` must be applied before deploying
+this UI/backend revision. This session did not apply it to hosted Supabase or
+modify real staff accounts. Existing operational permissions remain migration
+managed for protected system roles. Custom grants are additive; no user-specific
+deny/override model is introduced. Some sensitive workflows intentionally retain
+administrator-only restrictions; granting a similar operational permission does
+not bypass those approved restrictions.
+
+Independent database verification applied all 80 repository SQL migrations to
+isolated PostgreSQL (PGlite WASM 0.5.14) and passed 21 tests, including actual RLS,
+separate authenticated accounts, role replacement/revocation, scope isolation,
+system-role protection, last-admin rollback, catalog validation, append-only and
+atomic audit, and invitation cancellation. Supabase auth/storage schema stubs are
+used only to represent platform schemas; hosted Auth/networking, PgBouncer and
+multi-connection concurrency are not verified by this engine.
+
+An opt-in browser lifecycle spec exists at `e2e/dynamic-rbac.spec.ts` for a disposable
+admin and worker account. It creates a temporary custom role, changes the worker's
+roles, verifies direct access and next-request revocation, restores prior roles,
+and deactivates the test role. It requires explicit mutation opt-in and dedicated
+test credentials. Only discovery/parsing has run here; authenticated E2E remains
+unchecked. Session-only Auth revocation reports unavailable; suspend blocks the
+next protected request without falsely claiming global JWT invalidation.
+
+Independent RBAC/RLS and design review completed without a material blocker in
+the changed role administration paths. Later shell review corrections include
+custom office routing from authorized registry entries and immediate use of
+fresh server authorization on navigation.
+
+Final local checks (2026-11-03):
+- `npm.cmd test`: 202 files, 2,299 passed, no expected failures/skips.
+- `npm.cmd run test:integration -- lib/rbac/__tests__/dynamic-rbac.integration.test.ts`: 21 passed on real PostgreSQL WASM after all 80 migrations.
+- `npm.cmd run typecheck`: passed.
+- Targeted ESLint for changed TS/TSX files: no errors; one pre-existing ShellChrome image-optimization warning.
+- `npx.cmd playwright test e2e/dynamic-rbac.spec.ts --list`: parsed/discovered; authenticated execution not performed.
+- `git diff --check`: passed.
+
+Reproduce the optional isolated PostgreSQL test engine without changing app dependencies:
+`npm.cmd install --prefix node_modules/.cache/rbac-db-verification --no-save --package-lock=false @electric-sql/pglite@0.5.14`
+Then run the integration command above. The suite never reads DATABASE_URL or connects to production.
+
+- Final production build: `npm.cmd run build` passed after the last application changes.

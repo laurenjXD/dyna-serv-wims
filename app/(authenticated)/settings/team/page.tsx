@@ -6,6 +6,8 @@
 // independently re-check the same capability server-side (defense in
 // depth, per 02 design.md §8's stated requirement).
 
+import { createPageResolver } from "@/lib/auth/page-resolver";
+import { requirePermission } from "@/lib/rbac/guard";
 import { UserManagementGrid } from "@/components/settings/UserManagementGrid";
 import { ShellStateView } from "@/components/global/ShellStateView";
 import {
@@ -19,6 +21,10 @@ import {
 } from "./actions";
 
 export default async function SettingsTeamPage() {
+  const resolver = await createPageResolver();
+  const access = await requirePermission(resolver, "access_assignments.grant");
+  const revoke = await requirePermission(resolver, "access_assignments.revoke");
+  const canManageAccess = access.kind === "authorized" && revoke.kind === "authorized" && access.context.activeRoleKeys.includes("administrator");
   const [membersResult, partiesResult] = await Promise.all([
     listTeamMembers(),
     listActiveParties(),
@@ -30,6 +36,7 @@ export default async function SettingsTeamPage() {
 
   return (
     <UserManagementGrid
+      canManageAccess={canManageAccess}
       initialMembers={membersResult.data}
       parties={partiesResult.data}
       inviteUser={inviteUser}

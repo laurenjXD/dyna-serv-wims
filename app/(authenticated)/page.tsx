@@ -191,7 +191,8 @@ export default async function Home() {
   }
 
   const { context } = resolution;
-  const tier = resolveSessionPresentationTier(context.activeRoleKeys);
+  const tier = resolveSessionPresentationTier(context.activeRoleKeys, context);
+  if (tier === "party") redirect("/portal");
 
   // The root route is the canonical landing page for both floor and office
   // users; the resolved presentation tier selects the dashboard content below.

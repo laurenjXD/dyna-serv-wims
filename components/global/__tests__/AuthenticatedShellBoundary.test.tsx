@@ -210,3 +210,11 @@ describe("AuthenticatedShellBoundary (design.md §3.4, requirements.md R2.3/R2.4
     });
   });
 });
+
+it("uses fresh server authorization on navigation instead of retaining revoked grants", () => {
+  const initial = { kind: "authorized" as const, context: { userId: "worker", profileStatus: "active" as const, activeRoleKeys: ["custom_receiver"], grants: [{ resource: "receiving", action: "view", scopeKind: "global" as const }], partyScopes: [] } };
+  const { rerender } = render(<AuthenticatedShellBoundary initialResolution={initial}><div data-testid="protected-content">secret</div></AuthenticatedShellBoundary>);
+  expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+  rerender(<AuthenticatedShellBoundary initialResolution={{ kind: "forbidden", reason: "inactive_profile" }}><div data-testid="protected-content">secret</div></AuthenticatedShellBoundary>);
+  expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
+});
