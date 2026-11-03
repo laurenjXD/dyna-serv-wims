@@ -93,6 +93,7 @@ function makeRow(overrides: {
   expiryDate?: Date | null;
   lotNumber?: string;
   locationLabel?: string;
+  locationPickSequence?: number | null;
 }) {
   return {
     lotId: overrides.lotId ?? "lot-uuid-1",
@@ -104,6 +105,7 @@ function makeRow(overrides: {
     expiryDate: overrides.expiryDate ?? null,
     lotNumber: overrides.lotNumber ?? overrides.lotId ?? "LOT-1",
     locationLabel: overrides.locationLabel ?? overrides.locationId ?? "Location 1",
+    locationPickSequence: overrides.locationPickSequence ?? null,
   };
 }
 
@@ -136,6 +138,39 @@ describe("lot-first allocation plans", () => {
       { lotId: "lot-first", locationId: "loc-2", qtyAllocated: 10 },
       { lotId: "lot-second", locationId: "loc-3", qtyAllocated: 5 },
     ]);
+  });
+
+  it("keeps same-date lots distinct and uses receipt time before the stable lot tie-breaker", () => {
+    const plan = buildAllocationPlan([
+      makeRow({
+        lotId: "lot-later-same-day",
+        lotNumber: "LOT-B",
+        locationId: "loc-b",
+        locationLabel: "B-01",
+        qtyRemaining: 5,
+        receivedAt: new Date("2026-01-01T12:00:00Z"),
+      }),
+      makeRow({
+        lotId: "lot-earlier-same-day",
+        lotNumber: "LOT-A",
+        locationId: "loc-a",
+        locationLabel: "A-01",
+        qtyRemaining: 5,
+        receivedAt: new Date("2026-01-01T08:00:00Z"),
+      }),
+    ], 6, false);
+
+    expect(plan.lots.map((lot) => lot.lotId)).toEqual(["lot-earlier-same-day", "lot-later-same-day"]);
+    expect(plan.lots.map((lot) => lot.qtyAllocated)).toEqual([5, 1]);
+  });
+
+  it("uses a location pick sequence before falling back to the location label", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-sequenced", locationId: "loc-label-first", locationLabel: "A-01", locationPickSequence: 20, qtyRemaining: 5 }),
+      makeRow({ lotId: "lot-sequenced", locationId: "loc-sequence-first", locationLabel: "Z-01", locationPickSequence: 10, qtyRemaining: 5 }),
+    ], 5, false);
+
+    expect(plan.lots[0].locations.map((location) => location.locationId)).toEqual(["loc-sequence-first", "loc-label-first"]);
   });
 
   it("uses FEFO lot order and places missing expiry dates last", () => {

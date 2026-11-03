@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
+import { parseDraDocumentAction } from "../../_actions";
 
 vi.mock("../../_actions", () => ({
   parseDraDocumentAction: vi.fn(),
@@ -68,17 +69,17 @@ describe("MultiItemPickListDraft organization selection", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.replace(/\s+/g, " ").trim());
 
-    expect(headers.slice(0, 10)).toEqual([
+    expect(headers).toEqual([
       "Item Code",
       "SPQ",
       "Qty (Boxes)",
       "Qty (Units)",
       "Location",
-      "Remaining",
       "Cust PN",
       "Item Description",
       "Lot Number",
       "Mfg Date",
+      "Actions",
     ]);
   });
 
@@ -165,6 +166,10 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "5")).toBe(true);
     expect(screen.queryByLabelText("Boxes from C1-11")).not.toBeInTheDocument();
     expect(screen.getAllByText(/Allocated/).some((element) => element.parentElement?.textContent?.includes("5 / 5 boxes"))).toBe(true);
+
+    fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "15" } });
+    expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "10")).toBe(true);
+    expect(screen.getAllByLabelText("Boxes from C1-11").every((input) => (input as HTMLInputElement).value === "5")).toBe(true);
   });
 
   it("does not request approval when a split follows the normal FIFO plan", () => {
@@ -244,7 +249,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByText(/Required: select the downstream End Customer/)).toBeInTheDocument();
   });
 
-  it("limits quantity to on-hand boxes, exposes source locations, and preserves Customer PN input", () => {
+  it("preserves requested quantity when stock is short, exposes source locations, and preserves Customer PN input", () => {
     const stockWithSources = [
       { ...stock[0], availableQty: 10, balanceId: "balance-1", locationId: "location-1", locationLabel: "A4-01", priority: 1 },
       { ...stock[0], availableQty: 5, balanceId: "balance-2", locationId: "location-2", locationLabel: "B2-05", priority: 2 },
@@ -269,7 +274,9 @@ describe("MultiItemPickListDraft organization selection", () => {
 
     const quantityInputs = screen.getAllByLabelText("Qty (Boxes)");
     fireEvent.change(quantityInputs[0], { target: { value: "20" } });
-    expect(quantityInputs[0]).toHaveValue(15);
+    expect(quantityInputs[0]).toHaveValue(20);
+    expect(screen.getAllByText(/Stock shortage: 5/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
 
     expect(screen.getAllByRole("button", { name: "Use fixed location" }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole("button", { name: "Use fixed location" })[0]);
@@ -282,17 +289,59 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(locationSelectors[0].textContent).toContain("B2-05");
 
     fireEvent.change(locationSelectors[0], { target: { value: "balance-2" } });
-    expect(quantityInputs[0]).toHaveValue(5);
+    expect(quantityInputs[0]).toHaveValue(20);
     expect(screen.getAllByText(/Supervisor approval required for this source/).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Insufficient/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Short: 15/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Request Approval/i })).toBeDisabled();
 
     fireEvent.change(locationSelectors[0], { target: { value: "" } });
 
     const customerPnInputs = screen.getAllByTitle("Customer part number snapshot");
     fireEvent.change(customerPnInputs[0], { target: { value: "CUSTOMER-PN-42" } });
+    expect(customerPnInputs[0]).toHaveValue("CUSTOMER-PN-42");
+  });
 
-    const request = screen.getByDisplayValue(/party-vmi-owner/) as HTMLInputElement;
-    expect(JSON.parse(request.value).lines[0].customerItemCode).toBe("CUSTOMER-PN-42");
+  it("keeps a DRA shortage line in the draft with its full requested quantity", async () => {
+    vi.mocked(parseDraDocumentAction).mockResolvedValueOnce({
+      ok: true,
+      parseResult: {
+        rows: [{
+          itemCode: "SUP-ITEM-1",
+          itemDescription: "Test item",
+          requestedQty: 5,
+          packageCount: 5,
+          spq: 1,
+          customerItemCode: "",
+          uom: "BOX",
+        }],
+        header: {
+          requestingOrganization: "VMI Owner Organization",
+          recipientOrganization: "Test end customer",
+        },
+      },
+    } as never);
+
+    const { container } = render(
+      <MultiItemPickListDraft
+        stock={[{ ...stock[0], availableQty: 2 }]}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+
+    const fileInput = container.querySelector('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: { files: [new File(["dra"], "request.csv", { type: "text/csv" })] },
+    });
+
+    await waitFor(() => expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(5));
+    expect(screen.getByText(/shortage of 3 boxes/)).toBeInTheDocument();
+    expect(screen.getAllByText((_, element) => element?.textContent?.includes("Requested: 5") ?? false).length).toBeGreaterThan(0);
+    expect(screen.getAllByText((_, element) => element?.textContent?.includes("Allocated: 2") ?? false).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
   });
 
   it("lets the operator split one line across multiple locations with explicit box quantities", () => {
