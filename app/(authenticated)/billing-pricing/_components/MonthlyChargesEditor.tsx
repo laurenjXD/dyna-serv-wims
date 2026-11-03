@@ -145,7 +145,7 @@ export function MonthlyChargesEditor({
 
           {feedback && (
             <div className={`p-3 rounded-lg text-body-sm font-body ${feedback.ok ? "bg-status-available/10 text-status-available" : "bg-status-held/10 text-status-held"}`}>
-              {feedback.ok ? "Manpower hours saved successfully." : feedback.error}
+              {feedback.ok ? "Manpower hours saved." : feedback.error}
             </div>
           )}
 

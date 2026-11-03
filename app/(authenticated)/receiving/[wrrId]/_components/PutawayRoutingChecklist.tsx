@@ -198,7 +198,7 @@ export function PutawayRoutingChecklist({
         <div className="flex items-center gap-2.5 rounded-xl border border-status-available/40 bg-status-available/10 p-3.5 text-status-available">
           <CheckCircle2 size={22} className="shrink-0" />
           <p className="font-label text-body-sm font-bold">
-            100% Putaway Complete! All received boxes have been physically placed into their assigned rack locations.
+            All received boxes are marked as placed in their assigned rack locations.
           </p>
         </div>
       )}

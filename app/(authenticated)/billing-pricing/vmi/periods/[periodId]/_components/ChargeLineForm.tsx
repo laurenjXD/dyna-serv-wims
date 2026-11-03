@@ -47,7 +47,7 @@ export function ChargeLineForm({
       </div>
 
       {state.error && <p className="rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">Charge line not saved: {state.error}</p>}
-      {state.ok && <p className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">Charge line saved.</p>}
+      {state.ok && <p role="status" className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">Charge line added to this period.</p>}
 
       {lines.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-outline-variant/20">

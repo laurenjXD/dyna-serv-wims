@@ -5,6 +5,7 @@ import { Lock, FileText, Download, Share2, Eye } from "@/components/ui/icons";
 import type { StatementOfAccountArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 interface StatementsOfAccountTableProps {
   rows: StatementOfAccountArchiveRow[];
@@ -25,10 +26,12 @@ export function StatementsOfAccountTable({
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (r: StatementOfAccountArchiveRow) => {
+  const handleShare = async (r: StatementOfAccountArchiveRow) => {
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(`${window.location.origin}/billing-pricing/soa/${r.partyId}?partyId=${r.partyId}`);
-      alert(`Document link for SOA ${r.periodNumber} copied to clipboard!`);
+      const copied = await copyTextToClipboard(`${window.location.origin}/billing-pricing/soa/${r.partyId}?partyId=${r.partyId}`);
+      alert(copied
+        ? `Statement of Account ${r.periodNumber} link copied. Paste it where you need it.`
+        : `Could not copy the Statement of Account ${r.periodNumber} link. Open the statement and copy its address instead.`);
     }
   };
 

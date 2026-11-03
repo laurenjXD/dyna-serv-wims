@@ -225,7 +225,7 @@ export function WarehouseReportsHub({
     }
     try {
       await navigator.clipboard.writeText(new URL(item.downloadUrl, window.location.origin).toString());
-      showToast(`Secure link for ${item.reportName} copied to clipboard.`);
+    showToast(`Secure link for ${item.reportName} copied. Paste it where you need it.`);
     } catch {
       showError("The secure link could not be copied. Please use Download instead.");
     }

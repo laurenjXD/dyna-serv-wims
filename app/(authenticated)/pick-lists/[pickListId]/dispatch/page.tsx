@@ -283,7 +283,7 @@ export default async function DispatchConfirmationPage({
             <div>
               <p className="font-heading text-body-md font-bold text-on-surface">Pick List Updated</p>
               <p className="mt-0.5 font-body text-body-sm text-text-grey">
-                Line item quantities, SPQ, and package counts have been successfully updated.
+                Line quantities, SPQ, and package counts updated. Review the list before dispatch.
               </p>
             </div>
           </div>

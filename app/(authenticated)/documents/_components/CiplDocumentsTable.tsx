@@ -6,6 +6,7 @@ import { FileText, Eye, Download, Share2, Paperclip } from "@/components/ui/icon
 import type { CiplArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 interface CiplDocumentsTableProps {
   rows: CiplArchiveRow[];
@@ -22,11 +23,14 @@ export function CiplDocumentsTable({ rows }: CiplDocumentsTableProps) {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (row: CiplArchiveRow) => {
+  const handleShare = async (row: CiplArchiveRow) => {
     const url = row.ciplFileUrl || (typeof window !== "undefined" ? `${window.location.origin}/receiving/${row.id}` : "");
     if (url && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(url);
-      alert(`Document link for ${row.commercialInvoiceNo || row.wrrNumber} copied to clipboard!`);
+      const documentNumber = row.commercialInvoiceNo || row.wrrNumber;
+      const copied = await copyTextToClipboard(url);
+      alert(copied
+        ? `CIPL ${documentNumber} link copied. Paste it where you need it.`
+        : `Could not copy the CIPL ${documentNumber} link. Open the document and copy its address instead.`);
     }
   };
 

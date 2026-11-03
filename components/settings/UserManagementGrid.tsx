@@ -102,7 +102,7 @@ export function UserManagementGrid({
         setMembers((curr) =>
           curr.map((m) => (m.id === member.id ? { ...m, status: "active" } : m)),
         );
-        setFeedback({ type: "success", message: `${member.displayName} was reactivated.` });
+        setFeedback({ type: "success", message: `${member.displayName}'s account is active again.` });
       } else {
         setFeedback({ type: "error", message: res.error ?? "The user could not be reactivated. Refresh and try again." });
       }
@@ -119,7 +119,7 @@ export function UserManagementGrid({
       if (res.ok) {
         setFeedback({
           type: "success",
-          message: `Invitation link successfully resent to ${member.email || member.displayName}.`,
+          message: `Invitation link sent to ${member.email || member.displayName}. Ask them to check their inbox.`,
         });
       } else {
         setFeedback({
@@ -497,7 +497,7 @@ export function UserManagementGrid({
               setCancelTarget(null);
               setFeedback({
                 type: "success",
-                message: `Invitation for ${cancelTarget.displayName} was cancelled. The account is retained as inactive.`,
+                message: `Invitation for ${cancelTarget.displayName} cancelled. Their account remains inactive.`,
               });
               refreshData();
             }

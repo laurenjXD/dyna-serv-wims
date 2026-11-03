@@ -22,9 +22,8 @@ export function DeactivateLocationSection({
 
   if (state.ok) {
     return (
-      <p className="font-body text-body-md text-status-available">
-        Location has been deactivated. Reload the page to see the updated
-        status.
+      <p role="status" className="font-body text-body-md text-status-available">
+        Location deactivated. Refresh this page to see the updated status.
       </p>
     );
   }

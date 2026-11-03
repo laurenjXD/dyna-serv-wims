@@ -11,7 +11,7 @@ export function BulkMaterialImportForm({ organizations }: { organizations: Suppl
   return (
     <form action={action} className="space-y-6" encType="multipart/form-data">
       {state.error && <div role="alert" className="rounded-lg border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-brand-red">{state.error}</div>}
-      {state.ok && <div role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800">Imported {state.imported} material{state.imported === 1 ? "" : "s"} successfully.</div>}
+      {state.ok && <div role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-800">{state.imported} material{state.imported === 1 ? "" : "s"} imported and enrolled.</div>}
 
       <div>
         <label htmlFor="partyId" className="block font-label text-label font-bold text-on-surface">Material-origin organization <span className="text-brand-red">*</span></label>

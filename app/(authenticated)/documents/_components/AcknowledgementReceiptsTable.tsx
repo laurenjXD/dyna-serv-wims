@@ -7,6 +7,7 @@ import type { AcknowledgementReceiptArchiveRow } from "@/lib/db/queries/document
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 interface AcknowledgementReceiptsTableProps {
   rows: AcknowledgementReceiptArchiveRow[];
@@ -24,10 +25,12 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (r: AcknowledgementReceiptArchiveRow) => {
+  const handleShare = async (r: AcknowledgementReceiptArchiveRow) => {
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(`${window.location.origin}/pick-lists/${r.pickListId}/receipt`);
-      alert(`Document link for ${r.documentNumber} copied to clipboard!`);
+      const copied = await copyTextToClipboard(`${window.location.origin}/pick-lists/${r.pickListId}/receipt`);
+      alert(copied
+        ? `Acknowledgement Receipt ${r.documentNumber} link copied. Paste it where you need it.`
+        : `Could not copy the Acknowledgement Receipt ${r.documentNumber} link. Open the receipt and copy its address instead.`);
     }
   };
 
@@ -225,7 +228,7 @@ export function AcknowledgementReceiptsTable({ rows }: AcknowledgementReceiptsTa
           onClose={() => setReprintTarget(null)}
           onSuccess={(res) => {
             setReprintTarget(null);
-            alert(`Reprint logged: ${res.watermarkText}`);
+            alert(`Reprint authorized for ${res.documentNumber}. Watermark: ${res.watermarkText}`);
           }}
         />
       )}

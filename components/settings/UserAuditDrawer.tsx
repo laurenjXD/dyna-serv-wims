@@ -28,13 +28,13 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
   const [loading, setLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState(false);
-  const [revokedMessage, setRevokedMessage] = useState<string | null>(null);
+  const [sessionFeedback, setSessionFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
     setAuditError(null);
-    setRevokedMessage(null);
+    setSessionFeedback(null);
     getUserAuditTrail(user.id).then((res) => {
       setLoading(false);
       if (res.ok) {
@@ -52,9 +52,11 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
     if (!user) return;
     if (confirm(`Revoke all active BYOD device sessions for ${user.displayName}?`)) {
       setRevoking(true);
-      await revokeUserSession(user.id);
+      const result = await revokeUserSession(user.id);
       setRevoking(false);
-      setRevokedMessage("Device session revoked successfully.");
+      setSessionFeedback(result.ok
+        ? { type: "success", message: `Active device sessions for ${user.displayName} were revoked.` }
+        : { type: "error", message: result.error ?? "Device sessions could not be revoked. Refresh and try again." });
     }
   }
 
@@ -141,10 +143,13 @@ export function UserAuditDrawer({ user, onClose }: UserAuditDrawerProps) {
                 </div>
               </div>
 
-              {revokedMessage && (
-                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800 border border-emerald-200">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <span>{revokedMessage}</span>
+              {sessionFeedback && (
+                <div
+                  role={sessionFeedback.type === "success" ? "status" : "alert"}
+                  className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${sessionFeedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}
+                >
+                  {sessionFeedback.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" />}
+                  <span>{sessionFeedback.message}</span>
                 </div>
               )}
 

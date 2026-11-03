@@ -84,7 +84,7 @@ export function OperationsDashboard({
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      setReportSuccessMessage("Inventory Valuation & Live Performance Summary PDF generated and downloaded successfully.");
+      setReportSuccessMessage("Inventory report generated. Check your downloads.");
       setTimeout(() => {
         setReportSuccessMessage(null);
       }, 5000);

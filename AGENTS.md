@@ -22,3 +22,6 @@ No implementation code is written until a feature's `specs/NN-*/tasks.md` has `S
 - Feature specs: `specs/NN-feature-name/{requirements,design,tasks}.md`
 - Delivery tracking against the project Gantt: `specs/00-steering/gantt-mapping.md`
 - Full decision history: `specs/00-steering/revision-log.md`
+- Canonical wording and behavior for all user-facing messages, including success statements and states: `specs/00-steering/error-message-writing-guide.md`
+
+For every user-facing message or state across the system—including success, error, validation, warning, loading, empty, unavailable, and offline—follow `specs/00-steering/error-message-writing-guide.md`. Apply the local `/ui-ux-pro-max` skill when designing, implementing, or reviewing UI feedback and state presentation. Success copy must describe only a confirmed outcome and give the next useful action where one exists.

@@ -153,7 +153,7 @@ export function MigrationUploadForm() {
     startTransition(async () => {
       const response = await commitUbotMigration(result.batchId);
       if (response.ok) {
-        router.push(`/migration/success?rows=${response.committedRows}&batch=${encodeURIComponent(response.batchId)}`);
+        router.push(`/migration/success?batch=${encodeURIComponent(response.batchId)}`);
       } else {
         setCommitMessage(response.error);
       }
@@ -166,7 +166,7 @@ export function MigrationUploadForm() {
       const response = await approveUbotMigration(result.batchId);
       if (response.ok) {
         setResult((current) => current?.ok ? { ...current, status: "approved" } : current);
-        setCommitMessage("Migration report approved. It is ready to commit.");
+        setCommitMessage("Migration report approved. Select Confirm opening seed to post the opening balances.");
         await refreshPreviousBatches();
       } else {
         setCommitMessage(response.error);

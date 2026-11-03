@@ -83,12 +83,12 @@ export function OpeningStockImportModal({
       }
 
       setSuccessMessage(
-        `Successfully posted ${res.committedRows} opening stock items under receipt ${res.wrrNumber}. Warehouse inventory is now live!`
+        `${res.committedRows} opening stock line${res.committedRows === 1 ? "" : "s"} posted to receipt ${res.wrrNumber}. Inventory is available in WIMS.`
       );
       setTimeout(() => {
         if (onSuccess) onSuccess();
         onClose();
-      }, 1500);
+      }, 3500);
     } catch (err: unknown) {
       setPosting(false);
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
@@ -212,7 +212,7 @@ export function OpeningStockImportModal({
 
           {/* Success Message */}
           {successMessage && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-start gap-2">
+            <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-start gap-2">
               <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600" />
               <span className="font-semibold">{successMessage}</span>
             </div>

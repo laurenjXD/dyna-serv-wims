@@ -215,7 +215,7 @@ describe("UserManagementGrid (FR-3.1, Task 21.6/21.8)", () => {
 
     await waitFor(() => expect(resendInvite).toHaveBeenCalledWith("u2"));
     expect(
-      screen.getByText(/Invitation link successfully resent to vendor@example\.com/i),
+      screen.getByText("Invitation link sent to vendor@example.com. Ask them to check their inbox."),
     ).toBeInTheDocument();
   });
 

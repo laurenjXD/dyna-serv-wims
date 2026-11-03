@@ -28,7 +28,7 @@ export function PaymentForm({ partyId, periodId }: Props) {
       )}
       {state.ok && (
         <div className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">
-          Payment recorded successfully.
+          Payment recorded for this period.
         </div>
       )}
       <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -71,7 +71,7 @@ export function PeriodCloseModal({
             <div className="rounded-lg bg-status-available/10 p-4 text-status-available">
               <div className="flex items-center gap-2 font-bold text-title-sm">
                 <CheckCircle size={20} />
-                Billing Draft Created Successfully
+                Billing draft created
               </div>
               <p className="mt-1 font-body text-body-sm">
                 Period Number: <span className="font-mono font-bold">{state.result.periodNumber}</span>
@@ -159,7 +159,7 @@ export function PeriodCloseModal({
 
               {paymentState.ok && (
                 <div className="rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">
-                  Payment recorded successfully. The SOA balance will refresh when this period is reopened.
+                  Payment recorded. Reopen this period to refresh the SOA balance.
                 </div>
               )}
 

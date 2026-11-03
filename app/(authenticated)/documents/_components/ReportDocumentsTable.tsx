@@ -14,6 +14,7 @@ import {
 import type { ReportArchiveRow } from "@/lib/db/queries/documents";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { PdfPreviewModal } from "@/components/reports/PdfPreviewModal";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 interface ReportDocumentsTableProps {
   rows: ReportArchiveRow[];
@@ -37,10 +38,12 @@ export function ReportDocumentsTable({ rows }: ReportDocumentsTableProps) {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (row: ReportArchiveRow) => {
+  const handleShare = async (row: ReportArchiveRow) => {
     if (typeof window !== "undefined") {
-      navigator.clipboard?.writeText?.(window.location.origin + `/documents?tab=reports&docId=${row.id}`);
-      alert(`Secure link for "${row.reportName}" copied to clipboard.`);
+      const copied = await copyTextToClipboard(window.location.origin + `/documents?tab=reports&docId=${row.id}`);
+      alert(copied
+        ? `Secure link for ${row.reportName} copied. Paste it where you need it.`
+        : `Could not copy the secure link for ${row.reportName}. Open the report and copy its address instead.`);
     }
   };
 

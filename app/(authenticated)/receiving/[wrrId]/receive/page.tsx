@@ -345,10 +345,10 @@ export default async function ReceiveFloorPage({
   }
 
   // Determine feedback state from search params.
-  const scanSuccess = result === "scanned";
+  const scanSuccess = result === "scanned" && stageParam === "assign" && readyLines.length > 0;
   const scanError = result === "error";
   const startError = result === "start_error";
-  const commitSuccess = result === "committed";
+  const commitSuccess = result === "committed" && (wrr.items ?? []).some((item) => item.id === lineParam && item.committedAt !== null);
   const commitError = result === "commit_error";
   const remainingQty = remainingParam ? parseInt(remainingParam, 10) : null;
   const dispositionResult = dispositionParam;
@@ -511,7 +511,7 @@ export default async function ReceiveFloorPage({
             className="mt-4 rounded-xl border border-status-available/40 bg-status-available/5 px-4 py-4 shadow-sm"
           >
             <p className="font-heading font-semibold text-headline-md text-on-surface flex items-center gap-2">
-              <CheckCircle2 className="text-status-available" size={22} /> Scanned
+              <CheckCircle2 className="text-status-available" size={22} /> Scan recorded
             </p>
             {remainingQty !== null && (
               <p className="mt-1 font-body text-body-md text-on-surface">

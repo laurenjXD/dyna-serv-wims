@@ -25,7 +25,7 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
-import { getTransferRequest } from "@/lib/db/queries/transfers";
+import { getInspectionCase, getTransferRequest } from "@/lib/db/queries/transfers";
 import {
   openInspectionCase,
   resolveInspectionCase,
@@ -67,7 +67,7 @@ export default async function InspectTransferPage({
   const { transferId } = await params;
   const {
     result,
-    caseId: openedCaseId,
+    caseId: caseIdParam,
     reason: reasonParam,
   } = await searchParams;
 
@@ -141,7 +141,7 @@ export default async function InspectTransferPage({
     );
 
     if (resolveResult.ok) {
-      redirect(`/transfers/${transferId}/inspect?result=resolved`);
+      redirect(`/transfers/${transferId}/inspect?result=resolved&caseId=${encodeURIComponent(caseIdToResolve)}`);
     }
     const encodedErrors = encodeURIComponent(
       resolveResult.errors.join("|")
@@ -152,8 +152,18 @@ export default async function InspectTransferPage({
   }
 
   // Parse feedback state.
-  const caseOpened = result === "opened";
-  const caseResolved = result === "resolved";
+  const feedbackCase = (result === "opened" || result === "resolved") && caseIdParam
+    ? await getInspectionCase(db, caseIdParam)
+    : null;
+  const feedbackCaseMatchesTransfer = Boolean(
+    feedbackCase &&
+    feedbackCase.contextType === "transfer" &&
+    feedbackCase.sourceRefType === "transfer_line" &&
+    transfer.lines.some((line) => line.id === feedbackCase.sourceRefId),
+  );
+  const openedCaseId = feedbackCaseMatchesTransfer ? feedbackCase?.id : null;
+  const caseOpened = result === "opened" && feedbackCaseMatchesTransfer && feedbackCase?.status === "open";
+  const caseResolved = result === "resolved" && feedbackCaseMatchesTransfer && feedbackCase?.status !== "open" && Boolean(feedbackCase?.resolvedAt);
   const actionFailed = result === "error";
   const errorMessages = reasonParam
     ? decodeURIComponent(reasonParam).split("|").filter(Boolean)
@@ -203,12 +213,13 @@ export default async function InspectTransferPage({
           className="mt-4 rounded-xl bg-status-available/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-available">
-            Inspection Case Opened
+            Inspection case opened
           </p>
           <p className="mt-1 font-body text-body-md text-on-surface">
             Case ID:{" "}
             <span className="font-mono text-mono-md">{openedCaseId}</span>
           </p>
+          <p className="mt-1 font-body text-body-sm text-text-grey">Record the inspection disposition below.</p>
         </div>
       )}
 
@@ -219,10 +230,10 @@ export default async function InspectTransferPage({
           className="mt-4 rounded-xl bg-status-available/10 px-4 py-3"
         >
           <p className="font-label text-label uppercase text-status-available">
-            Inspection Case Resolved
+            Inspection case resolved
           </p>
           <p className="mt-1 font-body text-body-md text-on-surface">
-            The disposition has been recorded and the case is now closed.
+            Disposition recorded. The case is closed.
           </p>
         </div>
       )}

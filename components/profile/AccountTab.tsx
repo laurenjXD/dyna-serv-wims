@@ -49,7 +49,7 @@ export function AccountTab({ profile }: { profile: OwnProfile }) {
     setIsSaving(false);
     if (res.ok) {
       setAvatarFile(null);
-      setSaveStatus({ type: "success", message: "Profile details updated successfully." });
+      setSaveStatus({ type: "success", message: "Profile details updated." });
     } else {
       setSaveStatus({ type: "error", message: res.error || "Failed to update profile." });
     }

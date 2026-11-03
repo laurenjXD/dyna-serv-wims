@@ -104,7 +104,7 @@ export default async function ExecuteTransferPage({
     );
   }
 
-  const transferComplete = result === "completed";
+  const transferComplete = result === "completed" && transfer.status === "completed";
   const transferError = result === "error";
   const errorReason = reasonParam ?? "";
 
@@ -190,7 +190,7 @@ export default async function ExecuteTransferPage({
               <CheckCircle2 size={22} className="text-status-available" aria-hidden="true" /> Transfer Completed
             </p>
             <p className="mt-1 font-body text-body-md text-on-surface">
-              Stock movement has been recorded successfully.
+              Stock movement recorded for this transfer.
             </p>
           </div>
         )}

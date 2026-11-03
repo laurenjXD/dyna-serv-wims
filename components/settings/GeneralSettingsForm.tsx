@@ -124,7 +124,7 @@ export function GeneralSettingsForm({ initialSettings }: { initialSettings: Gene
     const res = await saveGeneralSettings(settings);
     setIsSaving(false);
     if (res.ok) {
-      setStatus({ type: "success", message: "General warehouse and BYOD scanner settings saved successfully." });
+      setStatus({ type: "success", message: "Warehouse and scanner settings saved." });
     } else {
       setStatus({ type: "error", message: res.error || "Failed to save settings." });
     }

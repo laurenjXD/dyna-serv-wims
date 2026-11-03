@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   RotateCw,
 } from "@/components/ui/icons";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 export interface PreviewDocData {
   id: string;
@@ -244,15 +245,17 @@ export function DocumentPreviewModal({
 
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 const linkToCopy = activeDownloadUrl?.startsWith("http")
                   ? activeDownloadUrl
                   : typeof window !== "undefined"
                   ? `${window.location.origin}${activePreviewUrl || ""}`
                   : "";
-                if (linkToCopy && typeof navigator !== "undefined") {
-                  navigator.clipboard.writeText(linkToCopy);
-                  alert(`Document link for ${activeNumber} copied to clipboard!`);
+                if (linkToCopy) {
+                  const copied = await copyTextToClipboard(linkToCopy);
+                  alert(copied
+                    ? `Document ${activeNumber} link copied. Paste it where you need it.`
+                    : `Could not copy the link for ${activeNumber}. Open the document and copy its address instead.`);
                 }
               }}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-white px-3 font-label text-label font-bold text-on-surface hover:bg-surface-light-grey focus:outline-none focus:ring-2 focus:ring-brand-navy transition-colors"

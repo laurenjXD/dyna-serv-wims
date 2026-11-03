@@ -40,10 +40,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createElement, type AnchorHTMLAttributes, type MouseEventHandler, type ReactNode } from "react";
 import type { AuthorizationContext } from "@/lib/rbac/session";
 import { ShellNavigation } from "@/components/global/ShellNavigation";
 
 const push = vi.fn();
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+    onClick,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children?: ReactNode }) =>
+    createElement("a", {
+      ...props,
+      href,
+      onClick: (event) => {
+        event.preventDefault();
+        (onClick as MouseEventHandler<HTMLAnchorElement> | undefined)?.(event);
+      },
+    }, children),
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
@@ -248,12 +265,12 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
     expect(sidebar.className).toContain("lg:flex");
-    expect(sidebar.className).toContain("lg:w-[88px]");
+    expect(sidebar.className).toContain("lg:w-[72px]");
     expect(sidebar.className).not.toContain("lg:hidden");
     expect(sidebar).not.toHaveAttribute("aria-hidden", "true");
   });
 
-  it("desktop sidebar switches to mini icon-rail (lg:w-[88px]) when desktopOpen=false (collapsed icon mode)", () => {
+  it("desktop sidebar switches to mini icon-rail (lg:w-[72px]) when desktopOpen=false (collapsed icon mode)", () => {
     render(
       <ShellNavigation
         tier="office"
@@ -263,7 +280,7 @@ describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
       />,
     );
     const sidebar = screen.getByTestId("desktop-sidebar");
-    expect(sidebar.className).toContain("lg:w-[88px]");
+    expect(sidebar.className).toContain("lg:w-[72px]");
   });
 
   it("omits nav entries the context has no grant for (R3.4 — hidden, not disabled)", () => {

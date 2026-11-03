@@ -72,7 +72,7 @@ export default function LoginPage() {
     // 1. Check URL query parameters (e.g. ?code=... or ?error=...)
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("activated") === "1") {
-      setSuccess("Your account was created successfully. You can now sign in.");
+      setSuccess("Your account is ready. Sign in to continue.");
     }
     const code = searchParams.get("code");
     const errParam = searchParams.get("error_description") || searchParams.get("error");

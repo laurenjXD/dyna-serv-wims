@@ -18,8 +18,8 @@ export function DeactivateItemSection({ itemId }: { itemId: string }) {
 
   if (state.ok) {
     return (
-      <p className="font-body text-body-md text-status-available">
-        Item has been deactivated. Reload the page to see the updated status.
+      <p role="status" className="font-body text-body-md text-status-available">
+        Item deactivated. Refresh this page to see the updated status.
       </p>
     );
   }

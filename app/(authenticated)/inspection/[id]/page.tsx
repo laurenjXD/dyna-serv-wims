@@ -182,7 +182,7 @@ export default async function InspectionDetailPage({
     }
   }
 
-  const showSuccess = result === "submitted";
+  const showSuccess = result === "submitted" && (inspection.status === "passed" || inspection.status === "failed");
   const showError = result === "error";
 
   return (
@@ -241,7 +241,7 @@ export default async function InspectionDetailPage({
           <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
           <div className="min-w-0">
             <p className="font-heading text-body-md font-bold text-emerald-950">
-              Inspection Disposition Recorded Successfully
+              Inspection disposition recorded
             </p>
             <p className="mt-0.5 font-body text-body-sm text-emerald-800">
               The disposition has been committed to inventory ledgers. You may now return to the queue.

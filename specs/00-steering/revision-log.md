@@ -2098,3 +2098,11 @@ continue to allocate across eligible locations and later FIFO/FEFO lots when
 the first location or lot cannot satisfy the full request. Verification:
 TypeScript check and 88 focused allocation, withdrawal, inventory, and
 pick-list tests passed. The merge is local; no push or deployment was done.
+
+## Cross-system user-facing message contract (2026-11-03)
+
+The canonical user-facing message guide now explicitly covers success statements
+and states alongside errors, validation, warnings, loading, empty, unavailable,
+offline, and other feedback. System-wide guidance requires accurate confirmed
+outcomes, clear partial/pending states, and a concrete next action where useful.
+UI feedback and state presentation also use the local `/ui-ux-pro-max` skill.

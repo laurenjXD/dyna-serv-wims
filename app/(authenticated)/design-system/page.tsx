@@ -652,7 +652,7 @@ export default function DesignSystemPage() {
               surface={surfaceMode}
               variant="success"
               title="Putaway Commitment Confirmed"
-              description="150 units successfully committed to Location LOC-B-04-12 on server."
+              description="150 units committed to Location LOC-B-04-12."
               actionLabel="View Updated Ledger"
               onAction={() => alert("Navigating to ledger")}
             />

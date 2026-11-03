@@ -7,6 +7,7 @@ import type { PickListArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { DocumentReprintDialog } from "./DocumentReprintDialog";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 interface PickListsTableProps {
   rows: PickListArchiveRow[];
@@ -24,10 +25,12 @@ export function PickListsTable({ rows }: PickListsTableProps) {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (r: PickListArchiveRow) => {
+  const handleShare = async (r: PickListArchiveRow) => {
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(`${window.location.origin}/pick-lists/${r.pickListId}/print`);
-      alert(`Document link for ${r.documentNumber} copied to clipboard!`);
+      const copied = await copyTextToClipboard(`${window.location.origin}/pick-lists/${r.pickListId}/print`);
+      alert(copied
+        ? `Pick List ${r.documentNumber} link copied. Paste it where you need it.`
+        : `Could not copy the Pick List ${r.documentNumber} link. Open the document and copy its address instead.`);
     }
   };
 
@@ -217,7 +220,7 @@ export function PickListsTable({ rows }: PickListsTableProps) {
           onClose={() => setReprintTarget(null)}
           onSuccess={(res) => {
             setReprintTarget(null);
-            alert(`Reprint authorized: ${res.watermarkText}`);
+            alert(`Reprint authorized for ${res.documentNumber}. Watermark: ${res.watermarkText}`);
           }}
         />
       )}

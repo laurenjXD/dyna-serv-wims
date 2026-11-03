@@ -100,7 +100,7 @@ export function BulkLocationGeneratorForm({
     const { created, skippedDuplicates } = state.result;
     return (
       <div>
-        <div className="rounded border border-status-available/30 bg-status-available/5 px-4 py-3">
+        <div role="status" className="rounded border border-status-available/30 bg-status-available/5 px-4 py-3">
           <p className="font-body text-body-md text-on-surface">
             <strong>{created.length}</strong> location
             {created.length === 1 ? "" : "s"} created.

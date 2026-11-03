@@ -1,22 +1,30 @@
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, ClipboardList, PackageCheck } from "@/components/ui/icons";
 import { BulkLotQrPrintButton } from "@/components/barcode/BulkLotQrPrintButton";
-import { getMigratedLotQrLabels } from "@/lib/actions/data-migration";
+import { getMigratedLotQrLabels, getMigrationSummary } from "@/lib/actions/data-migration";
 import { getMigrationCartonQrLabels, getPendingMigrationCartonLots } from "@/lib/actions/data-migration";
 import { BulkCartonQrPrintButton } from "@/components/barcode/BulkCartonQrPrintButton";
 import { MigrationCartonResolutionPanel } from "@/components/migration/MigrationCartonResolutionPanel";
 
 type MigrationSuccessPageProps = {
-  searchParams: Promise<{ rows?: string; batch?: string }>;
+  searchParams: Promise<{ batch?: string }>;
 };
 
 export default async function MigrationSuccessPage({ searchParams }: MigrationSuccessPageProps) {
   const params = await searchParams;
-  const committedRows = Number.parseInt(params.rows ?? "", 10);
-  const hasCommittedRows = Number.isFinite(committedRows) && committedRows >= 0;
-  const rowSummary = hasCommittedRows
-    ? `${committedRows.toLocaleString()} opening balance row${committedRows === 1 ? "" : "s"} ${committedRows === 1 ? "was" : "were"} committed successfully.`
-    : "The opening balance rows were committed successfully.";
+  const batchResult = params.batch ? await getMigrationSummary(params.batch) : null;
+  if (!batchResult?.ok || batchResult.batch.status !== "committed") {
+    return (
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 py-12 lg:px-8">
+        <section className="w-full rounded-3xl border border-warning/30 bg-surface-white p-8 text-center shadow-elevation-2 sm:p-12" role="status">
+          <h1 className="font-heading text-headline-md font-bold text-on-surface">Migration status unavailable</h1>
+          <p className="mx-auto mt-3 max-w-xl font-body text-body-md text-text-grey">We couldn&apos;t confirm that this opening balance batch was committed. Check its status in Migration Staging before continuing.</p>
+          <Link href="/migration" className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-blue px-6 font-label text-label font-bold text-white hover:bg-brand-navy"><ClipboardList size={18} /> Open Migration Staging</Link>
+        </section>
+      </div>
+    );
+  }
+  const rowSummary = "Opening balance batch committed. The imported stock is available in WIMS.";
   const labelsResult = params.batch ? await getMigratedLotQrLabels(params.batch) : null;
   const labels = labelsResult?.ok ? labelsResult.labels : [];
   const cartonLabelsResult = params.batch ? await getMigrationCartonQrLabels(params.batch) : null;
@@ -32,7 +40,7 @@ export default async function MigrationSuccessPage({ searchParams }: MigrationSu
         </span>
         <p className="mt-6 font-label text-label font-bold uppercase tracking-wide text-success">Migration complete</p>
         <h1 id="migration-success-title" className="mt-2 font-heading text-headline-md font-bold text-on-surface">Opening seed confirmed</h1>
-        <p className="mx-auto mt-3 max-w-xl font-body text-body-md text-text-grey">{rowSummary} The opening stock is now available in WIMS for normal warehouse workflows.</p>
+        <p className="mx-auto mt-3 max-w-xl font-body text-body-md text-text-grey">{rowSummary}</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href="/inventory" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-blue px-6 font-label text-label font-bold text-white hover:bg-brand-navy"><PackageCheck size={18} /> View inventory</Link>
           <Link href="/migration" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-brand-blue px-6 font-label text-label font-bold text-brand-blue hover:bg-brand-blue/10"><ClipboardList size={18} /> Back to migration</Link>

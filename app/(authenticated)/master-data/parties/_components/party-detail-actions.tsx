@@ -405,10 +405,10 @@ function ContactPartyModal({
               </div>
               <div>
                 <h3 className="font-heading text-title-md font-bold text-on-surface">
-                  Email Successfully Dispatched
+                  Email sent to {partyName}
                 </h3>
                 <p className="mt-1 font-body text-body-sm text-text-grey max-w-md mx-auto">
-                  Your message and attached documents have been handed off to Resend for instant transactional delivery to {partyName}.
+                  The email service accepted your message and attachments for delivery.
                 </p>
               </div>
               <button
@@ -786,8 +786,8 @@ export function DeactivatePartySection({ partyId }: { partyId: string }) {
 
   if (state.ok) {
     return (
-      <p className="font-body text-body-md text-status-available">
-        Organization has been deactivated. Reload the page to see the updated status.
+      <p role="status" className="font-body text-body-md text-status-available">
+        Organization deactivated. Refresh this page to see the updated status.
       </p>
     );
   }

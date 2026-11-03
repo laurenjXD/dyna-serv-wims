@@ -310,7 +310,7 @@ export default function AcceptInvitePage() {
               className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800"
             >
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span>Your account was created successfully. Redirecting you to the login page…</span>
+              <span>{previewMode ? "Preview only: account setup was not saved." : "Your account is ready. Redirecting you to sign in…"}</span>
             </div>
           )}
 

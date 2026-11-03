@@ -73,7 +73,7 @@ export async function exportRawTransactionsCsvAction(format: "csv" | "xlsx" = "c
       XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
       return {
         success: true,
-        message: `Exported ${txRows.length} transaction records successfully.`,
+        message: `${txRows.length} transaction ${txRows.length === 1 ? "record is" : "records are"} ready to download.`,
         fileContentBase64: XLSX.write(workbook, { bookType: "xlsx", type: "base64" }),
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename,
@@ -82,7 +82,7 @@ export async function exportRawTransactionsCsvAction(format: "csv" | "xlsx" = "c
 
     return {
       success: true,
-      message: `Exported ${txRows.length} transaction records successfully.`,
+      message: `${txRows.length} transaction ${txRows.length === 1 ? "record is" : "records are"} ready to download.`,
       csvContent,
       mimeType: "text/csv;charset=utf-8;",
       filename,

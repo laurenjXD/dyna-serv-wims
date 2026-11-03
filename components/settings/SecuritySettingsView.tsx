@@ -63,7 +63,7 @@ export function SecuritySettingsView({
     const res = await saveSecuritySettings(settings);
     setIsSaving(false);
     if (res.ok) {
-      setSaveStatus({ type: "success", message: "Security, authentication, and BYOD policies saved successfully." });
+      setSaveStatus({ type: "success", message: "Security settings saved." });
     } else {
       setSaveStatus({ type: "error", message: res.error || "Failed to save security policies." });
     }

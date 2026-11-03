@@ -10,6 +10,7 @@ import {
   Share2,
 } from "@/components/ui/icons";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import type { DocumentTemplate } from "@/lib/documents/document-template";
@@ -97,9 +98,11 @@ export function PdfPreviewModal({
     document.body.removeChild(link);
   };
 
-  const handleShare = () => {
-    navigator.clipboard?.writeText?.(window.location.href);
-    alert(`Secure report link for ${reportRefNumber} copied to clipboard!`);
+  const handleShare = async () => {
+    const copied = await copyTextToClipboard(window.location.href);
+    alert(copied
+      ? `Secure report link for ${reportRefNumber} copied. Paste it where you need it.`
+      : `Could not copy the secure report link for ${reportRefNumber}. Copy the address from your browser instead.`);
   };
 
   return (

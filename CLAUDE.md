@@ -23,6 +23,7 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 | `specs/00-steering/testing.md` | Vitest + Playwright, two-stage DB testing, floor/hardware simulation strategy |
 | `specs/00-steering/gantt-mapping.md` | What's actually approved vs. in-progress vs. not started, mapped to the delivery timeline |
 | `specs/00-steering/revision-log.md` | Every merge conflict and major decision, dated — check here before assuming something is settled |
+| `specs/00-steering/error-message-writing-guide.md` | Canonical wording and behavior for every user-facing message, including success statements and states |
 | `specs/00-steering/multi-agent-work-division.md` | **If more than one agent is working this repo at once, read this before touching anything.** Assigns tracks, locks shared files to a single writer, sets the git/merge protocol. |
 
 ## Non-negotiable decisions (do not re-litigate these)
@@ -34,6 +35,8 @@ A hybrid warehouse inventory system: VMI (vendor-owned stock, CBM-based billing)
 - **Deferred or Draft areas:** parties portal (`22`) is Approved for its documented contract, with downstream runtime work gated by its named dependencies; barcode integration (`18`) is Approved for its documented contract, with runtime scanner tests remaining implementation work; dispatch scheduling/delivery tracking (`19`) is deferred.
 
 ## Working in this repo
+
+- For every user-facing message or state across the system—including success, error, validation, warning, loading, empty, unavailable, and offline—follow `specs/00-steering/error-message-writing-guide.md`. Apply the local `/ui-ux-pro-max` skill when designing, implementing, or reviewing UI feedback and state presentation. Success copy must describe only a confirmed outcome and give the next useful action where one exists.
 
 - New feature work always starts by reading that feature's `specs/NN-*/requirements.md` → `design.md` → `tasks.md`, in that order. If any of the three doesn't exist yet or isn't `Approved`, that's the actual next task — not the code.
 - Every `design.md` must cite which foundational specs (01-05) it depends on, and which tables from `01-core-data-model` it touches, by name — never redefine schema inline in a feature spec.

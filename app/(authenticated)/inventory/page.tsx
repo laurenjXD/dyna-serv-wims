@@ -433,10 +433,10 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
                   </div>
                   <div className="flex-1">
                     <h3 className="font-heading text-body-md font-bold text-on-surface">
-                      Pick list generated successfully
+                      Pick list created and added to the To Pick Queue.
                     </h3>
                     <p className="mt-0.5 font-body text-body-xs text-text-grey">
-                      The list is active in the To Pick Queue. Review or print the PDF, edit it if needed, then approve it to move it to Dispatch.
+                      Review or print the list, make any needed edits, then approve it to move it to Dispatch.
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Link

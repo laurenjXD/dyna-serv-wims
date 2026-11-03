@@ -102,7 +102,7 @@ function ChangePasswordForm() {
       {status === "saved" && (
         <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>Password updated successfully.</span>
+          <span>Password updated.</span>
         </div>
       )}
 
@@ -287,7 +287,7 @@ function MfaSection({ mfaRequiredByPolicy }: { mfaRequiredByPolicy: boolean }) {
       {verified && (
         <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span>Two-factor authentication enabled successfully.</span>
+          <span>Two-factor authentication is on.</span>
         </div>
       )}
       {error && (

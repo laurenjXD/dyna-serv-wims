@@ -13,7 +13,7 @@ export function PermitForm({ partyId }: { partyId: string }) {
       <h2 className="font-heading text-title-md font-bold text-on-surface">Add permit</h2>
       <p className="mt-1 font-body text-body-sm text-text-grey">The permit remains part of the organization record and is used when the Letter of Authority is generated.</p>
       {state.error && <p className="mt-3 rounded-lg bg-status-held/10 p-3 font-body text-body-sm text-status-held">What happened: Permit was not saved. Why it failed: {state.error}. Next action: Correct the fields and try again.</p>}
-      {state.ok && <p className="mt-3 rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">Permit saved.</p>}
+      {state.ok && <p role="status" className="mt-3 rounded-lg bg-status-available/10 p-3 font-body text-body-sm text-status-available">Permit added to the organization record.</p>}
       <form action={formAction} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input type="hidden" name="partyId" value={partyId} />
         <div><label htmlFor="permit-number" className="block font-label text-label font-bold text-on-surface">Permit number</label><input id="permit-number" name="permitNumber" required className="mt-1 h-11 w-full rounded border border-outline-variant/30 px-3 font-body text-body-sm" /></div>

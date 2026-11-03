@@ -35,6 +35,13 @@ import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 50;
+const APPROVAL_SUCCESS_MESSAGES: Record<string, string> = {
+  request_archived: "Approval request archived.",
+  expired_archived: "Expired approval requests archived.",
+  request_approved: "Approval request approved.",
+  request_rejected: "Approval request rejected.",
+  fifo_override_submitted: "FIFO override request sent to Approvals.",
+};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -56,9 +63,10 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     page: pageParam,
     tab: tabParam,
     error: actionError,
-    success: actionSuccess,
+    success: successCode,
     q: searchQuery,
   } = await searchParams;
+  const actionSuccess = successCode ? APPROVAL_SUCCESS_MESSAGES[successCode] ?? null : null;
 
   const resolver = await createPageResolver();
 
@@ -175,7 +183,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     }
     if (result.ok) {
       revalidatePath("/approvals");
-      redirect("/approvals?success=Request%20archived%20successfully.");
+      redirect("/approvals?success=request_archived");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
   }
@@ -193,7 +201,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     if (result.ok) {
       revalidatePath("/approvals");
       redirect(
-        `/approvals?success=${encodeURIComponent(`Successfully archived ${result.count ?? 0} expired request(s).`)}`,
+        "/approvals?success=expired_archived",
       );
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
@@ -207,7 +215,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     const result = await approveRequest(actionResolver, requestId, reason);
     if (result.ok) {
       revalidatePath("/approvals");
-      redirect("/approvals?success=Request%20approved%20successfully.");
+      redirect("/approvals?success=request_approved");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
   }
@@ -222,7 +230,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     const result = await rejectRequest(actionResolver, requestId, reason);
     if (result.ok) {
       revalidatePath("/approvals");
-      redirect("/approvals?success=Request%20rejected.");
+      redirect("/approvals?success=request_rejected");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
   }
@@ -254,7 +262,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
 
     if (result.ok) {
       revalidatePath("/approvals");
-      redirect("/approvals?success=FIFO%20override%20request%20submitted%20successfully.");
+      redirect("/approvals?success=fifo_override_submitted");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
   }
@@ -346,7 +354,6 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
           role="status"
           className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-status-available/10 p-4 font-body text-body-sm text-status-available"
         >
-          <span className="font-bold">Success:</span>
           <span>{actionSuccess}</span>
         </div>
       )}

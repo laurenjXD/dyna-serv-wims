@@ -6,6 +6,7 @@ import { FileText, Eye, Download, Share2, Package } from "@/components/ui/icons"
 import type { WrrArchiveRow } from "@/lib/db/queries/documents";
 import { DocumentPreviewModal, type PreviewDocData } from "./DocumentPreviewModal";
 import { TablePagination } from "@/components/ui/TablePagination";
+import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 
 interface WrrDocumentsTableProps {
   rows: WrrArchiveRow[];
@@ -22,10 +23,12 @@ export function WrrDocumentsTable({ rows }: WrrDocumentsTableProps) {
     return rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
   }, [rows, pageIndex, pageSize]);
 
-  const handleShare = (r: WrrArchiveRow) => {
+  const handleShare = async (r: WrrArchiveRow) => {
     if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      navigator.clipboard?.writeText?.(`${window.location.origin}/receiving/${r.id}/print`);
-      alert(`Document link for ${r.wrrNumber} copied to clipboard!`);
+      const copied = await copyTextToClipboard(`${window.location.origin}/receiving/${r.id}/print`);
+      alert(copied
+        ? `WRR ${r.wrrNumber} link copied. Paste it where you need it.`
+        : `Could not copy the WRR ${r.wrrNumber} link. Open the document and copy its address instead.`);
     }
   };
 
