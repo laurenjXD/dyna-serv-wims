@@ -123,15 +123,15 @@ export function ScanDiscrepancyModal({
       aria-labelledby="discrepancy-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-3">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-white shadow-elevation-3">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-outline-variant/30 bg-status-held/10 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-outline-variant/30 bg-status-held/10 px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-status-held/20 text-status-held">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="discrepancy-modal-title" className="font-heading text-title-md font-bold text-on-surface">
+              <h3 id="discrepancy-modal-title" className="font-heading text-headline-sm font-bold text-on-surface">
                 {details.title}
               </h3>
               <p className="font-body text-body-xs text-text-grey">Floor Scan Validation Error</p>
@@ -148,7 +148,7 @@ export function ScanDiscrepancyModal({
         </div>
 
         {/* Modal Body */}
-        <div className="space-y-4 p-5">
+        <div className="space-y-4 p-4">
           {/* Scanned Barcode Display */}
           {scannedBarcode && (
             <div className="rounded-xl border border-outline-variant/40 bg-surface-light-grey/60 p-3">
@@ -178,7 +178,7 @@ export function ScanDiscrepancyModal({
         </div>
 
         {/* Modal Footer / Quick Actions */}
-        <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-outline-variant/30 bg-surface-light-grey/30 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-outline-variant/30 bg-surface-light-grey/30 px-4 py-3">
           {details.canEnroll && (
             <Link
               href="/inventory"

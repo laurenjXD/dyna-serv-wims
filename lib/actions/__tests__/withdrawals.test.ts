@@ -1132,6 +1132,33 @@ describe("selectPickUnit — WRR-style shared QR dispatch counting", () => {
     expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
   });
 
+  it("creates selectable box identities for an aggregate lot without WRR provenance", async () => {
+    const db = makeWithdrawalDb([], [
+      [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 2, pickListStatus: "picked" }],
+      [],
+      [],
+      [{ wrrItemId: null, migrationBatchId: "migration-1", unitIndex: null }],
+    ]);
+
+    const result = await selectPickUnit(
+      pickerResolver(),
+      "pick-list-1",
+      sharedItemQr,
+      mockRlsDeps(db).deps,
+    );
+
+    expect(result).toEqual({ ok: true, selectedCount: 2, requiredCount: 2 });
+    expect(db._inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        migrationBatchId: "migration-1",
+        lotId: "lot-1",
+        locationId: "loc-a",
+        status: "selected",
+        pickListItemId: "line-1",
+      }),
+    ]));
+  });
+
   it("verifies all remaining boxes for a wrapped pallet line in a single scan", async () => {
     const db = makeWithdrawalDb([], [
       [{ id: "line-1", itemCode: "ITEM-1", itemBarcode: "ITEM-1", lotId: "lot-1", lotNumber: "LOT-1", locationId: "loc-a", numberOfBoxes: 5, pickListStatus: "picked" }],

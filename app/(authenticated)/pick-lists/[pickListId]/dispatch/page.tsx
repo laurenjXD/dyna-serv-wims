@@ -74,6 +74,7 @@ import { OfflineDispatchScanForm } from "./_components/OfflineDispatchScanForm";
 import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
 import { PickListInteractiveChecklist } from "./_components/PickListInteractiveChecklist";
+import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -229,16 +230,14 @@ export default async function DispatchConfirmationPage({
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 border-b border-outline-variant/30 bg-surface-white px-4 py-3 shadow-sm">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            {/* Shared floor back-link pattern used by the receiving flow. */}
-            <Link
-              href="/inventory?tab=pick-lists"
-              className="inline-flex min-h-14 shrink-0 items-center gap-1 font-body text-body-sm text-text-grey transition-colors hover:text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
-            >
-              <ArrowLeft size={16} className="mr-1" aria-hidden="true" />
-              <span>Back to Pick Lists</span>
-            </Link>
+        <div className="mx-auto w-full max-w-container">
+          <PageBreadcrumb
+            backHref="/inventory?tab=pick-lists"
+            backLabel="Pick Lists"
+            currentLabel="Dispatch"
+            className="mb-2"
+          />
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               {/* Compact heading scale consistent with other floor flows. */}
               <h1 className="font-heading text-headline-sm font-extrabold text-on-surface">
@@ -265,7 +264,7 @@ export default async function DispatchConfirmationPage({
       </div>
 
       {/* ── Main content (scrollable) ─────────────────────────────────────── */}
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 py-5 pb-8">
+      <div className="mx-auto flex w-full max-w-container flex-1 flex-col overflow-y-auto px-4 py-5 pb-8">
 
         {/* Updated Banner */}
         {result === "updated" && (

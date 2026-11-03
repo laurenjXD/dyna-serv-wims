@@ -876,16 +876,21 @@ export async function selectPickUnit(
         const sourceRows = (await db
           .select({
             wrrItemId: lots.wrrItemId,
+            migrationBatchId: lots.migrationBatchId,
             unitIndex: inventoryUnits.unitIndex,
           })
           .from(lots)
           .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
           .where(eq(lots.id, line.lotId))) as Array<{
-          wrrItemId: string;
-          unitIndex: number | null;
-        }>;
-        const wrrItemId = sourceRows[0]?.wrrItemId;
-        if (!wrrItemId) return { ok: false as const, errors: ["box_unavailable"] };
+            wrrItemId: string | null;
+            migrationBatchId: string | null;
+            unitIndex: number | null;
+          }>;
+        // Older aggregate and migration lots may not have a WRR source line.
+        // The lot/location commitment is still authoritative, so create
+        // durable box identities with whichever provenance is available.
+        const wrrItemId = sourceRows[0]?.wrrItemId ?? null;
+        const migrationBatchId = sourceRows[0]?.migrationBatchId ?? null;
         let nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
 
         for (let i = 0; i < stillMissingCount; i++) {
@@ -897,6 +902,7 @@ export async function selectPickUnit(
               cartonId: cartonIdFromUnitId(unitId),
               unitIndex: nextUnitIndex++,
               wrrItemId,
+              migrationBatchId,
               lotId: line.lotId,
               locationId: line.locationId,
               status: "selected",
