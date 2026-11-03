@@ -1,5 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Product Owner clarification: shared FIFO/FEFO date ranks in pick-list and DRA plans (2026-11-03)
+
+FIFO rank identifies the receipt calendar date group, and FEFO rank identifies the expiry calendar date group. Multiple distinct lots may share one rank and remain separate beneath it; each lot shows its own locations. Timestamps/sequences order lots within a rank, and the UI presents rank → lot → location for both manual pick-list drafts and DRA-import previews. The approved `08` amendment and standing second-approver sign-off are recorded in `08/tasks.md`.
+
 ## Product Owner request: draggable mobile navigation handle (2026-11-03)
 
 The Product Owner explicitly requested dragging the mobile navigation sheet by its top handle. The approved `05-ui-shell-and-navigation` amendment adds touch/mouse/pen resizing, 55/85/95 dynamic-viewport-height snap positions (85 initially), downward dismissal below 35%, cancellation recovery, a keyboard-accessible handle, and independent navigation-list scrolling. The existing close/backdrop/Escape controls remain available. Approval and the standing second-approver convention are recorded in `05/tasks.md`; implementation verification is tracked there. This is local shell presentation behavior and changes no business data or authorization.

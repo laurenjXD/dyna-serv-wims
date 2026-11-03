@@ -134,6 +134,16 @@ function compareLots(a: PreparedLot, b: PreparedLot, isPerishable: boolean): num
   return lotNumberOrder !== 0 ? lotNumberOrder : compareText(a.lotId, b.lotId);
 }
 
+function fifoFefoRankKey(lot: PreparedLot, isPerishable: boolean): string {
+  const rankDate = isPerishable ? lot.expiryDate : lot.receivedAt;
+  if (!rankDate) return "~undated";
+  if (!Number.isFinite(rankDate.getTime())) return "~undated";
+  // FIFO/FEFO rank represents the business date group. Lots received on the
+  // same calendar date share a rank; timestamps still order distinct lots
+  // within that rank, and lot number/ID break exact timestamp ties.
+  return rankDate.toISOString().slice(0, 10);
+}
+
 function prepareLotGroups(
   rows: LotLocationRow[],
   isPerishable: boolean,
@@ -202,22 +212,31 @@ export function buildAllocationPlan(
   wholeBoxSize?: number,
 ): AllocationPlan {
   const preparedLots = prepareLotGroups(rows, isPerishable, wholeBoxSize);
-  const lots: AllocationPlanLot[] = preparedLots.map((lot, index) => ({
-    lotId: lot.lotId,
-    lotNumber: lot.lotNumber,
-    rank: index + 1,
-    receivedAt: lot.receivedAt,
-    expiryDate: lot.expiryDate,
-    availableQty: lot.locations.reduce((sum, location) => sum + location.availableQty, 0),
-    qtyAllocated: 0,
-    locations: lot.locations.map(({ row, availableQty }) => ({
-      lotId: row.lotId,
-      locationId: row.locationId,
-      locationLabel: text(row.locationLabel, row.locationId),
-      availableQty,
+  let rank = 0;
+  let previousRankKey: string | null = null;
+  const lots: AllocationPlanLot[] = preparedLots.map((lot) => {
+    const rankKey = fifoFefoRankKey(lot, isPerishable);
+    if (rankKey !== previousRankKey) {
+      rank += 1;
+      previousRankKey = rankKey;
+    }
+    return {
+      lotId: lot.lotId,
+      lotNumber: lot.lotNumber,
+      rank,
+      receivedAt: lot.receivedAt,
+      expiryDate: lot.expiryDate,
+      availableQty: lot.locations.reduce((sum, location) => sum + location.availableQty, 0),
       qtyAllocated: 0,
-    })),
-  }));
+      locations: lot.locations.map(({ row, availableQty }) => ({
+        lotId: row.lotId,
+        locationId: row.locationId,
+        locationLabel: text(row.locationLabel, row.locationId),
+        availableQty,
+        qtyAllocated: 0,
+      })),
+    };
+  });
 
   const lines: AllocationLineResult[] = [];
   const normalizedRequestedQty = Number.isFinite(requestedQty) ? Math.max(0, requestedQty) : 0;

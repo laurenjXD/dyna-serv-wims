@@ -429,6 +429,42 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
   });
 
+  it("shows the same grouped receipt-date hierarchy for DRA-imported allocations", async () => {
+    vi.mocked(parseDraDocumentAction).mockResolvedValue({
+      ok: true,
+      parseResult: {
+        rows: [{ itemCode: "SUP-ITEM-1", customerItemCode: "SUP-ITEM-1", itemDescription: "Test item", requestedQty: 5, packageCount: 5, spq: 1 }],
+        header: { requestingOrganization: "VMI Owner Organization" },
+        errors: [], warnings: [], ok: true, fileName: "release.csv",
+      },
+    });
+    const importedStock = [
+      { ...stock[0], balanceId: "a1", lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a1", locationLabel: "A1-01", availableQty: 2, receivedAt: new Date("2026-10-20T08:00:00Z") },
+      { ...stock[0], balanceId: "a2", lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a2", locationLabel: "A1-02", availableQty: 2, receivedAt: new Date("2026-10-20T08:00:00Z") },
+      { ...stock[0], balanceId: "b1", lotId: "lot-b", lotNumber: "LOT-B", locationId: "loc-b1", locationLabel: "B1-01", availableQty: 3, receivedAt: new Date("2026-10-20T15:00:00Z") },
+      { ...stock[0], balanceId: "c1", lotId: "lot-c", lotNumber: "LOT-C", locationId: "loc-c1", locationLabel: "C1-01", availableQty: 4, receivedAt: new Date("2026-10-21T08:00:00Z") },
+    ];
+    render(
+      <MultiItemPickListDraft
+        stock={importedStock}
+        customers={[{ id: "party-customer", code: "CUST-1", name: "Test customer", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()}
+        overrideAction={vi.fn()}
+      />,
+    );
+    const file = new File(["dra"], "release.csv", { type: "text/csv" });
+    fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [file] } });
+
+    expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
+    const plan = screen.getAllByLabelText("FIFO lot and location plan")[0];
+    expect(plan.textContent).toContain("FIFO #1");
+    expect(plan.textContent).toContain("Lot LOT-A");
+    expect(plan.textContent).toContain("Lot LOT-B");
+    expect(plan.textContent).toContain("FIFO #2");
+    expect(plan.textContent).toContain("Lot LOT-C");
+  });
+
   it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
     render(
       <MultiItemPickListDraft

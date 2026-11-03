@@ -127,6 +127,50 @@ function formatStockDate(value?: string | null): string | null {
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function AllocationRankPlan({ plan }: { plan: AllocationPlan | null }) {
+  if (!plan || plan.lots.length === 0) return null;
+  const rankGroups = [...new Set(plan.lots.map((lot) => lot.rank))].map((rank) => ({
+    rank,
+    lots: plan.lots.filter((lot) => lot.rank === rank),
+  }));
+
+  return (
+    <div aria-label={`${plan.strategy} lot and location plan`} className="max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2">
+      <p className="mb-1.5 font-label text-[10px] font-bold uppercase tracking-wide text-slate-500">{plan.strategy} rank → lot → location</p>
+      <div className="grid gap-1.5">
+        {rankGroups.map(({ rank, lots }) => (
+          <section key={rank} className="rounded-md bg-slate-50 p-1.5">
+            <h4 className="font-label text-[10px] font-bold text-brand-navy">
+              {plan.strategy} #{rank}
+              {plan.strategy === "FIFO"
+                ? ` · Received ${formatStockDate(lots[0]?.receivedAt.toISOString()) ?? "date not recorded"}`
+                : ` · Expires ${formatStockDate(lots[0]?.expiryDate?.toISOString() ?? null) ?? "date not recorded"}`}
+            </h4>
+            <div className="mt-1 grid gap-1">
+              {lots.map((lot) => (
+                <div key={lot.lotId} className="rounded border border-slate-200 bg-white px-2 py-1">
+                  <div className="flex items-center justify-between gap-2 text-[10px]">
+                    <span className="min-w-0 truncate font-semibold text-slate-800">Lot {lot.lotNumber}</span>
+                    <span className="shrink-0 font-mono text-slate-600">{lot.qtyAllocated} / {lot.availableQty} boxes</span>
+                  </div>
+                  <div className="mt-0.5 grid gap-0.5">
+                    {lot.locations.map((location) => (
+                      <div key={location.locationId} className="flex items-center justify-between gap-2 border-l-2 border-slate-200 pl-1.5 text-[10px] text-slate-500">
+                        <span className="truncate">{location.locationLabel}</span>
+                        <span className="shrink-0 font-mono">{location.qtyAllocated} / {location.availableQty}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PickListItemSearch({
   catalog,
   flowType,
@@ -1331,6 +1375,7 @@ export function MultiItemPickListDraft({
                               </div>
                             );
                           })}
+                          <AllocationRankPlan plan={allocationPlan} />
                           <select
                             aria-label="Add location within FIFO lot"
                             value=""
@@ -1547,6 +1592,7 @@ export function MultiItemPickListDraft({
                               </div>
                             );
                           })}
+                          <AllocationRankPlan plan={allocationPlan} />
                           <select
                             aria-label="Add location within FIFO lot"
                             value=""

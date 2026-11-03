@@ -136,6 +136,8 @@ The allocation command queries current authoritative state and applies:
 4. existing reservations/commitments;
 5. location quantities across dispersed locations.
 
+The displayed rank is a date group: non-perishable lots sharing a recorded receipt calendar date share one FIFO rank; perishable lots sharing an expiry calendar date share one FEFO rank. Lots are never merged. Within a rank, lots retain timestamp/sequence ordering and the stable lot-number/lot-ID tie-breaker; each lot contains its individually ordered locations. The pick-list draft and its DRA-import preview use this same hierarchy and allocator.
+
 The output is a deterministic allocation plan containing item, lot, location, requested/allocated quantity, SPQ/box conversion, and ordering explanation. Client-supplied lot selection is treated as a request and is revalidated server-side.
 
 If the selected plan is out of sequence, the server creates an explicit FIFO override approval request for `09`. Standard FIFO/FEFO plans proceed directly to pick-list generation. A pending, rejected, expired, or mismatched override approval blocks generation. The final command rechecks the plan because available stock and approvals can change between screens.

@@ -138,6 +138,8 @@ describe("lot-first allocation plans", () => {
       ["lot-a", "LOT-A"],
       ["lot-b", "LOT-B"],
     ]);
+    expect(plan.lots.map(({ rank }) => rank)).toEqual([1, 1]);
+    expect(plan.lots[0].locations.map(({ locationLabel }) => locationLabel)).toEqual(["A1-01", "Z1-01"]);
     expect(plan.lines).toEqual([
       { lotId: "lot-a", locationId: "loc-a", qtyAllocated: 2 },
       { lotId: "lot-a", locationId: "loc-z", qtyAllocated: 2 },
@@ -152,7 +154,29 @@ describe("lot-first allocation plans", () => {
     ], 5, false);
 
     expect(plan.lots.map(({ lotId }) => lotId)).toEqual(["lot-earlier", "lot-later"]);
+    expect(plan.lots.map(({ rank }) => rank)).toEqual([1, 1]);
     expect(plan.lines).toEqual([{ lotId: "lot-earlier", locationId: "loc-z", qtyAllocated: 5 }]);
+  });
+
+  it("keeps distinct lots and their split locations nested under one receipt-date FIFO rank", () => {
+    const plan = buildAllocationPlan([
+      makeRow({ lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a1", locationLabel: "A1-01", qtyRemaining: 4, receivedAt: new Date("2026-10-20T08:00:00Z") }),
+      makeRow({ lotId: "lot-a", lotNumber: "LOT-A", locationId: "loc-a2", locationLabel: "A1-02", qtyRemaining: 3, receivedAt: new Date("2026-10-20T08:00:00Z") }),
+      makeRow({ lotId: "lot-b", lotNumber: "LOT-B", locationId: "loc-b1", locationLabel: "B1-01", qtyRemaining: 6, receivedAt: new Date("2026-10-20T15:00:00Z") }),
+      makeRow({ lotId: "lot-c", lotNumber: "LOT-C", locationId: "loc-c1", locationLabel: "C1-01", qtyRemaining: 5, receivedAt: new Date("2026-10-21T08:00:00Z") }),
+    ], 9, false);
+
+    expect(plan.lots.map(({ lotNumber, rank }) => [lotNumber, rank])).toEqual([
+      ["LOT-A", 1],
+      ["LOT-B", 1],
+      ["LOT-C", 2],
+    ]);
+    expect(plan.lots[0].locations.map(({ locationLabel, qtyAllocated }) => [locationLabel, qtyAllocated])).toEqual([
+      ["A1-01", 4],
+      ["A1-02", 3],
+    ]);
+    expect(plan.lots[1].qtyAllocated).toBe(2);
+    expect(plan.lots[2].qtyAllocated).toBe(0);
   });
 
   it("uses a location pick sequence before the stable location-label fallback", () => {
@@ -198,11 +222,13 @@ describe("lot-first allocation plans", () => {
     const plan = buildAllocationPlan([
       makeRow({ lotId: "lot-no-expiry", lotNumber: "LOT-NO-DATE", locationId: "loc-1", expiryDate: null, receivedAt: new Date("2025-01-01") }),
       makeRow({ lotId: "lot-late", lotNumber: "LOT-LATE", locationId: "loc-2", expiryDate: new Date("2026-06-01"), receivedAt: new Date("2026-01-01") }),
+      makeRow({ lotId: "lot-early-second", lotNumber: "LOT-EARLY-2", locationId: "loc-4", expiryDate: new Date("2026-03-01"), receivedAt: new Date("2026-05-01") }),
       makeRow({ lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-3", expiryDate: new Date("2026-03-01"), receivedAt: new Date("2026-04-01") }),
     ], 20, true);
 
     expect(plan.strategy).toBe("FEFO");
-    expect(plan.lots.map((lot) => lot.lotNumber)).toEqual(["LOT-EARLY", "LOT-LATE", "LOT-NO-DATE"]);
+    expect(plan.lots.map((lot) => lot.lotNumber)).toEqual(["LOT-EARLY", "LOT-EARLY-2", "LOT-LATE", "LOT-NO-DATE"]);
+    expect(plan.lots.map((lot) => lot.rank)).toEqual([1, 1, 2, 3]);
   });
 
   it("keeps authoritative allocations on complete SPQ/box boundaries", () => {

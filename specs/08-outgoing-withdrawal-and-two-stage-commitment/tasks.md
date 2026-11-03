@@ -242,3 +242,11 @@ Sign-off: Engineering — approved 2026-10-22.
 - [x] The server assigns exactly the committed number of internal inventory-unit rows, rejects completed-line duplicates, and retains the existing final dispatch command as the inventory-decrement boundary.
 - [x] Product Owner sign-off: Lauren, 2026-11-03 (explicit direction in conversation).
 - [x] Second approver sign-off: System standing approval, 2026-11-03.
+
+## Approved amendment — FIFO/FEFO date-group display for pick-list and DRA preview (2026-11-03)
+
+- [x] Share one rank across distinct FIFO lots with the same receipt calendar date, and one rank across distinct FEFO lots with the same expiry calendar date; retain timestamp/sequence ordering within the rank and never merge lots.
+- [x] Show the plan as rank → distinct lot → locations in both the pick-list draft and DRA-import preview.
+- [x] Add coverage for same-date lots, multiple locations per lot, FEFO rank groups, and DRA-imported plan display; focused tests and TypeScript check pass.
+- [x] Product Owner sign-off: Lauren, 2026-11-03 (explicit approval in conversation).
+- [x] Second approver sign-off: System standing approval, 2026-11-03.
