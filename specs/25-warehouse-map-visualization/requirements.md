@@ -39,6 +39,11 @@ across 4 layers; racks B–E have 12 per layer across 4 layers; racks F–G have
 tracking records and SHALL not render as rack cells because they have no rack,
 level, position, label, or capacity.
 
+For the Map View, each rendered cell represents exactly one pallet position.
+Therefore Rack A has a map maximum of 120 pallet positions (4 layers × 30
+positions). This is a layout-position count for the map and does not replace
+the canonical CBM capacity or inventory-status calculations.
+
 Map text SHALL have deliberate spacing between the warehouse title, rack
 titles, level/position headers, and cell labels. Labels MUST remain readable
 and must not overlap one another at the desktop map width or in focused-rack

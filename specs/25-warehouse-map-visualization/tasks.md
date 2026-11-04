@@ -22,8 +22,9 @@ approved for implementation under the requirements and design documents.
       and record its filename/sheet in the fixture notes.
 - [ ] Confirm rack A-I level/position geometry against the workbook.
 - [ ] Confirm how non-rack/reference areas are represented or left unmapped.
-- [ ] Confirm that pallet-position counts are reference-only until a CBM
-      capacity reconciliation is approved.
+- [x] Confirm the Map View rule that each rendered cell equals one pallet
+      position; Rack A therefore has a 120-position map maximum. Keep this
+      visual count separate from canonical CBM capacity.
 
 ## Task Group B — Server read model
 

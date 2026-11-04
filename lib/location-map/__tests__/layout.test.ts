@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildWarehouseMapCells,
   canonicalLocationLabel,
+  rackPalletPositionCount,
+  totalPalletPositionCount,
   WAREHOUSE_MAP_CELLS,
   WAREHOUSE_RACK_LAYOUT,
 } from "@/lib/location-map/layout";
@@ -24,6 +26,14 @@ describe("warehouse map layout", () => {
     for (const rack of ["H", "I"]) {
       expect(WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rack)).toHaveLength(24);
     }
+  });
+
+  it("treats each map cell as one pallet position", () => {
+    const rackA = WAREHOUSE_RACK_LAYOUT.find((layout) => layout.rack === "A")!;
+
+    expect(rackPalletPositionCount(rackA)).toBe(120);
+    expect(totalPalletPositionCount([rackA])).toBe(120);
+    expect(totalPalletPositionCount(WAREHOUSE_RACK_LAYOUT)).toBe(472);
   });
 
   it("covers every canonical level-position coordinate exactly once for every rack", () => {
