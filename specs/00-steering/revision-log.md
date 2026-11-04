@@ -2128,3 +2128,11 @@ and states alongside errors, validation, warnings, loading, empty, unavailable,
 offline, and other feedback. System-wide guidance requires accurate confirmed
 outcomes, clear partial/pending states, and a concrete next action where useful.
 UI feedback and state presentation also use the local `/ui-ux-pro-max` skill.
+
+## 2026-11-04 — Location Map cells represent pallet positions
+
+The Product Owner clarified that each rendered cell in Location Map View equals
+one pallet position. Rack A therefore has a map maximum of 120 positions
+(4 levels × 30 positions). The map may show this layout-position maximum, but
+live CBM capacity, utilization, and stock status remain sourced from canonical
+location data and are not derived from the cell count.

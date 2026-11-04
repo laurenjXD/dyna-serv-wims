@@ -74,6 +74,20 @@ export const WAREHOUSE_RACK_LIMITS = {
 
 export const WAREHOUSE_MAP_VIEWBOX = { width: 1240, height: 820 } as const;
 
+/**
+ * The map is a pallet-position view: one rendered cell represents one pallet
+ * position. This is a layout count and must not be confused with CBM capacity.
+ */
+export function rackPalletPositionCount(layout: Pick<RackLayout, "levels" | "positions">): number {
+  return layout.levels * layout.positions;
+}
+
+export function totalPalletPositionCount(
+  layouts: readonly Pick<RackLayout, "levels" | "positions">[] = WAREHOUSE_RACK_LAYOUT,
+): number {
+  return layouts.reduce((total, layout) => total + rackPalletPositionCount(layout), 0);
+}
+
 export function canonicalLocationLabel(rack: string, level: number, position: number): string {
   return `${rack}${level}-${String(position).padStart(2, "0")}`;
 }

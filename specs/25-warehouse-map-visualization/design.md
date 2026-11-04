@@ -62,6 +62,11 @@ across 2 layers, exactly as shown in the supplied PDF.
 RCV/Hold tracking rows have no label and are excluded from SVG rack-cell
 rendering while remaining available in table/list views.
 
+Each rendered SVG cell is one pallet position for Map View capacity display.
+Accordingly, Rack A displays 120 pallet positions (4 layers × 30 positions).
+This visual position count is separate from canonical CBM capacity and must not
+be used to derive live utilization or stock status.
+
 SVG text placement uses reserved bands for the warehouse title, each rack
 title, headers, and cell labels. The layout must add enough gap around each
 band that text never overlaps, and focused-rack rendering must preserve the

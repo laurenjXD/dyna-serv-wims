@@ -14,7 +14,7 @@
 // These actions are online-only; excluded from the offline queue per
 // design.md §5 and tasks.md Non-negotiable boundaries.
 
-import { eq, and, lte, or, isNull } from "drizzle-orm";
+import { eq, and, lte, or, isNull, ne } from "drizzle-orm";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
 import { isExpired } from "@/lib/approval/expiry";
@@ -281,12 +281,19 @@ export async function archiveAllExpiredApprovals(
         .set({ status: "expired", deletedAt: new Date(), deletedByUserId: authResult.userId })
         .where(and(
           isNull(approvalRequests.deletedAt),
+          ne(approvalRequests.requesterUserId, authResult.userId),
           or(
             eq(approvalRequests.status, "expired"),
             and(eq(approvalRequests.status, "pending"), lte(approvalRequests.expiryAt, new Date())),
           ),
         ))
         .returning({ id: approvalRequests.id });
+      if (rows.length === 0) {
+        return {
+          ok: false,
+          error: "No expired requests were archived. A requester cannot archive their own request.",
+        } as const;
+      }
       return { ok: true, count: rows.length } as const;
     });
     if (rlsResult.kind === "unauthenticated") return { ok: false, error: "Forbidden" };

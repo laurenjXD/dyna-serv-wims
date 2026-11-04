@@ -12,6 +12,7 @@ import {
   WAREHOUSE_MAP_VIEWBOX,
   WAREHOUSE_RACK_LAYOUT,
   rackLabelsForMap,
+  totalPalletPositionCount,
 } from "@/lib/location-map/layout";
 import { getMapCellDisplayStatus, type LocationMapStatus } from "@/lib/location-map/status";
 import { toggleMapSelection } from "@/lib/location-map/selection";
@@ -107,9 +108,16 @@ export function LocationMapView({
     !row.isMapped && (row.totalUnits > 0 || row.totalBoxes > 0 || row.occupiedCbm > 0)
   ));
   const rackLabels = rackLabelsForMap();
+  const visibleLayouts = rackFilter === "all"
+    ? WAREHOUSE_RACK_LAYOUT
+    : WAREHOUSE_RACK_LAYOUT.filter((layout) => layout.rack === rackFilter);
   const visibleCells = rackFilter === "all"
     ? WAREHOUSE_MAP_CELLS
     : WAREHOUSE_MAP_CELLS.filter((cell) => cell.rack === rackFilter);
+  const palletPositionCount = totalPalletPositionCount(visibleLayouts);
+  const palletPositionDescription = rackFilter === "all"
+    ? `${palletPositionCount.toLocaleString()} pallet positions across racks A–I`
+    : `Rack ${rackFilter}: ${palletPositionCount.toLocaleString()} pallet positions (${visibleLayouts[0]?.levels ?? 0} levels × ${visibleLayouts[0]?.positions ?? 0} positions)`;
   const mapSummary = useMemo(() => filteredRows.reduce(
     (summary, row) => ({
       pieces: summary.pieces + row.totalUnits,
@@ -161,7 +169,7 @@ export function LocationMapView({
             <h2 className="font-heading text-headline-md font-semibold text-on-surface">Warehouse map</h2>
           </div>
           <p className="mt-1 font-body text-body-sm text-text-grey">
-            Live location occupancy mapped to the confirmed PDF RACK A-I arrangement. The PDF is a geometry reference, not a source of capacity or stock status.
+            Live location occupancy mapped to the confirmed PDF RACK A-I arrangement. Each cell represents one pallet position; CBM capacity and stock status come from canonical locations.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 font-label text-label">
@@ -223,6 +231,9 @@ export function LocationMapView({
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-label text-label text-slate-600">
           {mappedRows.length} mapped rack locations{unmappedRows.length > 0 ? ` · ${unmappedRows.length} unmapped stock locations` : ""}
         </span>
+        <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 font-label text-label text-blue-800" aria-label={palletPositionDescription}>
+          {palletPositionDescription}
+        </span>
       </div>
       <p className="font-body text-xs text-text-grey">
         Empty mapped cells are <span className="font-semibold text-emerald-800">Available</span>; cells containing stock are <span className="font-semibold text-blue-800">Occupied</span>. Records outside the reference layout remain in the unmapped list below.
@@ -234,6 +245,7 @@ export function LocationMapView({
             <div>
               <p className="font-label text-label uppercase tracking-[0.05em] text-text-grey">Layout {WAREHOUSE_MAP_LAYOUT_VERSION}</p>
               <p className="font-body text-body-sm text-text-grey">Select a cell to inspect its live details.</p>
+              <p className="mt-1 font-body text-xs font-semibold text-brand-navy">{palletPositionDescription} · 1 cell = 1 pallet position</p>
               <p className="mt-1 font-body text-xs text-text-grey">Tip: Hold Shift and click to compare cells.</p>
             </div>
             <span className="hidden font-mono text-xs text-text-grey sm:inline">{WAREHOUSE_MAP_SOURCE}</span>
@@ -367,7 +379,12 @@ export function LocationMapView({
               <h3 className="truncate font-label text-[11px] font-bold uppercase tracking-[0.05em] text-on-surface">{mapSummaryScope}</h3>
               <span className="shrink-0 font-body text-[10px] text-text-grey">Live totals</span>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-slate-200">
+            <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 sm:grid-cols-4 sm:divide-y-0">
+              <div className="min-w-0 px-2 py-2.5 text-center">
+                <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">Pallet positions</p>
+                <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(palletPositionCount, 0)}>{formatNumber(palletPositionCount, 0)}</p>
+                <p className="mt-0.5 font-body text-[9px] text-text-grey">map maximum</p>
+              </div>
               <div className="min-w-0 px-2 py-2.5 text-center">
                 <p className="font-label text-[9px] font-bold uppercase leading-tight tracking-wide text-text-grey">PCS</p>
                 <p className="mt-1 truncate font-mono text-sm font-bold text-on-surface" title={formatNumber(mapSummary.pieces, 0)}>{formatNumber(mapSummary.pieces, 0)}</p>
