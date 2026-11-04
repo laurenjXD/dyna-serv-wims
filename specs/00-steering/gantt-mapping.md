@@ -1,10 +1,10 @@
 # Gantt-to-Spec Mapping — Delivery Tracking Layer
 Status: Active
-Last Updated: 2026-09-12
+Last Updated: 2026-11-04
 
-This sits above the spec folders, not inside them. Because we follow **Spec-Driven Development** (no implementation code is written until `tasks.md` is Approved), the traditional Gantt chart tasks are split to reflect our actual flow. 
+This sits above the spec folders, not inside them. It maps delivery work to feature specs and records both specification approval and implementation status. Older schedule estimates and status rows may lag the feature `tasks.md`; use those task files and `revision-log.md` for the latest verification evidence, and reconcile this table when they change.
 
-The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requirements $\rightarrow$ Design $\rightarrow$ Tasks $\rightarrow$ Approval) before unlocking the **Implementation Phase**. The progress percentages below currently reflect progress in *Spec Drafting*, not coding.
+The delivery flow remains **Requirements → Design → Tasks → Approval → Implementation → Verification → UAT**. Schedule estimates and percentages in this file are historical unless the implementation status cites a current evidence record.
 
 ---
 
@@ -14,7 +14,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 |---|---|---|---|---|---|---|
 | 1.1 | Repository and development environment setup | 7/31 – 8/5 | 100% | Pre-spec scaffolding | **Approved** (Next.js 15 + Drizzle + Supabase + Tailwind skeleton scaffolded 2026-08-07; `build-doctor`-confirmed green build) | Done |
 | 1.2 | Core inventory data model and database schema | 7/31 – 8/5 | 100% | `01-core-data-model` | **Approved** (2026-08-24 WRR document-field amendment approved in conversation) | Implemented baseline; amendment authorized |
-| 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | **Implemented** (cycles 2.1–2.4 real-Postgres verified 2026-08-07/08 — schema, session resolver, guard, RLS policies; cycle 2.5 admin UI remains, blocked on `05` frontend) |
+| 1.3 | Warehouse user authentication and RBAC | 7/31 – 8/5 | 100% | `02-rbac-roles`, `21-user-profile-and-settings` | **Approved** (dynamic RBAC amendment approved 2026-11-03) | Dynamic custom-role and account-access editors implemented; 80-migration isolated PostgreSQL WASM verification and local checks passed 2026-11-03. Hosted migration application and authenticated browser lifecycle E2E remain unchecked; see `02/tasks.md`. |
 | 1.4 | Receiving and inspection interface | 7/31 – 8/5 | 0% | `07-incoming-receiving`, `05-ui-shell` | **Approved** (2026-08-24 WRR form/read-only/print field ownership amendment) | Amendment authorized |
 | 1.5 | Receiving transaction and lot creation logic | 7/31 – 8/5 | 0% | `07-incoming-receiving` | **Approved** (2026-08-24 WRR-line manufacture date/remarks amendment) | Amendment authorized |
 | 1.6 | Internal inventory transfer requests | 8/6 – 8/11 | 100% | `11-transfer-and-inspection` | **Approved** (2026-08-06 Daily Inspection/split-disposition amendment; Master Inventory initiation decision resolved) | Ready for Dev |
@@ -70,7 +70,7 @@ The current Gantt timeline tracks the **Spec Definition Phase** (Drafting Requir
 | 4.6 | Inventory user manual completion | `20-documentation-training-and-uat` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 4.7 | Administrator inventory system training | `20-documentation-training-and-uat` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
 | 4.8 | Production deployment of the inventory system | `04-services-and-infrastructure` | **Approved** (all three documents and both sign-offs complete 2026-08-06) | Ready for Dev |
-| 4.9 | Dispatch scheduling and delivery tracking | `19-dispatch-scheduling-and-delivery-tracking` | **Deleted / Scope Removed** (Obsolete spec folder deleted; unneeded for single-warehouse v1 scope) | Removed |
+| 4.9 | Dispatch scheduling and delivery tracking | `19-dispatch-scheduling-and-delivery-tracking` | **Deferred** (number reserved for future dispatch scheduling/tracking; not part of current delivery scope) | Deferred |
 | 4.10 | Final client inventory validation | Project closure | **Not Started** | Not Started |
 | 4.11 | Final inventory system handover and acceptance | Sign-off gate | **Not Started** | Not Started |
 

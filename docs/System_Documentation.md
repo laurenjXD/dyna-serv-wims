@@ -2,8 +2,8 @@
 
 **Document type:** Technical and administrative reference  
 **System:** Dyna-Serv Warehouse Inventory Management System (WIMS)  
-**Version:** 1.2
-**Evidence baseline:** Repository inspection, approved specifications, source code, database migrations, and automated tests inspected 2026-10-27  
+**Version:** 1.3
+**Evidence baseline:** Repository inspection, approved specifications, source code, migrations, and recorded verification results inspected 2026-11-04
 **Audience:** Developers, system administrators, IT personnel, technical evaluators, maintainers, and project stakeholders
 
 > This document describes the implemented repository behavior. A feature marked **planned**, **deferred**, **draft**, or **not verified** must not be treated as production behavior.
@@ -46,7 +46,7 @@ The system is deliberately mobile-first for warehouse-floor work and office-capa
 
 ### 1.3 Scope and limitations
 
-Implemented scope includes the registered launch routes in `lib/shell/registry.ts`, the canonical schema and migrations, server actions, API routes, responsive UI components, QR flows, and test suites. The route registry identifies `/portal/notifications` and `/portal/labels` as planned. Dispatch scheduling and delivery tracking (`19`) is explicitly deferred. Runtime camera and some Playwright hardware simulation remain implementation work even though their contracts are approved.
+Implemented scope includes the registered launch routes in `lib/shell/registry.ts`, the canonical schema and migrations, server actions, API routes, responsive UI components, QR flows, and test suites. The route registry identifies `/portal/notifications` and `/portal/labels` as planned. Dispatch scheduling and delivery tracking (`19`) is explicitly deferred. The dynamic RBAC custom-role and account-access editors are implemented; migration `0071_dynamic_rbac_administration.sql` must be applied in the target deployment before those mutations are available there. Authenticated RBAC browser E2E, hosted migration state, hardware scanning, and final deployed UAT remain separate verification items.
 
 The repository is not evidence of a deployed production environment, configured credentials, physical printer settings, or a completed real-Postgres migration run unless a test or deployment record explicitly proves it.
 
@@ -375,28 +375,30 @@ Supabase authentication establishes the user session. `/auth/callback` completes
 
 1. **Navigation filtering:** hides routes without a matching grant.
 2. **Page/route guard:** rejects direct access without permission.
-3. **Server action check:** re-checks capability and role at mutation time.
+3. **Server action check:** re-checks capability and scope at mutation time.
 4. **RLS:** database policy limits reads/writes even if an application path is bypassed.
-5. **Party scope:** portal and organization data queries resolve the authenticated party scope before returning records.
+5. **Organization scope:** portal and organization data queries resolve the authenticated Organization and Inventory Model scope before returning records.
+
+Custom roles are reusable bundles of canonical permission/scope pairs. An account may hold multiple active roles; effective permissions are their union. Removing one assignment removes only that role's contribution. There are no direct per-user grants or explicit deny rules. Built-in roles are protected and remain migration-managed. The controlled functions in migration `0071` validate grants against the scope catalog derived from system-role mappings, require an active built-in administrator with both access-assignment grant and revoke capabilities, serialize administrative changes, protect the last active administrator, and record before/after audit events in the same transaction. Role deactivation is soft so history remains available. A scoped Organization account needs its separate active Organization scope and cannot be combined with warehouse-wide roles. Permission changes are evaluated on the next protected request; navigation refreshes use fresh server authorization. Suspending an account blocks subsequent protected requests; global Supabase JWT revocation is not claimed.
 
 Navigation visibility is not authorization. A direct URL, forged request, or stale browser page must still fail at the server/data boundary.
 
 ### 5.3 Permission matrix summary
 
-| Capability family | Typical operations |
+| Capability family | Canonical operations currently seeded |
 |---|---|
-| `receiving.*` | View WRRs, scan, confirm, inspect, put away |
-| `pick_list.*` | Read, create, edit, execute pick workflows |
-| `dispatch.*` | Dispatch verification and acknowledgement receipt |
-| `documents.*` | Archive, preview, download, reprint |
-| `parties.*` / `items.*` / `locations.*` | Master-data administration |
-| `reporting.*` | Operational and financial analytics |
-| `vmi_contract_terms.*` | VMI financial configuration |
-| `fifo_override.*` | Approval queue and FIFO/FEFO override approval |
-| `users.*` | Team/settings administration |
-| `notifications.*` | Notification access where implemented |
+| `receiving.*`, `inspection.*` | View, scan, confirm; perform inspection evidence capture; resolve disposition |
+| `inventory.*`, `cycle_count.*` | Read/manage inventory; view/create/count/review/post stock-count variances |
+| `pick_list.*`, `dispatch.*` | Read/generate/execute picks; read/execute dispatch |
+| `transfer.*`, `transfers.*` | Singular transfer view/request/approve/execute and plural transfers read/request/execute both exist in the migration catalog; verify the exact workflow before assigning either family |
+| `documents.*`, `shipment_labels.*` | Read/generate/download documents; generate scoped shipment labels |
+| `parties.*`, `items.*`, `locations.*` | Read/manage Organization, material, and location master data |
+| `reporting.*`, `vmi_statements.*`, `forex_rates.*` | Operational read/export, sensitive financial read, scoped statement read, and forex read/manage |
+| `fifo_override.*` | Request or approve FIFO/FEFO overrides; approval is a separate capability |
+| `users.*`, `access_assignments.*`, `party_scopes.*`, `security_events.*` | User/access administration; complete managed access is reserved for the active built-in Administrator |
+| `notifications.*`, `audit_log.*` | Read notifications and audit records where implemented |
 
-The exact seeded grants are defined by `supabase/migrations/0004_rbac_tables.sql`, `0005_rbac_constraints_and_seed.sql`, later capability migrations, and the RBAC schema. The permission names in this table are a functional summary; administrators must inspect the current database seed for the deployed assignment.
+The permission catalog and scope pairs are defined by `supabase/migrations/0005_rbac_constraints_and_seed.sql` and later capability migrations. The role editor reads the live permitted catalog; it does not make a built-in role editable. Suggested custom bundles and the account/role edit procedure are in [Accounts, roles, and access](user-manual/accounts-roles-and-access.md). The two transfer resource families are similarly named and should be reviewed against each workflow before consolidation; do not assume they are interchangeable.
 
 ### 5.4 Sensitive-data controls
 
@@ -555,15 +557,36 @@ Back up the Supabase/Postgres database and storage buckets according to the infr
 
 ### 10.2 Current verification evidence
 
-At the documentation baseline, focused migration/barcode/withdrawal verification and TypeScript checks passed for the recently implemented migration-origin carton work. The repository includes broad test files across routes, parsers, actions, analytics, RBAC, UI components, and shell behavior. A complete production readiness statement still requires the project’s real-Postgres verifier, deployed environment smoke tests, and UAT sign-off.
+The latest recorded verification inspected for this revision is in `specs/02-rbac-roles/tasks.md` (2026-11-03): 2,299 tests passed across 202 files; 21 dynamic-RBAC integration tests passed after applying all 80 migrations to isolated PostgreSQL WASM; typecheck, targeted ESLint, and production build passed. This verifies local repository behavior for those checks. The authenticated browser lifecycle test was discovered but not executed, and the local database engine does not verify hosted Supabase Auth/networking, PgBouncer, multi-connection concurrency, deployment migration state, or production accounts. No fresh tests were run for this documentation update.
 
 ### 10.3 Known limitations and status
 
 - Portal notifications and portal labels are registry-planned.
 - Dispatch scheduling/delivery tracking is deferred.
-- Camera runtime and Playwright hardware simulation remain incomplete implementation work under the approved barcode contract.
+- Authenticated browser E2E for custom-role create/edit/assign/revoke remains unchecked. Migration `0071` application and resulting behavior in the hosted Supabase project must be confirmed during deployment.
+- Camera runtime, scanner simulation, and the approved barcode contract's remaining runtime tests are not fully verified; the feature specification retains unchecked acceptance work.
+- Deployed visual UAT and printer-driver validation remain outstanding; repository inspection cannot prove deployed pages, real devices, or printer output.
+- Approved feature plans still have implementation tasks open. In particular, the VMI period-close/artifact pipeline and Trading pricing/order integration have remaining delivery work; consult their `tasks.md` files before describing them as complete.
 - The browser print dialog is system-owned; the application can constrain print content but cannot control every printer driver setting.
 - Some test fixtures render both desktop and mobile DOM branches, so assertions must scope to the intended presentation branch.
+
+### 10.4 Whole-system repository audit — 2026-11-04
+
+This audit compared the current manual/system-document claims with the root instructions, revision log, feature task records, selected routes/components/actions, and migration history. It is a repository and recorded-evidence audit, not a live deployment inspection. No application tests or production-account actions were run for this documentation revision.
+
+| Area | Current evidence and outcome | Remaining check |
+|---|---|---|
+| Core inventory and receiving | Current manuals describe staged WRRs, explicit count/placement, immutable count snapshots, and online commit boundaries; 2026-11-03 revision notes record FIFO/FEFO rank grouping and location-level pick allocation. | Confirm hosted migration state and UAT behavior against deployed records/devices. |
+| Outgoing and dispatch | Manual describes two-stage commitment and dispatch as the stock-decrement boundary; generated documents are evidence and reprints do not repeat dispatch. | Authenticated end-to-end deployment acceptance remains part of release/UAT. |
+| RBAC | Custom role definitions and multi-role account assignments use canonical permission/scope pairs, controlled DB functions, append-only audit behavior, and last-admin protection. Local automated verification is recorded in `02/tasks.md`. | Apply migration `0071` in hosted Supabase and run the authenticated create/edit/assign/revoke browser lifecycle with disposable accounts. |
+| Organization and Inventory Model scope | Canonical product language and strict selector rules are recorded in the October 2026 approved amendments; portal data remains scoped. | Validate deployed Organization relationships and account scope assignments during UAT. |
+| Reporting and billing | Operational reporting exists. Financial reads have a separate grant. Approved billing contracts exist, but task plans show VMI close/artifact and Trading pricing integration work remains open. | Do not describe full VMI period close or Trading pricing/order integration as complete until their remaining task gates pass. |
+| Documents and retention | Document families and permanent tiered retention for audit, lot-history exports, and generated artifacts are documented. | Confirm hosted storage policies, archive verification, and recovery runbooks in deployment operations. |
+| QR, scanning, and printing | QR identity and print contracts are documented; manual fallback is described where provided. | Scanner runtime/E2E acceptance, physical device tests, deployed screenshots, and printer-driver validation remain open. |
+| Release planning and deployment | Feature `tasks.md` and the revision log contain newer delivery evidence than parts of `gantt-mapping.md`; the RBAC and deferred-dispatch rows were corrected on 2026-11-04. | Other Gantt implementation statuses and estimates may still be historical. Refresh them from feature task records before treating the whole table as a live release dashboard. Confirm target migration/deployment and UAT evidence independently. |
+| Permission catalog consistency | Both singular `transfer.*` and plural `transfers.*` resources appear in migrations and the current account grant list. | Identify the exact resource checked by each live transfer route/action before assigning or consolidating these grants. |
+
+No production-readiness claim follows from this audit. Each remaining check is an explicit evidence gap rather than an inferred failure of the local implementation.
 
 ## 11. Technical appendices
 
@@ -649,6 +672,8 @@ The final signed release still requires deployed UAT screenshots and printer-dri
 - [x] API/route-handler inventory with authentication, input/output, and failure notes
 - [x] External services, integrations, and non-secret configuration reference
 - [x] RBAC, authorization layers, and security controls
+- [x] Dynamic custom-role model, controlled mutations, audit behavior, and verification limits
+- [x] Whole-system repository audit with explicit deployment, browser E2E, hardware, and UAT gaps
 - [x] Receiving, inventory, dispatch, migration, billing, reports, documents, QR and portal workflows
 - [x] Error handling, rollback, concurrency, and recovery
 - [x] Testing strategy, verification evidence, and known limitations
@@ -660,6 +685,7 @@ The final signed release still requires deployed UAT screenshots and printer-dri
 
 | Version | Date | Change |
 |---|---|---|
+| 1.3 | 2026-11-04 | Re-audited repository documentation and status evidence; documented dynamic RBAC controls and verification limits, and added the whole-system audit register and role-guide link |
 | 1.2 | 2026-10-27 | Recorded same-day receiving, QR/label, pick-list, document archive, login, Stock Count & Reconciliation, and uniform 11pt preview/PDF changes |
 | 1.1 | 2026-10-27 | Added module implementation contracts, cross-module contracts, database dictionary, endpoint contract notes, and UAT visual capture manifest |
 | 1.0 | 2026-10-27 | Initial repository-based system documentation |

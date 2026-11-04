@@ -1,4 +1,4 @@
-// Dispatch Confirmation — exact-box scan and final handoff.
+// Dispatch Confirmation — committed location-line scan and final handoff.
 //
 // Traceability:
 //   specs/08-outgoing-withdrawal-and-two-stage-commitment/requirements.md
@@ -47,8 +47,8 @@
 // The offline-aware child renders the barcode input and replaces the legacy
 // CameraScanBridge while preserving the same selectPickUnit server action
 // (the child input remains name="barcode").
-// The child retains the established "Scan item or lot QR" prompt and the
-// "matching unfinished line is counted automatically" behavior.
+// The child accepts a matching carton/item/lot QR and verifies its full
+// committed location line automatically.
 
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -151,7 +151,10 @@ export default async function DispatchConfirmationPage({
   const activeItem = scanReady
     ? items.find((item) => (selectionCountByLine.get(item.id) ?? 0) < item.numberOfBoxes)
     : undefined;
-  const allBoxesScanned = scanReady && items.length > 0 && !activeItem;
+  const remainingLineCount = items.filter(
+    (item) => (selectionCountByLine.get(item.id) ?? 0) < item.numberOfBoxes,
+  ).length;
+  const allLinesVerified = scanReady && items.length > 0 && remainingLineCount === 0;
 
   async function handleBoxScan(formData: FormData): Promise<void> {
     "use server";
@@ -261,7 +264,7 @@ export default async function DispatchConfirmationPage({
                 {items.filter((item) => (selectionCountByLine.get(item.id) ?? 0) >= item.numberOfBoxes).length} / {totalLines} lines verified
               </span>
               <span className="block font-body text-body-xs text-text-grey">
-                ({selectedBoxCount} / {totalRequiredBoxes} boxes)
+                ({selectedBoxCount} / {totalRequiredBoxes} committed boxes confirmed)
               </span>
             </div>
           )}
@@ -400,7 +403,7 @@ export default async function DispatchConfirmationPage({
 
         {!alreadyDispatched && scanReady && activeItem && (
           <section className="mb-3 rounded-2xl border border-brand-blue/30 bg-brand-blue/5 p-4">
-            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-headline-sm font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan any item or lot QR on this Pick List. The matching unfinished line is counted automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
+            <div className="flex items-start gap-3"><ScanLine size={24} className="mt-0.5 shrink-0 text-brand-navy" aria-hidden="true" /><div><h2 className="font-heading text-headline-sm font-bold text-on-surface">Scan QR for dispatch</h2><p className="mt-1 font-body text-body-md text-text-grey">Scan one carton, item, or lot QR on this Pick List. The matching unfinished location line is verified automatically. Next: {activeItem.itemCode} · Lot {activeItem.lotNumber} · {activeItem.locationLabel}.</p></div></div>
             <OfflineDispatchScanForm
               action={handleBoxScan}
               pickListId={pickListId}
@@ -471,13 +474,13 @@ export default async function DispatchConfirmationPage({
               className="mt-0.5 shrink-0 text-status-held"
             />
             <p className="font-body text-body-md text-status-held">
-              Scan every committed box here before dispatching. Dispatching is final and will deduct each line from the location shown above.
+              Scan one matching QR for each committed location line. Each scan confirms that line's full box quantity. Dispatch is final and deducts all listed quantities.
             </p>
           </div>
         )}
       </div>
 
-      {/* Exact boxes are scanned here, immediately before the final dispatch. */}
+      {/* One matching QR verifies each committed location line before final dispatch. */}
       {!alreadyDispatched && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <div className="mx-auto w-full max-w-5xl">
@@ -485,13 +488,13 @@ export default async function DispatchConfirmationPage({
               <form action={handleDispatch}>
                 <OnlineOnlySubmitButton
                   type="submit"
-                  disabled={!scanReady || !allBoxesScanned}
+                  disabled={!scanReady || !allLinesVerified}
                   className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
                 >
                   <Truck size={24} strokeWidth={2} aria-hidden="true" />
-                  {allBoxesScanned
+                  {allLinesVerified
                       ? "Confirm Dispatch"
-                      : `Scan ${totalRequiredBoxes - selectedBoxCount} More Boxes`}
+                      : `Scan ${remainingLineCount} More ${remainingLineCount === 1 ? "Line" : "Lines"}`}
                 </OnlineOnlySubmitButton>
               </form>
             ) : (

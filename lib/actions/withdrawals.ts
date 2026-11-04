@@ -783,11 +783,10 @@ export async function commitWithdrawal(
 // ---------------------------------------------------------------------------
 
 /**
- * Counts one shared item/lot QR scan for its matching committed dispatch line.
- * Like WRR receiving, the same matching QR may be scanned repeatedly until
- * the line's required box count is reached. A physical inventory-unit row is
- * assigned server-side only to retain the existing commitment/accounting
- * invariant; its individual ID is never supplied or validated by the scanner.
+ * Accepts one matching carton/item/lot QR for its committed dispatch line.
+ * The scan verifies the line's full committed box quantity. Physical unit rows
+ * are assigned server-side to retain the commitment/accounting invariant; the
+ * scanned carton ID identifies the line but does not choose its quantity.
  */
 export async function selectPickUnit(
   resolver: RequestAuthorizationResolver,
@@ -833,6 +832,8 @@ export async function selectPickUnit(
       // Resolve and reserve that exact carton instead of falling back to the
       // shared lot/item QR behavior below.
       let inventoryUnitId: string | null = null;
+      let inventoryUnitLineId: string | null = null;
+      let preferredInventoryUnitRowId: string | null = null;
       try {
         const parsed = JSON.parse(scannedValue) as { type?: string; unit_id?: string };
         if (parsed.type === "inventory_unit" && typeof parsed.unit_id === "string") inventoryUnitId = parsed.unit_id;
@@ -849,22 +850,23 @@ export async function selectPickUnit(
         if (unit.status !== "available" || unit.pickListItemId) return { ok: false as const, errors: ["box_already_selected"] };
         const line = lineRows.find((candidate) => candidate.lotId === unit.lotId && candidate.locationId === unit.locationId);
         if (!line) return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
-        const selectedRows = (await db.select({ id: inventoryUnits.id }).from(inventoryUnits).where(and(eq(inventoryUnits.pickListItemId, line.id), eq(inventoryUnits.status, "selected")))) as AnyRecord[];
-        if (selectedRows.length >= Number(line.numberOfBoxes)) return { ok: false as const, errors: ["line_complete"] };
-        await db.update(inventoryUnits).set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() }).where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
-        return { ok: true as const, selectedCount: selectedRows.length + 1, requiredCount: Number(line.numberOfBoxes) };
+        inventoryUnitLineId = line.id;
+        preferredInventoryUnitRowId = unit.id;
       }
 
-      // The scan determines the target line. Like WRR receiving, one shared
-      // item or lot QR may be scanned repeatedly. When an item appears on
-      // multiple lines, scan the lot QR to target a specific lot; otherwise
-      // the first incomplete matching line is counted.
-      const matchingLines = lineRows.filter((candidate) => (!expectedPickListItemId || candidate.id === expectedPickListItemId) && [
-        candidate.itemBarcode,
-        candidate.itemCode,
-        candidate.lotId,
-        candidate.lotNumber,
-      ].some((value) => value === scannedValue));
+      // The scan determines the target line. One matching shared item/lot QR
+      // verifies its full committed quantity. When an item appears on multiple
+      // lines, scan the lot QR to target a specific lot; otherwise the first
+      // incomplete matching line is selected.
+      const matchingLines = lineRows.filter((candidate) => {
+        if (inventoryUnitLineId) return candidate.id === inventoryUnitLineId;
+        return (!expectedPickListItemId || candidate.id === expectedPickListItemId) && [
+          candidate.itemBarcode,
+          candidate.itemCode,
+          candidate.lotId,
+          candidate.lotNumber,
+        ].some((value) => value === scannedValue);
+      });
       if (matchingLines.length === 0) {
         return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
       }
@@ -891,9 +893,9 @@ export async function selectPickUnit(
       const neededCount = requiredCount - selectedRows.length;
       if (neededCount <= 0) return { ok: false as const, errors: ["line_complete"] };
 
-      // Shared QR labels verify the line on the pallet. Assign all remaining
+      // The matching QR verifies the line on the pallet. Assign all remaining
       // physical units for this line from this committed lot/location.
-      const unitRows = (await db
+      const availableUnitRows = (await db
         .select({
           id: inventoryUnits.id,
           lotId: inventoryUnits.lotId,
@@ -909,6 +911,16 @@ export async function selectPickUnit(
           sql`${inventoryUnits.pickListItemId} IS NULL`,
         ))
         .limit(neededCount)) as AnyRecord[];
+
+      // A unique carton QR identifies its committed line too. Include that
+      // scanned unit first, then assign the rest of the line's committed units
+      // server-side so the user confirms a jackwrapped location line once.
+      const unitRows = preferredInventoryUnitRowId
+        ? [
+            { id: preferredInventoryUnitRowId },
+            ...availableUnitRows.filter((unit) => unit.id !== preferredInventoryUnitRowId),
+          ].slice(0, neededCount)
+        : availableUnitRows;
 
       for (const unit of unitRows) {
         await db

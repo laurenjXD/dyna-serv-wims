@@ -94,7 +94,7 @@ Read **Boxes Assigned**, the base-unit equivalent, location subtotals, and **OS&
 
 Verify the presence-attestation checkbox against the real goods. The UI may initially select it after allocation; the operator is still responsible for the assertion. Submit **Confirm & Store / Hold Boxes** only after reviewing the allocation and while connected.
 
-**Expected result:** the server confirms the line and records its actual receipt/placement. A locally saved scan or a recognized item is not that final result. See [Offline capture](offline-and-sync.md) for interrupted connectivity.
+**Expected result:** the server confirms the line and records its actual receipt/placement. A locally saved scan or a recognized item is not that final result. For interrupted connectivity, verify whether the server committed the action before retrying; see [Exceptions and troubleshooting](edge-cases-and-troubleshooting.md).
 
 ## 7. Worked case: eight good, one held, one missing
 

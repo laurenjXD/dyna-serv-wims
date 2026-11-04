@@ -88,7 +88,7 @@ export function ScanDiscrepancyModal({
         return {
           title: "Pick Stage Not Complete",
           description: "This Pick List has not completed its approval and physical picking stage, so dispatch cannot be finalized yet.",
-          recommendation: "Approve the Pick List, scan each committed box, then confirm dispatch.",
+          recommendation: "Complete the Pick List approval, scan one matching QR for each committed location line, then confirm dispatch.",
           canEnroll: false,
         };
       case "invalid_status":

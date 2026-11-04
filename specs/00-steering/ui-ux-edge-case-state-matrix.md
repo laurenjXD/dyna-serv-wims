@@ -66,7 +66,7 @@ This is the single UI/UX reference for edge-case behavior. Every state must sati
 | Pick list — pick | Stock changed after reservation | Stale/unavailable conflict; supervisor/reallocation path. |
 | Pick list — pick | Offline | Queue only approved scan observation; never claim final pick. |
 | Dispatch | Pick stage incomplete | “Complete picking first” with direct action. |
-| Dispatch | Incomplete scan evidence | Remaining line/box count and scan action; block dispatch. |
+| Dispatch | Incomplete scan evidence | Show remaining committed location-line count and scan action; block dispatch. Box totals may remain as quantity context, not as a scan requirement. |
 | Dispatch | Expired commitment | Expired state, released reservation, regenerate/retry path. |
 | Dispatch | Concurrent/already dispatched | Current final status; prevent duplicate ledger transaction. |
 | Dispatch | Document generation failure | Show dispatched outcome plus document retry; do not reverse stock for PDF failure. |

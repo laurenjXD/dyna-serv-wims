@@ -2,8 +2,8 @@
 
 **Document type:** Operational user guide  
 **System:** Dyna-Serv Warehouse Inventory Management System (WIMS)  
-**Version:** 2.0
-**Evidence baseline:** Implemented routes, components, approved specifications, and integration-candidate behavior inspected 2026-11-03  
+**Version:** 2.1
+**Evidence baseline:** Implemented routes, components, approved specifications, and recorded verification inspected 2026-11-04
 **Audience:** Administrators, supervisors, warehouse staff, organization users, and trained operational users
 
 > This manual describes repository-supported operating procedures, not proof that every feature or database change is live in your deployment. Work through the actions visible to your signed-in account. A planned feature, an unconfigured service, and a missing permission require different remedies.
@@ -32,7 +32,7 @@ For focused procedures, use the [companion guide library](user-manual/README.md)
 16. [Errors and troubleshooting](#16-errors-and-troubleshooting)  
 17. [FAQ, glossary, and quick reference](#17-faq-glossary-and-quick-reference)  
 18. [User Manual appendices](#18-user-manual-appendices)  
-19. [2026-10-27 implemented release register](#19-2026-10-27-implemented-release-register)
+19. [2026-11-04 implementation and verification audit](#19-2026-11-04-implementation-and-verification-audit)
 20. [Coverage checklist and revision history](#20-coverage-checklist-and-revision-history)
 
 **Visual references:** the page/component catalog, form-field reference, QR decision table, exception matrix, and Appendix A screenshot manifest are the operational visual-reference index. Final annotated screenshots remain UAT evidence and are not fabricated from source inspection.
@@ -46,6 +46,7 @@ The detailed operating guides below are maintained companions to this manual. Th
 | [Outgoing picking and dispatch](user-manual/outgoing-picking-and-dispatch.md) | Two-stage commitment, FIFO/FEFO allocation, physical picking, gate scans, and dispatch |
 | [Master data and organizations](user-manual/master-data-and-organizations.md) | Parties, item enrollment, origin organization, inherited inventory model, and locations |
 | [Document printing and compliance](user-manual/document-printing-and-compliance.md) | Print layouts, signatures, reprints, pricing disclaimers, and document retention |
+| [Accounts, roles, and access](user-manual/accounts-roles-and-access.md) | Manage custom permission bundles, assign account roles, and review access safely |
 | [Edge cases and troubleshooting](user-manual/edge-cases-and-troubleshooting.md) | Exception handling, recovery actions, and escalation evidence |
 
 ## 1. Getting started
@@ -842,7 +843,9 @@ Open **Profile** to review the current account and preferences. Update only fiel
 
 ### Settings
 
-Administrators use General, Security, and Team settings according to their grants. Role changes are sensitive: verify the user, intended role, effective capabilities, and audit/notification behavior before saving.
+Administrators use General, Security, and Team settings according to their grants. To edit a custom permission bundle or assign roles to an account, follow [Accounts, roles, and access](user-manual/accounts-roles-and-access.md). The Team account editor changes which roles the account has; the Roles & permissions editor changes a custom role definition. Built-in roles such as Warehouse Staff, Supervisor, Administrator, and Party User are protected.
+
+This manual documents the repository behavior and recorded local checks. It does not certify the hosted deployment or live account configuration. The latest full-system documentation audit, including open billing, scanner, browser, migration, and UAT checks, is in [System Documentation](System_Documentation.md) §10.4.
 
 ## 15. End-to-end tutorials
 
@@ -1056,7 +1059,7 @@ For each training/UAT tutorial, record: scenario ID, role, device/browser, start
 | Scanning | `MobileQRScanner`, `CameraScanBridge`, `ScanFeedbackProvider`, `FloorCameraScanner` | Camera first on mobile, manual fallback where supported |
 | Documents/print | `DocumentPreviewModal`, `DocumentReprintDialog`, `MasterDocumentHeader/Footer`, label generators | Preview/download/reprint is tied to the source record and audit rules |
 
-## 19. 2026-10-27 implemented release register
+## 19. 2026-11-04 implementation and verification audit
 
 The following changes are part of the current documented release:
 
@@ -1068,6 +1071,8 @@ The following changes are part of the current documented release:
 - **Identity and access:** the login page uses the full company name, **Dyna-Serv Global Corporation**, and a neutral **Welcome** greeting.
 - **Inventory controls:** Stock Count & Reconciliation provides searchable/filterable location selection, a location overview, snapshot-based count entry, variance/recount handling, supervisor review, approved posting, and visible start-error recovery.
 - **UI cleanup:** the dashboard zone breakdown was removed, and the receiving/pick-list/document surfaces use clearer mobile and print hierarchy.
+- **Dynamic RBAC:** administrators can create, edit, and deactivate custom roles, assign multiple roles to existing accounts, and inspect current versus proposed effective grants. Role and assignment changes require a reason and confirmation, are audited, and affect the next protected request. Built-in roles remain protected.
+- **Verification boundary:** local dynamic-RBAC integration checks and the production build passed per `specs/02-rbac-roles/tasks.md`; authenticated browser E2E and hosted migration application remain unverified. See [System Documentation](System_Documentation.md) §10 for the repository-wide audit and open evidence gaps.
 
 ## 20. Coverage checklist and revision history
 
@@ -1088,6 +1093,7 @@ The following changes are part of the current documented release:
 
 | Version | Date | Change |
 |---|---|---|
+| 2.1 | 2026-11-04 | Added custom-role/account-access instructions and recommended role bundles; corrected companion-guide links; recorded the repository audit and verification limits |
 | 1.3 | 2026-10-27 | Documented the complete same-day receiving, QR/label, pick-list, archive, login, stock-count, and uniform 11pt preview/PDF changes |
 | 1.2 | 2026-10-27 | Expanded role guides, complete page/subpage catalog, field reference, visual capture manifest, technical cross-references, and training evidence template |
 | 1.1 | 2026-10-27 | Unified the six detailed companion guides, added QR/carton traceability rules, material-origin organization rules, and the operational exception matrix |

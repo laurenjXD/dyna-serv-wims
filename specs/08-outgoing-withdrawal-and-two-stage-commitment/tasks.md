@@ -179,7 +179,7 @@ Testing: Full applicable matrix below.
 - [ ] Simulate dispatch-only floor scans and verify wrong/duplicate/over/under/stale handling.
 - [ ] Verify the pick view has no barcode/QR scan control, then proceeds directly to dispatch with no pre-dispatch inspection route, state, or block.
 - [ ] Generate pick lists as `allocated`; show them only in To Pick with View / PDF and Mark as Picked. Verify Mark as Picked is authorized, idempotent, does not alter stock/reservations, and moves exactly one list into To Dispatch, where Dispatch becomes available.
-- [ ] Verify each exact box is scanned and accepted at dispatch before final confirmation; wrong/duplicate/over/under/stale scans are rejected there.
+- [ ] Verify one matching carton, item, or lot QR confirms the full committed quantity for its item/lot/location line; split locations require separate scans, and wrong/duplicate/over/under/stale scans are rejected.
 - [ ] Verify final dispatch produces one decrement, one pick transaction, released reservation, and acknowledgement-receipt availability.
 - [ ] Verify document failure/retry does not reverse inventory.
 - [ ] Verify offline observations, reconnect replay, rejection/conflict, and Tier 2 blocking.

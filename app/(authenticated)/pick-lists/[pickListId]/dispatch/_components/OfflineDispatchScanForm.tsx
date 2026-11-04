@@ -108,12 +108,12 @@ export function OfflineDispatchScanForm({
           required
           autoFocus
           autoComplete="off"
-          placeholder="Scan item or lot QR (or enter carton barcode)..."
+          placeholder="Scan carton, item, or lot QR..."
           className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
         />
         <button type="submit" className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-brand-navy px-6 font-label text-body-md font-bold text-surface-white transition-colors hover:bg-brand-navy/90 active:scale-[0.99]">
           <ScanLine size={18} aria-hidden="true" />
-          <span>{connectivity === "offline" ? "Save Scan" : "Verify Box"}</span>
+          <span>{connectivity === "offline" ? "Save Scan" : "Verify Line"}</span>
         </button>
       </form>
       {feedback && <p role="status" aria-live="polite" className="mt-3 rounded-xl border border-status-pending/40 bg-status-pending/10 px-4 py-3 font-body text-body-md text-on-surface">{feedback}</p>}

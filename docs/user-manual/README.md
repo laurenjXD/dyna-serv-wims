@@ -13,9 +13,8 @@ Use the [Unified User Manual](../USER_MANUAL.md) for the complete system tour. T
 | Goods are reserved; how do we release them? | [Outgoing picking and dispatch](outgoing-picking-and-dispatch.md) | Pull goods, complete the actual approval checkpoint, verify location lines, confirm final stock movement |
 | An Organization or material is missing/wrong | [Master data and Organizations](master-data-and-organizations.md) | Correct role-specific relationships, material assignments, packaging, and active locations |
 | I need a document, QR label, or reprint | [Document printing and compliance](document-printing-and-compliance.md) | Choose the right artifact, review identity/prices, print carefully, avoid duplicate releases |
-| The network dropped or sync needs attention | [Offline capture and synchronization](offline-and-sync.md) | Preserve observations, read the sync cards, retry safely, hand exceptions to a supervisor |
+| The network dropped or a transaction failed | [Exceptions and troubleshooting](edge-cases-and-troubleshooting.md) | Check what committed, recover without duplicate stock movements, and hand exceptions to a supervisor |
 | A staff member needs access | [Accounts, roles, and access](accounts-roles-and-access.md) | Compare effective permissions, assign approved roles, manage custom roles and verify the result |
-| A transaction failed; what next? | [Exceptions and troubleshooting](edge-cases-and-troubleshooting.md) | Check what committed, recover without duplicate stock movements, provide useful support evidence |
 
 ## Learn the complete flow
 
@@ -41,6 +40,7 @@ Read each case from prerequisites to final verification. A green scan message al
 - Enter the unit named by the screen. The current multi-item draft asks for **boxes** and derives pieces from SPQ, including Supplies; do not assume a separate loose-piece quick-issue screen exists.
 - A line-identifying scan does not replace physical counting or authorize changing the quantity.
 - Offline observations cannot finalize putaway, create a Pick List, decide an approval, or dispatch goods.
+- Offline capture/synchronization is not listed as an available companion procedure in this release. Use the specific fallback shown by the screen, verify whether the transaction committed before retrying, and follow the troubleshooting guide.
 - Pick Lists and Delivery Receipts / Acknowledgement Receipts are priced. Trading document prices are final; VMI release prices are references, with period billing calculated separately.
 - Dispatch scheduling/delivery tracking remains deferred. Documentation is not evidence that a future module is live.
 

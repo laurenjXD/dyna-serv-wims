@@ -108,7 +108,7 @@ Committed reservation + pick_list(allocated)
     ▼
 picked / dispatch_ready
     │
-    └── shared item/lot QR scans increment committed box counts → authoritative dispatch commit
+    └── one matching carton/item/lot QR verifies each committed location line → authoritative dispatch commit
     │       ├── qty_remaining decremented on lot_location_balances
     │       ├── qty_committed released (decremented) on lot_location_balances
     │       ├── inventory_commitment_lines → executed

@@ -135,4 +135,4 @@ Held goods require the owning inspection decision and movement before ordinary a
 | Blank Customer PN | Whether the source actually supplied one | Leave it blank when absent; never invent a code |
 | Expired/cancelled list | Current commitment status | Return to the queue and obtain a current valid allocation |
 
-Continue with [Dispatch](outgoing-picking-and-dispatch.md), [Offline recovery](offline-and-sync.md), or [Troubleshooting](edge-cases-and-troubleshooting.md) as needed.
+Continue with [Dispatch](outgoing-picking-and-dispatch.md) or [Troubleshooting](edge-cases-and-troubleshooting.md) as needed. For interrupted connectivity, verify committed state before retrying.

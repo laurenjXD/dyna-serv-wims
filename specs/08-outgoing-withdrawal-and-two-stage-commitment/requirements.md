@@ -95,8 +95,7 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] 3-component error feedback is displayed on all validation/scan errors.
 - [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF, DM Sans + Glacial typography, 64px floor CTAs) are fully satisfied.
 - [ ] Alternate-pallet requests cannot reserve stock until approved and can only generate the exact approved one-time allocation.
-- [ ] Dispatch accepts repeated scans of a matching shared item/lot QR, increments the correct line, and rejects wrong or over-quantity scans without requiring unique box QR labels.
-- [ ] The operator scans every committed physical box once at dispatch; the final dispatch command reuses that accepted evidence without a duplicate verification scan.
+- [ ] One matching carton, item, or lot QR verifies each committed item/lot/location line and confirms that line's full committed box quantity; split locations require one scan per line. Wrong or duplicate scans are rejected, and final dispatch reuses the accepted evidence without a duplicate scan or requiring unique QR labels per box.
 - [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.
 - [ ] Generation creates an allocated list in To Pick; only the explicit non-scan Mark as Picked action moves it to To Dispatch and enables Dispatch.

@@ -14,7 +14,7 @@ A Pick List is a committed release plan. Goods still have to be pulled, reviewed
 |---|---|---|
 | Allocated list | Review and pull the committed boxes | Availability already reserved; on hand unchanged |
 | Approval/pick completion | Authorized reviewer selects **Approve Pick List for Dispatch** | List enters the application's picked/scan-ready state; no final decrement |
-| Line verification | Identify each committed location line using its correct QR | Records required box-selection/scan evidence |
+| Line verification | Identify each committed location line using one matching QR | Confirms that line's full committed box quantity |
 | Final dispatch | Explicitly confirm the handoff online | Revalidates, decrements on hand, releases the executed reservation, records outgoing transaction |
 
 The current `/pick-lists/[pickListId]/pick` route redirects to `/pick-lists/[pickListId]/dispatch`. There is not a separate barcode-picking application at the old URL. Physical picking remains a real warehouse task even though the software checkpoints share a route.
@@ -102,4 +102,4 @@ There is no extra pre-dispatch quality-inspection branch to invent as a bypass. 
 
 Confirm recipient/model, actual boxes for every location line, authorized checkpoint, accepted scans, successful final dispatch, and correct outgoing document. Assign an owner for any delayed artifact or unresolved discrepancy. Keep the shared device with its correct signed-in operator or sign out appropriately.
 
-For interrupted connection, use [Offline capture and synchronization](offline-and-sync.md). For uncertain committed state, use [Exceptions and troubleshooting](edge-cases-and-troubleshooting.md).
+For interrupted connectivity or uncertain committed state, use [Exceptions and troubleshooting](edge-cases-and-troubleshooting.md) and verify the dispatch status before retrying.
