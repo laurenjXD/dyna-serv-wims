@@ -1,5 +1,9 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## `07` Missing-carton receipt failed because OS&D RLS was incomplete (2026-11-04)
+
+The carton-level Missing destination correctly reached the receiving commit, but `receiving_discrepancies` had Row Level Security enabled without an INSERT policy or authenticated INSERT grant. Migration `0074_receiving_discrepancy_rls_policies.sql` adds receiving-confirm INSERT access, scoped read access, and supervisor/administrator resolution UPDATE access. Storage-only receipts were unaffected; mixed or Missing placements now can record the OS&D discrepancy atomically.
+
 ## `09` FIFO override expiry extended to one day (2026-11-04)
 
 The Product Owner changed the `fifo_override` approval request validity window from 30 minutes to 24 hours. New requests receive an `expiry_at` timestamp 24 hours after creation; decision-time expiry validation and archived-request handling remain unchanged. Existing requests retain their persisted expiry timestamps.
