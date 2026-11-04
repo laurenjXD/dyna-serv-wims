@@ -32,6 +32,8 @@ const defaultRlsDeps: RlsTransactionDeps = {
   pool: rlsPool,
 };
 
+const FIFO_OVERRIDE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so that
 // PostgresJsDatabase, which has no index signature, is assignable here.
@@ -327,7 +329,7 @@ export async function createFifoOverrideRequest(
       ? `${input.reasonCategory}: ${input.reasonNote}`
       : `${input.reasonCategory} justification for override`;
 
-    const expiryAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    const expiryAt = new Date(Date.now() + FIFO_OVERRIDE_EXPIRY_MS); // 24 hours
     const idempotencyKey = `FIFO-${input.itemId}-${input.lotId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     const snapshot = {

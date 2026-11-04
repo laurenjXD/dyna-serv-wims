@@ -129,20 +129,19 @@ describe(
     // ── Test 4 (updated 2026-08-10 per §9's per-line-commit reversal) ────────
     // R7.1 — "Confirmation SHALL be an explicit, authorized server command
     // with one primary floor action [per line]."
-    // design.md §9 (Reversed 2026-08-10): the single end-of-WRR "Confirm
-    // Receipt" gate is replaced by per-line immediate commit — each line
-    // gets its own "Store" (§6.2, store disposition) or "Hold" (§6.3, inspect
-    // disposition) action once it is fully scanned and not yet committed.
+    // design.md §9: the single end-of-WRR "Confirm Receipt" gate is replaced
+    // by per-line immediate carton-placement commit.
     // There is no longer a single whole-WRR "Confirm Receipt" button on this
     // screen; asserting for that text would re-encode the superseded model.
     it(
-      "AC R7.1/§9: page surfaces per-line Store/Hold commit CTAs, not a whole-WRR Confirm Receipt button",
+      "AC R7.1/§9: page surfaces per-line carton-placement commit, not a whole-WRR Confirm Receipt button",
       () => {
         const source = pageSource();
-        // Per-line commit actions per §6.2 (store) / §6.3 (inspect).
+        // Per-line carton placement action per §6.2d.
         expect(source).toContain("commitWrrLine");
-        expect(source).toContain("Store");
-        expect(source).toContain("Hold");
+        expect(source).toContain("Confirm carton placement");
+        expect(source).toContain("assign each carton to Storage, Inspection, or Missing");
+        expect(source).not.toContain("Hold for Inspection");
         // The superseded whole-WRR gate must not reappear.
         expect(source).not.toContain("Confirm Receipt");
       },
@@ -295,16 +294,13 @@ describe(
       },
     );
 
-    // ── Test 13 (added — design-system-auditor finding 2) ────────────────────
-    // brand-design-system.md §9: status badges/pills use Epilogue SemiBold
-    // (the `font-label` token), not Outfit body copy.
+    // ── Test 13 (carton destination authority) ───────────────────────────────
     it(
-      "AC brand §9: disposition badge uses font-label (Epilogue SemiBold), not font-outfit",
+      "AC carton placement: the obsolete line-level disposition badge is not shown on the floor",
       () => {
         const source = pageSource();
-        expect(source).toContain(
-          'className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${'
-        );
+        expect(source).not.toContain("Disposition:");
+        expect(source).not.toContain("set-disposition-");
       },
     );
 

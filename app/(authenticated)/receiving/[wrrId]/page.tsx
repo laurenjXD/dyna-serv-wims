@@ -25,7 +25,7 @@ import { eq } from "drizzle-orm";
 import { getWrrDocument, getWrrPutawayAllocations } from "@/lib/db/queries/receiving";
 import { receivingDiscrepancies } from "@/lib/db/schema/receiving_discrepancies";
 import { resolveReceivingDiscrepancy } from "@/lib/actions/receiving-discrepancies";
-import { startReceiving, getCiplSignedUrl, cancelWrr, setWrrLineDisposition } from "@/lib/actions/receiving";
+import { startReceiving, getCiplSignedUrl, cancelWrr } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { WRRUnitLabelGenerator } from "@/components/barcode/WRRUnitLabelGenerator";
 import { FlaskConical, ChevronRight } from "@/components/ui/icons";
@@ -56,13 +56,6 @@ const FLOW_LABELS: Record<string, string> = {
   vmi: "VMI",
   trading: "Trading",
   supplies: "Supplies",
-};
-
-// Disposition badge: store → status-available tint, inspect → status-pending tint
-// per task specification.
-const DISPOSITION_CLASSES: Record<string, string> = {
-  store: "bg-status-available/10 text-status-available",
-  inspect: "bg-status-pending/10 text-status-pending",
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -179,22 +172,6 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
     redirect(`/receiving/${wrrId}`);
   }
 
-  async function handleSetDisposition(formData: FormData): Promise<void> {
-    "use server";
-    const wrrItemId = String(formData.get("wrrItemId") ?? "");
-    const disposition = formData.get("disposition");
-    if (disposition !== "store" && disposition !== "inspect") {
-      redirect(`/receiving/${wrrId}`);
-    }
-    await setWrrLineDisposition(
-      await createPageResolver(),
-      wrrId,
-      wrrItemId,
-      disposition,
-    );
-    redirect(`/receiving/${wrrId}`);
-  }
-
   return (
     <div className="mx-auto max-w-container">
       <DetailPageHeader
@@ -281,10 +258,9 @@ export default async function WrrDetailPage({ params, searchParams }: PageProps)
           )}
 
           {wrr.status === "receiving_in_progress" && (
-            // Scan / Receive — links to the floor scan-and-per-line-commit
-            // interface. Per-line "Store"/"Hold" commits happen there
-            // (design.md §6.2/§6.3/§9); this office detail page does not
-            // offer a whole-WRR commit action.
+            // Scan / Receive — links to the floor scan-and-carton-placement
+            // interface. Carton placement commits happen there; this office
+            // detail page does not offer a whole-WRR commit action.
             <Link
               href={`/receiving/${wrrId}/receive`}
               className="inline-flex h-11 items-center justify-center rounded bg-brand-navy px-4 font-label text-label text-surface-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-navy"

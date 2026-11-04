@@ -1,7 +1,7 @@
 # Incoming Receiving — Design
 
 Status: Approved
-Updated: 2026-08-24 (Product Owner decision: batch putaway model adopted; WRR document-field ownership amendment) — resolves the `fix-it-felix` merge contradiction.
+Updated: 2026-11-04 (Product Owner decision: carton destination is authoritative; the floor Hold toggle is retired).
 
 ## 1. Design intent
 
@@ -10,7 +10,7 @@ Incoming Receiving is a two-surface workflow:
 1. An office-oriented pre-receiving surface encodes and prints a WRR from an external CIPL/packing-list reference.
 2. A floor-oriented receiving surface reconciles physical carton scans and inbound inspection results, then submits one authoritative receipt commit.
 
-The design preserves the boundary between expectation and inventory: `wrr_documents`/`wrr_items` describe expected inbound goods; active lots and `inventory_transactions` are created only by the authorized commit transaction. The commit creates one of two inbound posting paths — `store` (available at putaway) or `inspect` (quarantined at inspection location) — based on the per-line disposition field set before confirmation.
+The design preserves the boundary between expectation and inventory: `wrr_documents`/`wrr_items` describe expected inbound goods; active lots and `inventory_transactions` are created only by the authorized commit transaction. The floor placement selector is authoritative per carton: storage assignments post available stock, inspection assignments post quarantined stock, and Missing assignments post no inventory. The legacy line-level disposition remains a pre-receiving/default field and compatibility summary, not the source of a carton's committed status.
 
 ## 2. Foundational dependencies and core tables
 
@@ -34,17 +34,17 @@ Depends on:
 | `parties` | Resolve source party and authorized party/flow context. | Master data owned by `06`; receiving does not edit parties. |
 | `items` | Resolve barcode/item identity and read packaging/UOM/volume/perishability data. | Master data owned by `06`; unknown items follow its enrollment path. |
 | `locations` | Resolve `receiving_bay`, `inspection` (for quarantined inbound stock), and putaway recommendations/confirmation. | Location master/physical configuration is owned by the appropriate core/location feature. |
-| `lots` | Create the approved inbound lot during receipt commit. Status is `available` for `store` disposition or `quarantined` for `inspect` disposition. | Core/inventory transaction boundary owns invariant enforcement. |
-| `lot_location_balances` | Created at commit for each selected allocation: one putaway location row per `store` allocation, or one inspection-location row for `inspect`. These rows are the authoritative source for `lot_inventory_totals`. | Core schema owns fields and constraints; receiving inserts via the commit transaction. |
+| `lots` | Create one available and/or quarantined inbound lot segment per carton destination type during receipt commit. Segments share the WRR business `lot_number` and source line when a placement is mixed. | Core/inventory transaction boundary owns invariant enforcement. |
+| `lot_location_balances` | Created at commit for each selected Storage or Inspection allocation. These rows are the authoritative source for `lot_inventory_totals`. | Core schema owns fields and constraints; receiving inserts via the commit transaction. |
 | `wrr_documents` | Store staged WRR header and lifecycle. | Core schema owns fields/status constraints; receiving owns workflow commands. |
 | `wrr_items` | Store expected lines, scan reconciliation state, and per-line disposition. | Core schema owns fields; receiving owns matching behavior. `putaway_location_id` is set only for a single-location commit and left unset once a `store` line's batch placement splits across more than one location (§5.1, §8) — `lot_location_balances` is authoritative. |
-| `wrr_item_putaway_allocations` (migration `0032_wrr_item_putaway_allocations.sql`, migrated and live) | Staged, non-inventory record of a `store` line's per-location placement quantities, posted alongside the line's single commit for audit/traceability. | Receiving owns the write; inserted only for `store`-disposition batch commits, in the same transaction as `lot_location_balances`/`inventory_transactions`. |
+| `wrr_item_putaway_allocations` (migration `0032_wrr_item_putaway_allocations.sql`, migrated and live) | Staged, non-inventory record of Storage placement quantities, posted alongside the line's single commit for audit/traceability. | Receiving owns the write; inserted for Storage allocations in the same transaction as `lot_location_balances`/`inventory_transactions`. |
 | `inventory_units` (added 2026-08-23/24, `01-core-data-model` schema, not redefined here) | One durable row per physical carton/box QR, layered on top of `lot_location_balances` (not a replacement stock table). Written once per box during the line's single batch commit (§9), consumed by `08`'s exact-box dispatch scan (requirements.md R3.3). | Core/inventory transaction boundary owns invariant enforcement; receiving only inserts it inside the same line-commit transaction that already creates the matching `lot_location_balances`/`inventory_transactions` rows. |
 | `wrr_inspection_logs` | Store inbound physical conformance/non-conformance observations during arrival. Distinct from post-commit quarantine resolution owned by `11`. | Retained by approved core schema; receiving owns the write path during the scan/conformance phase. |
-| `inventory_transactions` | Insert immutable receiving movements through server transactions. Both `store` and `inspect` dispositions insert a `movement_type = 'receiving'` record at commit. | No updates/deletes; inventory transaction boundary is authoritative. |
+| `inventory_transactions` | Insert immutable receiving movements through server transactions for every assigned Storage or Inspection location. | No updates/deletes; inventory transaction boundary is authoritative. |
 | `wrr_advance_notices` (**added 2026-08-06, schema amendment not yet through `db-migration-verifier`** — see `01-core-data-model` design.md §6) | Confirm (creating/matching a staged `wrr_items` line) or reject a party-submitted pre-arrival label; resolve its `matched_wrr_item_id` at a physical scan of its `WAN:<uuid>` barcode. | Written by `22-parties-portal`'s party-facing surface only. `07` owns the confirm/reject transition and the scan-match consumption; `07` never writes an initial `wrr_advance_notices` row. |
 
-Receipt confirmation creates `lots` plus one `lot_location_balances` row per committed line. This design does not invent `stock_levels` or another duplicate ledger table.
+Receipt confirmation creates one or more `lots` plus one `lot_location_balances` row per assigned destination. This design does not invent `stock_levels` or another duplicate ledger table.
 
 ## 3. Route and shell integration
 
@@ -87,7 +87,7 @@ Route names and capability references remain provisional until `05`, `02`, and t
 
 ## 4. State model and command boundaries
 
-**Updated 2026-08-10, re-amended 2026-08-24 (retires the 2026-08-20/21 per-unit re-scoping)**: the diagram below reflects per-line immediate commit (§9) — each WRR line commits as its own atomic step, once, replacing both the original single end-of-WRR "confirm receipt command" gate and the 2026-08-20/21 per-unit commit loop that briefly replaced it. A `store`-disposition line's declared quantity MAY be split across more than one location within that single commit (§6.2, batch placement). The WRR only reaches `confirmed` once every line has reached a terminal commit outcome.
+**Updated 2026-11-04**: each WRR line commits as its own atomic carton-placement step, replacing the old floor Store/Hold actions. The WRR only reaches `confirmed` once every line has reached a terminal commit outcome.
 
 ```text
 Create WRR → staged_pending_arrival
@@ -97,15 +97,10 @@ Create WRR → staged_pending_arrival
                   ▼
          receiving_in_progress
           ├── scan/reconcile (per carton/pallet, §6)
-          ├── "Store" commit (store-disposition line, whole line, §6.2) →
-          │     lots (available) + lot_location_balances (putaway, one row
-          │     per assigned location — possibly split across >1 location,
-          │     §6.2b) + inventory_units (one row per box) +
-          │     inventory_transactions (§9) — one commit per line
-          ├── "Hold" commit (inspect-disposition line, whole line, §6.3) →
-          │     lots (quarantined) + lot_location_balances (inspection) +
-          │     inventory_units + inventory_transactions + inspection case
-          │     event for 11 (§9)
+          ├── "Confirm carton placement" (§6.2d) →
+          │     Storage cartons: available lot segment + balances/units/ledger
+          │     Inspection cartons: quarantined lot segment + case event for 11
+          │     Missing cartons: OS&D discrepancy only
           └── exception resolution
                   │ every line reaches a terminal commit outcome (or the
                   │ line is discarded/cancelled) — `receiving_in_progress`
@@ -125,7 +120,7 @@ session → capability/scope → input/schema → current WRR state
        → safe result + revalidation
 ```
 
-No client command directly updates `lots`, `lot_location_balances`, or `inventory_transactions`. **Amended 2026-08-24, supersedes the 2026-08-20 per-unit wording**: each line's "Store"/"Hold" command owns its own database transaction that checks that line's prerequisites, writes the resulting domain records for every location assigned in that line's placement, and records the immutable ledger outcome. If a line's transaction fails, that line remains in a safe prior (scanned-not-committed) state; every other line's already-committed state is unaffected. A line is considered committed once its single "Store"/"Hold" command succeeds (§9); there is no per-unit intermediate commit state.
+No client command directly updates `lots`, `lot_location_balances`, or `inventory_transactions`. Each line's carton-placement command owns its own database transaction, checks that line's prerequisites, writes the resulting records for every assigned destination, and records the immutable ledger outcome. If a line's transaction fails, that line remains in a safe prior (scanned-not-committed) state; every other line's already-committed state is unaffected.
 
 ## 5. Pre-receiving WRR design
 
@@ -169,8 +164,8 @@ All fields confirmed from the approved `01-core-data-model` schema, plus the `di
 | Unit CBM | `wrr_items.unit_cbm` | Per-carton CBM for putaway calculations. |
 | UOM | `wrr_items.uom` | Unit of measure. |
 | Remarks | `wrr_items.remarks` | Optional CIPL/receiving note. It is evidence only and cannot adjust quantity. |
-| Disposition | `wrr_items.disposition` | `store` or `inspect`. Determines lot status and posting location at commit. To be added to `01` via schema amendment. |
-| Putaway location | `wrr_items.putaway_location_id` | **Reversed 2026-08-10 (supersedes the 2026-08-09 Product Owner decision — see `specs/00-steering/revision-log.md`).** No longer required, set, or even meaningfully choosable at WRR-creation time — at staging time the system does not yet know what will actually be scanned, so a location cannot be suggested against real item CBM/capacity data. The column (already nullable in `01`'s schema; no migration proposed by this amendment) is now populated per line at its single Store commit, per §6. `store`-disposition lines carry `putaway_location_id = NULL` from WRR creation through the start of receiving. **Re-interpreted 2026-08-24 (supersedes the 2026-08-20 per-unit wording)**: this column is set to the single chosen location only when a line's whole declared quantity is committed to one location; when the line's batch placement (§6.2) splits across more than one location, the column is left unset (not "most-recently-used" — the per-unit model that produced that meaning no longer exists). The authoritative, complete record of which quantities sit at which location for a given lot is always `lot_location_balances` (§9), never this column, whether or not a line has split. |
+| Disposition | `wrr_items.disposition` | `store` or `inspect`. Retained for pre-receiving defaults and compatibility; carton destination determines committed status and posting location. To be added to `01` via schema amendment. |
+| Putaway location | `wrr_items.putaway_location_id` | Nullable compatibility field. It is populated only for a whole-line single Storage destination; mixed or Inspection placement is represented by `lot_location_balances` and `inventory_units`. |
 
 ### 5.2 Scan-line state and discrepancy
 
@@ -184,7 +179,7 @@ Each `wrr_items` row tracks scanned physical cartons against the derived count `
 | Invalid packaging | Item/SPQ is unresolved, or `expected_qty % items.spq <> 0` | No — resolve enrollment, total units, or an approved packaging exception |
 | Exception/unresolved | Rejected scan, unknown item, or pending inspection decision | No |
 
-`wrr_inspection_logs` records physical conformance observations per line during the scan phase. Its `action_taken` field (`'accepted_with_variance'`, `'quarantined'`, `'returned_to_vendor'`) captures the immediate physical resolution outcome. This is distinct from the `disposition` field, which is set before confirmation and determines where the committed lot is posted.
+`wrr_inspection_logs` records physical conformance observations per line during the scan phase. Its `action_taken` field (`'accepted_with_variance'`, `'quarantined'`, `'returned_to_vendor'`) captures the immediate physical resolution outcome. This is distinct from the carton destination assignment, which determines where each committed carton is posted.
 
 ### 5.2a Visual receiving inspection
 
@@ -266,7 +261,7 @@ It rejects wrong WRR, wrong item, unknown item, duplicate/over quantity, invalid
 
 If the item is unknown, the screen routes to the online `06` enrollment flow or records an exception. After enrollment, the scan is repeated and revalidated; the original rejected event is not retroactively accepted.
 
-The disposition value for each line is visible on the floor scan screen. A floor supervisor with appropriate capability may change a line's disposition from `store` to `inspect` (or vice versa) before triggering confirmation.
+The legacy disposition value may remain visible in office review, but it is not an action on the floor. The floor supervisor assigns each carton to Storage, Inspection, or Missing before triggering the carton-placement confirmation.
 
 ### 6.1 Flow-type cross-check (added 2026-08-10)
 
@@ -274,13 +269,11 @@ The disposition value for each line is visible on the floor scan screen. A floor
 
 Instead, the matcher adds one more check to the resolution sequence in §6: once a scanned barcode resolves to an active `item`, its own `items.flow_type` is compared against the current WRR's `wrr_documents.flow_type`. A mismatch is rejected through the same exception path as any other wrong-item/wrong-WRR scan (§6, requirements.md R3.3) — this is an additive rejection reason on the existing exception UI, not a new screen or a new UI step.
 
-### 6.2 Store-disposition sequence: scan, then batch placement, then one line commit (amended 2026-08-24 — retires the 2026-08-20/21 per-unit loop, restores and refines the 2026-08-10 per-line-batch model)
+### 6.2 Carton placement sequence: scan, assign destinations, then confirm (amended 2026-11-04)
 
-**History**: 2026-08-10 established "scan first, then a suggested location" scoped to the whole line — scan every unit, get one location suggestion for the whole remaining quantity, one "Store" tap commits the entire line to a single lot/single location. 2026-08-20 narrowed this to a per-individual-physical-unit loop (implemented and real-Postgres-verified 2026-08-21). A separate branch (`fix-it-felix`) then proposed reverting to a batch/whole-line model with explicit multi-location placement, merged 2026-08-24 as a genuine unresolved contradiction (former §9.0). **Product Owner decision, 2026-08-24: the batch model is authoritative; the per-unit loop is retired.** `commitStoreUnit` and the per-unit idempotency-key machinery have been deleted from the codebase; `commitWrrLine` (`lib/actions/receiving.ts`) is the one commit function for both dispositions.
+One accepted carton/pallet scan identifies the WRR line and makes it eligible for placement; the remaining cartons do not need to be individually re-scanned. Staff then assign the full derived carton count by indexed destination: Storage, Inspection, or Missing. One "Confirm carton placement" command commits the line atomically. Each posted inventory quantity is the assigned carton quantity multiplied by the enrolled item's SPQ.
 
-Under the batch model, a `store`-disposition line needs only **one** accepted carton/pallet scan to become eligible for placement — not every carton individually re-scanned. Once eligible, staff place the line's full derived carton count in one step: assign every location, then submit one "Store" command that commits the whole line — lot creation, every `lot_location_balances` row, every `inventory_units` row, and every `inventory_transactions` row — atomically. Each posted inventory quantity is the assigned carton quantity multiplied by the enrolled item's SPQ.
-
-Sequence for a `store`-disposition line:
+Sequence for a receiving line:
 
 ```text
 scan one carton/pallet barcode from the line
@@ -288,45 +281,46 @@ scan one carton/pallet barcode from the line
      flow-type match §6.1, not over/duplicate-scanned)
    → line becomes eligible for placement (line has >= 1 accepted scan and
      is not yet committed)
-   → system computes and displays ALL candidate `storage` locations with
-     available remaining CBM capacity for at least one more carton of this
-     line's item (§6.2a) using the §10 location/capacity suggestion
-     interface
-   → staff assigns the line's full derived carton count across one or more
-     candidates — a single-location quick action ("put all N cartons in
-     [location]") or an explicit per-box/per-location split (§6.2b)
-   → if more than one location is used (or the UI's multi-slot assignment
-     surface is used at all, per requirements.md R2a item 5), staff
-     attests all declared boxes/pallets are physically present
-   → staff taps "Store" once for the whole line
-   → immediate line commit (§9): creates the lot; creates one
-     lot_location_balances row per assigned location; creates one
-     inventory_units row per physical box; inserts one
-     inventory_transactions row per assigned location
+   → system displays eligible Storage candidates with capacity and active
+     Inspection candidates (§6.2a, §10)
+   → staff assigns every declared carton to Storage, Inspection, or Missing
+     (§6.2b/§6.2d)
+   → staff attests that present and Missing cartons are accurately represented
+   → staff taps "Confirm carton placement" once for the whole line
+   → immediate line commit (§9): creates available and/or quarantined lot
+     segments, balances and inventory units for non-Missing cartons, an
+     inspection case for Inspection cartons, and an OS&D discrepancy for
+     Missing cartons
    → visible per-line "committed" success state
 ```
 
-`wrr_items.putaway_location_id` is written at the line's "Store" step only when the whole line goes to a single location (re-interpreted 2026-08-24, §5.1); it is left unset when the placement splits across more than one location. The commit-time re-validation of every assigned location's state/type (requirements.md R1.4) still applies — the suggestion is a recommendation, not a bypass of that check.
+`wrr_items.putaway_location_id` is written only when the whole line goes to one Storage location. The commit-time re-validation of every assigned destination's state/type still applies — the suggestion is a recommendation, not a bypass of that check.
 
 ### 6.2a Multiple candidate locations per suggestion, not a single recommendation (amended 2026-08-24, carries forward the 2026-08-20 multi-candidate contract unchanged)
 
 **Generalizes, rather than replaces, §10's existing "location/capacity suggestion interface."** §10 already described the interface's data contract as "remaining CBM vs. candidate `locations`" (plural), and the app's `suggestPutawayLocations` query/UI already returns and renders an array of candidates — this section makes the multi-candidate contract explicit for the batch model, unchanged in substance from the 2026-08-20 wording it carries forward (only the calling grain moved back from per-unit to per-line, per §6.2).
 
-The location suggestion, shown once a `store`-disposition line has its first accepted scan, SHALL list **every** active `storage`-type `location` that currently has available remaining CBM capacity for at least one more carton of the line's item — not narrowed to a single "best" pick. Staff distribute the line's full declared carton quantity across one or more of the listed candidates (§6.2b), up to each candidate's own computed capacity (its remaining CBM divided by the item's per-carton `unit_cbm`, floored).
+The location suggestion, shown once a line has its first accepted scan, SHALL list **every** active `storage`-type `location` that currently has available remaining CBM capacity for at least one more carton of the line's item — not narrowed to a single "best" pick. The selector also lists active `inspection` locations. Staff distribute the line's full declared carton quantity across the listed destinations, with Missing used for cartons that did not arrive.
 
-### 6.2b Quantity split across multiple locations within one line's single commit (amended 2026-08-24, restates the 2026-08-20 multi-location outcome under the batch model)
+### 6.2b Quantity split across multiple locations within one line's single commit (amended 2026-11-04)
 
-A `store`-disposition line's declared quantity MAY be assigned across more than one location within its single batch commit — for example, the first several cartons of a 10-carton line to Location A and the remainder to Location B, because A alone cannot fit all 10. This is still one WRR line and one logical lot (`lots.wrr_item_id`, one row) — but its stock sits in more than one `lot_location_balances` row (same `lot_id`, different `location_id` per row), which the existing schema already supports (the `unique(lot_id, location_id)` constraint enforces one row per lot-location *pair*, not one location per lot). **No `01-core-data-model` schema change is required for this**: multiple `lot_location_balances` rows per lot is not new — §7.3 already documents multiple *lots* coexisting at one inspection location; this is the mirror case of one lot's stock spanning multiple locations, using the same table shape. Unlike the retired 2026-08-20 per-unit model (which discovered a split organically as successive per-unit commits exhausted a location's capacity), the batch model's split is explicit and known before the line's single commit: staff assign quantities per location (or per box, grouped into per-location quantities) up front, and the whole assignment posts atomically together. See §9 for the exact commit mechanics and §5.1 for the resulting treatment of `wrr_items.putaway_location_id`.
+A line's declared quantity MAY be assigned across more than one Storage or Inspection location within its single batch commit. Storage cartons and Inspection cartons are grouped into separate lot segments because `lots.status` is lot-level; each segment shares the WRR business `lot_number` and source line, while its `lot_location_balances` and `inventory_units` retain the destination-specific quantity/status. Missing slots create no inventory row. The batch model's split is explicit and posts atomically together. See §6.2d and §9 for the exact commit mechanics.
 
 ### 6.2c One-QR line confirmation and missing-box placement (approved 2026-09-02)
 
 The Work Queue and staged WRR already provide the expected lines and quantities. The receiving QR scan is a line-identity and physical-confirmation step: one valid QR identifies the matching WRR line and opens that line for placement. It does not create expected lines or require scanning every related label.
 
-The placement selector shows the declared boxes for the confirmed line. Each box is assigned to an eligible storage location, an inspection/Hold location, or `Missing`. A `Missing` selection is not a location and cannot create an inventory row. The single line commit posts only assigned boxes, creates inventory units only for those boxes, and records the missing count as an OS&D variance. Other WRR lines remain available for receiving while this line is committed.
+The placement selector shows the declared boxes for the confirmed line. Each box is assigned to an eligible Storage location, an Inspection location, or `Missing`. A `Missing` selection is not a location and cannot create an inventory row. The single line commit posts only assigned boxes, creates inventory units only for those boxes, and records the missing count as an OS&D variance. Other WRR lines remain available for receiving while this line is committed.
 
 The parent WRR stays `receiving_in_progress` until every line has a terminal outcome. It then moves to `confirmed`; any shortage is represented by the line quantities and the OS&D summary, not by a new `partial` WRR status.
 
-### 6.3 Inspect-disposition ("Hold") sequence: location first, then scan (added 2026-08-10)
+### 6.2d Carton destination assignment (approved 2026-11-04)
+
+After the one-QR line confirmation, every declared carton is represented in the placement array. Each slot contains either an active storage location, an active inspection location, or `Missing`. The floor screen has no separate Hold/Store disposition toggle.
+
+The commit groups present cartons by destination type. Storage cartons are posted to an available lot segment; inspection cartons are posted to a quarantined lot segment and open an inbound inspection case; Missing cartons are recorded only in the receiving discrepancy. If a line contains both storage and inspection cartons, the two lot segments share the same business `lot_number` and WRR source line but have independent lifecycle status, balances, and receiving transactions.
+
+### 6.3 Inspect-disposition ("Hold") sequence: location first, then scan (legacy compatibility)
 
 An `inspect`-disposition line is **not** scan-first, and this is not inconsistent with §6.2: the putaway suggestion in §6.2 needs the item's CBM/quantity to check remaining storage capacity, but the `inspection` location is a real, enrolled `locations` record with `location_type = 'inspection'` (§2's table; `01-core-data-model` `locationTypeEnum`) — typically a small, fixed set of locations, not a capacity-suggestion problem. There is no reason to gate confirming the hold location behind a scan.
 
@@ -344,36 +338,35 @@ staff selects/confirms the active inspection location
      alone
 ```
 
-This §6.3 sequence is unaffected by the 2026-08-24 batch-model decision — it describes an entire line whose disposition is already `inspect` before scanning begins (set in the pre-receiving form or by a floor supervisor override, §7.1), and `inspect` lines never split across multiple locations (§6.2b applies to `store` lines only).
+This sequence remains supported for pre-receiving compatibility, but the current floor placement flow uses §6.2d: each carton's selected destination determines its outcome and the floor no longer exposes a separate Hold action.
 
-### 6.4 Per-unit Hold override on an otherwise store-disposition line — SUPERSEDED 2026-08-24, the mechanism it depended on no longer exists
+### 6.4 Per-unit Hold override on an otherwise store-disposition line — superseded by carton destination assignment
 
 **Historical context, retained rather than deleted.** A 2026-08-20 Product Owner decision proposed a per-unit "Hold" escape hatch alongside the then-current per-unit "Store" action (former §6.2): each individually scanned unit on a `store`-disposition line would get its own "Hold" button, so one physical unit could be quarantined while the rest of the same line's units proceeded to Store. That proposal was flagged, not resolved — it required a `01-core-data-model` amendment to represent "some units of this line are available, other units of the same line are quarantined," since §7's disposition model assigns exactly one `lots` row with one `status` per WRR line, and no such amendment was ever drafted or approved.
 
-**Now additionally moot under the 2026-08-24 batch-model decision.** The per-unit commit loop this proposal depended on (former §6.2's per-unit "Store" action) has itself been retired in favor of §6.2's whole-line batch commit. There is no per-unit commit event left in this design to attach a per-unit Hold override to — a `store`-disposition line commits once, as a whole, or not at all. The underlying `01-core-data-model` schema gap this section originally described (one `lots.status` per WRR line) is unchanged and still real, but the requirement that would have used it no longer has a home in this design.
+The old per-unit Hold proposal is replaced by §6.2d. The approved carton placement model uses existing `inventory_units` for carton-specific status and creates separate lot segments when one line contains both available and quarantined cartons.
 
-If the underlying operational need still matters — excluding part of a line's physical quantity from an otherwise-conforming Store commit, e.g. one visibly damaged box discovered while placing an otherwise-good pallet — it is a **new** requirement against the batch model, not a restatement of this section. requirements.md §5a Item 4 records this as an open, unscheduled question: R5a's existing quantity-splittable `on_hold`/`reject` visual-inspection path may already cover it if resolved *before* the line's single Store commit, but that would require clarifying whether §6.2/R2a's "allocation total must equal `expected_qty`" invariant is measured against the line's original or a post-exclusion quantity. Not decided here.
 
 ## 7. Inbound receiving disposition
 
-The disposition model determines the lot status and inventory posting location created for each line at confirmation time. It is a required field on the WRR line, set before confirmation and enforced atomically by the commit transaction.
+The placement model determines the lot status and inventory posting location created for each carton at confirmation time. The legacy disposition field remains required for WRR compatibility and pre-receiving defaults, but it does not override the committed carton placement.
 
-### 7.1 Disposition decision
+### 7.1 Legacy disposition compatibility
 
-The disposition value (`store` or `inspect`) is set on each `wrr_items` line. The default is `store`. The system enforces `inspect` automatically when:
+The legacy disposition value (`store` or `inspect`) remains on each `wrr_items` line for pre-receiving defaults and compatibility. The default is `store`. The system may set or recommend `inspect` automatically when:
 
 - the item's `is_perishable` flag or an explicit inspection-required item flag is active;
 - the `flow_type` or vendor party configuration mandates inspection;
 - a supervisor explicitly overrides the disposition to `inspect` before confirmation.
 
-The back-office user sets the initial disposition in the pre-receiving form. The floor supervisor may change it before triggering the confirmation command.
+The back-office user sets the initial value in the pre-receiving form. It does not replace the floor destination assignment: the selected location type remains authoritative for each carton.
 
-**Note added 2026-08-20, updated 2026-08-24 — see §6.4.** This section's model (one `disposition` value per `wrr_items` line, driving exactly one `lots` row with one `status`) is now accurate for every commit path this document describes, with no outstanding exception: §6.4's proposed per-unit Hold override was itself superseded by the 2026-08-24 retirement of the per-unit commit model it depended on. If a batch-model-shaped successor to that proposal is ever drafted (requirements.md §5a Item 4), this section will need its own follow-up amendment at that time — none is needed now.
+**Updated 2026-11-04 — see §6.2d.** A line may produce one available lot segment, one quarantined lot segment, or both. The line-level field is retained for compatibility; the selected location type is authoritative for each carton.
 
-### 7.2 Store path (`disposition = 'store'`)
+### 7.2 Storage destination path
 
 ```text
-scan confirmed + disposition = store
+scan confirmed + cartons assigned to Storage
         │
         ▼
 commit transaction:
@@ -397,10 +390,10 @@ commit transaction:
 lot immediately eligible for FIFO/FEFO allocation
 ```
 
-### 7.3 Inspect path (`disposition = 'inspect'`)
+### 7.3 Inspection destination path
 
 ```text
-scan confirmed + disposition = inspect
+scan confirmed + cartons assigned to Inspection
         │
         ▼
 commit transaction:
@@ -472,13 +465,13 @@ Inbound physical inspection is recorded during the `receiving_in_progress` phase
 This is distinct from the post-commit quarantine resolution described in §7.5:
 
 - `wrr_inspection_logs` records the physical conformance observation during receiving.
-- The `disposition` field determines where the committed lot is posted at confirmation time.
+- The carton destination assignment determines where each committed carton is posted at confirmation time.
 - Post-commit inspection of a quarantined lot is owned by `11`.
 
 Inspection observations during receiving:
 
 - Conformance allows the related line to proceed to confirmation.
-- Non-conformance (`actionTaken = 'quarantined'`) indicates the goods need post-commit inspection; the line should carry `disposition = 'inspect'`.
+- Non-conformance (`actionTaken = 'quarantined'`) indicates the goods need post-commit inspection; affected cartons should be assigned to an active `inspection` location.
 - Non-conformance (`actionTaken = 'returned_to_vendor'`) means the goods are rejected outright and SHALL NOT be committed as inventory.
 - Non-conformance (`actionTaken = 'accepted_with_variance'`) allows commit with noted variance; disposition may be `store` or `inspect` depending on the nature of the variance.
 
@@ -488,25 +481,25 @@ Evidence uses private Supabase Storage and inherits WRR/party scope. Automated e
 
 ## 9. Receipt commit and idempotency
 
-**Reversed 2026-08-10, re-affirmed 2026-08-24 (retires the 2026-08-20/21 per-unit re-scoping that sat between these two dates): per-line immediate commit, not a single end-of-WRR atomic gate, and not a per-unit commit loop either.** Each WRR line commits as its own atomic step, once, immediately when staff tap "Store" (§6.2, `store` lines, possibly split across multiple locations within that one commit) or "Hold" (§6.3, `inspect` lines). This generalizes a pattern already accepted elsewhere in this spec set rather than inventing new architecture: the 2026-08-09 "Eight cross-spec PO decisions" WRR-cancellation resolution (revision-log.md) already establishes that a WRR can reach a state where some lines are committed/posted to inventory while others are not.
+**Updated 2026-11-04 (supersedes the floor Store/Hold wording):** each WRR line commits as its own atomic step when staff confirm the carton placement. The commit may post storage cartons, inspection cartons, both, or only a shortage outcome. This preserves the per-line transaction boundary while making the carton destination authoritative.
 
 **History note (2026-08-20 → 2026-08-24).** Between these dates, this section briefly described a finer-grained per-unit commit loop — the atomic step being one physical unit rather than one line — implemented as `commitStoreUnit`/`commitInspectLine` and real-Postgres-verified 2026-08-21. A separate branch (`fix-it-felix`) proposed a batch/whole-line commit model instead; the two were merged 2026-08-24 as a genuine unresolved contradiction (former §9.0). **Product Owner decision, 2026-08-24: the batch/whole-line model below is authoritative; the per-unit model is retired and has been deleted from the codebase** — `commitStoreUnit`, `commitInspectLine`, and the per-unit idempotency-key mechanism no longer exist. `commitWrrLine` (`lib/actions/receiving.ts`) is the one commit function for both dispositions. `08-outgoing-withdrawal-and-two-stage-commitment` requirements.md R3.3's exact-box dispatch-scan guarantee, which the per-unit model was originally checked against, is preserved under the batch model because `inventory_units` (step 8 below) is still populated from each physical box's actually-assigned location at the line's single commit, using a deterministically derived identity rather than an unverified freehand slot number — see step 8.
 
 ### Line commit command — the current, authoritative sequence
 
-Each line's commit receives the WRR ID, the specific `wrr_items.id`, the resolved disposition (`store`/`inspect`), and the line's placement — either a single `location_id` (the whole line to one place) or a batch placement (`allocations`: explicit per-location carton quantities, or `unit_location_ids`: one location per physical carton, index-aligned with the line's derived carton count, which the server derives into per-location `allocations` by grouping) plus a presence attestation whenever more than one physical carton's placement is being asserted in the same commit. Within one transaction, for that line alone, it:
+Each line's commit receives the WRR ID, the specific `wrr_items.id`, and the line's placement — either a single `location_id` (the whole line to one place) or a batch placement (`allocations`: explicit per-location carton quantities, or `unit_location_ids`: one destination per physical carton, index-aligned with the line's derived carton count; an empty slot means `Missing`) plus a placement attestation. Within one transaction, for that line alone, it:
 
 1. verifies the line is still in a commit-eligible state (`wrr_documents.status = 'receiving_in_progress'`, this line not already committed — the idempotency check described below);
-2. verifies the line's active item/party references, flow partition, and required lot metadata (a resolved `itemId`, a set disposition);
-3. resolves the requested placement — a single `location_id`, or a batch placement derived from `allocations`/`unit_location_ids`. A batch placement requires the presence attestation. Either shape's assigned total SHALL equal the line's derived complete-carton count exactly, or the commit is rejected before anything is posted;
-4. verifies every assigned location's active/type state (`storage` for `store`, `inspection` for `inspect`) and current available remaining CBM capacity for its assigned quantity — capacity is re-checked at commit time, not assumed from the suggestion shown a moment earlier;
-5. creates the `lots` row: `lot_number` copied from `wrr_items.lot_number` (the single canonical identifier), `wrr_item_id` set, `status = 'available'` for `store` or `status = 'quarantined'` for `inspect`;
-6. for `store`-disposition placements, inserts one `wrr_item_putaway_allocations` row per assigned location (`lib/db/schema/wrr.ts`, migration `0032_wrr_item_putaway_allocations.sql`) — a staged/audit record of the placement, not itself a stock table;
+2. verifies the line's active item/party references, flow partition, and required lot metadata (a resolved `itemId` and a compatible legacy disposition value);
+3. resolves the requested placement — a single `location_id`, or a batch placement derived from `allocations`/`unit_location_ids`. A batch placement requires the placement attestation and an index for every declared carton. The assigned total may be lower than the derived carton count only when the remaining slots are explicitly `Missing`;
+4. verifies every assigned location is active and has the matching type (`storage` or `inspection`) and re-checks storage capacity at commit time;
+5. creates an available lot segment for storage cartons and a quarantined lot segment for inspection cartons, copying the same canonical `lot_number` and WRR source line to each segment;
+6. inserts one `wrr_item_putaway_allocations` row per assigned storage location — a staged/audit record of the placement, not itself a stock table;
 7. inserts one `lot_location_balances` row per assigned location, with that location's assigned quantity as both `qty_received` and `qty_remaining`, `qty_committed = 0`;
-8. inserts one `inventory_units` row (`lib/db/schema/inventory_units.ts`) per physical box, keyed to a stable, reprint-safe identity derived from `(wrr_item_id, box_index)` (`deriveWrrUnitId`, `lib/barcode/wrr-unit.ts`) and that box's assigned `location_id`, with `status = 'available'` for `store` or `status = 'quarantined'` for `inspect`. This is what `08` requirements.md R3.3's exact-box dispatch scan matches against; because the identity is derived deterministically rather than freehand-numbered, reprinting a label never creates a new box identity;
-9. for `store` disposition, sets `wrr_items.putaway_location_id` to the single assigned location when the whole line went to one place (§5.1), and leaves it unset when the placement split across more than one location;
+8. inserts one `inventory_units` row per non-Missing physical box, keyed to a stable, reprint-safe identity derived from `(wrr_item_id, box_index)` and that box's assigned `location_id`, with status derived from the destination type;
+9. sets `wrr_items.putaway_location_id` to the single assigned Storage location when the whole line went to one place (§5.1), and leaves it unset for mixed, split, or Inspection placement;
 10. inserts one immutable `inventory_transactions` row per assigned location, each with `movement_type = 'receiving'` and `to_location_id` set to that allocation's location;
-11. for `inspect` disposition, additionally emits an inspection case event for `11` (open case, linked to the lot and WRR line);
+11. for any inspection assignment, emits an inspection case event for each quarantined lot segment linked to the lot and WRR line;
 12. marks the line's terminal committed state (`wrr_items.committed_at`) and re-evaluates the parent WRR's aggregate completion state, updating `wrr_documents.status` accordingly (see the `wrr_status` note below);
 13. records audit/correlation data according to the approved cross-cutting design.
 
@@ -524,11 +517,11 @@ This also corrects a stale reference: the 2026-08-09 cancellation-resolution ent
 
 ## 10. Putaway and incoming ledger
 
-Receiving consumes the approved location/capacity suggestion interface. It may display remaining CBM and candidate `locations`, but it does not create a second capacity calculation or own location enrollment. Putaway recommendations apply only to lots committed with `store` disposition; quarantined lots at the `inspection` location are handed off to `11` for resolution before any putaway recommendation applies.
+Receiving consumes the approved location/capacity suggestion interface. It may display remaining CBM and candidate `locations`, but it does not create a second capacity calculation or own location enrollment. Storage recommendations apply to available lot segments; quarantined segments at `inspection` locations are handed off to `11` for resolution before any putaway recommendation applies.
 
-**Timing reversed 2026-08-10**: this same suggestion interface is now invoked at pre-store time (§6.2), not only as a post-commit recommendation — the sequence is scan → suggested location(s) → assign placement → "Store" → line commit (§9), rather than commit first and recommend putaway afterward. This is a change in *when* the existing interface is called, not a new interface or a new capacity calculation; nothing in this section's data contract (remaining CBM vs. candidate `locations`) changes.
+The location suggestion interface is invoked after the first accepted scan, before the carton-placement commit: scan → suggested destinations → assign placement → confirm carton placement. This is not a new capacity calculation or location-enrollment path.
 
-**Granularity, re-affirmed 2026-08-24 (retires the 2026-08-20 per-unit call frequency)**: the interface is called once per line, after that line's first accepted scan (§6.2) — not once per individually scanned unit, which was a 2026-08-20/21 amendment now retired along with the per-unit commit loop it supported. Its contract remains as clarified in that amendment and carried forward here: it returns every currently-eligible candidate location with capacity for at least one more unit (§6.2a), not a single narrowed suggestion, so staff can distribute the line's full declared quantity across one or more of them.
+**Granularity:** the interface is called once per line, after that line's first accepted scan. It returns eligible Storage candidates with capacity and the active Inspection candidates; the floor placement selector lets staff assign each carton to Storage, Inspection, or Missing.
 
 The Incoming Ledger is a server-side query/view over `inventory_transactions` filtered by `movement_type IN ('receiving', 'putaway')`, joined through approved relationships for WRR, item, lot, party, user, and location display. It is read-only and scope-filtered. Historical corrections are new domain transactions, never ledger edits.
 
@@ -557,7 +550,7 @@ The WRR queue status selector submits its server-query form immediately on selec
 ## 11. Offline, realtime, and infrastructure boundaries
 
 - Only scan/reconciliation capture may be proposed for Tier 1 offline support, and each operation needs an explicit policy from this spec plus `03`.
-- WRR creation/edit, CIPL upload, unknown item enrollment, inspection resolution, receipt confirmation, and putaway confirmation are Tier 2/online-only in v1. This is the complete list — no other receiving mutations are candidates for Tier 1 offline. **Re-affirmed 2026-08-24, retires the 2026-08-20 per-unit framing**: "receipt confirmation" here covers each line's single "Store"/"Hold" commit event (§6.2/§6.3/§9), which is a Tier 2/online-only action, same as it was before the brief 2026-08-20/21 per-unit re-scoping (which described the same rule at unit frequency instead of line frequency — that finer grain no longer applies). Scanning/reconciling a carton (recording that it was seen) remains the only Tier 1 candidate; the location suggestion display and the "Store"/"Hold" commit tap itself both require an online round trip, same as the location-suggestion/commit step always has.
+- WRR creation/edit, CIPL upload, unknown item enrollment, inspection resolution, receipt confirmation, and carton placement confirmation are Tier 2/online-only in v1. Scanning/reconciling a carton (recording that it was seen) remains the only Tier 1 candidate; destination suggestions and the carton-placement commit require an online round trip.
 - On replay, the server re-authenticates and rechecks WRR status, current capability/scope, item/party state, quantity, disposition values, and idempotency. Offline data cannot create inventory directly.
 - Realtime may invalidate a WRR list/attention state; authoritative refetch is required.
 - CIPL/evidence files use private Storage and signed/session-authorized access.

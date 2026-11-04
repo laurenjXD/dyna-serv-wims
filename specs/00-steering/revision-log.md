@@ -1,5 +1,15 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## `09` FIFO override expiry extended to one day (2026-11-04)
+
+The Product Owner changed the `fifo_override` approval request validity window from 30 minutes to 24 hours. New requests receive an `expiry_at` timestamp 24 hours after creation; decision-time expiry validation and archived-request handling remain unchanged. Existing requests retain their persisted expiry timestamps.
+
+## `07` carton destination is authoritative; floor Hold toggle retired (2026-11-04)
+
+The Product Owner clarified the approved one-QR placement workflow: after a valid scan identifies a WRR line, the operator assigns each declared carton to Storage, Inspection, or Missing. The carton destination is the authoritative receiving outcome; the separate floor-level `Hold for Inspection` / `Return to Store` toggle is removed. Storage cartons become available, inspection cartons become quarantined and open an inbound inspection case, and Missing cartons create only the OS&D shortage.
+
+Because `lots.status` is lot-level while the placement decision is carton-level, a mixed line creates separate available and quarantined lot segments sharing the same business `lot_number` and WRR source line. `inventory_units` retains the carton-specific location/status, and the line-level `wrr_items.disposition` remains only for pre-receiving compatibility. The `07` requirements, design, and tasks documents were amended and approved in conversation; runtime implementation follows this contract.
+
 ## Pick-list location selection and duplicate lot-card correction (2026-11-03)
 
 The grouped FIFO/FEFO plan now provides location checkboxes and editable box quantities directly inside each business lot card. Repeated lot numbers in the same rank are visually grouped even when opening balances have separate internal lot IDs; each location retains its exact stock identity for server validation. Both manual drafts and DRA-import drafts use this editor, and displayed allocations track manual changes. The duplicate allocation cards and add-location dropdown are removed from multi-location mode. Verified with 90 focused tests and TypeScript.

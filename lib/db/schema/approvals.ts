@@ -7,7 +7,7 @@
 //     the same key are rejected at the DB constraint, not silently de-duped.
 //   - target_snapshot holds the typed workflow snapshot (FifoOverrideSnapshot
 //     for fifo_override) frozen at request time; never mutated after insert.
-//   - expiry_at is set to now() + 30 minutes at request-creation time by the
+//   - expiry_at is set to now() + 24 hours at request-creation time by the
 //     server command (design.md §5).
 //
 // approval_decisions: append-only record of each reviewer decision.
@@ -56,7 +56,7 @@ export const approvalRequests = pgTable(
     // Optional business justification; empty string is allowed when no comment is provided.
     reason: text("reason").notNull(),
     status: approvalRequestStatusEnum("status").default("pending").notNull(),
-    // Set to now() + 30 min at creation time per design.md §5.
+    // Set to now() + 24 hours at creation time per design.md §5.
     expiryAt: timestamp("expiry_at", { withTimezone: true }).notNull(),
     // Optional tracing fields.
     correlationId: uuid("correlation_id"),

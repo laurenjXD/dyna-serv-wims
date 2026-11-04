@@ -125,7 +125,7 @@ const unauthenticatedResolver = () =>
 // DB mock helpers
 // ---------------------------------------------------------------------------
 
-const FUTURE_EXPIRY = new Date(Date.now() + 30 * 60 * 1000); // 30 min from now
+const FUTURE_EXPIRY = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 const PAST_EXPIRY = new Date(Date.now() - 5 * 60 * 1000);   // 5 min ago
 
 // In-memory db with approval_requests and approval_decisions maps.

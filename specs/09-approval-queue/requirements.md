@@ -1,7 +1,7 @@
 # Approval Queue — Requirements
 
 Status: Approved
-Updated: 2026-08-30 (Approved soft-delete monitoring amendment)
+Updated: 2026-11-04 (Product Owner decision: fifo_override expiry extended to 24 hours)
 
 ## 1. Purpose and scope
 

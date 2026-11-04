@@ -14,7 +14,6 @@ interface PutawayLocationSelectorProps {
   spq?: number;
   uom?: string;
   lotNumber?: string;
-  disposition?: "store" | "inspect";
 }
 
 type SplitLocationRow = {
@@ -41,7 +40,6 @@ export function PutawayLocationSelector({
   spq = 1,
   uom = "PCS",
   lotNumber,
-  disposition = "store",
 }: PutawayLocationSelectorProps) {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   const safeScannedQuantity = Math.min(
@@ -52,7 +50,6 @@ export function PutawayLocationSelector({
   const safeSpq = Math.max(1, Number(spq) || 1);
   const safeUom = (!uom || uom.toLowerCase() === "pallet" || uom.toLowerCase() === "plt") ? "PCS" : uom.toUpperCase();
 
-  const assignmentQuantity = disposition === "inspect" ? safeScannedQuantity : safeQuantity;
   const [locationsBySlot, setLocationsBySlot] = useState<string[]>(() =>
     Array.from({ length: safeQuantity }, () => ""),
   );
@@ -77,7 +74,8 @@ export function PutawayLocationSelector({
     setLocationsBySlot(expandedLocations(rows));
   }
 
-  // Combined options: storage candidates (with capacity) + inspection candidates
+  // Combined options: storage candidates (with capacity) + inspection candidates.
+  // The selected destination type is authoritative for each carton.
   const allLocationOptions = useMemo(() => {
     const storageOpts = [...candidates]
       .sort((a, b) =>
@@ -106,7 +104,7 @@ export function PutawayLocationSelector({
       )
       .map((c) => ({
         id: c.id,
-        label: `${c.label} (Inspection Bay / Hold)`,
+        label: `${c.label} (Inspection)`,
         locationType: "inspection",
         raw: undefined,
         capacity: undefined,
@@ -129,19 +127,19 @@ export function PutawayLocationSelector({
   }, [locationsBySlot]);
 
   const assignedBoxesCount = allocations.reduce((sum, a) => sum + a.qty, 0);
-  const missingBoxesCount = assignedBoxesCount > 0 ? Math.max(0, safeQuantity - assignedBoxesCount) : 0;
-  const readyToStore = assignedBoxesCount > 0 && attested;
+  const missingBoxesCount = Math.max(0, safeQuantity - assignedBoxesCount);
+  const readyToCommit = attested && (assignedBoxesCount > 0 || missingBoxesCount === safeQuantity);
 
   const selectedIds = allocations.map((allocation) => allocation.locationId);
   const singleLocationId =
     selectedIds.length === 1 &&
-    allocations[0]?.qty === assignmentQuantity
+    allocations[0]?.qty === safeQuantity
       ? selectedIds[0]
       : "";
 
   function assignAll(locationId: string) {
     if (!locationId) return;
-    const rows = [{ locationId, qty: String(assignmentQuantity) }];
+    const rows = [{ locationId, qty: String(safeQuantity) }];
     setSplitRows(rows);
     setLocationsBySlot(expandedLocations(rows));
   }
@@ -169,10 +167,10 @@ export function PutawayLocationSelector({
           <div>
             <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
             <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
-              {disposition === "inspect" ? `Put the ${assignmentQuantity} scanned box${assignmentQuantity === 1 ? "" : "es"} in` : `Put all ${safeQuantity} declared boxes in`}
+              Put all {safeQuantity} declared boxes in
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
-              One valid QR scan identified this line. Assign the whole declared line now{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Scan confirmations: <strong>{safeScannedQuantity}</strong>. Use Step 2 only if boxes are missing or need a split.
+              One valid QR scan identified this line. Assign each declared carton to Storage, Inspection, or Missing{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Scan confirmations: <strong>{safeScannedQuantity}</strong>.
             </p>
           </div>
           <span className="rounded-full bg-[#EEF3FF] px-3 py-1 font-mono text-mono-sm font-bold text-brand-navy">
@@ -185,23 +183,23 @@ export function PutawayLocationSelector({
             options={allLocationOptions.map((opt) => ({
               id: opt.id,
               label: opt.label,
-              disabled: opt.raw ? maxBoxesFor(opt.raw, safeUnitCbm, assignmentQuantity) < assignmentQuantity : false,
+              disabled: opt.raw ? maxBoxesFor(opt.raw, safeUnitCbm, safeQuantity) < safeQuantity : false,
               capacity: opt.capacity,
             }))}
             value={singleLocationId}
             onChange={assignAll}
-            placeholder={selectedIds.length > 1 ? "Multiple locations selected" : "Search or choose a storage or inspection bay"}
+            placeholder={selectedIds.length > 1 ? "Multiple destinations selected" : "Search or choose a storage or inspection bay"}
           />
         </div>
         <p className="mt-2.5 font-body text-body-md text-text-grey">
-          Choose a primary storage rack or inspection bay for the whole line. Use Step 2 below only to split locations or mark individual boxes as Missing.
+          Use Step 2 to assign individual cartons to Storage, Inspection, or Missing.
         </p>
       </section>
 
       <details className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
         <summary className="cursor-pointer list-none font-label text-body-md font-bold text-on-surface marker:hidden">
           <span className="flex items-center justify-between gap-3">
-          <span><span className="mr-2 text-primary">Step 2</span>{showIndividualSlots ? "Split Storage / Hold / Shortage per box" : "Split Storage / Hold / Shortage by quantity"}</span>
+          <span><span className="mr-2 text-primary">Step 2</span>{showIndividualSlots ? "Assign Storage / Inspection / Missing per box" : "Assign Storage / Inspection / Missing by quantity"}</span>
             <span aria-hidden="true" className="text-title-md text-text-grey">⌄</span>
           </span>
         </summary>
@@ -243,7 +241,7 @@ export function PutawayLocationSelector({
                       previous.map((value, slot) => (slot === index ? nextValue : value)),
                     )
                   }
-                  placeholder="Select location or Missing"
+                  placeholder="Select Storage, Inspection, or Missing"
                 />
               </label>
             ))}
@@ -291,7 +289,7 @@ export function PutawayLocationSelector({
                         );
                         updateSplitRows(rows);
                       }}
-                      placeholder="Choose storage or hold"
+                      placeholder="Choose Storage or Inspection"
                     />
                   </div>
                   <div>
@@ -334,7 +332,7 @@ export function PutawayLocationSelector({
               + Add another location
             </button>
             <p className="font-body text-body-md text-text-grey">
-              {assignedBoxesCount} of {safeQuantity} boxes assigned. {missingBoxesCount > 0 ? `${missingBoxesCount} will be recorded as Missing.` : "Assign the remaining boxes before storing."}
+              {assignedBoxesCount} of {safeQuantity} boxes assigned. {missingBoxesCount > 0 ? `${missingBoxesCount} will be recorded as Missing.` : "All boxes have a destination."}
             </p>
           </div>
         )}
@@ -357,15 +355,21 @@ export function PutawayLocationSelector({
               OS&amp;D shortage: {missingBoxesCount} declared box{missingBoxesCount === 1 ? "" : "es"} marked Missing{safeSpq > 1 ? ` (${(missingBoxesCount * safeSpq).toLocaleString()} ${safeUom})` : ""}
             </p>
             <p className="mt-0.5 font-body text-body-xs text-amber-800">
-              Only the {assignedBoxesCount} received boxes will be assigned and posted to inventory.
+              Only the {assignedBoxesCount} assigned boxes will be posted to inventory.
             </p>
           </div>
         )}
 
-        {assignedBoxesCount === 0 ? (
+        {assignedBoxesCount === 0 && missingBoxesCount !== safeQuantity ? (
           <div className="mt-3 rounded-xl border border-dashed border-outline-variant/60 bg-surface-white p-4 text-center">
             <p className="font-body text-body-md text-text-grey">
               No location selected yet. Choose a primary storage or inspection bay in Step 1, or allocate individual boxes in Step 2.
+            </p>
+          </div>
+        ) : assignedBoxesCount === 0 ? (
+          <div className="mt-3 rounded-xl border border-status-pending/40 bg-[#FFF9EB] p-4 text-center">
+            <p className="font-body text-body-md text-amber-900">
+              All declared boxes are marked Missing. Confirm to record the OS&amp;D shortage.
             </p>
           </div>
         ) : (
@@ -386,7 +390,7 @@ export function PutawayLocationSelector({
                     {" · "}{allocation.qty} box{allocation.qty === 1 ? "" : "es"}{safeSpq > 1 ? ` (${(allocation.qty * safeSpq).toLocaleString()} ${safeUom})` : ""}
                     {isInspection && (
                       <span className="ml-2 rounded bg-status-pending/10 px-1.5 py-0.5 font-label text-label-xs font-bold uppercase text-status-pending">
-                        Quarantine / On Hold
+                        Quarantine / Inspection
                       </span>
                     )}
                   </summary>
@@ -422,13 +426,13 @@ export function PutawayLocationSelector({
         )}
       </section>
 
-      <label className={`flex items-start gap-3 rounded-2xl border-2 p-4 font-body text-body-md text-on-surface cursor-pointer transition-colors ${assignedBoxesCount > 0 ? (attested ? "border-status-available/40 bg-[#F0FDF8]" : "border-amber-400 bg-amber-50/50") : "border-outline-variant/40 bg-surface-light-grey/40 opacity-70"}`}>
+      <label className={`flex items-start gap-3 rounded-2xl border-2 p-4 font-body text-body-md text-on-surface cursor-pointer transition-colors ${assignedBoxesCount > 0 || missingBoxesCount === safeQuantity ? (attested ? "border-status-available/40 bg-[#F0FDF8]" : "border-amber-400 bg-amber-50/50") : "border-outline-variant/40 bg-surface-light-grey/40 opacity-70"}`}>
         <input
           type="checkbox"
           name="presenceAttested"
           value="true"
-          disabled={assignedBoxesCount === 0}
-          checked={attested && assignedBoxesCount > 0}
+          disabled={assignedBoxesCount === 0 && missingBoxesCount !== safeQuantity}
+          checked={attested && (assignedBoxesCount > 0 || missingBoxesCount === safeQuantity)}
           onChange={(event) => setAttested(event.target.checked)}
           className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer disabled:cursor-not-allowed accent-primary"
         />
@@ -437,27 +441,27 @@ export function PutawayLocationSelector({
             Step 4 · Confirm
           </span>
           <span className="mt-1 block">
-            {assignedBoxesCount > 0 ? (
+            {assignedBoxesCount > 0 || missingBoxesCount === safeQuantity ? (
               <>
-                I confirm that {assignedBoxesCount} of {safeQuantity} declared boxes{safeSpq > 1 ? ` (${(assignedBoxesCount * safeSpq).toLocaleString()} ${safeUom})` : ""} are physically present and assigned.
+                I confirm that the carton destinations above are accurate.
                 {missingBoxesCount > 0 && ` ${missingBoxesCount} declared box${missingBoxesCount === 1 ? " is" : "es are"} not present; OS&D will record the shortage.`}
               </>
             ) : (
                 <span className="text-text-grey">
-                Select a target location above before attesting and confirming placement.
+                Assign a carton to Storage or Inspection, or mark it Missing, before confirming placement.
               </span>
             )}
           </span>
         </span>
       </label>
 
-      {!readyToStore && (
+      {!readyToCommit && (
         <p role="alert" className="rounded-xl border border-status-pending/40 bg-[#FFF9EB] px-4 py-3 font-body text-body-md text-amber-900">
-          {assignedBoxesCount < assignmentQuantity
-            ? `Assign all ${assignmentQuantity} ${disposition === "inspect" ? "scanned" : "declared"} box${assignmentQuantity === 1 ? "" : "es"} before storing, or use Step 2 to record a shortage.`
+          {assignedBoxesCount === 0 && missingBoxesCount !== safeQuantity
+            ? "Assign each carton to Storage or Inspection, or mark it Missing."
             : missingBoxesCount > 0
-              ? `${missingBoxesCount} declared carton${missingBoxesCount === 1 ? " is" : "s are"} marked Missing. Only the ${assignedBoxesCount} physically present carton${assignedBoxesCount === 1 ? " will" : "s will"} be stored.`
-              : "Confirm that the assigned cartons are physically present before storing."}
+              ? `${missingBoxesCount} declared carton${missingBoxesCount === 1 ? " is" : "s are"} marked Missing. Only the ${assignedBoxesCount} assigned carton${assignedBoxesCount === 1 ? " will" : "s will"} be posted.`
+              : "Confirm the carton destinations before saving placement."}
         </p>
       )}
     </div>

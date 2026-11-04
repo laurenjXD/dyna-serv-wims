@@ -46,7 +46,7 @@ describe("PutawayLocationSelector whole-line receiving", () => {
     fireEvent.focus(screen.getByLabelText("Put all 3 declared boxes in"));
     fireEvent.click(screen.getByRole("button", { name: /B2-05 \(Storage\)/ }));
 
-    expect(screen.getByText(/3 of 3 declared boxes/)).toBeInTheDocument();
+    expect(screen.getByText(/3\/3 Boxes Assigned/)).toBeInTheDocument();
     expect(JSON.parse(unitLocationIds?.value ?? "null")).toEqual(["loc-1", "loc-1", "loc-1"]);
     expect(JSON.parse(allocations?.value ?? "null")).toEqual([
       { locationId: "loc-1", qty: 3 },
@@ -120,7 +120,7 @@ describe("PutawayLocationSelector whole-line receiving", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText(/Split Storage \/ Hold \/ Shortage by quantity/));
+    fireEvent.click(screen.getByText(/Assign Storage \/ Inspection \/ Missing by quantity/));
     fireEvent.focus(screen.getByLabelText("Location 1"));
     fireEvent.click(screen.getByRole("button", { name: /B2-05 \(Storage\)/ }));
     fireEvent.change(screen.getByLabelText("Boxes"), { target: { value: "40" } });
