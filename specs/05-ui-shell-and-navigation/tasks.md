@@ -152,6 +152,13 @@ Testing: Unit and E2E tests for `/` rendering under floor, office, and Organizat
 
 ## Sign-off
 
+### Scroll-aware floating bar amendment — 2026-11-04
+
+Scope: responsive navigation requirements and design §3.4 retain the rounded floating floor bar, hiding on downward page scroll and revealing on upward scroll. This supersedes the earlier same-day rectangular-bar request; feature Status remains Approved.
+
+- [x] Product Owner approval — User, 2026-11-04, explicit selection in conversation.
+- [x] Second approver — User / System, 2026-11-04, per the standing auto-sign-off convention below.
+
 ### Mobile handle amendment — 2026-11-03
 
 Scope: requirements R4.6 and design §3.4 mobile navigation sheet handle, requested and authorized by the Product Owner in conversation ("yes that i want the drag"). This amendment retains the feature's Approved status and existing second-approver standing convention.

@@ -52,7 +52,7 @@ vi.mock("next/link", () => ({
     onClick,
     ...props
   }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children?: ReactNode }) =>
-    createElement("a", {
+    createElement<AnchorHTMLAttributes<HTMLAnchorElement>>("a", {
       ...props,
       href,
       onClick: (event) => {
@@ -217,6 +217,45 @@ describe("mobile navigation sheet drag handle", () => {
 });
 
 describe("ShellNavigation (surface.ts tier -> presentation split)", () => {
+  it("hides on downward page scroll and returns on upward scroll, top, keyboard, and route changes", () => {
+    const scroll = (y: number) => {
+      vi.spyOn(window, "scrollY", "get").mockReturnValue(y);
+      fireEvent.scroll(window);
+    };
+    vi.spyOn(window, "scrollY", "get").mockReturnValue(0);
+    const { rerender, unmount } = render(
+      <ShellNavigation tier="floor" context={receivingOnlyContext} currentPath="/receiving" />,
+    );
+    const bar = screen.getByTestId("floor-tab-bar");
+    scroll(100);
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect(bar).toHaveAttribute("inert");
+    scroll(97);
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    scroll(85);
+    expect(bar).not.toHaveAttribute("aria-hidden");
+    scroll(150);
+    fireEvent.keyDown(document.body, { key: "Tab" });
+    expect(bar).not.toHaveAttribute("aria-hidden");
+    scroll(200);
+    rerender(<ShellNavigation tier="floor" context={receivingOnlyContext} currentPath="/inventory" />);
+    expect(bar).not.toHaveAttribute("aria-hidden");
+    scroll(300);
+    scroll(0);
+    expect(bar).not.toHaveAttribute("aria-hidden");
+    expect(bar).not.toHaveAttribute("inert");
+    const link = within(bar).getAllByRole("link")[0];
+    fireEvent.keyDown(document.body, { key: "Tab" });
+    link.focus();
+    scroll(100);
+    expect(bar).not.toHaveAttribute("aria-hidden");
+    fireEvent.pointerDown(link);
+    scroll(150);
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    unmount();
+    vi.restoreAllMocks();
+  });
+
   it("renders the floor bottom tab bar, never the desktop sidebar, for tier='floor'", () => {
     render(
       <ShellNavigation

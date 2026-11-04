@@ -59,6 +59,8 @@ A feature declares its surface when registering a route. The shell must not infe
 
 ### R4. Responsive navigation
 
+Scroll behavior amendment (Product Owner approved 2026-11-04): Retain the rounded floating floor tab bar. Hide on downward page scroll and reveal on upward scroll or at the top. Keep it visible while More is open or a tab has keyboard focus; Tab reveals hidden navigation. Respect reduced motion, reserve safe-area content clearance, and continue hiding navigation entirely in active scan loops.
+
 1. Office screens SHALL provide the approved desktop sidebar using a Solid White background, Deep Navy (`#0F172A`) active text, Slate (`#64748B`) inactive text, Vibrant Blue (`#2563EB`) active indicator, and real letter-mark logo asset (no diagonal-cut motif).
 1.1. The active destination SHALL combine a persistent blue indicator rail, selected icon treatment, stronger text weight, `aria-current="page"`, and a cool blue-gray selected surface. Desktop pointer hover SHALL provide a restrained background, icon, shadow, and horizontal-motion affordance while keyboard focus remains a distinct 2px blue ring.
 1.2. Navigation groups SHALL have clear visual separation, office rows SHALL be at least 44px high, and the desktop sidebar SHALL include a bounded signed-in identity summary without duplicating account authorization logic.

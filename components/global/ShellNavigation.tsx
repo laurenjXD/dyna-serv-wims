@@ -528,6 +528,49 @@ export function ShellNavigation({
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [activeRoleKeys, setActiveRoleKeys] = useState<readonly string[]>([]);
   const [isMoreOpen, setMoreOpen] = useState(false);
+  const [isTabBarHidden, setTabBarHidden] = useState(false);
+  const tabBarRef = useRef<HTMLElement>(null);
+  const keyboardNavigationRef = useRef(false);
+
+  useEffect(() => {
+    setTabBarHidden(false);
+    if (tier !== "floor") return;
+
+    let previousY = Math.max(0, window.scrollY);
+    let accumulated = 0;
+    function handleScroll() {
+      const y = Math.max(0, window.scrollY);
+      const delta = y - previousY;
+      previousY = y;
+      if (y <= 16 || isMoreOpen || (keyboardNavigationRef.current && tabBarRef.current?.contains(document.activeElement))) {
+        accumulated = 0;
+        setTabBarHidden(false);
+        return;
+      }
+      accumulated = Math.sign(delta) === Math.sign(accumulated) ? accumulated + delta : delta;
+      if (Math.abs(accumulated) >= 10) {
+        setTabBarHidden(accumulated > 0);
+        accumulated = 0;
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Tab") {
+        keyboardNavigationRef.current = true;
+        setTabBarHidden(false);
+      }
+    }
+    function handlePointerDown() {
+      keyboardNavigationRef.current = false;
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [tier, currentPath, isMoreOpen]);
 
   useEffect(() => {
     let active = true;
@@ -605,8 +648,11 @@ export function ShellNavigation({
       <>
         <nav
           data-testid="floor-tab-bar"
+          ref={tabBarRef}
           aria-label="Primary navigation"
-          className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-40 flex items-stretch justify-around overflow-hidden rounded-full border border-border/80 bg-surface/95 shadow-[0_12px_36px_rgba(15,23,42,0.2)] backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none sm:inset-x-6"
+          aria-hidden={isTabBarHidden || undefined}
+          inert={isTabBarHidden}
+          className={`fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-40 flex items-stretch justify-around overflow-hidden rounded-full border border-border/80 bg-surface shadow-[0_12px_36px_rgba(15,23,42,0.2)] transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none sm:inset-x-6 ${isTabBarHidden ? "translate-y-[calc(100%+env(safe-area-inset-bottom)+1rem)] opacity-0 pointer-events-none" : "translate-y-0 opacity-100"}`}
         >
           {primaryFloorEntries.map((entry) => (
             <NavLink key={entry.id} entry={entry} isActive={entry.id === activeId} tier={tier} />

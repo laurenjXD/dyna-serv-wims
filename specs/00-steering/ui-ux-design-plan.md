@@ -108,7 +108,7 @@ Header: An independent horizontal floating pill (radius-full) at the top of the 
 
 Sidebar (Desktop): An independent vertical panel floating on the left side (radius-xl), not touching the screen edges.
 
-Mobile Tabs (Floor): A floating pill (radius-full) sitting 16px above the bottom of the screen. Must hide entirely during active scan flows.
+Mobile Tabs (Floor): A rounded floating bar with a solid surface, 16px outer spacing, and device safe-area clearance. Hide when scrolling down the page and reveal when scrolling back up or reaching the top. Keep available for keyboard navigation and while More is open; respect reduced motion and reserve bottom content clearance. Must hide entirely during active scan flows. Product Owner correction: 2026-11-04, superseding the earlier rectangular-bar request.
 
 Work queue: Filterable office table and floor card-list equivalent.
 

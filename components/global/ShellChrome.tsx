@@ -736,7 +736,7 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         data-surface={tier}
         className={`min-w-0 max-w-full min-h-screen pt-14 transition-[padding-left] duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none lg:pt-[76px] print:!min-h-0 print:!p-0 print:!m-0 ${
           isDesktopOpen ? "lg:pl-[272px]" : "lg:pl-[72px]"
-        } ${showFloorTabBar ? "pb-20" : "lg:pb-6"} ${
+        } ${showFloorTabBar ? "pb-[calc(5rem+env(safe-area-inset-bottom))]" : "lg:pb-6"} ${
           tier === "floor" ? "bg-surface" : "bg-background"
         }`}
       >

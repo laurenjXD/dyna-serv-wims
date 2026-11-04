@@ -140,6 +140,10 @@ The table below lists every authenticated route planned at launch. Each route na
 
 ### 3.4 Application state catalog
 
+#### Scroll-aware floor tab bar (2026-11-04)
+
+Retain the rounded, solid floating bar with 16px outer spacing and device safe-area clearance. Listen passively to window scrolling; after 10px of directional movement, hide on downward scroll and reveal on upward scroll. Keep it visible within 16px of the top, after route changes, while More is open, or while a tab has keyboard focus. Ignore nested list scrolling. Hidden tabs are inert and excluded from accessibility navigation; Tab reveals the bar again. Animate translation/opacity over 200ms and disable transitions for reduced motion. Reserve bottom content padding for the bar, outer gap, and safe area.
+
 #### Mobile navigation sheet handle (2026-11-03)
 
 The existing bottom-sheet presentation shared by the floor More menu and narrow office navigation gains an interactive top handle. Use local presentation state only: initial 85dvh, settled heights 55/85/95dvh, and live pixel height during a gesture. Capture the primary pointer on the handle; isolate `touch-action: none` to that handle so the navigation list retains native vertical scrolling. Ignore secondary pointers and non-primary mouse buttons. On release, close below 35% viewport height, otherwise select the nearest settled height. Pointer cancellation or lost capture restores the pre-gesture settled height without closing. Disable height transitions during dragging; settled transitions respect reduced motion. Preserve list `min-height: 0`, contained vertical scrolling, and safe-area bottom spacing.
