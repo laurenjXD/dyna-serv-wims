@@ -29,7 +29,7 @@ import {
 } from "@/lib/actions/approvals";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { approvalRequests } from "@/lib/db/schema/approvals";
-import { eq, and, isNull, isNotNull, lte, sql } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, sql } from "drizzle-orm";
 import { ApprovalsFilterableTable } from "./_components/ApprovalsFilterableTable";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -96,8 +96,8 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   const approvalType =
     typeFilter && typeFilter !== "all" ? typeFilter : undefined;
 
-  // Load requests, stock balance rows for create-override modal, and metric aggregates in parallel
-  const [requestData, stockRows, metricCounts] = await Promise.all([
+  // Load requests and stock balance rows for create-override modal in parallel.
+  const [requestData, stockRows] = await Promise.all([
     (async () => {
       try {
         return await listApprovalQueueRequests(db, {
@@ -120,50 +120,67 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
       }
     })(),
     listStockView(db).catch(() => [] as StockViewRow[]),
-    (async () => {
-      try {
-        const now = new Date();
-        const [pendingRow] = await db
-          .select({ count: sql<string>`count(*)` })
-          .from(approvalRequests)
-          .where(
-            and(
-              isNull(approvalRequests.deletedAt),
-              eq(approvalRequests.status, "pending"),
-              sql`${approvalRequests.expiryAt} > ${now}`,
-            ),
-          );
-        const [expiredRow] = await db
-          .select({ count: sql<string>`count(*)` })
-          .from(approvalRequests)
-          .where(
-            and(
-              isNull(approvalRequests.deletedAt),
-              sql`(${approvalRequests.status} = 'expired' OR (${approvalRequests.status} = 'pending' AND ${approvalRequests.expiryAt} <= ${now}))`,
-            ),
-          );
-        const [archivedRow] = await db
-          .select({ count: sql<string>`count(*)` })
-          .from(approvalRequests)
-          .where(isNotNull(approvalRequests.deletedAt));
-        const [approvedRow] = await db
-          .select({ count: sql<string>`count(*)` })
-          .from(approvalRequests)
-          .where(eq(approvalRequests.status, "approved"));
-
-        return {
-          pending: Number(pendingRow?.count ?? 0),
-          expired: Number(expiredRow?.count ?? 0),
-          archived: Number(archivedRow?.count ?? 0),
-          approved: Number(approvedRow?.count ?? 0),
-        };
-      } catch {
-        return { pending: 0, expired: 0, archived: 0, approved: 0 };
-      }
-    })(),
   ]);
 
   const { rows, total } = requestData;
+
+  // Counts are authoritative database aggregates. If an older environment is
+  // missing the soft-archive column, keep visible requests represented in the
+  // cards instead of silently replacing every metric with false zeroes.
+  const now = new Date();
+  const visiblePending = rows.filter(
+    (row) => row.status === "pending" && row.expiryAt.getTime() > now.getTime(),
+  ).length;
+  const visibleExpired = rows.filter(
+    (row) => row.status === "expired" || (row.status === "pending" && row.expiryAt.getTime() <= now.getTime()),
+  ).length;
+  const visibleApproved = rows.filter((row) => row.status === "approved").length;
+
+  let metricCounts = {
+    pending: visiblePending,
+    expired: visibleExpired,
+    archived: showDeleted ? total : 0,
+    approved: visibleApproved,
+  };
+  try {
+    const [pendingRow] = await db
+      .select({ count: sql<string>`count(*)` })
+      .from(approvalRequests)
+      .where(
+        and(
+          isNull(approvalRequests.deletedAt),
+          eq(approvalRequests.status, "pending"),
+          sql`${approvalRequests.expiryAt} > ${now}`,
+        ),
+      );
+    const [expiredRow] = await db
+      .select({ count: sql<string>`count(*)` })
+      .from(approvalRequests)
+      .where(
+        and(
+          isNull(approvalRequests.deletedAt),
+          sql`(${approvalRequests.status} = 'expired' OR (${approvalRequests.status} = 'pending' AND ${approvalRequests.expiryAt} <= ${now}))`,
+        ),
+      );
+    const [archivedRow] = await db
+      .select({ count: sql<string>`count(*)` })
+      .from(approvalRequests)
+      .where(isNotNull(approvalRequests.deletedAt));
+    const [approvedRow] = await db
+      .select({ count: sql<string>`count(*)` })
+      .from(approvalRequests)
+      .where(eq(approvalRequests.status, "approved"));
+
+    metricCounts = {
+      pending: Math.max(Number(pendingRow?.count ?? 0), visiblePending),
+      expired: Math.max(Number(expiredRow?.count ?? 0), visibleExpired),
+      archived: Math.max(Number(archivedRow?.count ?? 0), showDeleted ? total : 0),
+      approved: Math.max(Number(approvedRow?.count ?? 0), visibleApproved),
+    };
+  } catch {
+    // Keep the visible-row fallback above. A metric read failure must not make
+    // an existing request appear to disappear as a zero-count queue.
+  }
 
   // ─── Server Actions ──────────────────────────────────────────────────────────
 

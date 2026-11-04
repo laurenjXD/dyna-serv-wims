@@ -8,6 +8,7 @@ import { vmiPermits } from "@/lib/db/schema/vmi_billing";
 import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "../print/_components/PickListPrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
+import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
 import { getDocumentTemplate } from "@/lib/documents/document-template";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
@@ -95,33 +96,25 @@ export default async function DeliveryReceiptPage({
       </div>
 
       <article className="mx-auto max-w-[1500px] rounded-xl border border-slate-300 bg-surface-white p-6 shadow-elevation-2 print:max-w-none print:border-0 print:p-0 print:shadow-none">
-        {/* Document Header */}
-        <header className="border-b-2 border-slate-800 pb-3">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={template.logoUrl || "/logo-hd.png"} alt={template.companyName} className="h-7 w-auto object-contain" />
-                <div>
-                  <h1 className="font-heading font-bold text-xs uppercase tracking-wider text-slate-800 leading-none">
-                    {template.companyName}
-                  </h1>
-                  <p className="mt-0.5 font-heading text-sm font-extrabold uppercase tracking-wide text-brand-navy">
-                    Official Acknowledgement Receipt (Delivery Proof)
-                  </p>
-                </div>
-              </div>
-              <p className="mt-1 font-mono text-[10px] text-slate-500">
-                Official Carrier Dock Handover &amp; Custody Turnover Record
-              </p>
-            </div>
-
-            <div className="text-right">
-              <p className="font-mono text-[10px] uppercase font-bold text-slate-500">Delivery Receipt No.</p>
-              <p className="font-mono text-xs font-black text-brand-navy">DR-{pickList.pickListNumber.replace(/^PL-/, "")}</p>
-              <p className="font-mono text-[10px] text-slate-500">Pick List Ref: {pickList.pickListNumber}</p>
-            </div>
-          </div>
+        <header>
+          <MasterDocumentHeader
+            documentTitle="Official Acknowledgement Receipt (Delivery Proof)"
+            documentNumber={`DR-${pickList.pickListNumber.replace(/^PL-/, "")}`}
+            documentDate={pickList.createdAt}
+            status={pickList.status.toUpperCase()}
+            companyName={template.companyName}
+            logoUrl={template.logoUrl}
+            subtitle="Official carrier custody handover and delivery record"
+            facilityAddress={template.facilityAddress}
+            contactInfo={template.contactInfo}
+            taxOrPezaReg={template.taxOrPezaReg}
+            isoAccreditation={template.isoAccreditation}
+            headerAlignment={template.headerAlignment}
+            titleAlignment={template.titleAlignment}
+            orientation="landscape"
+            showPrintButton={false}
+            documentQrValue={pickList.pickListNumber}
+          />
 
           {/* Delivery & Logistics Details Grid */}
           <div className="mt-3 grid grid-cols-2 gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 font-mono text-[11px] sm:grid-cols-4">

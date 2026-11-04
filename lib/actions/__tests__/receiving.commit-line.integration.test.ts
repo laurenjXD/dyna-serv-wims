@@ -8,21 +8,17 @@
 //     end-of-WRR atomic gate.
 //   specs/07-incoming-receiving/design.md §9 — Receipt commit and
 //     idempotency ("Reversed 2026-08-10 ..."). Each line's commit is its own
-//     atomic transaction, immediately on "Store"/"Hold"; the WRR only
+//     atomic transaction, immediately on carton-placement confirmation; the WRR only
 //     reaches `confirmed` once every line has reached a terminal committed
-//     state. §6.2 (store: staff accepts/overrides a suggested location at
-//     scan time) and §6.3 (inspect/"Hold": staff selects/confirms the active
-//     inspection location BEFORE scanning) — both dispositions therefore
-//     receive an explicit, staff-supplied `locationId` from the caller; see
-//     the DESIGN DECISION note below.
+//     state. §6.2d assigns each declared carton to Storage, Inspection, or
+//     Missing before that commit.
 //   specs/07-incoming-receiving/requirements.md (amended 2026-08-10):
 //     R7.1 — each line's commit SHALL be an explicit, authorized server
 //       command executed per line, not gated on every other line being
 //       ready.
 //     R7.2 — each per-line commit SHALL atomically validate that line's scan
-//       totals, conformance decisions, disposition value, and (for store)
-//       the target location's active `storage` state — or (for inspect) the
-//       confirmed `inspection` location — before posting that line alone.
+//       totals, conformance decisions, indexed carton destinations, and every
+//       assigned location's active/type state before posting that line alone.
 //     R7.3 — successful commit creates the approved lot/lot state and one
 //       immutable `inventory_transactions` row (`movement_type='receiving'`)
 //       for that line; the WRR transitions to `confirmed` only once every
@@ -35,16 +31,9 @@
 //     in force) — all mutations require authenticated, authorized user
 //     (receiving.confirm).
 //
-// DESIGN DECISION (this RED step, since design.md §9's prose does not fix an
-// exact TypeScript signature): commitWrrLine takes an explicit
-// `{ locationId: string }` param for BOTH `store` and `inspect` lines, not
-// just `store`. design.md §6.3 states inspect/"Hold" lines have staff
-// "select/confirm" the active inspection location BEFORE scanning — i.e.
-// staff-supplied, exactly like store's accepted/overridden location per
-// §6.2 — so this test file does NOT expect the action to auto-resolve "the
-// one active inspection location" the way the OLD commitWrr's
-// resolveCommitLocations() did. That auto-resolution behavior belongs to the
-// old, now-reversed atomic-WRR-gate model and should not carry over.
+// DESIGN DECISION: commitWrrLine accepts indexed `unitLocationIds`, where an
+// empty slot represents Missing. Storage and Inspection locations are supplied
+// by the floor placement UI and validated by type before posting.
 //
 // ---------------------------------------------------------------------------
 // Expected module contract for lib/actions/receiving.ts's commitWrrLine (for
@@ -59,7 +48,7 @@
 //     db: DbLike,
 //     wrrId: string,
 //     wrrItemId: string,
-//     params: { locationId: string },
+//     params: { locationId?: string; unitLocationIds?: string[]; presenceAttested?: boolean },
 //   ): Promise<CommitWrrLineResult>;
 //
 // Internally, commitWrrLine is expected to call
@@ -448,6 +437,69 @@ describe.skipIf(!hasLiveDb)(
         ORDER BY qty_received
       `;
       expect(balanceRows.map((row) => Number(row.qty_received))).toEqual([2, 3]);
+    });
+
+    it("(AC 2026-11-04) derives carton outcomes from destinations and splits mixed Storage/Inspection placement into available and quarantined lot segments", async () => {
+      const { commitWrrLine } = await import("../receiving");
+      const { wrrId, lineIds } = await createWrrFixture([
+        { lotNumber: "LOT-MIXED", expectedQty: 4, scannedQty: 1, disposition: "store" },
+      ]);
+
+      const result = await commitWrrLine(
+        authorizedConfirmResolver(),
+        wrrId,
+        lineIds[0],
+        {
+          unitLocationIds: [storageLocationId, inspectionLocationId, "", storageLocationId],
+          presenceAttested: true,
+        },
+        await rlsDepsFor(confirmContext.userId),
+      );
+
+      expect(result.ok).toBe(true);
+
+      const lotRows = await sql`SELECT id, status FROM lots WHERE wrr_item_id = ${lineIds[0]} ORDER BY status`;
+      expect(lotRows).toHaveLength(2);
+      expect(lotRows.map((row) => row.status)).toEqual(["available", "quarantined"]);
+
+      const unitRows = await sql`
+        SELECT location_id, status FROM inventory_units
+        WHERE wrr_item_id = ${lineIds[0]} ORDER BY unit_index
+      `;
+      expect(unitRows).toHaveLength(3);
+      expect(unitRows.map((row) => row.location_id)).toEqual([storageLocationId, inspectionLocationId, storageLocationId]);
+      expect(unitRows.map((row) => row.status)).toEqual(["available", "quarantined", "available"]);
+
+      const caseRows = await sql`
+        SELECT lot_id FROM inspection_cases
+        WHERE source_ref_type = 'wrr_item' AND source_ref_id = ${lineIds[0]}
+      `;
+      expect(caseRows).toHaveLength(1);
+      expect(caseRows[0].lot_id).toBe(lotRows.find((row) => row.status === "quarantined")?.id);
+    });
+
+    it("(AC 2026-11-04) commits an all-Missing placement as an OS&D shortage without creating inventory", async () => {
+      const { commitWrrLine } = await import("../receiving");
+      const { wrrId, lineIds } = await createWrrFixture([
+        { lotNumber: "LOT-ALL-MISSING", expectedQty: 3, scannedQty: 1, disposition: "store" },
+      ]);
+
+      const result = await commitWrrLine(
+        authorizedConfirmResolver(),
+        wrrId,
+        lineIds[0],
+        { unitLocationIds: ["", "", ""], presenceAttested: true },
+        await rlsDepsFor(confirmContext.userId),
+      );
+
+      expect(result.ok).toBe(true);
+      expect(await sql`SELECT id FROM lots WHERE wrr_item_id = ${lineIds[0]}`).toHaveLength(0);
+      expect(await sql`SELECT id FROM inventory_units WHERE wrr_item_id = ${lineIds[0]}`).toHaveLength(0);
+      const discrepancyRows = await sql`
+        SELECT expected_cartons, received_cartons, missing_cartons
+        FROM receiving_discrepancies WHERE wrr_item_id = ${lineIds[0]}
+      `;
+      expect(discrepancyRows).toEqual([{ expected_cartons: 3, received_cartons: 0, missing_cartons: 3 }]);
     });
 
     // -----------------------------------------------------------------

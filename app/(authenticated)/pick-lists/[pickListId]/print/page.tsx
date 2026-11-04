@@ -46,7 +46,7 @@ export default async function PickListPrintPage({
 
   return (
     <main data-document-root className="mx-auto w-full max-w-7xl bg-surface-white pb-10 print:max-w-none print:p-0">
-      <DocumentPrintStyles orientation="portrait" />
+      <DocumentPrintStyles orientation="landscape" />
       {/* Print media rules */}
       <style
         dangerouslySetInnerHTML={{
@@ -66,7 +66,7 @@ export default async function PickListPrintPage({
                 width: 100% !important;
               }
               @page {
-                size: A4 portrait;
+                size: A4 landscape;
                 margin: 10mm 12mm 12mm 12mm;
               }
               table {
@@ -121,7 +121,7 @@ export default async function PickListPrintPage({
           isoAccreditation={template.isoAccreditation}
           headerAlignment={template.headerAlignment}
           titleAlignment={template.titleAlignment}
-          orientation="portrait"
+          orientation="landscape"
           showPrintButton={false}
           documentQrValue={pickList.pickListNumber}
         />

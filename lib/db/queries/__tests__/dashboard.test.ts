@@ -58,11 +58,11 @@ describe("Dashboard Query Layer", () => {
     }
   });
 
-  it("getDashboardHeatmapData returns 31-day activity grid", async () => {
-    const heatmap = await getDashboardHeatmapData();
+  it("getDashboardHeatmapData returns the requested calendar-month activity grid", async () => {
+    const heatmap = await getDashboardHeatmapData({ year: 2026, month: 11 });
     expect(Array.isArray(heatmap)).toBe(true);
     if (heatmap.length > 0) {
-      expect(heatmap[0].length).toBe(31);
+      expect(heatmap[0].length).toBe(30);
       expect(heatmap[0][0]).toHaveProperty("binRow");
       expect(heatmap[0][0]).toHaveProperty("day");
       expect(heatmap[0][0]).toHaveProperty("auditRecord");

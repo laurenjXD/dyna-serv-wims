@@ -977,7 +977,7 @@ export function ApprovalsFilterableTable({
                     Expired Request Maintenance
                   </span>
                   <p className="text-xs text-text-grey">
-                    This request has passed its 30-minute validity window and can be moved to the permanent archive queue.
+                    This request has passed its 24-hour validity window and can be moved to the permanent archive queue.
                   </p>
                   <button
                     type="submit"

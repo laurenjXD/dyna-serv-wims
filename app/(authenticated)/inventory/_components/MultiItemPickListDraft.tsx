@@ -538,6 +538,7 @@ export function MultiItemPickListDraft({
   // the organization, model, and required recipient are selected; additional
   // rows are added only after the first row becomes available for entry.
   const [lines, setLines] = useState<DraftLine[]>(() => [blankDraftLine("draft-line-1")]);
+  const [openAllocationLineIds, setOpenAllocationLineIds] = useState<Set<string>>(() => new Set());
   const [importingDra, setImportingDra] = useState(false);
   const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string; details?: string[] } | null>(null);
   const visibleCustomers = useMemo(() => customers.filter((customer) =>
@@ -680,6 +681,8 @@ export function MultiItemPickListDraft({
     const detail = lineDetails.find(({ line }) => line.id === lineId);
     if (!detail) return;
 
+    setOpenAllocationLineIds((current) => new Set(current).add(lineId));
+
     if (detail.line.manualSplit) {
       const fixedSource = detail.item?.sources[0] ?? null;
       updateLine(lineId, {
@@ -816,8 +819,26 @@ export function MultiItemPickListDraft({
 
   const addLine = () => setLines((current) => [...current, blankDraftLine(crypto.randomUUID())]);
   const updateLine = (id: string, patch: Partial<DraftLine>) => setLines((current) => current.map((line) => line.id === id ? { ...line, ...patch } : line));
-  const removeLine = (id: string) => setLines((current) => current.filter((line) => line.id !== id));
-  const resetDraft = () => setLines([blankDraftLine(crypto.randomUUID())]);
+  const removeLine = (id: string) => {
+    setLines((current) => current.filter((line) => line.id !== id));
+    setOpenAllocationLineIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  };
+  const resetDraft = () => {
+    setLines([blankDraftLine(crypto.randomUUID())]);
+    setOpenAllocationLineIds(new Set());
+  };
+  const toggleAllocationDetails = (lineId: string) => {
+    setOpenAllocationLineIds((current) => {
+      const next = new Set(current);
+      if (next.has(lineId)) next.delete(lineId);
+      else next.add(lineId);
+      return next;
+    });
+  };
   const handleOrganization = (value: string) => {
     setOrganizationId(value);
     resetDraft();
@@ -1373,45 +1394,81 @@ export function MultiItemPickListDraft({
                             type="button"
                             onClick={() => handleManualSplitToggle(line.id)}
                             disabled={!canEditLines}
-                            className="font-label text-[11px] font-bold text-brand-navy underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                            className="inline-flex min-h-11 items-center rounded-lg px-2 font-label text-[11px] font-bold text-brand-navy underline-offset-2 hover:bg-white hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:text-slate-400"
                           >
                             {line.manualSplit ? "Use fixed location" : "Split quantities manually"}
                           </button>
                         )}
                       </div>
-                      {!line.manualSplit ? (
-                        <>
-                          <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm font-normal text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
-                            <option value="">Select a fixed location</option>
-                            {item?.sources.map((source) => {
-                              const lotRank = allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank;
-                              return (
-                              <option key={source.balanceId} value={source.balanceId}>
-                                {source.locationLabel} · Lot #{lotRank ?? "—"} {source.lotNumber} · {availableBoxesForSource(source)} boxes{lotRank === 1 ? " · Recommended" : " · Supervisor approval"}
-                              </option>
-                              );
-                            })}
-                          </select>
-                          <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-sm font-normal text-slate-700">
-                            {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
-                              <div key={source.balanceId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                                <span className="truncate">{boxes} boxes from {source.locationLabel} <span className="text-slate-500">· Lot {source.lotNumber}</span></span>
-                              </div>
-                            )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
+                      {requestedBoxes !== null && item && (
+                        <div aria-label="Allocation summary" className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-body text-[11px] leading-4 text-slate-600">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-label text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Current allocation</p>
+                              <p className="mt-1 truncate text-sm font-semibold text-slate-800" title={fifoAllocations.map(({ source }) => source.locationLabel).join(", ") || undefined}>
+                                {fifoAllocations.length > 0
+                                  ? fifoAllocations.map(({ source, boxes }) => `${boxes} box${boxes === 1 ? "" : "es"} · ${source.locationLabel}`).join(", ")
+                                  : "No location allocated yet"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleAllocationDetails(line.id)}
+                              aria-expanded={openAllocationLineIds.has(line.id)}
+                              aria-controls={`allocation-editor-mobile-${line.id}`}
+                              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 font-label text-[11px] font-bold text-brand-navy hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:text-slate-400"
+                            >
+                              {openAllocationLineIds.has(line.id) ? "Hide details" : "Edit allocation"}
+                              <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${openAllocationLineIds.has(line.id) ? "rotate-180" : ""}`} />
+                            </button>
                           </div>
-                        </>
-                      ) : (
-                        <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
-                          <p className="text-[11px] font-semibold leading-4 text-slate-600">{allocationPlan?.strategy ?? "FIFO"} is applied automatically across lots. Adjust the locations below if needed.</p>
-                          <AllocationRankPlan
-                            plan={allocationPlan}
-                            sources={item?.sources ?? []}
-                            allocations={line.manualAllocations}
-                            requestedBoxes={requestedBoxes}
-                            disabled={!canEditLines}
-                            onToggle={(balanceId) => handleManualLocationToggle(line.id, balanceId)}
-                            onChange={(balanceId, value) => handleManualAllocationChange(line.id, balanceId, value)}
-                          />
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            <span><strong className="text-slate-800">Requested:</strong> {requestedBoxes}</span>
+                            <span><strong className="text-slate-800">Available:</strong> {totalAvailableBoxes}</span>
+                            <span><strong className="text-slate-800">Allocated:</strong> {allocatedBoxes}</span>
+                            <span><strong className="text-slate-800">Remaining:</strong> {Math.max(0, totalAvailableBoxes - allocatedBoxes)}</span>
+                            {allocationShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Unallocated:</strong> {allocationShortageBoxes}</span>}
+                            {stockShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Stock short:</strong> {stockShortageBoxes}</span>}
+                          </div>
+                        </div>
+                      )}
+                      {openAllocationLineIds.has(line.id) && (
+                        <div id={`allocation-editor-mobile-${line.id}`} className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-3 font-normal">
+                          {!line.manualSplit ? (
+                            <>
+                              <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                                <option value="">Select a fixed location</option>
+                                {item?.sources.map((source) => {
+                                  const lotRank = allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank;
+                                  return (
+                                  <option key={source.balanceId} value={source.balanceId}>
+                                    {source.locationLabel} · Lot #{lotRank ?? "—"} {source.lotNumber} · {availableBoxesForSource(source)} boxes{lotRank === 1 ? " · Recommended" : " · Supervisor approval"}
+                                  </option>
+                                  );
+                                })}
+                              </select>
+                              <div className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 font-body text-sm text-slate-700">
+                                {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
+                                  <div key={source.balanceId} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                                    <span className="truncate">{boxes} boxes from {source.locationLabel} <span className="text-slate-500">· Lot {source.lotNumber}</span></span>
+                                  </div>
+                                )) : <span className="text-slate-400">{!item ? "Select item code first" : !hasWholeCartonQuantity ? "Enter a whole number of boxes" : "No FIFO source can fulfill this quantity"}</span>}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-[11px] font-semibold leading-4 text-slate-600">{allocationPlan?.strategy ?? "FIFO"} is applied automatically across lots. Adjust the locations below if needed.</p>
+                              <AllocationRankPlan
+                                plan={allocationPlan}
+                                sources={item?.sources ?? []}
+                                allocations={line.manualAllocations}
+                                requestedBoxes={requestedBoxes}
+                                disabled={!canEditLines}
+                                onToggle={(balanceId) => handleManualLocationToggle(line.id, balanceId)}
+                                onChange={(balanceId, value) => handleManualAllocationChange(line.id, balanceId, value)}
+                              />
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1423,17 +1480,6 @@ export function MultiItemPickListDraft({
                             ? `Short ${requestedBoxes - allocatedBoxes} boxes: ${requestedBoxes} requested, ${totalAvailableBoxes} available. Add/receive stock or intentionally adjust the request.`
                             : `${requestedBoxes - allocatedBoxes} requested boxes still need a location. Add a location or complete the split.`}
                       </p>
-                    )}
-                    {requestedBoxes !== null && item && (
-                      <div aria-label="Allocation summary" className="flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-body text-[11px] leading-4 text-slate-600">
-                        <span><strong className="text-slate-800">Requested:</strong> {requestedBoxes}</span>
-                        <span><strong className="text-slate-800">Available:</strong> {totalAvailableBoxes}</span>
-                        {selectedSource && <span><strong className="text-slate-800">Selected:</strong> {selectedAvailableBoxes} at {selectedSource.locationLabel}</span>}
-                        <span><strong className="text-slate-800">Allocated:</strong> {allocatedBoxes}</span>
-                        <span><strong className="text-slate-800">Remaining:</strong> {Math.max(0, totalAvailableBoxes - allocatedBoxes)}</span>
-                        {allocationShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Unallocated:</strong> {allocationShortageBoxes}</span>}
-                        {stockShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Stock short:</strong> {stockShortageBoxes}</span>}
-                      </div>
                     )}
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
@@ -1560,45 +1606,81 @@ export function MultiItemPickListDraft({
                             type="button"
                             onClick={() => handleManualSplitToggle(line.id)}
                             disabled={!canEditLines}
-                            className="font-label text-[10px] font-bold text-brand-navy underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+                            className="inline-flex min-h-11 items-center rounded-lg px-2 font-label text-[10px] font-bold text-brand-navy underline-offset-2 hover:bg-slate-50 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:text-slate-400"
                           >
                             {line.manualSplit ? "Use fixed location" : "Split quantities manually"}
                           </button>
                         )}
                       </div>
-                      {!line.manualSplit ? (
-                        <>
-                          <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
-                            <option value="">Select a fixed location</option>
-                            {item?.sources.map((source) => {
-                              const lotRank = allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank;
-                              return (
-                              <option key={source.balanceId} value={source.balanceId}>
-                                {source.locationLabel} · Lot #{lotRank ?? "—"} {source.lotNumber} · {availableBoxesForSource(source)} boxes{lotRank === 1 ? " · Recommended" : " · Approval"}
-                              </option>
-                              );
-                            })}
-                          </select>
-                        <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-700">
-                            {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
-                              <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
-                              <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{boxes} boxes from {source.locationLabel} · Lot {source.lotNumber}</span>
-                              </div>
-                            )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
+                      {requestedBoxes !== null && item && (
+                        <div aria-label="Allocation summary" className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-body text-[11px] leading-4 text-slate-600">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-label text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">Current allocation</p>
+                              <p className="mt-1 truncate text-sm font-semibold text-slate-800" title={fifoAllocations.map(({ source }) => source.locationLabel).join(", ") || undefined}>
+                                {fifoAllocations.length > 0
+                                  ? fifoAllocations.map(({ source, boxes }) => `${boxes} box${boxes === 1 ? "" : "es"} · ${source.locationLabel}`).join(", ")
+                                  : "No location allocated yet"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleAllocationDetails(line.id)}
+                              aria-expanded={openAllocationLineIds.has(line.id)}
+                              aria-controls={`allocation-editor-desktop-${line.id}`}
+                              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 font-label text-[11px] font-bold text-brand-navy hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy disabled:cursor-not-allowed disabled:text-slate-400"
+                            >
+                              {openAllocationLineIds.has(line.id) ? "Hide details" : "Edit allocation"}
+                              <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${openAllocationLineIds.has(line.id) ? "rotate-180" : ""}`} />
+                            </button>
                           </div>
-                        </>
-                      ) : (
-                        <div className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
-                          <p className="font-body text-[11px] leading-4 text-slate-600">{allocationPlan?.strategy ?? "FIFO"} is applied automatically across lots. Adjust the locations below if needed.</p>
-                          <AllocationRankPlan
-                            plan={allocationPlan}
-                            sources={item?.sources ?? []}
-                            allocations={line.manualAllocations}
-                            requestedBoxes={requestedBoxes}
-                            disabled={!canEditLines}
-                            onToggle={(balanceId) => handleManualLocationToggle(line.id, balanceId)}
-                            onChange={(balanceId, value) => handleManualAllocationChange(line.id, balanceId, value)}
-                          />
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            <span><strong className="text-slate-800">Requested:</strong> {requestedBoxes}</span>
+                            <span><strong className="text-slate-800">Available:</strong> {totalAvailableBoxes}</span>
+                            <span><strong className="text-slate-800">Allocated:</strong> {allocatedBoxes}</span>
+                            <span><strong className="text-slate-800">Remaining:</strong> {Math.max(0, totalAvailableBoxes - allocatedBoxes)}</span>
+                            {allocationShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Unallocated:</strong> {allocationShortageBoxes}</span>}
+                            {stockShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Stock short:</strong> {stockShortageBoxes}</span>}
+                          </div>
+                        </div>
+                      )}
+                      {openAllocationLineIds.has(line.id) && (
+                        <div id={`allocation-editor-desktop-${line.id}`} className="grid gap-2 rounded-xl border border-brand-navy/15 bg-brand-navy/[0.03] p-2.5">
+                          {!line.manualSplit ? (
+                            <>
+                              <select aria-label="Automatic source strategy" value={line.sourceBalanceId} onChange={(event) => handleSourceChange(line.id, event.target.value)} disabled={!canEditLines || !item} className="mb-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 font-body text-sm text-slate-900 outline-none transition-colors focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 disabled:bg-slate-50">
+                                <option value="">Select a fixed location</option>
+                                {item?.sources.map((source) => {
+                                  const lotRank = allocationPlan?.lots.find((lot) => lot.lotId === source.lotId)?.rank;
+                                  return (
+                                  <option key={source.balanceId} value={source.balanceId}>
+                                    {source.locationLabel} · Lot #{lotRank ?? "—"} {source.lotNumber} · {availableBoxesForSource(source)} boxes{lotRank === 1 ? " · Recommended" : " · Approval"}
+                                  </option>
+                                  );
+                                })}
+                              </select>
+                              <div className="min-h-10 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 font-body text-xs text-slate-700">
+                                {fifoAllocations.length > 0 ? fifoAllocations.map(({ source, boxes }) => (
+                                  <div key={source.balanceId} className="flex items-center justify-between gap-3 leading-5">
+                                    <span className="truncate" title={`${source.locationLabel} · ${source.lotNumber}`}>{boxes} boxes from {source.locationLabel} · Lot {source.lotNumber}</span>
+                                  </div>
+                                )) : <span className="text-slate-400">{!item ? "Select item" : !hasWholeCartonQuantity ? `Qty ÷ SPQ must be whole (${item.spq})` : "No FIFO source"}</span>}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-body text-[11px] leading-4 text-slate-600">{allocationPlan?.strategy ?? "FIFO"} is applied automatically across lots. Adjust the locations below if needed.</p>
+                              <AllocationRankPlan
+                                plan={allocationPlan}
+                                sources={item?.sources ?? []}
+                                allocations={line.manualAllocations}
+                                requestedBoxes={requestedBoxes}
+                                disabled={!canEditLines}
+                                onToggle={(balanceId) => handleManualLocationToggle(line.id, balanceId)}
+                                onChange={(balanceId, value) => handleManualAllocationChange(line.id, balanceId, value)}
+                              />
+                            </>
+                          )}
                         </div>
                       )}
                       {!line.manualSplit && fifoAllocations.length > 0 && (
@@ -1614,17 +1696,6 @@ export function MultiItemPickListDraft({
                               ? `Short ${requestedBoxes - allocatedBoxes} boxes: ${requestedBoxes} requested, ${totalAvailableBoxes} available. Add/receive stock or intentionally adjust the request.`
                               : `${requestedBoxes - allocatedBoxes} requested boxes still need a location. Add a location or complete the split.`}
                         </p>
-                      )}
-                      {requestedBoxes !== null && item && (
-                        <div aria-label="Allocation summary" className="mt-2 flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 font-body text-[11px] leading-4 text-slate-600">
-                          <span><strong className="text-slate-800">Requested:</strong> {requestedBoxes}</span>
-                          <span><strong className="text-slate-800">Available:</strong> {totalAvailableBoxes}</span>
-                          {selectedSource && <span><strong className="text-slate-800">Selected:</strong> {selectedAvailableBoxes} at {selectedSource.locationLabel}</span>}
-                          <span><strong className="text-slate-800">Allocated:</strong> {allocatedBoxes}</span>
-                          <span><strong className="text-slate-800">Remaining:</strong> {Math.max(0, totalAvailableBoxes - allocatedBoxes)}</span>
-                          {allocationShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Unallocated:</strong> {allocationShortageBoxes}</span>}
-                          {stockShortageBoxes > 0 && <span className="font-semibold text-amber-700"><strong>Stock short:</strong> {stockShortageBoxes}</span>}
-                        </div>
                       )}
                       {requiresOverride && <p className="mt-1 text-[11px] font-semibold leading-4 text-amber-700">{selectedSource ? "Supervisor approval required for this source." : "Supervisor approval required for one or more selected sources."}</p>}
                     </td>

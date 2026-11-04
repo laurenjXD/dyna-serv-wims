@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from "react";
 import {
   Calendar,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Info,
   Flame,
   Clock,
@@ -15,19 +16,30 @@ import { DayAuditDrawer } from "./DayAuditDrawer";
 interface MonthlyHeatmapProps {
   initialGrid?: HeatmapCellDatum[][];
   preview?: boolean;
+  selectedMonth?: { year: number; month: number };
 }
 
-const MONTHS = [
-  { name: "Aug 2026", key: "Aug", year: 2026 },
-  { name: "Jul 2026", key: "Jul", year: 2026 },
-  { name: "Jun 2026", key: "Jun", year: 2026 },
-];
+type HeatmapMonth = { year: number; month: number };
 
-export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapProps) {
-  const [selectedMonth, setSelectedMonth] = useState("Aug 2026");
+function formatMonth({ year, month }: HeatmapMonth) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" })
+    .format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function shiftMonth({ year, month }: HeatmapMonth, delta: number): HeatmapMonth {
+  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+}
+
+export function MonthlyHeatmap({ initialGrid, preview = false, selectedMonth }: MonthlyHeatmapProps) {
+  const activeMonth = selectedMonth ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+  const activeMonthLabel = formatMonth(activeMonth);
+  const currentMonth = { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+  const nextMonth = shiftMonth(activeMonth, 1);
+  const canAdvanceMonth = nextMonth.year < currentMonth.year
+    || (nextMonth.year === currentMonth.year && nextMonth.month <= currentMonth.month);
   const [metricView, setMetricView] = useState<HeatmapMetricView>("pickActivity");
   const [selectedAuditRecord, setSelectedAuditRecord] = useState<BinAuditRecord | null>(null);
-  const [showMonthMenu, setShowMonthMenu] = useState(false);
   const [mobileSelectedBin, setMobileSelectedBin] = useState("A1-01");
 
   const gridData = useMemo(() => {
@@ -37,6 +49,16 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
       : source;
   }, [initialGrid, preview]);
   const binRowNames = gridData.map((r) => (r[0] ? r[0].binRow : "BIN"));
+  const dayLabels = gridData[0]?.map((cell) => cell.auditRecord.dayNumber) ?? Array.from(
+    { length: new Date(Date.UTC(activeMonth.year, activeMonth.month, 0)).getUTCDate() },
+    (_, index) => index + 1,
+  );
+
+  const selectMonth = (month: HeatmapMonth) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("heatmapMonth", `${month.year}-${String(month.month).padStart(2, "0")}`);
+    window.location.assign(`${url.pathname}${url.search}`);
+  };
 
   // Group cells by bin row
   const rowMap = useMemo(() => {
@@ -92,7 +114,7 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
               <span>Location Intelligence &amp; Bin Activity Heatmap</span>
             </h2>
             <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">
-              31-Day Activity Matrix
+              {dayLabels.length}-Day Activity Matrix
             </span>
           </div>
           <p className="mt-0.5 font-body text-xs text-text-grey">
@@ -144,39 +166,31 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
             </button>
           </div>
 
-          {/* Month Selector Dropdown */}
-          <div className="relative">
+          {/* Month navigator — arrows roll over December/January and update the URL-backed data. */}
+          <div className="flex items-center rounded-xl border border-slate-200 bg-white font-mono text-xs font-bold text-slate-800 shadow-2xs">
             <button
               type="button"
-              onClick={() => setShowMonthMenu(!showMonthMenu)}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-mono text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-50"
+              onClick={() => selectMonth(shiftMonth(activeMonth, -1))}
+              className="flex h-9 w-9 items-center justify-center rounded-l-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-navy"
+              aria-label={`Show ${formatMonth(shiftMonth(activeMonth, -1))} heatmap`}
+              title={`Previous month: ${formatMonth(shiftMonth(activeMonth, -1))}`}
             >
-              <Calendar size={13} className="text-slate-500" />
-              <span>{selectedMonth}</span>
-              <ChevronDown size={13} className="text-slate-400" />
+              <ChevronLeft size={16} aria-hidden="true" />
             </button>
-
-            {showMonthMenu && (
-              <div className="absolute right-0 top-full mt-1.5 z-30 w-36 rounded-xl border border-slate-200 bg-white p-1.5 shadow-elevation-3 font-mono text-xs">
-                {MONTHS.map((m) => (
-                  <button
-                    key={m.key}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMonth(m.name);
-                      setShowMonthMenu(false);
-                    }}
-                    className={`w-full rounded-lg px-2.5 py-1.5 text-left transition-colors ${
-                      selectedMonth === m.name
-                        ? "bg-blue-50 font-bold text-brand-navy"
-                        : "hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-            )}
+            <span className="flex h-9 min-w-28 items-center justify-center gap-1.5 border-x border-slate-200 px-3">
+              <Calendar size={13} className="text-slate-500" aria-hidden="true" />
+              {activeMonthLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => selectMonth(nextMonth)}
+              disabled={!canAdvanceMonth}
+              className="flex h-9 w-9 items-center justify-center rounded-r-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-brand-navy focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-navy disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+              aria-label={canAdvanceMonth ? `Show ${formatMonth(nextMonth)} heatmap` : "Latest available heatmap month"}
+              title={canAdvanceMonth ? `Next month: ${formatMonth(nextMonth)}` : "Latest available month"}
+            >
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </div>
@@ -186,8 +200,8 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
         <div className="min-w-[900px]">
           {/* Day Numbers Column Header (1 - 31) */}
           <div className="flex items-center gap-1 mb-1.5 pl-20">
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-              const isWeekend = day % 7 === 1 || day % 7 === 2;
+            {dayLabels.map((day, index) => {
+              const isWeekend = gridData[0]?.[index]?.isWeekend ?? false;
               return (
                 <div
                   key={day}
@@ -261,7 +275,7 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
         <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-xs font-black text-brand-navy">
-              Bin {mobileSelectedBin} (August 2026)
+              Bin {mobileSelectedBin} ({activeMonthLabel})
             </span>
             <span className="text-[11px] text-text-grey font-medium">
               Tap day for audit log
@@ -280,7 +294,7 @@ export function MonthlyHeatmap({ initialGrid, preview = false }: MonthlyHeatmapP
                   className={`flex flex-col items-center justify-between p-1.5 min-h-[48px] rounded-xl font-mono shadow-2xs active:scale-95 transition-transform ${colorClass}`}
                 >
                   <span className="text-[10px] opacity-75 font-semibold">
-                    {cell.day}
+                    {cell.auditRecord.dayNumber}
                   </span>
                   <span className="text-xs font-black truncate">
                     {displayVal}

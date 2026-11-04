@@ -2,9 +2,8 @@
 //
 // Traceability:
 //   specs/07-incoming-receiving/design.md §3 (route), §6 (floor scan design),
-//     §6.1 (flow-type cross-check), §6.2 (store: scan-first, then suggested
-//     location), §6.3 (inspect: location-first, then scan), §9 (per-line
-//     immediate commit, Reversed 2026-08-10)
+//     §6.1 (flow-type cross-check), §6.2d (carton destination assignment),
+//     §9 (per-line immediate commit)
 //   specs/07-incoming-receiving/requirements.md R3 (barcode reconciliation),
 //     R2.5 (floor flow shows WRR, expected lines, quantities, exceptions)
 //   specs/00-steering/brand-design-system.md §3 (floor surface rules — mobile-first
@@ -17,8 +16,8 @@
 // Permission gate: receiving.scan (scan), receiving.confirm (per-line commit)
 //
 // Feedback mechanism: after a scan the server action redirects back to this
-// page with `result=scanned&remaining=N&disposition=D` on success or
-// `result=error&reason=...` on failure. Per-line "Store"/"Hold" commits use
+// page with `result=scanned&remaining=N` on success or `result=error&reason=...` on failure.
+// Per-line carton-placement commits use
 // the same redirect-with-searchParams pattern: `result=committed&line=ID` on
 // success, `result=commit_error&line=ID&reason=...` on failure.
 // OfflineReceivingScanForm keeps the floor contract visible here: the input
@@ -36,27 +35,25 @@ import { locations } from "@/lib/db/schema/locations";
 import { getWrrDocument } from "@/lib/db/queries/receiving";
 import { getPutawayLocationContents, suggestPutawayLocations } from "@/lib/db/queries/locations";
 import type { PutawayCandidate } from "@/lib/db/queries/locations";
-import { recordScan, startReceiving, commitWrrLine, setWrrLineDisposition, closeWrrWithShortage } from "@/lib/actions/receiving";
+import { recordScan, startReceiving, commitWrrLine, closeWrrWithShortage } from "@/lib/actions/receiving";
 import type { WrrItemRow } from "@/lib/db/queries/receiving";
 import { OfflineReceivingScanForm } from "./_components/OfflineReceivingScanForm";
 import { PutawayLocationSelector } from "./_components/PutawayLocationSelector";
-import { LocationCombobox } from "./_components/LocationCombobox";
 import { ReceiveDiscrepancyClient } from "./_components/ReceiveDiscrepancyClient";
 import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import {
   ArrowDown,
   Check,
   CheckCircle2,
-  AlertTriangle,
   AlertCircle,
-  Archive,
-  ShieldAlert,
   CircleDot,
 } from "@/components/ui/icons";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 // ─── Error reason → plain language ──────────────────────────────────────────
 
+// Kept as the canonical scan-error vocabulary for the floor feedback contract;
+// ReceiveDiscrepancyClient renders the shared presentation component.
 function getScanErrorMessage(reason: string): string {
   switch (reason) {
     case "forbidden":
@@ -88,13 +85,13 @@ function getScanErrorMessage(reason: string): string {
 
 function getCommitErrorMessage(reason: string): string {
   if (reason.includes("presence_attestation_required")) {
-    return "Confirm that every received box is physically present before storing.";
+    return "Confirm that every received box is physically present before confirming placement.";
   }
   if (reason.includes("allocation_qty_must_equal_derived_carton_count") || reason.includes("allocation_qty_must_equal_expected") || reason.includes("allocation_qty_invalid")) {
-    return "The assigned cartons cannot exceed the derived carton count. Mark any missing cartons as Shortage.";
+    return "The assigned cartons cannot exceed the derived carton count. Mark any missing cartons as Missing.";
   }
   if (reason.includes("missing_location")) {
-    return "Choose a storage location for every declared box before storing.";
+    return "Assign each carton to Storage or Inspection, or mark it Missing, before confirming placement.";
   }
   if (reason.includes("under-scanned")) {
     return "Scan carton or item barcode first, then assign its locations.";
@@ -123,7 +120,6 @@ interface PageProps {
   searchParams: Promise<{
     result?: string;
     remaining?: string;
-    disposition?: string;
     reason?: string;
     line?: string;
     barcode?: string;
@@ -139,7 +135,6 @@ export default async function ReceiveFloorPage({
   const {
     result,
     remaining: remainingParam,
-    disposition: dispositionParam,
     reason: reasonParam,
     line: lineParam,
     barcode: barcodeParam,
@@ -252,7 +247,7 @@ export default async function ReceiveFloorPage({
     const scanResult = await recordScan(actionResolver, wrrId, barcode);
     if (scanResult.ok) {
       redirect(
-        `/receiving/${wrrId}/receive?stage=assign&result=scanned&remaining=${scanResult.remainingQty}&disposition=${scanResult.disposition}`
+        `/receiving/${wrrId}/receive?stage=assign&result=scanned&remaining=${scanResult.remainingQty}`
       );
     } else {
       redirect(
@@ -268,8 +263,9 @@ export default async function ReceiveFloorPage({
     redirect(`/receiving/${wrrId}`);
   }
 
-  // Inline server action — per-line commit ("Store" or "Hold"). Closes over
-  // wrrId. locationId comes from the line's select input.
+  // Inline server action — per-line carton placement commit. Closes over
+  // wrrId. Each carton destination (Storage, Inspection, or Missing) is
+  // submitted in unitLocationIds and is authoritative at commit time.
   async function handleCommitLine(formData: FormData): Promise<void> {
     "use server";
     const wrrItemId = (formData.get("wrrItemId") as string | null) ?? "";
@@ -293,7 +289,7 @@ export default async function ReceiveFloorPage({
       // The server command validates the missing/malformed unit assignment.
     }
     const presenceAttested = formData.get("presenceAttested") === "true";
-    if (!wrrItemId || (!locationId && !allocations?.length)) {
+    if (!wrrItemId || (!locationId && !allocations?.length && !(unitLocationIds && unitLocationIds.length > 0))) {
       redirect(
         `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
       );
@@ -328,25 +324,6 @@ export default async function ReceiveFloorPage({
     }
   }
 
-  // A receiving operator can route an unscanned line to inspection directly
-  // from the floor workflow. The subsequent hold flow requires an inspection
-  // location and commits the lot as quarantined, never as available stock.
-  async function handleSetDisposition(formData: FormData): Promise<void> {
-    "use server";
-    const wrrItemId = String(formData.get("wrrItemId") ?? "");
-    const disposition = formData.get("disposition");
-    if (disposition !== "store" && disposition !== "inspect") {
-      redirect(`/receiving/${wrrId}/receive`);
-    }
-    await setWrrLineDisposition(
-      await createPageResolver(),
-      wrrId,
-      wrrItemId,
-      disposition,
-    );
-    redirect(`/receiving/${wrrId}/receive`);
-  }
-
   // Determine feedback state from search params.
   const scanSuccess = result === "scanned" && stageParam === "assign" && readyLines.length > 0;
   const scanError = result === "error";
@@ -354,7 +331,6 @@ export default async function ReceiveFloorPage({
   const commitSuccess = result === "committed" && (wrr.items ?? []).some((item) => item.id === lineParam && item.committedAt !== null);
   const commitError = result === "commit_error";
   const remainingQty = remainingParam ? parseInt(remainingParam, 10) : null;
-  const dispositionResult = dispositionParam;
   const errorReason = reasonParam ?? "";
   const feedbackLineId = lineParam ?? null;
   const progressPercent = totalLines > 0 ? Math.round((fullyScannedLines / totalLines) * 100) : 0;
@@ -393,8 +369,9 @@ export default async function ReceiveFloorPage({
               Receipt complete
             </h1>
             <p className="mt-2 font-body text-body-md text-on-surface">
-              Every line on {wrr.wrrNumber} has been stored or held. This WRR
-              is now confirmed.
+               Every line on {wrr.wrrNumber} has a confirmed destination. Storage
+               and Inspection postings, plus any Missing shortage records, are
+               complete. This WRR is now confirmed.
             </p>
             <Link
               href={`/receiving/${wrrId}`}
@@ -454,7 +431,7 @@ export default async function ReceiveFloorPage({
             {([
               ["scan", "1", "Scan & Verify"],
               ["assign", "2", "Assign Locations"],
-              ["store", "3", "Store"],
+               ["store", "3", "Confirm Placement"],
             ] as const).map(([key, number, label]) => {
               const isActive = activeStage === key;
               const isDone = (key === "scan" && (activeStage === "assign" || activeStage === "store")) || (key === "assign" && activeStage === "store");
@@ -519,14 +496,6 @@ export default async function ReceiveFloorPage({
                 {remainingQty === 0
                   ? "Line complete."
                   : `${remainingQty} remaining on this line.`}
-              </p>
-            )}
-            {dispositionResult && (
-              <p className="mt-1 font-body text-body-md text-on-surface">
-                Disposition:{" "}
-                <span className="text-body-md font-body uppercase">
-                  {dispositionResult}
-                </span>
               </p>
             )}
           </div>
@@ -608,12 +577,12 @@ export default async function ReceiveFloorPage({
                       {item.itemName ? ` · ${item.itemName}` : ""}
                     </p>
 
-                    {/* Store lines use one scan to confirm the line, then batch putaway assigns the declared line quantity. */}
+                    {/* One scan identifies the line; carton destinations are assigned below. */}
                     <p className="mt-1.5 font-body text-body-md text-on-surface">
-                      {item.disposition === "store" && !isCommitted && item.scannedQty >= 1 ? (
+                      {!isCommitted && item.scannedQty >= 1 ? (
                         <>
                           <strong>Line confirmed · {item.cartonCount} Cartons declared</strong>
-                          <span className="block text-text-grey">Assign the whole line to a location, then Store</span>
+                          <span className="block text-text-grey">Assign each carton to Storage, Inspection, or Missing</span>
                         </>
                       ) : (
                         <>
@@ -625,34 +594,6 @@ export default async function ReceiveFloorPage({
                       )}
                     </p>
 
-                    {/* Disposition badge */}
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-body-sm font-body text-text-grey">
-                        Disposition:
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-body-md font-label uppercase ${item.disposition === "store"
-                            ? "bg-status-available/10 text-emerald-800 border border-status-available/20"
-                            : "bg-status-pending/10 text-amber-800 border border-status-pending/20"
-                          }`}
-                      >
-                        {item.disposition === "store" ? (
-                          <Archive size={14} className="text-emerald-700 shrink-0" aria-hidden="true" />
-                        ) : (
-                          <ShieldAlert size={14} className="text-amber-700 shrink-0" aria-hidden="true" />
-                        )}
-                        <span>{item.disposition === "store" ? "STORE" : "INSPECT"}</span>
-                      </span>
-                    </div>
-                    {!isCommitted && item.scannedQty === 0 && (
-                      <button
-                        type="submit"
-                        form={`set-disposition-${item.id}`}
-                        className="mt-3 inline-flex min-h-11 items-center justify-center rounded border border-status-pending px-3 font-label text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-navy motion-safe:active:scale-[0.97]"
-                      >
-                        {item.disposition === "inspect" ? "Return to Store" : "Hold for Inspection"}
-                      </button>
-                    )}
                   </div>
                   {/* Completion / committed indicator */}
                   {isCommitted ? (
@@ -678,7 +619,7 @@ export default async function ReceiveFloorPage({
                   <div className="mt-3 flex items-center gap-2 border-t border-outline-variant/30 pt-3">
                     <ArrowDown size={18} aria-hidden="true" className="text-brand-navy" />
                     <p className="font-label text-body-md text-brand-navy font-bold">
-                      Item verified — assign storage and/or inspection bays below
+                      Item verified — assign each carton to Storage, Inspection, or Missing below
                     </p>
                   </div>
                 )}
@@ -756,16 +697,14 @@ export default async function ReceiveFloorPage({
                   spq={primaryLineSpq}
                   uom={primaryLineUom}
                   lotNumber={primaryReadyLine.lotNumber}
-                  disposition={primaryReadyLine.disposition === "inspect" ? "inspect" : "store"}
                 />
 
                 <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">
                   <OnlineOnlySubmitButton
                     type="submit"
-                    disabled={primaryStoreCandidates.length === 0 && inspectionLocations.length === 0}
                     className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 shadow-md cursor-pointer hover:bg-primary/90"
                   >
-                    Confirm &amp; Store / Hold Boxes
+                    Confirm carton placement
                   </OnlineOnlySubmitButton>
                 </div>
               </form>
@@ -787,20 +726,6 @@ export default async function ReceiveFloorPage({
         </div>
       )}
 
-      {/* These forms sit outside the scan cards and sticky primary-action
-          region. Their linked buttons are compact secondary controls. */}
-      {wrr.items.map((item: WrrItemRow) =>
-        item.committedAt === null && item.scannedQty === 0 ? (
-          <form key={item.id} id={`set-disposition-${item.id}`} action={handleSetDisposition}>
-            <input type="hidden" name="wrrItemId" value={item.id} />
-            <input
-              type="hidden"
-              name="disposition"
-              value={item.disposition === "inspect" ? "store" : "inspect"}
-            />
-          </form>
-        ) : null,
-      )}
     </div>
   );
 }

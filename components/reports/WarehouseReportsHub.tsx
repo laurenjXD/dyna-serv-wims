@@ -49,6 +49,7 @@ export interface WarehouseReportsHubProps {
   deliverySla?: DeliverySlaDatum[];
   archiveItems?: ReportArchiveItem[];
   heatmap?: HeatmapCellDatum[][];
+  heatmapMonth?: { year: number; month: number };
   canReadFinancial?: boolean;
   documentTemplate?: DocumentTemplate;
 }
@@ -61,6 +62,7 @@ export function WarehouseReportsHub({
   deliverySla,
   archiveItems,
   heatmap,
+  heatmapMonth,
   canReadFinancial = true,
   documentTemplate,
 }: WarehouseReportsHubProps) {
@@ -448,7 +450,7 @@ export function WarehouseReportsHub({
       {/* ── 5. Monthly Location Intelligence Heatmap (31-Day View) ────────── */}
       {(activeSection === "all" || activeSection === "heatmap") && (
         <section>
-          <MonthlyHeatmap initialGrid={heatmap} />
+          <MonthlyHeatmap initialGrid={heatmap} selectedMonth={heatmapMonth} />
         </section>
       )}
 

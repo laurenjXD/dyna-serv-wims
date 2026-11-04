@@ -18,6 +18,7 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
            header/table utility sizes to control their own rhythm. */
         [data-document-root] {
           font-size: ${DOCUMENT_FONT_SIZE}pt !important;
+          line-height: 1.35;
         }
         [data-document-root] * {
           font-family: ${DOCUMENT_FONT_FAMILY} !important;
@@ -44,6 +45,13 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
+            font-size: ${DOCUMENT_FONT_SIZE}pt !important;
+            line-height: 1.35 !important;
+          }
+          *,
+          *::before,
+          *::after {
+            box-sizing: border-box !important;
           }
           main,
           [data-document-root] {
@@ -69,11 +77,35 @@ export function DocumentPrintStyles({ orientation = "portrait" }: DocumentPrintS
             page-break-before: always !important;
           }
           table {
+            width: 100% !important;
             page-break-inside: auto;
           }
           [data-document-table] {
             border-radius: 0 !important;
             border-collapse: collapse !important;
+            table-layout: fixed !important;
+            min-width: 0 !important;
+          }
+          [data-document-table] th {
+            font-size: 7.5pt !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+            vertical-align: middle !important;
+          }
+          [data-document-table] td {
+            font-size: 8.5pt !important;
+            line-height: 1.3 !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+            vertical-align: top !important;
+          }
+          /* Screen previews may ellipsize long names; the official document
+             must preserve that information and allow its row to grow. */
+          [data-document-root] .truncate {
+            overflow: visible !important;
+            text-overflow: clip !important;
+            white-space: normal !important;
           }
           [data-document-table] th,
           [data-document-table] td {

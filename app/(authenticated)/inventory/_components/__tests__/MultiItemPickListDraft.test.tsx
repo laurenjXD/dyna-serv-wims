@@ -188,6 +188,11 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "5" } });
+    expect(screen.queryAllByLabelText("FIFO lot and location plan")).toHaveLength(0);
+    const editAllocationButton = screen.getAllByRole("button", { name: "Edit allocation" })[0];
+    expect(editAllocationButton).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(editAllocationButton);
+    expect(editAllocationButton).toHaveAttribute("aria-expanded", "true");
 
     expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "5")).toBe(true);
     expect(screen.queryByLabelText("Boxes from C1-11")).not.toBeInTheDocument();
@@ -207,6 +212,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     const qty = screen.getByLabelText("Qty (Boxes)");
     fireEvent.change(qty, { target: { value: "3" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit allocation" })[0]);
     fireEvent.change(screen.getAllByLabelText("Boxes from C1-10")[0], { target: { value: "3" } });
     fireEvent.change(qty, { target: { value: "30" } });
     expect(screen.getAllByLabelText("Boxes from C1-10").every((input) => (input as HTMLInputElement).value === "10")).toBe(true);
@@ -236,6 +242,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "12" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit allocation" })[0]);
 
     expect(screen.getAllByLabelText("Boxes from A1-01")[0]).toHaveValue(3);
     expect(screen.getAllByLabelText("Boxes from Z1-01")[0]).toHaveValue(2);
@@ -265,6 +272,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "15" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit allocation" })[0]);
 
     expect(screen.getAllByLabelText("Boxes from C1-10")[0]).toHaveValue(10);
     expect(screen.getAllByLabelText("Boxes from C1-11")[0]).toHaveValue(5);
@@ -293,6 +301,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
 
     fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "20" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit allocation" })[0]);
     fireEvent.change(screen.getAllByLabelText("Boxes from A4-01")[0], { target: { value: "20" } });
 
     expect(screen.getAllByText("2000")).toHaveLength(2);
@@ -400,6 +409,7 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(itemSearch, { target: { value: "SUP-ITEM" } });
     fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
     fireEvent.change(screen.getAllByLabelText("Qty (Boxes)")[0], { target: { value: "2" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit allocation" })[0]);
 
     const plan = screen.getAllByLabelText("FIFO lot and location plan")[0];
     const lot = within(plan).getByRole("group", { name: "Lot LOT-1" });
@@ -491,7 +501,9 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [file] } });
 
     expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
-    const plan = screen.getAllByLabelText("FIFO lot and location plan")[0];
+    const editAllocationButtons = await screen.findAllByRole("button", { name: "Edit allocation" });
+    fireEvent.click(editAllocationButtons[0]);
+    const plan = (await screen.findAllByLabelText("FIFO lot and location plan"))[0];
     expect(plan.textContent).toContain("FIFO #1");
     expect(plan.textContent).toContain("Lot LOT-A");
     expect(plan.textContent).toContain("Lot LOT-B");

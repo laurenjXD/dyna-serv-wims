@@ -91,7 +91,7 @@ CREATE TABLE "approval_requests" (
   -- Business justification; minimum 10 chars enforced at DB layer.
   "reason"               text NOT NULL CONSTRAINT reason_min_length CHECK (char_length("reason") >= 10),
   "status"               "approval_request_status" NOT NULL DEFAULT 'pending',
-  -- Design.md §5: 30-minute default expiry, set at request-creation time.
+  -- Design.md §5: 24-hour default expiry, set at request-creation time.
   "expiry_at"            timestamptz NOT NULL,
   -- Optional tracing fields for correlation across services/commands.
   "correlation_id"       uuid,

@@ -53,14 +53,14 @@ export function MasterDocumentHeader({
   return (
     <div
       data-document-header
-      className="master-print-header mb-3 w-full max-w-none border-b-2 border-slate-900 pb-2 font-body"
+      className="master-print-header mb-4 w-full max-w-none border-b-2 border-slate-900 pb-3 font-body"
     >
       <style>{`
         @media print {
           .master-print-header {
             border-bottom: 2px solid #000000 !important;
-            padding-bottom: 12px !important;
-            margin-bottom: 16px !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 14px !important;
           }
           .print-header-actions {
             display: none !important;
@@ -74,22 +74,22 @@ export function MasterDocumentHeader({
 
       {/* Top Banner: Corporate Identity & Doc Metadata */}
       {headerAlignment === "center" ? (
-        <div className="flex flex-col items-center text-center space-y-1 mb-2">
+        <div className="flex flex-col items-center space-y-1.5 text-center">
           {logoUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={logoUrl}
               alt={companyName}
-              className="h-6 w-auto max-w-[120px] object-contain mb-1 print:h-6"
+              className="mb-0.5 h-8 w-auto max-w-[150px] object-contain print:h-8"
             />
           ) : null}
-          <h1 className="font-heading text-[9px] leading-[11px] font-bold tracking-tight text-slate-900 uppercase">
+          <h1 className="font-heading text-[11px] leading-[14px] font-bold tracking-tight text-slate-900 uppercase">
             {companyName}
           </h1>
-          <p className="font-heading text-[8px] leading-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+          <p className="font-heading text-[9px] leading-[12px] font-semibold uppercase tracking-[0.08em] text-slate-600">
             {subtitle}
           </p>
-          <p className="font-body text-[8px] leading-[11px] text-slate-600 max-w-xl">
+          <p className="max-w-xl font-body text-[9px] leading-[12px] text-slate-600">
             {facilityAddress}
           </p>
           {contactInfo && (
@@ -108,16 +108,16 @@ export function MasterDocumentHeader({
           )}
 
           {/* Document Reference Block for Centered Layout (No bulky card) */}
-          <div className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 font-mono text-[8px] text-slate-600 border-t border-slate-200/80 pt-2">
+          <div className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 border-t border-slate-200/80 pt-2 font-mono text-[9px] text-slate-600">
             <div className="flex items-center gap-1.5 text-left">
-              <span className="uppercase text-slate-500 text-[8px]">Doc Ref:</span>
-              <strong className="font-bold text-slate-900 text-[9px]">{documentNumber ?? "OFFICIAL COPY"}</strong>
+              <span className="text-[8px] uppercase text-slate-500">Doc Ref:</span>
+              <strong className="text-[10px] font-bold text-slate-900">{documentNumber ?? "OFFICIAL COPY"}</strong>
             </div>
 
             <div className="flex items-center gap-3">
               <span>Date: <strong className="text-slate-800">{formattedDate}</strong></span>
               {status && (
-                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-slate-700 print:border print:border-black">
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-700 print:border print:border-black">
                   {status}
                 </span>
               )}
@@ -135,29 +135,42 @@ export function MasterDocumentHeader({
               )}
             </div>
           </div>
+          {documentQrValue ? (
+            <div className="mt-1 flex w-full justify-end">
+              <div className="shrink-0 rounded border border-slate-200 bg-white p-1">
+                <QRCode
+                  value={documentQrValue}
+                  size={40}
+                  aria-label="Document QR code"
+                  style={{ display: "block", height: "40px", width: "40px" }}
+                  viewBox="0 0 256 256"
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         /* Left-aligned layout */
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           {/* Left: Organization & Facility Profile */}
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2">
               {logoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={logoUrl}
                   alt={companyName}
-                  className="h-6 w-auto max-w-[120px] shrink-0 object-contain print:h-6"
+                  className="h-8 w-auto max-w-[150px] shrink-0 object-contain print:h-8"
                 />
               ) : null}
-            <h1 className="font-heading text-[9px] leading-[11px] font-bold tracking-tight text-slate-900 uppercase">
+            <h1 className="font-heading text-[11px] leading-[14px] font-bold tracking-tight text-slate-900 uppercase">
                 {companyName}
               </h1>
             </div>
-            <p className="font-heading text-[8px] leading-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+            <p className="font-heading text-[9px] leading-[12px] font-semibold uppercase tracking-[0.08em] text-slate-600">
               {subtitle}
             </p>
-            <p className="font-body text-[8px] leading-[11px] text-slate-600">
+            <p className="font-body text-[9px] leading-[12px] text-slate-600">
               {facilityAddress}
             </p>
             {contactInfo && (
@@ -191,18 +204,18 @@ export function MasterDocumentHeader({
               </div>
             )}
 
-            <div className="flex items-start gap-3">
-              <div className="sm:text-right font-mono text-[8px] space-y-1">
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="space-y-1 font-mono text-[9px] sm:text-right">
                 <div className="flex items-center sm:justify-end gap-1.5">
-                  <span className="text-slate-500 uppercase text-[8px]">Doc Ref:</span>
-                  <strong className="font-bold text-slate-900 text-[9px] tracking-tight">
+                  <span className="text-[8px] uppercase text-slate-500">Doc Ref:</span>
+                  <strong className="text-[10px] font-bold tracking-tight text-slate-900">
                     {documentNumber ?? "OFFICIAL COPY"}
                   </strong>
                 </div>
                 <div className="flex items-center sm:justify-end gap-2 text-slate-600">
                   <span>Date: <strong className="text-slate-800">{formattedDate}</strong></span>
                   {status && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider text-slate-700 print:border print:border-black">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-700 print:border print:border-black">
                       {status}
                     </span>
                   )}
@@ -212,9 +225,9 @@ export function MasterDocumentHeader({
                 <div className="shrink-0 rounded border border-slate-200 bg-white p-1">
                   <QRCode
                     value={documentQrValue}
-                    size={64}
+                    size={40}
                     aria-label="Document QR code"
-                    style={{ display: "block", height: "64px", width: "64px" }}
+                    style={{ display: "block", height: "40px", width: "40px" }}
                     viewBox="0 0 256 256"
                   />
                 </div>
@@ -226,13 +239,13 @@ export function MasterDocumentHeader({
 
       {/* Document Title Banner */}
       <div
-        className={`mt-2 flex items-center border-t border-slate-200 pt-2 ${
+        className={`mt-3 flex items-center border-t border-slate-200 pt-2 ${
           titleAlignment === "center"
             ? "flex-col justify-center text-center gap-0.5"
             : "justify-between"
         }`}
       >
-        <h2 className="font-heading text-[8px] leading-[10px] font-bold uppercase tracking-[0.04em] text-slate-900">
+        <h2 className="font-heading text-[10px] leading-[13px] font-bold uppercase tracking-[0.04em] text-slate-900">
           {documentTitle}
         </h2>
         <span className="font-mono text-[8px] leading-[11px] font-medium text-slate-500">

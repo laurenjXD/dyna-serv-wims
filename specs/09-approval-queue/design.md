@@ -1,7 +1,7 @@
 # Approval Queue — Design
 
 Status: Approved
-Updated: 2026-08-30 (Approved soft-delete monitoring amendment)
+Updated: 2026-11-04 (Product Owner decision: fifo_override expiry extended to 24 hours)
 
 ## 1. Design intent
 
@@ -129,7 +129,7 @@ pending
 
 The queue command uses a server transaction with a `SELECT ... FOR UPDATE` lock on the `approval_requests` row. The behaviors below are mandatory for any command that transitions request or decision state.
 
-**Expiry.** Requests expire 30 minutes after `created_at` (configurable per policy; the `fifo_override` policy uses 30 minutes). An expired request cannot be approved, rejected, or consumed — the reviewer's action is rejected with an expiry error. The requester must submit a fresh request. Expiry evaluation happens at decision time; a background job may also sweep and mark requests `expired` for queue display purposes, but the decision command re-checks expiry independently and does not trust the `expired` status column alone.
+**Expiry.** Requests expire 24 hours after `created_at` (configurable per policy; the `fifo_override` policy uses 24 hours). An expired request cannot be approved, rejected, or consumed — the reviewer's action is rejected with an expiry error. The requester must submit a fresh request. Expiry evaluation happens at decision time; a background job may also sweep and mark requests `expired` for queue display purposes, but the decision command re-checks expiry independently and does not trust the `expired` status column alone.
 
 **One-time consumption.** An approved decision has a `consumed_at` timestamp on the `approval_decisions` row (see §3). The pick-list generation command sets `consumed_at` atomically in the same transaction that creates the Stage 1 commitment. A second generation attempt against the same decision row reads `consumed_at IS NOT NULL` before doing any work and fails with a consumption-conflict error. The `consumed_at` check must run inside the `FOR UPDATE` lock on the decision row to prevent two concurrent consumers from both reading `NULL` before either has written.
 

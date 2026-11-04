@@ -1,7 +1,7 @@
 # Approval Queue — Implementation Plan
 
 Status: Approved
-Updated: 2026-08-30 (Approved soft-delete monitoring amendment)
+Updated: 2026-11-04 (Product Owner decision: fifo_override expiry extended to 24 hours)
 
 ## Implementation gate
 
@@ -33,7 +33,7 @@ Testing: Documentation review; no implementation tests.
 - [x] Define the initial `fifo_override` approval policy with `08`, including target resource/version, requester/reviewer capabilities, reason, expiry, self-approval, and consumption rules. *(Resolved 2026-08-09: reason must be selected from fixed categories — `customer_preference`, `lot_condition`, `partial_lot`, `other`; optional free-text `reason_note`. Approvals expire after 24 hours if not consumed. Self-approval always blocked. Expiry enforced by Stage 2 staleness check + nightly sweep (same pattern as spec 08 expiry). See revision-log.md.)*
 - [x] Define the generic approval policy contract for future transfer/dispatch/reconciliation approvals without registering unsupported types. *(requirements.md §3 now states the five-item gate; no type is pre-authorized)*
 - [x] Decide separation-of-duties behavior and whether requester self-approval is always blocked in v1. *(Resolved: always blocked by server-side check per `02` §3.4; design.md §5 documents the enforcement rule)*
-- [x] Define expiry, cancellation, supersession, stale-target, and revocation behavior. *(Resolved: expiry 30 min, stale-target via `allocation_version` re-check, concurrent reviewer `FOR UPDATE` lock, one-time `consumed_at` — all in design.md §5)*
+- [x] Define expiry, cancellation, supersession, stale-target, and revocation behavior. *(Resolved: `fifo_override` expiry is 24 hours, stale-target via `allocation_version` re-check, concurrent reviewer `FOR UPDATE` lock, one-time `consumed_at` — all in design.md §5)*
 - [ ] Define decision reason requirements and evidence/reference retention.
 - [x] Define whether approval consumption is one-time and where its durable consumption marker lives. *(Resolved: one-time; `consumed_at` lives on the `approval_decisions` row; set atomically by pick-list generation inside the Stage 1 commitment transaction — design.md §3)*
 - [ ] Record cross-cutting decisions in `specs/00-steering/revision-log.md`.

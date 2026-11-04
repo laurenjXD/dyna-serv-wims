@@ -113,7 +113,7 @@ describe("policy-registry — fifo_override policy is registered and retrievable
     expect(result.selfApproval).toBe("blocked");
   });
 
-  it("fifo_override policy has expiry: 'required' (design.md §4 — fifo_override always has a 30-min expiry)", async () => {
+  it("fifo_override policy has expiry: 'required' (design.md §4 — fifo_override always has a 24-hour expiry)", async () => {
     const { policyRegistry } = await import("@/lib/approval/policy-registry");
 
     const result = policyRegistry.get("fifo_override");
