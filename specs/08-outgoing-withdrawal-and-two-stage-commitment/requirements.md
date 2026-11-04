@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Requirements
 
 Status: Approved
-Updated: 2026-08-25 (allocated-to-picked queue amendment)
+Updated: 2026-11-04 (DRA import implementation contract; approval unchanged)
 
 ## 1. Purpose and scope
 
@@ -47,6 +47,15 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 6. The command SHALL validate active item references, Organization/Inventory Model scope, UOM, and SPQ rules.
 7. The command SHALL refuse allocation if `item_code_is_provisional` is true for any requested line, displaying a 3-component error (**What happened**, **Why it failed**, **Next Action / Solution**).
 8. **DRA Document Parsing (Excel & PDF)**: The system SHALL offer an optional Delivery Release Advice (DRA) import in Excel (`.xlsx`, `.xls`, `.csv`) and PDF (`.pdf`) formats prior to pick list generation. The parser SHALL identify/map the requesting Organization first using a trusted Organization code or approved alias, then derive or request confirmation of the Inventory Model and role. It SHALL extract requested item codes (`item_code` / `customer_item_code`) and requested box/unit quantities, match them against available inventory balances (`qty_remaining - qty_committed`), auto-suggest FIFO/FEFO lot/location allocations, and present a pre-commitment preview queue highlighting any stock shortages or provisional items for review. Ambiguous or unmatched Organization references SHALL block generation until reviewed.
+
+#### R1.8 implementation contract (2026-11-04)
+
+- Import reviews every extracted source row before applying it to the browser-local draft. Unmatched, ambiguous, invalid, and zero-quantity rows remain visible until corrected or explicitly excluded; no partial row set is silently accepted.
+- Excel/CSV review supports worksheet selection, the header row, and explicit source-column mappings. Searchable PDFs use text extraction; scanned image PDFs require a searchable PDF or Excel/CSV copy. Uploads are limited to 10 MB.
+- Review confirms the requesting Organization, its Inventory Model, and the model-specific recipient. Unknown or changed recipient text clears an incompatible suggestion. A requesting-Organization mismatch requires an explicit acknowledgement before applying the import.
+- Only a unique exact or canonical item-code match may be selected automatically. Uncertain or description-only matches require manual item selection. Customer item code remains editable, is limited to 100 characters, and conflicting references for the same item must be reconciled, excluded, or placed on separate pick lists.
+- Quantities distinguish boxes/cartons from base units and use enrolled SPQ for conversion. Conflicts with the document's box count, quantity, or SPQ require correction acknowledgement. Repeated demand is allocated cumulatively using FIFO/FEFO; shortages retain the requested quantity and block generation until resolved.
+- Applying an import requires confirmation before replacing an existing draft. Parsing and review never reserve stock or decrement inventory; the existing Stage 1 commitment remains authoritative.
 
 ### R2. FIFO/FEFO allocation & Stage 1 commitment
 

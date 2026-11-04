@@ -1,5 +1,13 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## `08` Full DRA import review implemented against approved R1.8 (2026-11-04)
+
+The multi-item pick-list draft now opens a DRA review that retains every extracted row until corrected or explicitly excluded. Excel/CSV imports support worksheet, header-row, and source-column mapping; searchable PDFs use `PDFParse` v2. Uploads are limited to 10 MB; scanned image PDF OCR is not implemented. The operator reviews Organization, Inventory Model, model-specific recipient, item identity, quantities, and an editable Customer item code. Only unique exact/canonical item-code matches are preselected. Unknown or changed recipient text clears stale suggestions, document/requesting-Organization mismatches require acknowledgement, and conflicting Customer item codes for one item must be reconciled or split across pick lists.
+
+Enrolled SPQ controls boxes/base-unit conversion, with acknowledgement for corrected document quantity/SPQ discrepancies. Repeated item demand consumes available stock cumulatively through the existing FIFO/FEFO allocator; shortages preserve the full demand and block generation. Applying review requires confirmation before replacing entered draft work. Importing remains local preview work: it makes no inventory/reservation write, introduces no schema change, and does not alter dispatch or carton QR behavior. Existing Approved R1.8 and its sign-offs authorize this implementation; no new approval is asserted here.
+
+Verification: all 59 DRA-focused tests pass (19 parser, 11 Server Action, 10 import-review UI, 19 multi-item draft), with allocation regression coverage passing separately. TypeScript and production build pass; lint reports no errors and three pre-existing warnings. The initial broad suite had 2,430 passes and three failures: its DRA failure was fixed and passed focused rechecks, while two untouched dispatch source-string tests still expect older wording. This records the DRA task as implemented without claiming the full system suite or UAT is complete.
+
 ## `07` Missing-carton receipt failed because OS&D RLS was incomplete (2026-11-04)
 
 The carton-level Missing destination correctly reached the receiving commit, but `receiving_discrepancies` had Row Level Security enabled without an INSERT policy or authenticated INSERT grant. Migration `0074_receiving_discrepancy_rls_policies.sql` adds receiving-confirm INSERT access, scoped read access, and supervisor/administrator resolution UPDATE access. Storage-only receipts were unaffected; mixed or Missing placements now can record the OS&D discrepancy atomically.

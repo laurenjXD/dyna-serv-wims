@@ -559,13 +559,13 @@ The current request contract supports **one alternate location/target per approv
 
 A DRA fills a draft; it does not reserve stock at parsing time.
 
-1. Choose **Import DRA (Excel/PDF)** and the supported source file.
-2. Review the document's requesting Organization before item/quantity allocations. If it is missing, choose the correct stock Organization explicitly; do not infer it from an unrelated recipient.
-3. Review matched material and requested boxes, including SPQ-derived units.
-4. Read mapped-line, shortage and review messages.
-5. Check combined demand where repeated source rows refer to the same material. Three boxes plus two boxes means five boxes, not whichever row was parsed last.
-6. Resolve required recipient, unmatched material and source shortages.
-7. Review the completed draft and generate once.
+1. Choose **Import DRA (Excel/PDF)** in Master Inventory → Pick Lists. Upload Excel (`.xlsx`/`.xls`), CSV, or a searchable PDF up to 10 MB. Image-only PDFs require a searchable copy or spreadsheet export.
+2. In **Review DRA import**, review the requesting Organization and Inventory Model, then select the required recipient. A missing or unknown recipient is resolved explicitly.
+3. For spreadsheets, expand **Review spreadsheet columns** to select the worksheet, header row, and available columns. Leave absent fields unmapped and choose **Re-read columns** after edits. Source locations are not required.
+4. Review each extracted row. Select an enrolled item for uncertain matches, correct the requested quantity and whether it represents boxes or base units, or explicitly exclude the row. Included unresolved rows block **Use reviewed lines**.
+5. Compare SPQ-derived units and document box counts. A mismatch requires reviewing and confirming the correction. Review combined demand and shortages; three boxes plus two boxes means five boxes.
+6. Choose **Use reviewed lines**, confirming replacement if the draft already has entries. Review the suggested FIFO/FEFO lots and locations in the normal allocation editor. Full demand is preserved when stock is short.
+7. Resolve shortages, provisional item codes, incomplete allocations, and required approvals, then generate once. See the [detailed DRA instructions](user-manual/inventory-and-withdrawals.md#7-dra-import).
 
 The actual generation command rechecks Organization, model, recipient, identifiers, live availability and allocation.
 

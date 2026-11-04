@@ -1,11 +1,17 @@
 # Implementation Kickoff — Day 1, End to End, Test-Driven
 
 Status: Active
-Last Updated: 2026-08-07
+Last Updated: 2026-11-04
 
 Every spec is Approved. Implementation starts now, test-driven: for every `tasks.md` checklist item, `test-writer` writes and confirms a failing test before any builder agent writes implementation code — see the `implement-feature` skill (`.claude/skills/implement-feature/`) for the full RED → GREEN → REFACTOR → VERIFY cycle mechanics. This doc is the concrete schedule: what gets built first, in what order, by which agent, against which test.
 
 Do not skip ahead in this list. Later rows depend on earlier rows' tables/enums actually existing, not just being spec-approved.
+
+## Implementation status — DRA import (2026-11-04)
+
+The approved `08` R1.8 DRA task is implemented: the multi-item draft supports retained-row review, spreadsheet mapping, searchable PDF parsing, Organization/recipient and quantity correction, and cumulative FIFO/FEFO suggestions before commitment. Importing only prepares the local draft; the existing Stage 1 command owns reservation and validation.
+
+All 59 DRA-focused tests pass, with allocation regressions, TypeScript, and production build passing separately. Lint has no errors and three pre-existing warnings. The initial broad-suite DRA failure was fixed and rechecked; two untouched dispatch source-string assertions still expect earlier wording. See `08/tasks.md` and the matching `revision-log.md` entry; this update does not mark the whole feature, full suite, or UAT complete.
 
 ## Phase 0 — Scaffolding (before anything else, once)
 

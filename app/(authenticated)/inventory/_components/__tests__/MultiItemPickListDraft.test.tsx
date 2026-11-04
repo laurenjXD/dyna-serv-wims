@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { parseDraDocumentAction } from "../../_actions";
 import { MultiItemPickListDraft } from "../MultiItemPickListDraft";
@@ -464,12 +464,18 @@ describe("MultiItemPickListDraft organization selection", () => {
     const file = new File(["dra"], "release.csv", { type: "text/csv" });
     fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [file] } });
 
+    const review = await screen.findByRole("dialog", { name: "Review DRA import" });
+    expect(within(review).getByRole("button", { name: "Use reviewed lines" })).toBeDisabled();
+    fireEvent.change(within(review).getByRole("combobox", { name: /End Customer/ }), { target: { value: "party-end-customer" } });
+    fireEvent.click(within(review).getByLabelText("Exclude row 2"));
+    fireEvent.click(within(review).getByLabelText("Exclude row 3"));
+    fireEvent.click(within(review).getByRole("button", { name: "Use reviewed lines" }));
+
     expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
     expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(20);
-    expect(screen.getByText(/requested 20, available 10, short 10 boxes/i)).toBeInTheDocument();
+    expect(screen.getByText(/requested 20, allocated 10, short 10 boxes/i)).toBeInTheDocument();
     expect(screen.getAllByLabelText("Allocation summary").some((element) => /Requested:\s*20/.test(element.textContent ?? "") && /Available:\s*10/.test(element.textContent ?? "") && /Allocated:\s*10/.test(element.textContent ?? "") && /Stock short:\s*10/.test(element.textContent ?? ""))).toBe(true);
-    expect(screen.getByRole("list", { name: "DRA rows to review" })).toHaveTextContent(/description alone is not a unique identifier/i);
-    expect(screen.getByRole("list", { name: "DRA rows to review" })).toHaveTextContent(/unit quantity is invalid/i);
+    expect(screen.getByText(/2 source row\(s\) explicitly excluded/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeDisabled();
   });
 
@@ -500,6 +506,10 @@ describe("MultiItemPickListDraft organization selection", () => {
     const file = new File(["dra"], "release.csv", { type: "text/csv" });
     fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [file] } });
 
+    const review = await screen.findByRole("dialog", { name: "Review DRA import" });
+    fireEvent.change(within(review).getByRole("combobox", { name: /End Customer/ }), { target: { value: "party-end-customer" } });
+    fireEvent.click(within(review).getByRole("button", { name: "Use reviewed lines" }));
+
     expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
     const editAllocationButtons = await screen.findAllByRole("button", { name: "Edit allocation" });
     fireEvent.click(editAllocationButtons[0]);
@@ -517,6 +527,51 @@ describe("MultiItemPickListDraft organization selection", () => {
     fireEvent.change(within(plan).getByLabelText("Boxes from B1-01"), { target: { value: "3" } });
     expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(5);
     expect(screen.getAllByLabelText("Allocation summary")[0]).toHaveTextContent(/Allocated:\s*5/);
+  });
+
+  it("imports two reviewed items with manual matching into one scoped FIFO/FEFO draft", async () => {
+    vi.mocked(parseDraDocumentAction).mockResolvedValue({
+      ok: true,
+      parseResult: {
+        ok: true, fileName: "release.csv",
+        header: { requestingOrganization: "VMI Owner Organization" },
+        rows: [
+          { itemCode: "SUP-ITEM-1", requestedQty: 3, uom: "PCS" },
+          { itemCode: "UNMATCHED-99", requestedQty: 20, uom: "PCS" },
+        ], errors: [], warnings: [],
+      },
+    });
+    const stockWithSecondItem = [
+      ...stock,
+      { ...stock[0], itemId: "item-2", itemCode: "ITEM-2", supplierItemCode: "SUP-ITEM-2", itemName: "Second item", spq: 10, availableQty: 50, balanceId: "balance-2", lotId: "lot-2", lotNumber: "LOT-2", locationId: "location-2", locationLabel: "B-02" },
+    ];
+    const createAction = vi.fn();
+    const { container } = render(<MultiItemPickListDraft
+      stock={stockWithSecondItem}
+      customers={[{ id: "party-vmi-owner", code: "OWNER", name: "VMI Owner Organization", relationship: "vmi_customer" }]}
+      endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+      createAction={createAction} overrideAction={vi.fn()}
+    />);
+
+    fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [new File(["dra"], "release.csv", { type: "text/csv" })] } });
+    const review = await screen.findByRole("dialog", { name: "Review DRA import" });
+    expect(createAction).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(null);
+    fireEvent.change(within(review).getByRole("combobox", { name: /End Customer/ }), { target: { value: "party-end-customer" } });
+    expect(within(review).getByRole("button", { name: "Use reviewed lines" })).toBeDisabled();
+    fireEvent.change(within(review).getByLabelText("Enrolled item for row 2"), { target: { value: "item-2" } });
+    fireEvent.click(within(review).getByRole("button", { name: "Use reviewed lines" }));
+
+    expect(await screen.findByText(/Imported 2 line/)).toBeInTheDocument();
+    const request = container.querySelector<HTMLInputElement>('input[name="request"]');
+    const payload = JSON.parse(request?.value ?? "{}");
+    expect(payload).toMatchObject({ partyId: "party-vmi-owner", customerPartyId: "party-vmi-owner", endCustomerPartyId: "party-end-customer", flowType: "vmi" });
+    expect(payload.lines).toEqual([
+      expect.objectContaining({ itemId: "item-1", lotId: "lot-1", locationId: "location-1", qty: 3 }),
+      expect.objectContaining({ itemId: "item-2", lotId: "lot-2", locationId: "location-2", qty: 20 }),
+    ]);
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+    expect(createAction).not.toHaveBeenCalled();
   });
 
   it("keeps the starter row disabled until the required recipient is selected, then uses Add item line for line two", () => {
@@ -541,5 +596,88 @@ describe("MultiItemPickListDraft organization selection", () => {
     expect(screen.getByRole("button", { name: /Add item line/i })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: /Add item line/i }));
     expect(screen.getByText("2 lines")).toBeInTheDocument();
+  });
+
+  it("preserves an existing draft until reviewed import replacement is confirmed", async () => {
+    vi.mocked(parseDraDocumentAction).mockResolvedValue({
+      ok: true,
+      parseResult: {
+        ok: true, fileName: "release.csv", header: { requestingOrganization: "VMI Owner Organization" },
+        rows: [{ itemCode: "SUP-ITEM-1", requestedQty: 5, uom: "PCS" }], errors: [], warnings: [],
+      },
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    try {
+      render(<MultiItemPickListDraft
+        stock={stock}
+        customers={[{ id: "party-vmi-owner", code: "OWNER", name: "VMI Owner Organization", relationship: "vmi_customer" }]}
+        endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+        createAction={vi.fn()} overrideAction={vi.fn()}
+      />);
+      fireEvent.change(screen.getByLabelText("Organization"), { target: { value: "party-vmi-owner" } });
+      fireEvent.change(screen.getByRole("combobox", { name: "End Customer / Recipient" }), { target: { value: "party-end-customer" } });
+      fireEvent.change(screen.getAllByRole("combobox", { name: "Search item code" })[0], { target: { value: "SUP-ITEM" } });
+      fireEvent.click(screen.getByRole("button", { name: /SUP-ITEM-1/ }));
+      fireEvent.change(screen.getByLabelText("Qty (Boxes)"), { target: { value: "2" } });
+
+      fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [new File(["dra"], "release.csv", { type: "text/csv" })] } });
+      const review = await screen.findByRole("dialog", { name: "Review DRA import" });
+      expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(2);
+      const useLines = within(review).getByRole("button", { name: "Use reviewed lines" });
+      await waitFor(() => expect(useLines).toBeEnabled());
+      fireEvent.click(useLines);
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(2);
+      expect(review).toBeInTheDocument();
+
+      fireEvent.click(useLines);
+      expect(confirm).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText(/Imported 1 line/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Qty (Boxes)")).toHaveValue(5);
+      expect(screen.queryByRole("dialog", { name: "Review DRA import" })).not.toBeInTheDocument();
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
+  it("requires resolving conflicting Customer item codes before combining repeated item demand", async () => {
+    vi.mocked(parseDraDocumentAction).mockResolvedValue({ ok: true, parseResult: {
+      ok: true, fileName: "release.csv", header: { requestingOrganization: "VMI Owner Organization" },
+      rows: [
+        { itemCode: "SUP-ITEM-1", customerItemCode: "PN-A", requestedQty: 6, uom: "PCS" },
+        { itemCode: "SUP-ITEM-1", customerItemCode: "PN-B", requestedQty: 6, uom: "PCS" },
+      ], errors: [], warnings: [],
+    } });
+    const splitStock = [
+      stock[0],
+      { ...stock[0], balanceId: "balance-2", locationId: "location-2", locationLabel: "A4-02", availableQty: 10 },
+    ];
+    const { container } = render(<MultiItemPickListDraft
+      stock={splitStock}
+      customers={[{ id: "party-vmi-owner", code: "OWNER", name: "VMI Owner Organization", relationship: "vmi_customer" }]}
+      endCustomers={[{ id: "party-end-customer", code: "END-1", name: "Test end customer" }]}
+      createAction={vi.fn()} overrideAction={vi.fn()}
+    />);
+    fireEvent.change(screen.getByLabelText(/Import DRA/), { target: { files: [new File(["dra"], "release.csv", { type: "text/csv" })] } });
+    const review = await screen.findByRole("dialog", { name: "Review DRA import" });
+    fireEvent.change(await within(review).findByRole("combobox", { name: /End Customer/ }), { target: { value: "party-end-customer" } });
+    const useLines = within(review).getByRole("button", { name: "Use reviewed lines" });
+    expect(useLines).toBeDisabled();
+    expect(within(review).getByText(/conflicting Customer item codes/i)).toBeInTheDocument();
+    fireEvent.change(within(review).getByLabelText("Customer item code for row 2"), { target: { value: "PN-A" } });
+    expect(useLines).toBeEnabled();
+    fireEvent.click(useLines);
+    await screen.findByText(/Imported 1 line/);
+
+    expect(screen.getByRole("button", { name: /Generate Pick List/i })).toBeEnabled();
+    const payload = JSON.parse(container.querySelector<HTMLInputElement>('input[name="request"]')?.value ?? "{}");
+    const sourceTotals = new Map<string, number>();
+    const customerTotals = new Map<string, number>();
+    for (const line of payload.lines as Array<{ locationId: string; customerItemCode: string; qty: number }>) {
+      sourceTotals.set(line.locationId, (sourceTotals.get(line.locationId) ?? 0) + line.qty);
+      customerTotals.set(line.customerItemCode, (customerTotals.get(line.customerItemCode) ?? 0) + line.qty);
+    }
+    expect([...sourceTotals]).toEqual([["location-1", 10], ["location-2", 2]]);
+    expect([...customerTotals]).toEqual([["PN-A", 12]]);
   });
 });

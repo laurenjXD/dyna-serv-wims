@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { commitWithdrawal } from "@/lib/actions/withdrawals";
+import { requirePermission } from "@/lib/rbac/guard";
+import { z } from "zod";
+import type { DraParseResult } from "@/lib/parsers/dra-parser";
 
 export type GeneratePickListState =
   | { ok: false; error: string }
@@ -58,28 +61,63 @@ export async function generatePickList(
   redirect("/outgoing");
 }
 
-export async function parseDraDocumentAction(formData: FormData) {
-  const file = formData.get("file");
-  if (!file || !(file instanceof File)) {
-    return { ok: false, error: "No file was uploaded." };
-  }
+const columnIndex = z.number().int().min(0).max(1023).optional();
+const draOptionsSchema = z.object({
+  sheetName: z.string().min(1).max(255).optional(),
+  headerRowIndex: z.number().int().min(0).max(9999).optional(),
+  columnMap: z.object({
+    itemCode: columnIndex, customerItemCode: columnIndex, itemDescription: columnIndex,
+    requestedQty: columnIndex, packageCount: columnIndex, spq: columnIndex,
+    uom: columnIndex, remarks: columnIndex,
+  }).strict().optional(),
+}).strict().refine((options) => {
+  const indexes = Object.values(options.columnMap ?? {}).filter((index) => index !== undefined);
+  return indexes.length === new Set(indexes).size;
+}, "Each column can be mapped to only one field.");
 
+export async function parseDraDocumentAction(formData: FormData): Promise<{
+  ok: boolean; error?: string; parseResult?: DraParseResult;
+}> {
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const permission = await requirePermission(await createPageResolver(), "pick_list.generate");
+    if (permission.kind !== "authorized") {
+      return { ok: false, error: "You do not have access to import a DRA. Ask an administrator for pick-list generation access." };
+    }
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return { ok: false, error: "The DRA file is empty or missing. Choose an Excel, CSV, or searchable PDF file." };
+    }
+    if (!/\.(xlsx|xls|csv|pdf)$/i.test(file.name)) {
+      return { ok: false, error: "This file format is not supported. Choose an Excel (.xlsx or .xls), CSV, or searchable PDF file." };
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return { ok: false, error: "The DRA exceeds 10 MB. Choose a smaller release document and try again." };
+    }
+    let rawOptions: unknown = {};
+    const serializedOptions = formData.get("options");
+    if (serializedOptions !== null) {
+      if (typeof serializedOptions !== "string" || serializedOptions.length > 8192) {
+        return { ok: false, error: "The column mapping is invalid. Review the worksheet, header row, and column selections." };
+      }
+      try { rawOptions = JSON.parse(serializedOptions); }
+      catch { return { ok: false, error: "The column mapping could not be read. Review the column selections and try again." }; }
+    }
+    const options = draOptionsSchema.safeParse(rawOptions);
+    if (!options.success) {
+      return { ok: false, error: "The column mapping is invalid. Select a valid header row and a different column for each field." };
+    }
 
     const { parseDraDocument } = await import("@/lib/parsers/dra-parser");
-    const parseResult = await parseDraDocument(buffer, file.name);
-
-    return {
-      ok: true,
-      parseResult,
+    const parseResult = await parseDraDocument(Buffer.from(await file.arrayBuffer()), file.name, options.data);
+    if (!parseResult.ok) return {
+      ok: false, parseResult,
+      error: "The DRA could not be read with these settings. Review spreadsheet columns or choose a readable, searchable document.",
     };
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+    return { ok: true, parseResult };
+  } catch {
     return {
       ok: false,
-      error: `DRA processing error: ${errorMsg}`,
+      error: "The DRA could not be processed. Check your connection and choose a readable file, then retry.",
     };
   }
 }

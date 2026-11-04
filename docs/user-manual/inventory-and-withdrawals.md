@@ -111,9 +111,18 @@ The draft supports **one alternate location per approval request**. An out-of-se
 
 ## 7. DRA import
 
-Use **Import DRA (Excel/PDF)** when the document is supported. Review requesting Organization, recipient, item matches, quantity units, and all review/shortage messages. Parsing does not reserve live stock by itself.
+In **Master Inventory → Pick Lists**, choose **Import DRA (Excel/PDF)**. Upload an Excel (`.xlsx` or `.xls`), CSV, or searchable PDF file up to 10 MB. Image-only scanned PDFs need a searchable copy or an Excel/CSV export.
 
-Repeated demand for one material can be consolidated. Compare combined quantity against the original document; do not manually add rows already mapped successfully. Unmatched, ambiguous, insufficient, or provisional materials need review rather than a guessed match.
+1. In **Review DRA import**, confirm the requesting **Organization** and **Inventory Model**. A delivery-to recipient is separate from the stock owner. If the requester differs from your selection, explicitly confirm the correct stock Organization.
+2. For Excel/CSV, expand **Review spreadsheet columns**. Choose the worksheet and header row; map item code/customer item code, requested quantity or boxes, and any SPQ/UOM columns present. Leave absent columns as **Not in file**. Choose **Re-read columns** after changing mappings; this resets row corrections. A source location is not required.
+3. Confirm the **End Customer** for VMI or **Trading Customer** for Trading. Supplies uses its Internal Supplies Organization. An unknown document recipient must be selected explicitly.
+4. Review every extracted source row. Exact or canonical item-code matches can be suggested automatically. Select an **Enrolled item** for unmatched or ambiguous rows, correct **Requested quantity** and **Quantity unit**, or explicitly choose **Exclude this row**. Customer item codes are editable and limited to 100 characters. Repeated rows for one item must use one consistent customer reference; reconcile conflicting codes or prepare separate pick lists. Unresolved included rows block **Use reviewed lines**.
+5. Units convert to boxes using enrolled SPQ. Quantities must represent whole boxes. If document SPQ, units, and box count disagree, check the source and acknowledge the corrected quantity. Shortages preserve the full request and remain visible.
+6. Choose **Use reviewed lines**. If a draft already has entries, confirm replacing it. Cancelling keeps the existing draft. Repeated rows for the same item/customer reference are consolidated; compare their combined quantity with the source document.
+7. Review the suggested FIFO/FEFO lots and locations in the draft. Edit location checkboxes and box allocations as needed. Shortages, missing required item codes, and incomplete allocations block generation; an out-of-sequence allocation follows the existing approval process.
+8. Choose **Generate Pick List** after reviewing all lines. The server rechecks live stock, Organization/model/recipient, item identity, SPQ, allocation, and any approval before reserving stock.
+
+Uploading, parsing, and applying reviewed lines only prepare a local draft. Stage 1 generation reserves stock; final dispatch deducts inventory. Importing a DRA does not select physical carton QR identities.
 
 ## 8. Audit, stock count, and inspection
 

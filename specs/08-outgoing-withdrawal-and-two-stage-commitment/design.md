@@ -1,7 +1,7 @@
 # Outgoing Withdrawal & Two-Stage Commitment — Design
 
 Status: Approved
-Updated: 2026-08-25 (allocated-to-picked queue amendment)
+Updated: 2026-11-04 (DRA import runtime contract; approval unchanged)
 
 ## 1. Design intent
 
@@ -90,6 +90,16 @@ The existing direct single-item Stock View control is replaced by a navigation a
 The `/outgoing` page header exposes only actions that have an immediate operational result. A generic Filter button is omitted unless a corresponding filter panel is implemented in the active view; contextual controls belong beside the queue or ledger they affect.
 
 The active work view separates lifecycle phases rather than interleaving them in one list. `status = 'allocated'` renders under **To Pick** with the Start Pick action; `status = 'picked'` renders under **To Dispatch** with the Dispatch action. Each section has an independent count and empty state. Blue/amber cues identify pending picking, while emerald readiness cues distinguish work that can leave the warehouse.
+
+### 3.2 DRA import runtime contract (implemented 2026-11-04)
+
+`DraImportReview.tsx` is the multi-item draft's review surface. The authorized `parseDraDocumentAction` accepts Excel (`.xlsx`, `.xls`, `.csv`) and searchable PDF files up to 10 MB. `lib/parsers/dra-parser.ts` returns header metadata, every extracted demand row with its source-row number, and worksheet/header/column metadata for spreadsheet remapping. Unknown headers do not default to arbitrary code/quantity positions. PDF extraction uses the installed `PDFParse` v2 API and closes its parser on success or failure; OCR is not part of this implementation.
+
+The review retains unresolved rows and permits explicit exclusion. A unique exact/canonical code match can preselect an enrolled item; fuzzy, ambiguous, and description-only matches require manual selection. Organization/model changes rebuild the eligible item catalog and recipient choices. A new worksheet or unknown/changed recipient clears stale recipient suggestions; a document/requesting-Organization mismatch requires acknowledgement. Optional Customer item code is editable and capped at 100 characters. Conflicting references for one item block apply because the commitment snapshot stores one reference for each item/source: the operator must reconcile the codes, exclude the affected row, or create separate pick lists.
+
+Review quantities explicitly use boxes or base units. Enrolled SPQ controls conversion to whole boxes. Document SPQ/box/unit discrepancies require an explicit correction acknowledgement. Duplicate demand for the same item/reference is combined, and all repeated demand for an item consumes availability cumulatively. The existing allocator supplies FIFO/FEFO rank → lot → location suggestions. A shortage keeps the full requested demand and the partial suggested allocation visible; it cannot create a committable partial release.
+
+Applying review replaces draft rows only after confirmation when entered work exists. It neither reserves inventory nor writes a pick list. The operator reviews or edits lot/location quantities in the normal draft, and the normal Stage 1 command revalidates scope, stock, FIFO/FEFO, and concurrent reservations before committing. This import implementation changes no dispatch scan or carton-identity behavior.
 
 ## 4. State and ownership model
 

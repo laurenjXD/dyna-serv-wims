@@ -4,8 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronRight, FileSpreadsheet, PackagePlus, Search, Trash2, Upload } from "@/components/ui/icons";
-import { parseDraDocumentAction } from "../_actions";
-import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
+import { DraImportReview, type ReviewedDraImport } from "./DraImportReview";
 import { boxesToPieces, piecesToBoxes } from "@/lib/inventory/quantities";
 import { buildAllocationPlan, orderLotLocationRows, type AllocationPlan } from "@/lib/withdrawal/allocation";
 import { MobileDataCard, MobileDataCardList } from "@/components/ui/MobileDataCard";
@@ -539,7 +538,7 @@ export function MultiItemPickListDraft({
   // rows are added only after the first row becomes available for entry.
   const [lines, setLines] = useState<DraftLine[]>(() => [blankDraftLine("draft-line-1")]);
   const [openAllocationLineIds, setOpenAllocationLineIds] = useState<Set<string>>(() => new Set());
-  const [importingDra, setImportingDra] = useState(false);
+  const [draFile, setDraFile] = useState<File | null>(null);
   const [importSummary, setImportSummary] = useState<{ type: "success" | "warning" | "error"; message: string; details?: string[] } | null>(null);
   const visibleCustomers = useMemo(() => customers.filter((customer) =>
     flowType === "vmi"
@@ -859,279 +858,59 @@ export function MultiItemPickListDraft({
       setEndCustomerPartyId("");
     }
   };
-  async function handleDraImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function handleDraImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // Permit the same file to be selected after cancelling or correcting it.
+    event.target.value = "";
+    if (file) setDraFile(file);
+  }
 
-    setImportingDra(true);
-    setImportSummary(null);
-
-    const formData = new FormData();
-    formData.set("file", file);
-
-    const res = await parseDraDocumentAction(formData);
-    setImportingDra(false);
-
-    if (!res.ok || !res.parseResult) {
-      setImportSummary({
-        type: "error",
-        message: res.error || "Failed to process DRA document.",
-        details: ["Check that the file is a supported Excel, CSV, or PDF DRA and that it is readable, then upload it again."],
-      });
-      return;
+  function applyDraImport(review: ReviewedDraImport) {
+    const hasDraft = lines.some((line) => line.itemId || line.boxes || line.customerItemCode || line.manualAllocations.length > 0);
+    if (hasDraft && !window.confirm("Replace the current draft with the reviewed DRA lines? Your current draft entries will be discarded.")) return;
+    const availableStock = stock.filter((source) => source.organizationId === review.organizationId && source.flowType === review.flowType);
+    const requests = new Map<string, { itemId: string; boxes: number; customerItemCode: string }>();
+    for (const row of review.rows) {
+      const key = JSON.stringify([row.itemId, row.customerItemCode]);
+      const existing = requests.get(key);
+      if (existing) existing.boxes += row.boxes;
+      else requests.set(key, { ...row });
     }
-
-    const { rows: draRows, header: draHeader, errors: draErrors, warnings: draWarnings } = res.parseResult;
-    if (draRows.length === 0) {
-      setImportSummary({
-        type: "warning",
-        message: "No release line items were extracted from the document.",
-        details: [
-          ...draErrors.map((error) => `DRA: ${error} Correct the file and upload it again.`),
-          ...draWarnings.map((warning) => `DRA: ${warning} Review the file, then add the affected lines manually or upload a corrected file.`),
-          ...(draErrors.length === 0 && draWarnings.length === 0 ? ["Check that the DRA has item codes and requested quantities, or add the lines manually."] : []),
-        ],
-      });
-      return;
-    }
-
-    let targetOrgId = organizationId;
-    let targetFlow = flowType;
-
-    // Delivery To identifies the recipient, not the stock-owning Organization.
-    // If the DRA has no explicit requester, the operator must choose the stock
-    // Organization in this form rather than inferring it from the recipient.
-    const requestedOrganization = draHeader.requestingOrganization;
-    if (!requestedOrganization && !targetOrgId) {
-      setImportSummary({
-        type: "warning",
-        message: "DRA must identify the requesting Organization before items can be imported.",
-        details: ["Select the stock-owning Organization manually, then upload the DRA again."],
-      });
-      return;
-    }
-    if (requestedOrganization && !targetOrgId) {
-      const normalizedRequested = requestedOrganization.trim().toLowerCase();
-      const organizationMatches = organizations.filter((organization) =>
-        organization.name.trim().toLowerCase() === normalizedRequested,
-      );
-      if (organizationMatches.length !== 1) {
-        setImportSummary({
-          type: "warning",
-          message: organizationMatches.length === 0
-            ? `The DRA Organization “${requestedOrganization}” is not enrolled or is not present in current stock. Select a valid Organization or complete enrollment.`
-            : `The DRA Organization “${requestedOrganization}” matched multiple records. Select the correct Organization manually before importing.`,
-        });
-        return;
+    const remainingByBalance = new Map(availableStock.map((source) => [source.balanceId, source.availableQty]));
+    const nextLines: DraftLine[] = [];
+    const warnings: string[] = [];
+    let requested = 0;
+    let allocated = 0;
+    for (const request of requests.values()) {
+      const sources = availableStock.filter((source) => source.itemId === request.itemId)
+        .map((source) => ({ ...source, availableQty: remainingByBalance.get(source.balanceId) ?? 0 }));
+      const allocations = allocateDefaultFifoLocation(orderedSourcesForItem(sources, sources[0]?.isPerishable ?? false), request.boxes, sources[0]?.isPerishable ?? false);
+      const allocatedBoxes = allocations.reduce((sum, allocation) => sum + Number(allocation.boxes), 0);
+      for (const allocation of allocations) {
+        const source = sources.find((candidate) => candidate.balanceId === allocation.balanceId);
+        if (source) remainingByBalance.set(source.balanceId, Math.max(0, source.availableQty - Number(allocation.boxes) * source.spq));
       }
-      targetOrgId = organizationMatches[0].id;
-      setOrganizationId(targetOrgId);
+      if (allocatedBoxes < request.boxes) warnings.push(`${sources[0]?.itemCode ?? request.itemId}: requested ${request.boxes}, allocated ${allocatedBoxes}, short ${request.boxes - allocatedBoxes} boxes. Receive or locate stock, or intentionally reduce demand before generating the pick list.`);
+      nextLines.push({ id: crypto.randomUUID(), itemId: request.itemId, boxes: String(request.boxes), sourceBalanceId: "", manualSplit: true, manualAllocations: allocations, customerItemCode: request.customerItemCode });
+      requested += request.boxes;
+      allocated += allocatedBoxes;
     }
-
-    if (targetOrgId && !targetFlow) {
-      const organizationFlows = [...new Set(
-        stock.filter((row) => row.organizationId === targetOrgId).map((row) => row.flowType),
-      )];
-      if (organizationFlows.length === 1) {
-        targetFlow = organizationFlows[0];
-        setFlowType(targetFlow);
-      } else if (organizationFlows.length > 1) {
-        setImportSummary({
-          type: "warning",
-          message: "The DRA Organization has more than one Inventory Model. Select the correct model before importing its lines.",
-          details: ["Select the VMI, Trading, or Supplies model that owns the requested stock."],
-        });
-        return;
-      }
-    }
-
-    if (!targetOrgId || !targetFlow) {
-      setImportSummary({
-        type: "warning",
-        message: "Please select Organization and Inventory Model first, or upload a DRA matching active stock.",
-        details: ["Choose the Organization and Inventory Model first, then import the DRA again."],
-      });
-      return;
-    }
-
-    if (targetFlow === "vmi" || targetFlow === "supplies") {
-      setCustomerPartyId(targetOrgId);
-    }
-
-    // The sample DRA has a Delivery To organization. Use it only to suggest
-    // the recipient/customer; it never changes the stock Organization.
-    const recipientName = draHeader.recipientOrganization?.trim().toLowerCase();
-    if (recipientName) {
-      if (targetFlow === "vmi") {
-        const recipientMatches = endCustomers.filter((customer) =>
-          customer.name.trim().toLowerCase() === recipientName || customer.code.trim().toLowerCase() === recipientName,
-        );
-        if (recipientMatches.length === 1) setEndCustomerPartyId(recipientMatches[0].id);
-      } else if (targetFlow === "trading") {
-        const recipientMatches = visibleCustomers.filter((customer) =>
-          customer.name.trim().toLowerCase() === recipientName || customer.code.trim().toLowerCase() === recipientName,
-        );
-        if (recipientMatches.length === 1) setCustomerPartyId(recipientMatches[0].id);
-      }
-    }
-
-    const availableStock = stock.filter((s) => s.organizationId === targetOrgId && s.flowType === targetFlow);
-    const availableItems = [...new Map(availableStock.map((source) => [source.itemId, source])).values()];
-
-    const newDraftLines: DraftLine[] = [];
-    let mappedCount = 0;
-    let totalBoxesRequested = 0;
-    let totalBoxesAllocated = 0;
-    const reviewItems: string[] = [
-      ...draErrors.map((error) => `DRA: ${error} Correct the file and re-import the affected rows.`),
-      ...draWarnings.map((warning) => `DRA: ${warning} Check the affected rows before generating the pick list.`),
-    ];
-    const importRequests = new Map<string, { itemId: string; spq: number; requestedBoxes: number; labels: string[]; customerItemCode: string }>();
-
-    for (const draRow of draRows) {
-      const documentQty = draRow.requestedQty == null ? null : Number(draRow.requestedQty);
-      const documentBoxes = draRow.packageCount == null ? null : Number(draRow.packageCount);
-      const documentSpq = draRow.spq == null ? null : Number(draRow.spq);
-      const rowLabel = draRow.customerItemCode || draRow.itemCode || draRow.itemDescription || "Unknown Item";
-      const requestedQuantityContext = documentBoxes !== null
-        ? `${documentBoxes} boxes requested`
-        : documentQty !== null
-          ? `${documentQty} units requested`
-          : "requested quantity not provided";
-      if (documentBoxes !== null && (!Number.isInteger(documentBoxes) || documentBoxes <= 0)) {
-        reviewItems.push(`${rowLabel}: box quantity is invalid. Correct the DRA quantity and import it again.`);
-        continue;
-      }
-      if (documentQty !== null && (!Number.isInteger(documentQty) || documentQty <= 0)) {
-        reviewItems.push(`${rowLabel}: unit quantity is invalid. Correct the DRA quantity and import it again.`);
-        continue;
-      }
-
-      const matchRes = matchItemAgainstCatalog(
-        {
-          itemCode: draRow.itemCode,
-          customerItemCode: draRow.customerItemCode,
-          description: draRow.itemDescription,
-        },
-        availableItems.map((s) => ({
-          id: s.itemId,
-          code: s.itemCode,
-          name: s.itemName,
-          customerItemCode: s.customerItemCode,
-          supplierItemCode: s.supplierItemCode,
-          dsgcItemNumber: s.dsgcItemNumber,
-        }))
-      );
-
-      const bestScore = matchRes.bestMatch?.score ?? 0;
-      const topCandidates = matchRes.bestMatch
-        ? matchRes.candidates.filter((candidate) => candidate.score === matchRes.bestMatch?.score)
-        : [];
-      const descriptionOnlyMatch = matchRes.bestMatch?.matchedField === "name";
-      if (!matchRes.bestMatch || bestScore < 65 || topCandidates.length > 1 || descriptionOnlyMatch) {
-        reviewItems.push(availableStock.length === 0
-          ? `${rowLabel} (${requestedQuantityContext}): no pickable stock exists for the selected Organization/model. Confirm the item and organization, then receive or locate stock before creating a pick list.`
-          : `${rowLabel} (${requestedQuantityContext}): no unique enrolled item match${descriptionOnlyMatch ? " (description alone is not a unique identifier)" : ""}. Verify item enrollment/code and add the correct enrolled item manually.`);
-        continue;
-      }
-
-      const matchedItemId = matchRes.bestMatch.item.id;
-      const candidateSources = matchedItemId
-        ? orderedSourcesForItem(
-            availableStock.filter((s) => s.itemId === matchedItemId),
-            availableStock.find((s) => s.itemId === matchedItemId)?.isPerishable ?? false,
-          )
-        : [];
-
-      if (candidateSources.length === 0) {
-        reviewItems.push(`${rowLabel} (${requestedQuantityContext}): no pickable stock is available for the selected Organization/model. Confirm the item and organization, then receive or locate stock before creating a pick list.`);
-        continue;
-      }
-
-      const spq = candidateSources[0].spq;
-      const spqMismatch = documentSpq !== null && documentSpq !== spq;
-      const quantityBoxMismatch = documentQty !== null && documentBoxes !== null && documentQty !== documentBoxes * spq;
-      const requestedBoxes = documentBoxes ?? (
-        documentQty !== null && documentQty % spq === 0 ? documentQty / spq : null
-      );
-      if (spqMismatch || quantityBoxMismatch || requestedBoxes === null || !Number.isInteger(requestedBoxes) || requestedBoxes <= 0) {
-        reviewItems.push(`${rowLabel}: quantity, SPQ, and box count do not agree with enrolled SPQ ${spq}. Correct the DRA or item enrollment, then import again.`);
-        continue;
-      }
-
-      const existingRequest = importRequests.get(matchedItemId);
-      const importedCustomerItemCode = optionalCustomerItemCode(draRow.customerItemCode, null);
-      if (existingRequest) {
-        existingRequest.requestedBoxes += requestedBoxes;
-        existingRequest.labels.push(rowLabel);
-        if (!existingRequest.customerItemCode && importedCustomerItemCode) {
-          existingRequest.customerItemCode = importedCustomerItemCode;
-        }
-      } else {
-        importRequests.set(matchedItemId, {
-          itemId: matchedItemId,
-          spq,
-          requestedBoxes,
-          labels: [rowLabel],
-          customerItemCode: optionalCustomerItemCode(draRow.customerItemCode, null) ?? "",
-        });
-      }
-    }
-
-    // Validate duplicate DRA rows together. PO/business-unit columns are not
-    // part of the pick-list identity, so repeated item rows become one total
-    // demand line before FIFO/FEFO source allocation.
-    for (const request of importRequests.values()) {
-      const candidateSources = availableStock
-        .filter((source) => source.itemId === request.itemId)
-        .sort((a, b) => a.locationLabel.localeCompare(b.locationLabel, undefined, { numeric: true, sensitivity: "base" }));
-      const orderedCandidateSources = orderedSourcesForItem(candidateSources, candidateSources[0]?.isPerishable ?? false);
-      const availableBoxes = candidateSources.reduce(
-        (sum, source) => sum + Math.max(0, Math.floor(piecesToBoxes(source.availableQty, source.spq))),
-        0,
-      );
-      if (availableBoxes < request.requestedBoxes) {
-        reviewItems.push(`${request.labels.join(" + ")}: requested ${request.requestedBoxes}, available ${availableBoxes}, short ${request.requestedBoxes - availableBoxes} boxes. The demand is kept in the draft with a partial FIFO/FEFO allocation; receive/locate stock or intentionally reduce the requested quantity.`);
-      }
-      const previewAllocations = allocateDefaultFifoLocation(
-        orderedCandidateSources,
-        request.requestedBoxes,
-        orderedCandidateSources[0]?.isPerishable ?? false,
-      );
-      const previewAllocatedBoxes = previewAllocations.reduce((sum, allocation) => sum + Number(allocation.boxes), 0);
-      newDraftLines.push({
-        id: crypto.randomUUID(),
-        itemId: request.itemId,
-        boxes: String(request.requestedBoxes),
-        sourceBalanceId: "",
-        manualSplit: true,
-        manualAllocations: previewAllocations,
-        customerItemCode: request.customerItemCode,
-      });
-      totalBoxesRequested += request.requestedBoxes;
-      totalBoxesAllocated += previewAllocatedBoxes;
-      mappedCount++;
-    }
-
-    if (newDraftLines.length > 0) {
-      setLines(newDraftLines);
-      const summaryMsg = `Imported ${mappedCount} line(s): ${totalBoxesRequested} boxes requested, ${totalBoxesAllocated} allocated in preview. Review the row details below; lines with a shortage remain in the draft and cannot be generated yet.`;
-      setImportSummary({
-        type: reviewItems.length > 0 ? "warning" : "success",
-        message: summaryMsg,
-        details: reviewItems,
-      });
-    } else {
-      setImportSummary({
-        type: "warning",
-        message: "No valid DRA line could be added yet. Review each row and resolve the stated issue, then add valid items manually or import the corrected DRA again.",
-        details: reviewItems.length > 0 ? reviewItems : ["Select the Organization and Inventory Model, then choose enrolled item codes before importing."],
-      });
-    }
+    setOrganizationId(review.organizationId);
+    setFlowType(review.flowType);
+    setCustomerPartyId(review.customerPartyId);
+    setEndCustomerPartyId(review.endCustomerPartyId);
+    setLines(nextLines);
+    setOpenAllocationLineIds(new Set());
+    setDraFile(null);
+    setImportSummary({ type: warnings.length || review.excludedCount ? "warning" : "success",
+      message: `Imported ${nextLines.length} line(s) from ${review.fileName} into the draft: ${requested} boxes requested, ${allocated} allocated in preview. ${review.excludedCount} source row(s) explicitly excluded. Review the lot and location allocations before generating the pick list.`, details: warnings });
   }
 
   return (
     <div className="space-y-4">
+      {draFile && <DraImportReview file={draFile} stock={stock} customers={customers} endCustomers={endCustomers}
+        initialOrganizationId={organizationId} initialFlowType={flowType} initialCustomerPartyId={customerPartyId} initialEndCustomerPartyId={endCustomerPartyId}
+        onApply={applyDraImport} onCancel={() => setDraFile(null)} />}
       {/* Pick List Draft Builder Section */}
       <section className="min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4 sm:p-5">
         {/* Header with Integrated Compact DRA Import */}
@@ -1149,15 +928,14 @@ export function MultiItemPickListDraft({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-label text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-label text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 focus-within:ring-2 focus-within:ring-brand-navy transition-colors">
               <Upload className="h-3.5 w-3.5 text-slate-500" />
-              {importingDra ? "Parsing DRA..." : "Import DRA (Excel/PDF)"}
+              Import DRA (Excel/PDF)
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv,.pdf,application/pdf,text/csv"
                 className="sr-only"
                 onChange={handleDraImport}
-                disabled={importingDra}
               />
             </label>
 
