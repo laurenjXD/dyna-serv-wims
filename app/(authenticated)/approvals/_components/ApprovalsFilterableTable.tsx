@@ -960,7 +960,8 @@ export function ApprovalsFilterableTable({
                     </div>
                     <button
                       type="submit"
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white px-5 font-label text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all"
+                      disabled={reviewModalRequest.requesterUserId === currentUserId}
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white px-5 font-label text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:active:scale-100"
                     >
                       <XCircle size={16} />
                       <span>Reject Request</span>

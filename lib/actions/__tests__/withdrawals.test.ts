@@ -622,13 +622,21 @@ describe("requestFifoOverride — exact alternate pallet approval", () => {
     input.lines[0].lotId = "lot-newer";
     input.lines[0].locationId = "loc-uuid-2";
 
+    const before = Date.now();
     const result = await requestFifoOverride(supervisorResolver(), input, "Aisle A is temporarily inaccessible.", mockRlsDeps(db).deps);
+    const after = Date.now();
 
     expect(result).toEqual({ ok: true, requestId: "new-uuid-generated", requestNumber: "AR-000001" });
     expect(db._inserted).toContainEqual(expect.objectContaining({
       approvalType: "fifo_override",
       targetResourceId: "balance-uuid-2",
     }));
+    const inserted = (db._inserted as Array<{ approvalType?: string; expiryAt?: Date }>).find(
+      (row) => row.approvalType === "fifo_override",
+    );
+    expect(inserted?.expiryAt).toBeInstanceOf(Date);
+    expect(inserted!.expiryAt!.getTime()).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000);
+    expect(inserted!.expiryAt!.getTime()).toBeLessThanOrEqual(after + 24 * 60 * 60 * 1000);
   });
 
   it("accepts the FIFO portion plus one alternate location and targets only the alternate quantity", async () => {
