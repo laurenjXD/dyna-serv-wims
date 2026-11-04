@@ -1,4 +1,5 @@
 # Core Data Model — Design
+
 Status: Approved
 Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 Depends on: specs/00-steering/ (tech.md, structure.md), specs/01-core-data-model/requirements.md
@@ -863,3 +864,51 @@ Canonical model: `offline_internal.scan_replay_receipts` contains `actor_user_id
 `offline_internal` is a non-PostgREST-exposed internal schema. No `anon`/`authenticated` table privileges are granted. Narrow SECURITY DEFINER receipt functions run as a NOLOGIN writer with SELECT/INSERT only, fixed empty search_path, current active actor/capability checks, and a transaction-scoped advisory lock keyed by actor/operation. The read function rejects a changed fingerprint/type; the write function persists only a successful result. These functions are called only by the backend SQL transaction, and this schema must never be added to exposed API schemas. Owning scan commands retain RLS and their existing authoritative validations; receipt functions do not mutate inventory.
 
 Migration `0072_offline_scan_replay_receipts.sql` follows `0071_dynamic_rbac_administration.sql`. The unapproved `0071_remove_approval_reason_min_length.sql` is removed from the integration candidate, restoring the approved minimum-reason constraint instead of renumbering an unauthorized policy relaxation. Verification must use disposable real PostgreSQL for duplicate/lost-response/concurrent retry, rollback, current authorization, cross-actor isolation, and denied direct table access.
+
+## Material expiry policy amendment (2026-11-04)
+
+### Canonical approved additive expiry model
+
+`items.expiry_policy` is NOT NULL text constrained to `block_release` or `allow_with_acknowledgement`, default `block_release`; `items.expiry_policy_version` is a NOT NULL positive integer default 1. Existing rows receive the conservative default without changing dates, quality states or quantities. A policy UPDATE locks the item, requires `items.manage`, rejects a missing/blank transaction-local `app.expiry_policy_reason`, increments the revision only when the policy actually changes, and inserts the old/new policy/version/reason/actor into `audit_log` in the same transaction. Versions cannot be supplied or decreased by a client. No policy edit changes lot state or reopens legacy expired stock.
+
+`expiry_acknowledgements` is the canonical immutable evidence table: `id` UUID primary key default generated; `stage` NOT NULL text constrained to `receiving`, `generation`, `dispatch`; `source_id` UUID NOT NULL; `actor_user_id` UUID NOT NULL references the authenticated user identity; `reason` text NOT NULL with trimmed non-empty constraint; `business_date` date NOT NULL; `fingerprint` text NOT NULL; `lines` JSONB NOT NULL constrained to a non-empty array; `created_at` timestamptz NOT NULL server default. Unique `(stage, source_id, fingerprint)` prevents duplicate command evidence. Index `(stage, source_id)` supports source lookup; `(actor_user_id, created_at)` supports audit review. `source_id` identifies `wrr_items.id` for receiving, and `pick_lists.id` for generation/dispatch. Because this is a typed polymorphic source, the guarded insert trigger validates existence, source type and current scope instead of an unsafe single-table FK; invalid/deleted sources are rejected. Actor is the current authenticated identity and cannot be impersonated. Referenced users/source history are retained rather than cascade-deleting evidence.
+
+Each `lines` entry snapshots exact `itemId`, `lotId` (or receiving WRR-line identity), lot number, location/allocation identity, base-unit quantity, expiry date, policy and revision. Receiving evidence snapshots the Storage destination quantities; missing cartons are excluded. Fingerprints bind stage/source, sorted exact lines, business date and allocation/document version using deterministic canonical serialization/hash. Server recomputation rejects changed evidence and stale client review. One successful transaction inserts evidence and inventory mutations together. Replays return the existing result; a mismatched fingerprint for an already-used operation identity is a conflict. Evidence is permanent under the approved hot/cold policy, with no UPDATE/DELETE grant for application roles.
+
+Shared eligibility requires operational `available` state and a valid date contract: a required missing date is ineligible; legitimately optional null expiry is allowed; otherwise a past date is eligible only with `allow_with_acknowledgement`. “Past” means recorded date strictly earlier than `(current server time AT TIME ZONE 'Asia/Manila')::date`. Final commands re-evaluate this predicate and require current-stage acknowledgement for past-date permissive lines. Quarantine/hold/reject/depleted/legacy expired states remain excluded. Reads derive releasable/blocked quantities without modifying `qty_remaining` or VMI occupied CBM. All allocation/read-model implementations consume this same predicate.
+
+Add `cancelled` to `pick_list_status`. Expiry recovery is permitted only when an allocated/picked pick list has a current active reserved lot now blocked by expiry. Lock parent, item/policy, commitments and balance/unit rows consistently; conditionally change the pick-list header to cancelled, set its active commitment header/lines to released with server release timestamps, decrement `qty_committed` by exactly their still-active reserved quantities, and release owned reserved/selected carton assignments. Preserve immutable scan/history rows and record release/audit events. Never decrement `qty_remaining`, delete the original document or enable stale scan evidence for replacement work. Concurrent dispatch/recovery has one winner; retries return the cancelled result. A new draft retains full original demand and old document identity, and only explicit generation creates replacement reservations.
+
+Stored-stock physical return/write-off uses `inventory_reconciliation` linked to exact `inspection_dispositions` and `audit_log` subtype/reason/recipient/evidence; reject-location movement uses `transfer`; hold produces no movement. Affect only the authorized uncommitted quantity and record before/after balances. Partial dispositions never zero unrelated quantity. Write-off requires the additional Administrator restriction specified in `02`; source scope and current conditional inspection resolution remain mandatory. Neither acknowledgement nor inspection pass bypasses expiry eligibility on return to stock.
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Own item expiry policy/version, durable acknowledgement storage, a shared date/policy eligibility contract, read-model quantities, and migration/backfill design.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.
+
+## Approved amendment — outbound carton reservation state (2026-11-04)
+
+`inventory_units.status` includes `reserved` for an exact physical carton
+assigned by an active Stage 1 outbound commitment but not yet scanned at
+Dispatch. The row's `pick_list_item_id` is required for `reserved`, `selected`,
+and `dispatched` states; it is null for `available` and `quarantined`.
+
+`reserved` means committed, not physically scanned. A unique carton QR scan
+transitions only that assigned row from `reserved` to `selected`. Final
+dispatch transitions accepted rows to `dispatched`. Commitment expiry/release
+may return unscanned `reserved` rows to `available`; scanned `selected` rows
+require the owning workflow's explicit recovery decision and cannot be
+silently treated as available. These states do not create a second quantity
+authority: `lot_location_balances` remains authoritative for aggregate stock.
+
+The database check constraint and RLS permit only the owning `pick_list`
+commitment/dispatch commands to perform these state transitions. The 2026-11-04
+carton reservation migration is migration `0075`.
+
+### Amendment sign-off
+
+- Technical Lead: User / System, 2026-11-04.
+- Product/Operations Lead: User / System, 2026-11-04.

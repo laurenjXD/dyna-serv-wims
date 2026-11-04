@@ -117,3 +117,13 @@ Notification categories SHALL be explicit and extensible, including approval att
 - Initial email templates, sender identities, rate limits, escalation windows, and Asia/Manila display policy with UTC storage.
 - Initial alert metrics/events and owning feature for each threshold.
 - Initial inventory alert thresholds (reorder-level source, expiry windows, commitment-overdue window, cooldown periods) and confirmation that `14` routes these events from `01`/`07`/`08`/`11`/`16` rather than recalculating inventory state.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Deliver scoped, deduplicated expiry attention using the current item policy; notification acknowledgement never authorizes stock release.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

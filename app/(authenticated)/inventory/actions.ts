@@ -13,7 +13,9 @@ export async function createPickList(formData: FormData): Promise<void> {
   let result: Awaited<ReturnType<typeof commitWithdrawal>>;
   try {
     const resolver = await createPageResolver();
-    result = await commitWithdrawal(resolver, JSON.parse(raw));
+    result = await commitWithdrawal(resolver, { ...JSON.parse(raw), expiryAcknowledgement: {
+      acknowledged: formData.get("expiryAcknowledged") === "yes", reason: String(formData.get("expiryReason") ?? ""), reviewKey: String(formData.get("expiryReviewKey") ?? ""),
+    } });
   } catch {
     redirect("/inventory?pickListError=unable_to_reserve_stock");
   }

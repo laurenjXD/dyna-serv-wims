@@ -1,4 +1,5 @@
 # Core Data Model — Tasks
+
 Status: Approved
 Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 
@@ -158,3 +159,25 @@ Status: Approved
 - [x] Second approver: System, standing auto-sign-off convention, 2026-11-03.
 - [x] Add migration 0072 with immutable backend-only receipts and narrow internal functions.
 - [x] Verify real PostgreSQL atomicity, concurrent retry, actor/capability isolation, and privilege restrictions: seven PostgreSQL 16 tests pass with the real Drizzle transaction adapter shape; independent integration/RBAC review passes, including direct privilege/function-owner/search-path queries.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+- [x] Implement item expiry policy/version, durable acknowledgement storage, a shared date/policy eligibility contract, read-model quantities, and migration/backfill design. Runtime migration/RLS verification remains open below.
+- [x] Incorporate the approved amendment requirements/design/tasks and canonical storage/security choices.
+- [x] Product Owner implementation approval — User, explicit instruction to approve and implement, 2026-11-04.
+- [x] Second specification approval — System standing auto-sign-off convention after design reconciliation, 2026-11-04.
+- [ ] Complete applicable runtime migration, real-Postgres/RLS, unit, integration, and E2E verification from the linked plan; record evidence separately from specification approval.
+
+## Outbound carton reservation state amendment (2026-11-04)
+
+Status: Approved
+
+- [ ] Add `reserved` to `inventory_units.status` and update the selection-shape constraint so reserved/selected/dispatched cartons require `pick_list_item_id`.
+- [ ] Add and verify the migration, RLS update path, and carton-history write path for Stage 1 reservation, Dispatch scan, expiry/release, and final dispatch.
+- [ ] Verify assignment uniqueness and aggregate/carton count invariants with concurrent Stage 1 and Stage 2 commands in real PostgreSQL.
+- [x] Product Owner approval — Lauren, 2026-11-04.
+- [x] Second approver approval — System standing approval convention, 2026-11-04.

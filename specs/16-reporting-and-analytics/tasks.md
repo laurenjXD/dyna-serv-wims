@@ -248,3 +248,15 @@ Before setting `Status: Approved`, both signatories must confirm all items below
 - [x] `db-migration-verifier` reports PASS on all migrations introduced by this spec.
 - [x] `rbac-rls-reviewer` reports no findings on analytics pages and export handlers.
 - [x] `stock_entries` does not appear anywhere in this feature's code or queries.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+- [ ] Distinguish physically present, date-expired, blocked, and permitted-with-acknowledgement quantities using the shared eligibility contract without double counting or changing billing.
+- [x] Incorporate the approved amendment requirements/design/tasks and canonical storage/security choices.
+- [x] Product Owner implementation approval — User, explicit instruction to approve and implement, 2026-11-04.
+- [x] Second specification approval — System standing auto-sign-off convention after design reconciliation, 2026-11-04.
+- [ ] Complete applicable runtime migration, real-Postgres/RLS, unit, integration, and E2E verification from the linked plan; record evidence separately from specification approval.

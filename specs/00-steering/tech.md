@@ -17,7 +17,7 @@ Status: Approved (stack) / Draft (principles below still being finalized alongsi
 ## Cross-cutting architecture principles (carry into every spec)
 - RBAC resolved from session, never from a client-supplied parameter
 - Item identity (barcode) is separate from physical placement (location)
-- Lot `status` is the single FIFO/FEFO eligibility gate — no per-feature exclusion logic
+- FIFO/FEFO uses the shared operational-status/date/item-policy eligibility contract in `01` and the approved [material expiry amendment](material-expiry-policy-amendment.md). Available status remains necessary; past-date release additionally requires the explicit permissive policy and stage-specific acknowledgement. No per-feature client gate or scheduled-job bypass is permitted.
 - One `inventory_transactions` table, differentiated by `movement_type`, not three separate schemas
 - Every approval is a recorded decision (identity + timestamp + reason), never a boolean flip
 - Pricing is visible everywhere (dashboards, documents, accounting handoff) — Trading price is final, VMI price on a document is a per-release reference only, never the authoritative bill

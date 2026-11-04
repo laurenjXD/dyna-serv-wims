@@ -25,6 +25,20 @@ export function ScanDiscrepancyModal({
 
   const getDetails = (reasonCode: string) => {
     switch (reasonCode) {
+      case "expiry_acknowledgement_required":
+        return {
+          title: "Expiry Review Required",
+          description: "This dispatch includes past-expiry material allowed by its item policy, but the current review was not acknowledged.",
+          recommendation: "Review the listed lots and expiry dates, enter a reason, and confirm dispatch again.",
+          canEnroll: false,
+        };
+      case "expiry_review_stale":
+        return {
+          title: "Expiry Review Changed",
+          description: "The date, item policy, or dispatch allocation changed after this review was shown.",
+          recommendation: "Refresh this Pick List, review the affected material again, and confirm with a new acknowledgement.",
+          canEnroll: false,
+        };
       case "unknown_item":
         return {
           title: "Unregistered Item Barcode",

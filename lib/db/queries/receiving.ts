@@ -85,6 +85,9 @@ export type WrrItemRow = {
   customerItemCode: string | null;
   manufactureDate: string | null;
   expiryDate: string | null;
+  expiryPolicy?: "block_release" | "allow_with_acknowledgement";
+  expiryPolicyVersion?: number;
+  isPerishable?: boolean;
   remarks: string | null;
   // wrr_items.uom — not resolved via a join, a native column on this table.
   uom: string;
@@ -135,6 +138,9 @@ type RawJoinRow = {
   itemCustomerItemCode: string | null;
   itemManufactureDate: string | null;
   itemExpiryDate: string | null;
+  itemExpiryPolicy?: "block_release" | "allow_with_acknowledgement";
+  itemExpiryPolicyVersion?: number;
+  itemIsPerishable?: boolean;
   itemRemarks: string | null;
   itemUom: string | null;
   itemUnitCbm: string | number | null;
@@ -306,6 +312,9 @@ export async function getWrrDocument(
       itemCustomerItemCode: wrrItems.customerItemCode,
       itemManufactureDate: wrrItems.manufactureDate,
       itemExpiryDate: wrrItems.expiryDate,
+      itemExpiryPolicy: itemsTable.expiryPolicy,
+      itemExpiryPolicyVersion: itemsTable.expiryPolicyVersion,
+      itemIsPerishable: itemsTable.isPerishable,
       itemRemarks: wrrItems.remarks,
       itemUom: wrrItems.uom,
       itemUnitCbm: wrrItems.unitCbm,
@@ -345,6 +354,9 @@ export async function getWrrDocument(
       customerItemCode: row.itemCustomerItemCode,
       manufactureDate: row.itemManufactureDate,
       expiryDate: row.itemExpiryDate,
+      expiryPolicy: row.itemExpiryPolicy,
+      expiryPolicyVersion: row.itemExpiryPolicyVersion,
+      isPerishable: row.itemIsPerishable,
       remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),

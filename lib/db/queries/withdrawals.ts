@@ -30,6 +30,7 @@ import { parties } from "@/lib/db/schema/parties";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 import { userProfiles } from "@/lib/db/schema/rbac";
 import { wrrItems } from "@/lib/db/schema/wrr";
+import { expiryAcknowledgements } from "@/lib/db/schema/expiry_acknowledgements";
 
 // Minimal structural type that both the real Drizzle db instance and test
 // stubs satisfy. Uses named method properties (not an index signature) so
@@ -74,6 +75,10 @@ export type PickListItemRow = {
   numberOfBoxes: number;
   manufactureDate?: string | null;
   expiryDate?: string | null;
+  expiryPolicy?: "block_release" | "allow_with_acknowledgement";
+  expiryPolicyVersion?: number;
+  lotStatus?: string;
+  isPerishable?: boolean;
   unitPrice: string | null;
 };
 
@@ -319,7 +324,11 @@ export async function getPickListItems(
       // Preserve dates for legacy receipts whose lot row is blank by reading
       // the dates originally declared on the linked WRR line.
       manufactureDate: sql<string | null>`COALESCE(${lots.manufactureDate}, ${wrrItems.manufactureDate})`,
-      expiryDate: sql<string | null>`COALESCE(${lots.expiryDate}, ${wrrItems.expiryDate})`,
+      expiryDate: lots.expiryDate,
+      expiryPolicy: items.expiryPolicy,
+      expiryPolicyVersion: items.expiryPolicyVersion,
+      lotStatus: lots.status,
+      isPerishable: items.isPerishable,
       unitPrice: pickListItems.unitPrice,
     })
     .from(pickListItems)
@@ -330,6 +339,15 @@ export async function getPickListItems(
     .orderBy(asc(pickListItems.createdAt))) as PickListItemRow[];
 
   return rows;
+}
+
+export async function getExpiryAcknowledgementLines(
+  db: DbLike, pickListId: string, stage: "generation" | "dispatch",
+): Promise<unknown[]> {
+  const rows = await db.select({ lines: expiryAcknowledgements.lines })
+    .from(expiryAcknowledgements)
+    .where(and(eq(expiryAcknowledgements.sourceId, pickListId), eq(expiryAcknowledgements.stage, stage))) as Array<{ lines: unknown }>;
+  return rows.flatMap((row) => Array.isArray(row.lines) ? row.lines : []);
 }
 
 /** Physical boxes already selected for a pick list, grouped by their exact line. */

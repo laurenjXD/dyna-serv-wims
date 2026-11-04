@@ -54,3 +54,13 @@ Across all user-facing transfer and inspection screens, forms, and headers:
 - [ ] Daily Inspection initiates directly from Stock View (`/inventory`).
 - [ ] Split dispositions (reject / return_to_stock) enforce total balance equality.
 - [ ] 3-component error feedback is present on all scan and validation errors.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Preserve held/rejected/quarantined exclusions; record return, reject, hold, or authorized write-off without silently deleting physically present stock or bypassing reservations.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

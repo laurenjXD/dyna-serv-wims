@@ -99,6 +99,15 @@ function getCommitErrorMessage(reason: string): string {
   if (reason.includes("must be of type")) {
     return "Please choose valid active storage racks or inspection holding bays.";
   }
+  if (reason.includes("expiry_blocks_storage") || reason.includes("material_expiry_blocked")) {
+    return "This lot is past expiry and its item policy blocks Storage placement. Assign the affected cartons to Inspection, then continue the existing inspection process.";
+  }
+  if (reason.includes("expiry_acknowledgement_required")) {
+    return "The expiry review is missing or no longer current. Review the Storage destinations and acknowledge again before confirming placement.";
+  }
+  if (reason.includes("expiry_date_required") || reason.includes("expiry_date_invalid") || reason.includes("expiry_policy_unavailable")) {
+    return "Expiry information could not be validated. Correct the WRR date or item policy, then retry placement.";
+  }
   switch (reason) {
     case "network_restricted":
       return "This receiving action is restricted to the configured warehouse network. Connect to approved warehouse Wi-Fi and try again; nothing was stored.";
@@ -289,6 +298,11 @@ export default async function ReceiveFloorPage({
       // The server command validates the missing/malformed unit assignment.
     }
     const presenceAttested = formData.get("presenceAttested") === "true";
+    const expiryAcknowledgement = {
+      acknowledged: formData.get("expiryAcknowledged") === "yes",
+      reason: String(formData.get("expiryReason") ?? ""),
+      reviewKey: String(formData.get("expiryReviewKey") ?? ""),
+    };
     if (!wrrItemId || (!locationId && !allocations?.length && !(unitLocationIds && unitLocationIds.length > 0))) {
       redirect(
         `/receiving/${wrrId}/receive?result=commit_error&line=${encodeURIComponent(wrrItemId)}&reason=${encodeURIComponent("missing_location")}`
@@ -302,6 +316,7 @@ export default async function ReceiveFloorPage({
         allocations,
         unitLocationIds,
         presenceAttested,
+        expiryAcknowledgement,
       });
     } catch (error) {
       console.error("Unable to submit receiving line from floor form", {
@@ -697,6 +712,14 @@ export default async function ReceiveFloorPage({
                   spq={primaryLineSpq}
                   uom={primaryLineUom}
                   lotNumber={primaryReadyLine.lotNumber}
+                  expiryReview={primaryReadyLine.itemId ? {
+                    itemId: primaryReadyLine.itemId,
+                    wrrItemId: primaryReadyLine.id,
+                    expiryDate: primaryReadyLine.expiryDate ?? null,
+                    expiryPolicy: primaryReadyLine.expiryPolicy,
+                    expiryPolicyVersion: primaryReadyLine.expiryPolicyVersion ?? 1,
+                    isPerishable: primaryReadyLine.isPerishable,
+                  } : undefined}
                 />
 
                 <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">

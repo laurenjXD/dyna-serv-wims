@@ -711,3 +711,13 @@ Testing follows the patterns defined in `specs/00-steering/testing.md`.
 - The `daily_transaction_counts` materialized view refresh job requires spec `04` (scheduled infrastructure) to be at least partially approved before the production heatmap path is available.
 - The FIFO override count (FR-4.3) depends on the `approval_requests` table schema from spec `09`. Until `09` is approved, this metric is shown as "pending spec `09` approval" in the UI.
 - Outbound inspection analytics (FR-7.2) covers inbound inspection only until spec `11` defines its inspection record schema.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Distinguish physically present, date-expired, blocked, and permitted-with-acknowledgement quantities using the shared eligibility contract without double counting or changing billing.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

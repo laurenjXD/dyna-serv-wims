@@ -43,6 +43,8 @@ import { locations } from "@/lib/db/schema/locations";
 import { inspectionCases } from "@/lib/db/schema/transfers";
 import { inventoryUnits } from "@/lib/db/schema/inventory_units";
 import { receivingDiscrepancies } from "@/lib/db/schema/receiving_discrepancies";
+import { expiryAcknowledgements } from "@/lib/db/schema/expiry_acknowledgements";
+import { evaluateExpiry, expiryReviewKey, validateExpiryAcknowledgement, type ExpiryAcknowledgementInput, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
 import { deriveWrrUnitId } from "@/lib/barcode/wrr-unit";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { withRlsTransaction } from "@/lib/db/rls-transaction";
@@ -52,7 +54,7 @@ import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { getStorageClient } from "@/lib/supabase/storage";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { validateCiplFile, buildCiplObjectPath } from "@/lib/receiving/cipl-upload";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { boxesToPieces, exactCartonCount, positiveInteger } from "@/lib/inventory/quantities";
 import { resolveReceivingInventoryModel, validateReceivingOrganization } from "@/lib/organizations/relationship-contract";
 
@@ -1090,6 +1092,7 @@ export async function commitWrrLine(
     allocations?: Array<{ locationId: string; qty: number }>;
     unitLocationIds?: string[];
     presenceAttested?: boolean;
+    expiryAcknowledgement?: ExpiryAcknowledgementInput;
   },
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
 ): Promise<CommitWrrLineResult> {
@@ -1116,6 +1119,9 @@ export async function commitWrrLine(
   try {
     rlsResult = await withRlsTransaction(rlsDeps, async (rlsTx) => {
       const tx = rlsTx.db as DbLike;
+      // Serialize receipt/date edits and policy changes before authoritative reads.
+      await rlsTx.execute({ sql: "SELECT wi.id FROM wrr_items wi WHERE wi.id = $1 AND wi.wrr_id = $2 FOR UPDATE", params: [wrrItemId, wrrId] });
+      await rlsTx.execute({ sql: "SELECT i.id FROM items i JOIN wrr_items wi ON wi.item_id = i.id WHERE wi.id = $1 AND wi.wrr_id = $2 FOR SHARE OF i", params: [wrrItemId, wrrId] });
       const doc = await fetchWrrForAction(tx, wrrId);
       if (doc === null) {
         return { ok: false, errors: ["not_found"] } satisfies CommitWrrLineResult;
@@ -1130,7 +1136,7 @@ export async function commitWrrLine(
         return { ok: false, errors: ["The WRR line must be matched to an enrolled item before receiving."] } satisfies CommitWrrLineResult;
       }
       const [catalogItem] = await tx
-        .select({ spq: itemCatalog.spq })
+        .select({ spq: itemCatalog.spq, isPerishable: itemCatalog.isPerishable, expiryPolicy: itemCatalog.expiryPolicy, expiryPolicyVersion: itemCatalog.expiryPolicyVersion })
         .from(itemCatalog)
         .where(eq(itemCatalog.id, line.itemId))
         .limit(1);
@@ -1249,6 +1255,24 @@ export async function commitWrrLine(
 
       const hasInspectionLocation = targetLocationIds.some((id) => locationsById.get(id)?.locationType === "inspection");
       const finalDisposition = hasInspectionLocation ? "inspect" : "store";
+      const receivingAllocations = isBatch ? batchAllocations : [{ locationId: targetLocationIds[0], qty: cartonCount }];
+      const reviewedStorage = receivingAllocations.filter((allocation) => locationsById.get(allocation.locationId)?.locationType === "storage");
+      const expiryNow = new Date();
+      const expiry = evaluateExpiry({ expiryDate: line.expiryDate ?? null, expiryPolicy: catalogItem.expiryPolicy, isPerishable: Boolean(catalogItem.isPerishable), now: expiryNow });
+      if (expiry.error) {
+        return { ok: false, errors: [expiry.error] } satisfies CommitWrrLineResult;
+      }
+      if (reviewedStorage.length > 0 && !expiry.eligible) {
+        return { ok: false, errors: ["expiry_blocks_storage"] } satisfies CommitWrrLineResult;
+      }
+      const expiryLines: ExpiryReviewLine[] = expiry.requiresAcknowledgement
+        ? reviewedStorage.map((allocation) => ({ itemId: line.itemId!, lotId: wrrItemId, locationId: allocation.locationId,
+          qty: boxesToPieces(allocation.qty, spq), expiryDate: line.expiryDate ?? null,
+          expiryPolicy: catalogItem.expiryPolicy, expiryPolicyVersion: catalogItem.expiryPolicyVersion }))
+        : [];
+      if (expiryLines.length > 0 && !validateExpiryAcknowledgement(params.expiryAcknowledgement, expiryLines, expiryNow)) {
+        return { ok: false, errors: ["expiry_acknowledgement_required"] } satisfies CommitWrrLineResult;
+      }
 
       // Conditional claim: only the caller who flips committed_at from NULL to
       // now() may post this line's inventory rows below.
@@ -1264,6 +1288,12 @@ export async function commitWrrLine(
         .returning({ id: wrrItems.id });
 
       if (claimed.length === 1) {
+        if (expiryLines.length > 0 && params.expiryAcknowledgement) {
+          await tx.insert(expiryAcknowledgements).values({ stage: "receiving", sourceId: wrrItemId,
+            actorUserId: userId, reason: params.expiryAcknowledgement.reason.trim(), businessDate: expiry.businessDate,
+            fingerprint: createHash("sha256").update(expiryReviewKey(expiryLines, expiryNow)).digest("hex"),
+            lines: expiryLines.map((entry) => ({ ...entry, wrrItemId })) });
+        }
         if (allocatedTotal < cartonCount) {
           await tx.insert(receivingDiscrepancies).values({
             wrrId: doc.id,
@@ -1415,6 +1445,10 @@ export async function commitWrrLine(
       wrrItemId,
       error,
     });
+    const detail = error instanceof Error ? error.message : "";
+    if (detail.includes("stock_expiry_blocked")) return { ok: false, errors: ["expiry_blocks_storage"] };
+    if (detail.includes("expiry_acknowledgement") || detail.includes("expiry_acknowledgements")) return { ok: false, errors: ["expiry_acknowledgement_required"] };
+    if (detail.includes("expiry_policy") || detail.includes("expiry_date")) return { ok: false, errors: ["expiry_policy_unavailable"] };
     return { ok: false, errors: ["commit_failed"] };
   }
 

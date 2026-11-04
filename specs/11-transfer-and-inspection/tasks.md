@@ -161,3 +161,15 @@ Testing: Full matrix below.
 - [x] Design-system and physical workflow review pass.
 - [x] Product owner approval — Name: Lauren Date: 2026-08-05
 - [x] Second approver approval — Name/Role: Lauren Date: 2026-08-05
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+- [ ] Preserve held/rejected/quarantined exclusions; record return, reject, hold, or authorized write-off without silently deleting physically present stock or bypassing reservations.
+- [x] Incorporate the approved amendment requirements/design/tasks and canonical storage/security choices.
+- [x] Product Owner implementation approval — User, explicit instruction to approve and implement, 2026-11-04.
+- [x] Second specification approval — System standing auto-sign-off convention after design reconciliation, 2026-11-04.
+- [ ] Complete applicable runtime migration, real-Postgres/RLS, unit, integration, and E2E verification from the linked plan; record evidence separately from specification approval.

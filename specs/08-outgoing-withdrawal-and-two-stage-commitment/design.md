@@ -288,3 +288,52 @@ another owner. The End Customer / Recipient remains an independent required
 selection.
 
 `createPickList` (or its successor) repeats all checks inside the commitment transaction: active Organization, exact relationship, user/RLS scope, model-compatible item/lot/location/stock context, concurrency version, and current allocation. Failure leaves no commitment, pick list, or document snapshot. Legacy generic customer rows are read-compatible but fail new-write validation with a remediation error. This contract also applies to imported DRA values, stale browser state, URL parameters, and direct action calls.
+
+## 14. Approved amendment — reserve and verify exact cartons (2026-11-04)
+
+This amendment supersedes §7's shared item/lot QR batch confirmation and
+late assignment of internal units. The To Pick review/approval route remains
+non-scanning. During Stage 1, after FIFO/FEFO and any override decision are
+revalidated, the server locks and reserves exactly `number_of_boxes` existing
+`inventory_units` rows for every committed line. Each row must match item,
+lot, location, and available status. Carton IDs are never accepted from the
+browser as selection authority. If aggregate quantities are available but
+there are not enough eligible carton identities, the transaction fails closed.
+
+Use a distinct `reserved` status for a committed carton that has not yet been
+physically scanned; retain `selected` for the exact carton whose QR was scanned
+in Dispatch. Each Dispatch scan transitions only its matching reserved row to
+selected and records carton history. Shared item/lot QRs do not satisfy this
+contract. The line remains incomplete until selected assigned carton count is
+exactly its committed box count. The final online dispatch command rechecks
+the exact assignment and scan set, then transitions those same rows to
+dispatched with transaction-linked history while atomically applying the
+aggregate inventory and commitment changes. No additional line QR scan is
+required after all cartons are scanned.
+
+Commitment expiry/release returns only its reserved cartons to available and
+clears their pick-list links in the same transaction as aggregate reservation
+release. Selected/scanned cartons cannot be silently released or substituted;
+they require an explicit approved exception/reallocation contract. Idempotent
+dispatch retries preserve one transition/history event per carton.
+
+The To Pick page retains review/approval and shows the reserved carton count
+or authorized manifest. Dispatch shows per-line and total carton scan
+progress. User-facing states distinguish reserved, scanned, ready to dispatch,
+and dispatched; no line is described as physically verified until every
+assigned carton QR has been accepted.
+
+### Amendment sign-off
+
+- Product Owner: Lauren, 2026-11-04 (explicit approval to proceed and selection of verifiable per-carton scans in Dispatch).
+- Second approver: System standing approval convention, 2026-11-04.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Use the shared expiry predicate for manual and DRA allocation; record exact-lot acknowledgements, revalidate at dispatch, and provide reviewed replacement/shortage recovery for affected reservations.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

@@ -1,5 +1,15 @@
 # Revision Log — Hyperion 3PL / Dyna-Serv
 
+## Product Owner direction: item-level material expiry policy (2026-11-04)
+
+The Product Owner accepted an explicit per-item choice between **Block release** and **Allow with acknowledgement** for stock past its recorded expiry date. Non-perishability alone never grants permission. Permissive release requires a visible lot/date/days-past warning, an explicit acknowledgement and reason at pick-list generation, and current validation/acknowledgement at dispatch. Quality holds, quarantine, rejection, authorization, and FIFO/FEFO override rules remain independent controls.
+
+The accepted supporting workflow covers expired incoming stock, expiry in storage, expiry after reservation, reviewed replacement allocation or shortage recovery, physical segregation when blocked, and recorded return or authorized write-off. Physical quantities/history are retained until a real disposition changes them; expiry alone never zeros stock. The proposed date boundary is the day after the printed expiry date in Asia/Manila. Permissive expired materials may be accepted into Storage with acknowledgement if no independent inspection/quality restriction applies.
+
+The detailed cross-feature draft and verification tasks are in [Material expiry policy amendment](material-expiry-policy-amendment.md), referenced by the requirements/design/tasks of `01`, `02`, `06`, `07`, `08`, `10`, `11`, `14`, and `16`. This records approval of the business direction, not technical verification or runtime completion. Existing Approved baselines/sign-offs are preserved. Canonical `01` persistence/read-model design, authorization review, applicable verification, and feature-level amendment reconciliation must precede implementation; use the repository's standing second-approver convention when its gates are satisfied rather than inventing a new manual approval step.
+
+This pass changes specifications only. It does not claim the existing past-date receiving/allocation/dispatch gaps are fixed.
+
 ## `08` Full DRA import review implemented against approved R1.8 (2026-11-04)
 
 The multi-item pick-list draft now opens a DRA review that retains every extracted row until corrected or explicitly excluded. Excel/CSV imports support worksheet, header-row, and source-column mapping; searchable PDFs use `PDFParse` v2. Uploads are limited to 10 MB; scanned image PDF OCR is not implemented. The operator reviews Organization, Inventory Model, model-specific recipient, item identity, quantities, and an editable Customer item code. Only unique exact/canonical item-code matches are preselected. Unknown or changed recipient text clears stale suggestions, document/requesting-Organization mismatches require acknowledgement, and conflicting Customer item codes for one item must be reconciled or split across pick lists.
@@ -2136,3 +2146,19 @@ one pallet position. Rack A therefore has a map maximum of 120 positions
 (4 levels × 30 positions). The map may show this layout-position maximum, but
 live CBM capacity, utilization, and stock status remain sourced from canonical
 location data and are not derived from the cell count.
+
+## 2026-11-04 — Material expiry implementation continued
+
+Continued the explicitly approved material-expiry implementation. The shared
+change set now includes the versioned item policy, Manila-date eligibility,
+immutable staged acknowledgements, migration-backed release guards/read models,
+inventory warning and allocation handling, dispatch review/recovery, and
+deduplicated expiry attention. Receiving's floor placement form now displays
+past-expiry Storage destinations and requires an explicit reasoned
+acknowledgement bound to its selected destinations and quantities. A database
+guard now also requires matching generation-stage evidence for permissive
+past-expiry commitment lines. Pick List print and Acknowledgement Receipt views
+now display the immutable expiry acknowledgement for each matching lot,
+location and quantity. Verification, inspection disposition integration,
+generated-PDF snapshot integration, hosted migration application, and UAT remain
+open; no verification or deployment claim is made here.

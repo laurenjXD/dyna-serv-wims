@@ -29,6 +29,7 @@ export type ValidatedWithdrawal = {
   idempotencyKey?: string;
   approvalRequestId?: string;
   enforceSourceSelection?: boolean;
+  expiryAcknowledgement?: unknown;
 };
 
 export type WithdrawalValidationResult =
@@ -138,6 +139,7 @@ export function validateWithdrawal(input: unknown): WithdrawalValidationResult {
     data.enforceSourceSelection = raw["enforceSourceSelection"];
   }
 
+  data.expiryAcknowledgement = raw["expiryAcknowledgement"];
   return { ok: true, data };
 }
 

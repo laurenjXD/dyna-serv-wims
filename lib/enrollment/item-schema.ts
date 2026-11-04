@@ -37,6 +37,8 @@ export type ItemInput = {
   // Inventory
   minReorderLevel: number;
   isPerishable?: boolean;
+  expiryPolicy?: "block_release" | "allow_with_acknowledgement";
+  expiryPolicyReason?: string;
   isActive?: boolean;
   // Reference prices (nullable; never used to finalize Trading prices or VMI billing)
   buyingPrice?: string | null;
@@ -124,6 +126,13 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
   }
 
   const raw = input as Record<string, unknown>;
+  const expiryPolicy = raw.expiryPolicy === undefined ? "block_release" : raw.expiryPolicy;
+  if (expiryPolicy !== "block_release" && expiryPolicy !== "allow_with_acknowledgement") {
+    errors.push({ field: "expiryPolicy", message: "Choose Block release or Allow with acknowledgement." });
+  }
+  if (raw.expiryPolicyReason !== undefined && (typeof raw.expiryPolicyReason !== "string" || raw.expiryPolicyReason.trim().length > 1000)) {
+    errors.push({ field: "expiryPolicyReason", message: "Enter a policy reason of no more than 1,000 characters." });
+  }
 
   // ── code: varchar(100) NOT NULL UNIQUE ──────────────────────────────────────
   const code = raw["code"];
@@ -377,6 +386,8 @@ export function parseItemInput(input: unknown): ParseResult<ItemInput> {
     weightKg,
     minReorderLevel,
     isPerishable: typeof raw["isPerishable"] === "boolean" ? raw["isPerishable"] : false,
+    expiryPolicy: expiryPolicy as ItemInput["expiryPolicy"],
+    expiryPolicyReason: typeof raw.expiryPolicyReason === "string" ? raw.expiryPolicyReason.trim() : undefined,
     isActive: typeof raw["isActive"] === "boolean" ? raw["isActive"] : true,
     buyingPrice:
       rawBuyingPrice !== undefined && rawBuyingPrice !== null

@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { vmiPermits } from "@/lib/db/schema/vmi_billing";
-import { getPickList, getPickListItems } from "@/lib/db/queries/withdrawals";
+import { getPickList, getPickListItems, getExpiryAcknowledgementLines } from "@/lib/db/queries/withdrawals";
 import { PickListPrintButton } from "../print/_components/PickListPrintButton";
 import { DocumentPrintStyles } from "@/components/print/DocumentPrintStyles";
 import { MasterDocumentHeader } from "@/components/print/MasterDocumentHeader";
@@ -25,7 +25,7 @@ export default async function DeliveryReceiptPage({
   const pickList = await getPickList(db, pickListId);
   if (!pickList) notFound();
 
-  const [lines, partyRows, permitRows] = await Promise.all([
+  const [lines, partyRows, permitRows, expiryAcknowledgementLines] = await Promise.all([
     getPickListItems(db, pickListId),
     db
       .select({ name: parties.name, address1: parties.address1, address2: parties.address2 })
@@ -37,7 +37,13 @@ export default async function DeliveryReceiptPage({
       .from(vmiPermits)
       .where(and(eq(vmiPermits.partyId, pickList.customerPartyId), eq(vmiPermits.isActive, true)))
       .limit(1),
+    getExpiryAcknowledgementLines(db, pickListId, "dispatch"),
   ]);
+  const expiryAcknowledged = (line: (typeof lines)[number]) => expiryAcknowledgementLines.some((value) => {
+    if (!value || typeof value !== "object") return false;
+    const snapshot = value as Record<string, unknown>;
+    return snapshot.lotId === line.lotId && snapshot.locationId === line.locationId && snapshot.qty === line.qty;
+  });
 
   const party = partyRows[0];
   const pezaPermitNo = permitRows[0]?.permitNumber ?? null;
@@ -164,6 +170,7 @@ export default async function DeliveryReceiptPage({
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Lot Number</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Mfg Date</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Expiry Date</th>
+                  <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Expiry Condition at Dispatch</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-left uppercase font-bold tracking-wider text-slate-700">Location</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">SPQ</th>
                   <th className="border border-slate-300 px-2 py-1.5 text-right uppercase font-bold tracking-wider text-slate-700">Boxes</th>
@@ -180,6 +187,7 @@ export default async function DeliveryReceiptPage({
                     <td className="border border-slate-300 px-2 py-1.5 font-bold text-slate-900">{line.lotNumber}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{line.manufactureDate ?? "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{line.expiryDate ?? "—"}</td>
+                    <td className="border border-slate-300 px-2 py-1.5 text-slate-700">{expiryAcknowledged(line) ? "Past expiry — acknowledged by warehouse staff" : "—"}</td>
                     <td className="border border-slate-300 px-2 py-1.5 font-bold text-brand-navy">{line.locationLabel}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right text-slate-700">{line.spq.toLocaleString()}</td>
                     <td className="border border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">{line.numberOfBoxes.toLocaleString()}</td>
@@ -189,7 +197,7 @@ export default async function DeliveryReceiptPage({
               </tbody>
               <tfoot className="border-t-2 border-slate-800 bg-slate-100 font-bold">
                 <tr>
-                  <td colSpan={9} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
+                  <td colSpan={10} className="border border-slate-300 px-2 py-1.5 text-right text-[10px] uppercase text-slate-800">
                     Total Delivered:
                   </td>
                   <td className="border border-slate-300 px-2 py-1.5 text-right text-brand-navy">

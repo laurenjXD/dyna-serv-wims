@@ -48,3 +48,13 @@ The Reporting dashboard (`/reports`) features:
 - [ ] Permanent tiered retention policy is enforced for `lot_history_export`.
 - [ ] Financial columns are gated by `reporting.financial_read` for Supervisor and Administrator.
 - [ ] 3-component error feedback is present on all report loading/export errors.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Distinguish physically present, date-expired, blocked, and permitted-with-acknowledgement quantities using the shared eligibility contract without double counting or changing billing.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

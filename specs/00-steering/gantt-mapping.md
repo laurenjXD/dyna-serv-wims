@@ -2,6 +2,14 @@
 Status: Active
 Last Updated: 2026-11-04
 
+## Material expiry policy amendment — 2026-11-04
+
+Product Owner business direction approved: item-level **Block release** / **Allow with acknowledgement**, warning/reason/audit, receiving and stored-stock handling, dispatch revalidation and reservation recovery, and controlled disposition. Detailed requirements/design/task work is tracked in [Material expiry policy amendment](material-expiry-policy-amendment.md) across `01`, `02`, `06`, `07`, `08`, `10`, `11`, `14`, and `16`.
+
+Delivery status: **Specification amendment drafted; runtime implementation not started for this amendment.** Existing feature approvals and milestone completion figures do not imply delivery of expiry handling. Canonical persistence/eligibility design, authorization review, feature reconciliation, and applicable verification remain amendment gates; no delivery date or new implementation-completion percentage is asserted.
+
+---
+
 This sits above the spec folders, not inside them. It maps delivery work to feature specs and records both specification approval and implementation status. Older schedule estimates and status rows may lag the feature `tasks.md`; use those task files and `revision-log.md` for the latest verification evidence, and reconcile this table when they change.
 
 The delivery flow remains **Requirements → Design → Tasks → Approval → Implementation → Verification → UAT**. Schedule estimates and percentages in this file are historical unless the implementation status cites a current evidence record.

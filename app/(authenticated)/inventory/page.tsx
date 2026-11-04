@@ -37,6 +37,7 @@ import { ToPickQueue } from "./_components/ToPickQueue";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
 import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, requestPickListOverride } from "./actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
+import { evaluateExpiry } from "@/lib/inventory/expiry-policy";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
 import { StockCountTab } from "./_components/StockCountTab";
 import { AutoDismissNotice } from "./_components/AutoDismissNotice";
@@ -96,6 +97,14 @@ export default async function InventoryPage({ searchParams }: PageProps) {
     unable_to_reserve_stock: {
       primary: "The selected stock is no longer available for this Organization and location.",
       next: "Refresh inventory, select the current FIFO location, and try again.",
+    },
+    carton_traceability_incomplete: {
+      primary: "There are not enough registered carton labels for this allocation.",
+      next: "Ask a supervisor to reconcile carton labels for the selected lot and location, then refresh and retry.",
+    },
+    carton_traceability_conflict: {
+      primary: "The carton allocation changed before this pick list was committed.",
+      next: "Refresh the inventory and review the current FIFO/FEFO carton availability.",
     },
     quantity_must_match_spq: {
       primary: "The requested quantity must make complete boxes.",
@@ -250,11 +259,17 @@ type AggregatedLot = {
   lotStatus: string;
   manufactureDate: string | null;
   expiryDate: string | null;
+  expiryPolicy?: "block_release" | "allow_with_acknowledgement";
   receivedAt: Date;
   // Stacked location tag: all locations this lot spans, comma-separated.
   locationLabels: string[];
   // Total available qty across all locations for this lot.
   availableQty: number;
+  onHandQty: number;
+  committedQty: number;
+  expiryBlockedQty: number;
+  expiryAcknowledgementRequiredQty: number;
+  qualityUnavailableQty: number;
   // FEFO/FIFO priority within the item (1 = pick first).
   priority: number;
 };
@@ -271,7 +286,9 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
   }>();
 
   for (const row of rows) {
-    const availableQty = row.qtyRemaining - row.qtyCommitted;
+    const availableQty = evaluateExpiry({ ...row, expiryPolicy: row.expiryPolicy ?? "block_release" }).eligible ? Math.max(0, row.qtyRemaining - row.qtyCommitted) : 0;
+    const expiryState = evaluateExpiry({ ...row, expiryPolicy: row.expiryPolicy ?? "block_release" });
+    const uncommitted = Math.max(0, row.qtyRemaining - row.qtyCommitted);
 
     let itemEntry = itemMap.get(row.itemId);
     if (!itemEntry) {
@@ -323,9 +340,15 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
           lotStatus: row.lotStatus,
           manufactureDate: row.manufactureDate ?? null,
           expiryDate: row.expiryDate,
+          expiryPolicy: row.expiryPolicy,
           receivedAt: row.receivedAt,
           locationLabels: [],
           availableQty: 0,
+          onHandQty: 0,
+          committedQty: 0,
+          expiryBlockedQty: 0,
+          expiryAcknowledgementRequiredQty: 0,
+          qualityUnavailableQty: 0,
           priority: 0, // assigned in second pass
         },
       };
@@ -334,6 +357,16 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
     lotEntry.lot.locationLabels.push(row.locationLabel);
     lotEntry.lot.availableQty += availableQty;
+    lotEntry.lot.onHandQty += row.qtyRemaining;
+    lotEntry.lot.committedQty += row.qtyCommitted;
+    if (expiryState.pastExpiry && row.expiryPolicy === "block_release" && row.lotStatus === "available") {
+      lotEntry.lot.expiryBlockedQty += uncommitted;
+    } else if (expiryState.requiresAcknowledgement) {
+      lotEntry.lot.expiryAcknowledgementRequiredQty += uncommitted;
+    }
+    if (row.lotStatus !== "available" || expiryState.error) {
+      lotEntry.lot.qualityUnavailableQty += uncommitted;
+    }
   }
 
   // Second pass: flatten into the final shape, assigning FEFO/FIFO priority
@@ -466,7 +499,7 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
             <MultiItemPickListDraft
               endCustomers={endCustomers}
               customers={customers}
-              stock={stockRows.map((row) => ({
+              stock={stockRows.filter((row) => evaluateExpiry({ ...row, expiryPolicy: row.expiryPolicy ?? "block_release" }).eligible).map((row) => ({
                 itemId: row.itemId,
                 itemCode: row.itemCode,
                 itemName: row.itemName,
@@ -484,6 +517,8 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
                 lotNumber: row.lotNumber,
                 receivedAt: row.receivedAt,
                 expiryDate: row.expiryDate,
+                expiryPolicy: row.expiryPolicy,
+                expiryPolicyVersion: row.expiryPolicyVersion,
                 isPerishable: row.isPerishable,
                 manufactureDate: row.manufactureDate ?? null,
                 locationId: row.locationId,

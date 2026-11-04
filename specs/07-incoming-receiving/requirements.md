@@ -256,3 +256,13 @@ The floor placement assignment is the authoritative disposition for each declare
 - `Missing`, which creates no inventory row and records an OS&D shortage.
 
 The separate floor-level `Hold for Inspection` / `Return to Store` toggle is retired. The persisted line-level `wrr_items.disposition` remains for pre-receiving defaults and compatibility, but it no longer overrides a carton's selected destination at receipt commit. A line may contain both storage and inspection cartons. Because `lots.status` is lot-level, the commit creates one available lot segment and/or one quarantined lot segment for the same business `lot_number`, while each `inventory_units` row retains its carton-specific location and status. Missing cartons receive no lot, balance, unit, or transaction row.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Evaluate expiry at receipt commit; block-policy expired cartons go to Inspection, while permissive-policy Storage acceptance requires recorded acknowledgement and reason.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

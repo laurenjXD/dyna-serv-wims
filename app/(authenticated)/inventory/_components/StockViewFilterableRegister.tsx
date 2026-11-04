@@ -18,6 +18,11 @@ export type AggregatedLot = {
   receivedAt: Date | string;
   locationLabels: string[];
   availableQty: number;
+  onHandQty: number;
+  committedQty: number;
+  expiryBlockedQty: number;
+  expiryAcknowledgementRequiredQty: number;
+  qualityUnavailableQty: number;
   priority: number;
 };
 
@@ -394,7 +399,7 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                 <span className="text-sm text-slate-700">
                   Lots for <strong className="font-mono text-brand-navy">{item.itemCode}</strong> · {item.isPerishable ? "FEFO" : "FIFO"}
                 </span>
-                <span className="font-mono text-sm font-bold text-brand-navy">Total Available: {total.toLocaleString()} {item.uom}</span>
+                <span className="font-mono text-sm font-bold text-brand-navy">Eligible quantity (expiry review may be required): {total.toLocaleString()} {item.uom}</span>
               </div>
               <div className="flex flex-wrap items-start gap-2">
                 {item.lots.map((lot) => (
@@ -410,7 +415,12 @@ export function StockViewFilterableRegister({ items }: { items: GroupedItem[] })
                       <div className="flex justify-between gap-2 text-text-grey"><span>Location:</span><span className="font-mono font-semibold text-slate-800">{lot.locationLabels.join(", ") || "—"}</span></div>
                       <div className="flex justify-between gap-2 text-text-grey"><span>Manufactured:</span><span className="font-mono text-slate-800">{lot.manufactureDate || "Not dated"}</span></div>
                       <div className="flex justify-between gap-2 text-text-grey"><span>Expiry:</span><span className="font-mono text-slate-800">{lot.expiryDate || "Not dated"}</span></div>
-                      <div className="flex justify-between gap-2 text-text-grey"><span>Status:</span><span className="font-semibold text-emerald-700 lowercase">{lot.lotStatus}</span></div>
+                      <div className="flex justify-between gap-2 text-text-grey"><span>On hand:</span><span className="font-mono text-slate-800">{lot.onHandQty.toLocaleString()} {item.uom}</span></div>
+                      <div className="flex justify-between gap-2 text-text-grey"><span>Committed:</span><span className="font-mono text-slate-800">{lot.committedQty.toLocaleString()} {item.uom}</span></div>
+                      {lot.expiryBlockedQty > 0 && <div role="status" className="flex justify-between gap-2 font-semibold text-rose-800"><span>Past expiry — release blocked:</span><span className="font-mono">{lot.expiryBlockedQty.toLocaleString()} {item.uom}</span></div>}
+                      {lot.expiryAcknowledgementRequiredQty > 0 && <div role="status" className="flex justify-between gap-2 font-semibold text-amber-900"><span>Past expiry — acknowledgement required:</span><span className="font-mono">{lot.expiryAcknowledgementRequiredQty.toLocaleString()} {item.uom}</span></div>}
+                      {lot.qualityUnavailableQty > 0 && <div role="status" className="flex justify-between gap-2 font-semibold text-slate-700"><span>Quality unavailable:</span><span className="font-mono">{lot.qualityUnavailableQty.toLocaleString()} {item.uom}</span></div>}
+                      <div className="flex justify-between gap-2 text-text-grey"><span>Stock state:</span><span className="font-semibold text-slate-800 lowercase">{lot.lotStatus}</span></div>
                       <LotQrViewer lotId={lot.lotId} lotNumber={lot.lotNumber} itemCode={item.itemCode} compact />
                     </div>
                   </details>

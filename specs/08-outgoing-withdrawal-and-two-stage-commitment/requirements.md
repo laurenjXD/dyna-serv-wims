@@ -71,9 +71,9 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 
 1. Pick-list generation produces the operational PDF instructions and creates an `allocated` `pick_list`, not a dispatch-ready one. It returns to the Pick Lists tab with a confirmation and exposes **View / PDF** and **Mark as Picked** beside the list.
 2. After the warehouse team physically picks the PDF’s committed lines, an authorized user SHALL use **Mark as Picked**. The system transitions only that list from `allocated` to `picked`; it does not scan, decrement inventory, or alter the reservation. Only then does the list appear in the **To Dispatch** queue and expose **Dispatch**.
-3. Dispatch is the sole scan gate. It SHALL follow the receiving batch-reconciliation pattern: one matching registered carton/item QR or committed lot QR identifies the corresponding incomplete committed item/lot/location line and confirms that line’s full committed box quantity. This represents the observed jackwrapped pallet/line, not a per-carton scan count.
+3. Dispatch is the sole scan gate. At Stage 1 commitment, the server SHALL assign and reserve exactly `number_of_boxes` existing `inventory_units` carton identities to each committed `pick_list_items` line, matching that line's item, lot, and location. In Dispatch, one QR belonging to the assigned line SHALL confirm that line's full preassigned carton set as an operator attestation that it was gathered and jackwrapped. The scan SHALL be identified as line-level confirmation; it is not per-carton verification.
 4. Final dispatch confirmation is enabled only after every committed line has been identified at dispatch. It atomically decrements `qty_remaining`, releases `qty_committed`, writes an immutable `pick` transaction, and makes the priced **Delivery Receipt / Acknowledgement Receipt** available for print/download.
-5. A scan SHALL never confirm more than the exact committed quantity for its matched line. The system SHALL retain the line-level accepted state for the final command, reject wrong item/lot/location values and duplicate scans of completed lines, and SHALL NOT require a second verification scan.
+5. A line confirmation scan SHALL match an existing carton assigned to exactly one incomplete line. It SHALL NOT confirm another line or an unassigned carton. The system SHALL record the scanned representative carton and line-level attestation, reject wrong item/lot/location and duplicate completed-line scans, and SHALL NOT require scanning each carton or a second verification scan.
 6. When one lot/pallet is stored across multiple locations, Dispatch presents a separate line for each committed location. A lot QR identifies its matching location line; when a shared item QR matches more than one line, the server selects the first incomplete line. One accepted scan confirms only that line’s committed quantity and authoritative lot/location balance.
 
 ### R4. Visual design & touch target enforcement
@@ -104,7 +104,8 @@ The Outgoing page (`/outgoing`) features 2 primary sub-tabs:
 - [ ] 3-component error feedback is displayed on all validation/scan errors.
 - [ ] Visual design system rules (#2563EB, #0F172A, #64748B, #F3F6FC, #FFFFFF, DM Sans + Glacial typography, 64px floor CTAs) are fully satisfied.
 - [ ] Alternate-pallet requests cannot reserve stock until approved and can only generate the exact approved one-time allocation.
-- [ ] One matching carton, item, or lot QR verifies each committed item/lot/location line and confirms that line's full committed box quantity; split locations require one scan per line. Wrong or duplicate scans are rejected, and final dispatch reuses the accepted evidence without a duplicate scan or requiring unique QR labels per box.
+- [ ] Stage 1 assigns and reserves exactly one existing carton identity for every committed box on each pick-list line, within the exact item/lot/location allocation; duplicate or insufficient identities block the whole commitment.
+- [ ] Dispatch requires one matching QR per committed line from its preassigned carton set. One scan confirms the line's full carton set by operator attestation; wrong, unassigned, cross-line, duplicate, stale, or already-dispatched scans are rejected. No per-carton scan loop or extra line scan is required.
 - [ ] The Outgoing header contains no non-functional or redundant generic Filter action.
 - [ ] Allocated and picked documents are visually separated into To Pick and To Dispatch queues and cannot expose the wrong phase action.
 - [ ] Generation creates an allocated list in To Pick; only the explicit non-scan Mark as Picked action moves it to To Dispatch and enables Dispatch.
@@ -147,3 +148,29 @@ selector. The server SHALL derive `customer_party_id` from the selected
 Organization (`party_id`) and ignore any conflicting client value. The End
 Customer / Recipient selector remains separate because the physical recipient
 may differ from the stock owner.
+
+## Approved amendment — reserve and verify exact cartons (2026-11-04)
+
+- Stage 1 commitment SHALL reserve the exact existing `inventory_units` rows for each pick-list line, equal to its committed box count and matching its item, lot, and location. The browser SHALL NOT supply carton IDs as allocation authority.
+- The To Pick review/approval screen remains non-scanning. Dispatch is the only carton-scan phase.
+- Dispatch SHALL scan every assigned carton once. A line completes only when every assigned carton is confirmed. There is no additional line QR scan and no single scan may confirm multiple cartons.
+- Final dispatch SHALL atomically transition the exact assigned carton rows, write carton history, update aggregate balances and commitments, and insert the immutable pick transaction.
+- If eligible carton identities do not cover the aggregate committed quantity, the entire commitment SHALL fail with a recoverable inventory traceability error; no synthetic identities or silent aggregate fallback are allowed.
+- Product Owner sign-off: Lauren, 2026-11-04 (explicit approval to proceed and selection of the verifiable workflow).
+- Second sign-off: System standing approval convention, 2026-11-04.
+
+### Product Owner refinement (2026-11-04)
+
+- Reserve exact existing carton IDs at commitment, but use one matching assigned-carton QR per line in Dispatch to reduce floor scanning. This is an operator attestation of the preassigned jackwrapped line, not independent verification of each carton.
+- Product Owner sign-off: Lauren, 2026-11-04.
+- Second sign-off: System standing approval convention, 2026-11-04.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Use the shared expiry predicate for manual and DRA allocation; record exact-lot acknowledgements, revalidate at dispatch, and provide reviewed replacement/shortage recovery for affected reservations.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

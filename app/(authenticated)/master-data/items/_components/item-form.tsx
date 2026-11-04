@@ -76,6 +76,7 @@ export function ItemForm({
 }: ItemFormProps) {
   const [state, formAction, isPending] = useActionState(action, {});
   const isEdit = !!item;
+  const [expiryPolicy, setExpiryPolicy] = useState(item?.expiryPolicy ?? "block_release");
 
   // Local categories list for dynamic on-the-fly addition and editing
   const [localCategories, setLocalCategories] = useState<CategoryOption[]>(categories);
@@ -1165,6 +1166,20 @@ export function ItemForm({
           Inventory Settings
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label htmlFor="expiryPolicy" className="block font-label text-label text-on-surface">After recorded expiry</label>
+            <select id="expiryPolicy" name="expiryPolicy" value={expiryPolicy} onChange={(event) => setExpiryPolicy(event.target.value as typeof expiryPolicy)} className={inputClass("expiryPolicy")} {...ariaProps("expiryPolicy")} aria-describedby="expiry-policy-help">
+              <option value="block_release">Block release</option>
+              <option value="allow_with_acknowledgement">Allow with acknowledgement</option>
+            </select>
+            <p id="expiry-policy-help" className="mt-2 font-body text-body-sm text-text-grey">Applies when a lot has a recorded expiry date, including non-perishable materials. Allow with acknowledgement requires a warning review and reason at receiving, pick-list generation and dispatch. Inspection holds still apply.</p>
+            {fieldError("expiryPolicy")}
+            {isEdit && expiryPolicy !== (item.expiryPolicy ?? "block_release") && <div className="mt-3">
+              <label htmlFor="expiryPolicyReason" className="block font-label text-label text-on-surface">Reason for changing expiry policy</label>
+              <textarea id="expiryPolicyReason" name="expiryPolicyReason" required maxLength={1000} rows={3} className={inputClass("expiryPolicyReason")} {...ariaProps("expiryPolicyReason")} />
+              {fieldError("expiryPolicyReason")}
+            </div>}
+          </div>
           <div>
             <label htmlFor="minReorderLevel" className="block font-label text-label text-on-surface">
               Min Reorder Level

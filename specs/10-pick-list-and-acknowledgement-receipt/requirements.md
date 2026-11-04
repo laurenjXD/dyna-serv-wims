@@ -140,3 +140,13 @@ All sub-tabs share a unified office filtering and search interface:
 - [ ] 3-component error feedback is present on all document generation/download errors.
 - [ ] Pick-list detail and print views display Master Inventory-backed item/lot/location/package values without an editable line-data surface.
 - [ ] Pick-list and acknowledgement-receipt output displays the selected end-customer organization and address; same-party VMI output uses one combined Customer / End Customer label.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Snapshot affected lot expiry warnings and acknowledgement references on pick lists and retain immutable document history after expiry or policy changes.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

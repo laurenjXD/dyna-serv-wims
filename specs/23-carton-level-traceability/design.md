@@ -55,3 +55,52 @@ request. Labels can render QR and Code 128 through the shared barcode layer.
 
 - Technical Lead: User / System, 2026-08-28
 - Product/Operations Lead: User / System, 2026-08-28
+
+## Approved outbound exact-carton amendment (2026-11-04)
+
+`inventory_units` remains the one-row-per-physical-carton identity store and
+`lot_location_balances` remains the quantity authority. Stage 1 inserts the
+pick-list snapshot, then selects and reserves exactly `number_of_boxes`
+eligible `inventory_units` rows for each `pick_list_items` line inside the
+same transaction that increments `qty_committed`. Every selected row must
+match the line's item, lot, location, and current available state. Selection
+uses deterministic FIFO/FEFO and source ordering under row locks; allocation
+fails atomically if carton-row counts do not cover any line. No synthetic
+carton identities are created during outbound commitment or dispatch.
+
+The existing `selected` state means physically scan-confirmed. Add a distinct
+`reserved` state tied to `pick_list_item_id` for the committed-but-not-yet-
+scanned carton assignment. The selection-shape constraint must require a line
+reference for `reserved`, `selected`, and `dispatched`, and no line reference
+for `available` or `quarantined`. Commitment expiry/release returns reserved
+rows to `available` and clears their line references atomically with release
+of aggregate reservation. The exact status/history mapping must be verified
+against the existing immutable carton history contract before migration.
+
+Dispatch accepts one unique Carton ID whose row is `reserved` to a line in
+the current picked list and whose item/lot/location matches. The scan records
+a line-level operator attestation that the preassigned cartons for that line
+were gathered and jackwrapped; it does not verify each unscanned carton. In
+one transaction, transition every reserved row on that line to `selected` and
+write carton history that identifies the line-level confirmation and
+representative scanned Carton ID. Duplicate, unassigned, wrong-line, and stale
+scans fail without confirming another line.
+
+Each line is complete only when its confirmation exists and its assigned
+carton count equals `number_of_boxes`. Final dispatch rechecks that invariant
+for every line, then transitions those exact assigned rows to `dispatched`,
+writes history with the source inventory transaction, and commits aggregate
+inventory/commitment changes atomically. To Pick remains non-scanning.
+Dispatch requires one scan per line, not one scan per carton and not a second
+line scan after confirmation.
+
+This lower-effort workflow preserves the expected carton identities and a
+line-level confirmation event. It must not be presented as independently
+verified carton contents; physical bundle membership depends on the operator
+packing the preassigned carton set. A shared item/lot QR is insufficient; the
+representative scan must be a unique carton QR assigned to the line.
+
+### Amendment sign-off
+
+- Technical Lead: User / System, 2026-11-04.
+- Product/Operations Lead: User / System, 2026-11-04.

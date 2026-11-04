@@ -181,9 +181,18 @@ Testing: Full applicable matrix below.
 - [ ] Generate pick lists as `allocated`; show them only in To Pick with View / PDF and Mark as Picked. Verify Mark as Picked is authorized, idempotent, does not alter stock/reservations, and moves exactly one list into To Dispatch, where Dispatch becomes available.
 - [ ] Verify one matching carton, item, or lot QR confirms the full committed quantity for its item/lot/location line; split locations require separate scans, and wrong/duplicate/over/under/stale scans are rejected.
 - [ ] Verify final dispatch produces one decrement, one pick transaction, released reservation, and acknowledgement-receipt availability.
+- [ ] Verify Stage 1 reserves exactly one existing carton row per committed box for the exact line/item/lot/location; insufficient carton rows abort the entire commitment.
+- [ ] Verify Dispatch accepts each assigned carton QR once, changes only that carton to selected, and never marks unscanned cartons selected from an item/lot or representative QR.
+- [ ] Verify per-line and whole-list scan counts, final dispatch gating, and immutable carton history for every dispatched carton.
+- [ ] Verify expiry/release restores reserved cartons without releasing scanned or unrelated cartons; test concurrency and idempotent retries in real Postgres.
 - [ ] Verify document failure/retry does not reverse inventory.
 - [ ] Verify offline observations, reconnect replay, rejection/conflict, and Tier 2 blocking.
 - [ ] Verify floor 375/430px and office 768/1280px layouts, focus, contrast, touch targets, no-hover feedback, and reduced motion.
+
+## Approved amendment — reserve and verify exact cartons (2026-11-04)
+
+- [x] Product Owner approval: Lauren, 2026-11-04 (explicit approval to proceed and selection of verifiable per-carton scans in Dispatch).
+- [x] Second approval: System standing approval convention, 2026-11-04.
 
 ### Manual QA
 
@@ -251,3 +260,15 @@ Sign-off: Engineering — approved 2026-10-22.
 - [x] Add coverage for same-date lots, multiple locations per lot, FEFO rank groups, and DRA-imported plan display; focused tests and TypeScript check pass.
 - [x] Product Owner sign-off: Lauren, 2026-11-03 (explicit approval in conversation).
 - [x] Second approver sign-off: System standing approval, 2026-11-03.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+- [ ] Use the shared expiry predicate for manual and DRA allocation; record exact-lot acknowledgements, revalidate at dispatch, and provide reviewed replacement/shortage recovery for affected reservations.
+- [x] Incorporate the approved amendment requirements/design/tasks and canonical storage/security choices.
+- [x] Product Owner implementation approval — User, explicit instruction to approve and implement, 2026-11-04.
+- [x] Second specification approval — System standing auto-sign-off convention after design reconciliation, 2026-11-04.
+- [ ] Complete applicable runtime migration, real-Postgres/RLS, unit, integration, and E2E verification from the linked plan; record evidence separately from specification approval.

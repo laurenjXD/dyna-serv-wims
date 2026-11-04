@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { LocationStoredItem, PutawayCandidate } from "@/lib/db/queries/locations";
 import { LocationCombobox } from "./LocationCombobox";
+import { evaluateExpiry, expiryReviewKey, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
 
 interface PutawayLocationSelectorProps {
   candidates: PutawayCandidate[];
@@ -14,6 +15,7 @@ interface PutawayLocationSelectorProps {
   spq?: number;
   uom?: string;
   lotNumber?: string;
+  expiryReview?: { itemId: string; wrrItemId: string; expiryDate: string | null; expiryPolicy?: "block_release" | "allow_with_acknowledgement"; expiryPolicyVersion: number; isPerishable?: boolean };
 }
 
 type SplitLocationRow = {
@@ -40,6 +42,7 @@ export function PutawayLocationSelector({
   spq = 1,
   uom = "PCS",
   lotNumber,
+  expiryReview,
 }: PutawayLocationSelectorProps) {
   const safeQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
   const safeScannedQuantity = Math.min(
@@ -156,11 +159,31 @@ export function PutawayLocationSelector({
 
   const MAX_PER_BOX_CONTROLS = 50;
   const showIndividualSlots = safeQuantity <= MAX_PER_BOX_CONTROLS;
+  const expiryState = expiryReview ? evaluateExpiry({
+    expiryDate: expiryReview.expiryDate, expiryPolicy: expiryReview.expiryPolicy,
+    isPerishable: expiryReview.isPerishable,
+  }) : null;
+  const expiryLines: ExpiryReviewLine[] = expiryState?.requiresAcknowledgement
+    ? allocations.filter((allocation) => allLocationOptions.find((option) => option.id === allocation.locationId)?.locationType === "storage")
+    .map((allocation) => ({ itemId: expiryReview!.itemId, lotId: expiryReview!.wrrItemId,
+        lotNumber, locationId: allocation.locationId, qty: allocation.qty * safeSpq,
+        expiryDate: expiryReview!.expiryDate, expiryPolicy: expiryReview!.expiryPolicy!,
+        expiryPolicyVersion: expiryReview!.expiryPolicyVersion }))
+    : [];
+  const reviewKey = expiryLines.length ? expiryReviewKey(expiryLines) : "";
 
   return (
     <div className="flex flex-col gap-4">
       <input type="hidden" name="allocations" value={JSON.stringify(allocations)} />
       <input type="hidden" name="unitLocationIds" value={JSON.stringify(locationsBySlot)} />
+      {expiryLines.length > 0 && <section role="group" aria-label="Past expiry receiving review" className="rounded-xl border border-status-held/40 bg-status-held/5 p-4">
+        <h2 className="font-label text-body-md font-bold text-on-surface">Past expiry — acknowledgement required</h2>
+        <p className="mt-1 font-body text-body-md text-on-surface">Storage placement is allowed by this item’s policy after review. Inspection placements remain quarantined.</p>
+        <ul className="mt-2 space-y-1 font-body text-body-md text-on-surface">{expiryLines.map((line) => <li key={`${line.locationId}:${line.qty}`}>Lot {line.lotNumber}: {line.qty.toLocaleString()} units to {allLocationOptions.find((option) => option.id === line.locationId)?.label}; expiry {line.expiryDate}, {expiryState?.daysPastExpiry} days past expiry.</li>)}</ul>
+        <input type="hidden" name="expiryReviewKey" value={reviewKey} />
+        <label className="mt-3 flex min-h-11 items-center gap-3 font-body text-body-md text-on-surface"><input type="checkbox" name="expiryAcknowledged" value="yes" required className="h-5 w-5" />I acknowledge the Storage placements listed above.</label>
+        <label className="mt-2 block font-body text-body-md text-on-surface">Reason for accepting past-expiry material<textarea name="expiryReason" required maxLength={1000} rows={2} className="mt-1 block w-full rounded-lg border border-outline-variant bg-surface-white p-3" /></label>
+      </section>}
 
       <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

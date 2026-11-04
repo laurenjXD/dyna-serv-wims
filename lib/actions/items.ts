@@ -197,6 +197,7 @@ export async function createItem(
         weightKg: data.weightKg ?? undefined,
         minReorderLevel: data.minReorderLevel,
         isPerishable: data.isPerishable,
+        expiryPolicy: data.expiryPolicy ?? "block_release",
         isActive: data.isActive ?? true,
         buyingPrice: data.buyingPrice ?? undefined,
         sellingPrice: data.sellingPrice ?? undefined,
@@ -281,6 +282,7 @@ export async function updateItem(
         id: items.id,
         barcode: items.barcode,
         updated_at: items.updatedAt,
+        expiryPolicy: items.expiryPolicy,
       })
       .from(items)
       .where(eq(items.id, id))
@@ -290,7 +292,7 @@ export async function updateItem(
       return { ok: false, error: "Not found" } satisfies ActionResult;
     }
 
-    const row = currentRow as { id: string; barcode: string; updated_at: Date };
+    const row = currentRow as { id: string; barcode: string; updated_at: Date; expiryPolicy?: string };
 
     // Stale-edit guard
     const dbTimestamp = row.updated_at.getTime();
@@ -337,6 +339,13 @@ export async function updateItem(
     }
 
     const data = parsed.data;
+    const policyChanged = (row.expiryPolicy ?? "block_release") !== data.expiryPolicy;
+    if (policyChanged && !data.expiryPolicyReason?.trim()) {
+      return { ok: false, fieldErrors: { expiryPolicyReason: "Enter a reason for changing the expiry policy." } } satisfies ActionResult;
+    }
+    if (policyChanged) {
+      await tx.execute({ sql: "SELECT set_config('app.expiry_policy_reason', $1, true)", params: [data.expiryPolicyReason] });
+    }
     await db
       .update(items)
       .set({
@@ -363,6 +372,7 @@ export async function updateItem(
         weightKg: data.weightKg ?? undefined,
         minReorderLevel: data.minReorderLevel,
         isPerishable: data.isPerishable,
+        expiryPolicy: data.expiryPolicy ?? "block_release",
         isActive: data.isActive ?? true,
         buyingPrice: data.buyingPrice ?? undefined,
         sellingPrice: data.sellingPrice ?? undefined,

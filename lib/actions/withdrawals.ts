@@ -47,7 +47,7 @@ import { inventoryTransactions } from "@/lib/db/schema/transactions";
 import { generatedDocuments } from "@/lib/db/schema/documents";
 import { auditLog } from "@/lib/db/schema/audit";
 import { approvalRequests } from "@/lib/db/schema/approvals";
-import { inventoryUnits } from "@/lib/db/schema/inventory_units";
+import { inventoryUnits, cartonStatusHistory } from "@/lib/db/schema/inventory_units";
 import { parties, partyRoles, partyFlowRelationships } from "@/lib/db/schema/parties";
 import {
   listOutgoingLedger as queryListOutgoingLedger,
@@ -63,6 +63,8 @@ import { getAuthenticatedSession } from "@/lib/auth/get-authenticated-session";
 import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { positiveInteger } from "@/lib/inventory/quantities";
+import { expiryReleaseReview, recordExpiryAcknowledgement } from "@/lib/inventory/expiry-acknowledgement";
+import { evaluateExpiry, validateExpiryAcknowledgement, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
 import { freezeTradingPriceInTransaction } from "@/lib/billing/trading-price-freeze";
 import {
   validateOutboundOrganization,
@@ -210,6 +212,8 @@ export async function requestFifoOverride(
           organizationPartyId: sql<string | null>`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId})`,
           defaultSupplierPartyId: items.defaultSupplierPartyId,
           isPerishable: items.isPerishable,
+          expiryPolicy: items.expiryPolicy,
+          expiryPolicyVersion: items.expiryPolicyVersion,
           spq: items.spq,
           lotId: lots.id,
           lotNumber: lots.lotNumber,
@@ -247,6 +251,7 @@ export async function requestFifoOverride(
         locationId: row.locationId,
         locationLabel: row.locationLabel,
         lotStatus: row.lotStatus,
+        expiryPolicy: row.expiryPolicy,
         qtyRemaining: row.qtyRemaining,
         qtyCommitted: row.qtyCommitted,
         receivedAt: row.receivedAt,
@@ -469,6 +474,8 @@ export async function commitWithdrawal(
           organizationPartyId: sql<string | null>`COALESCE(${lots.ownerPartyId}, ${items.defaultSupplierPartyId})`,
           defaultSupplierPartyId: items.defaultSupplierPartyId,
           isPerishable: items.isPerishable,
+          expiryPolicy: items.expiryPolicy,
+          expiryPolicyVersion: items.expiryPolicyVersion,
           spq: items.spq,
           lotId: lots.id,
           lotNumber: lots.lotNumber,
@@ -512,7 +519,7 @@ export async function commitWithdrawal(
         const selected = rows.find((row) =>
           row.lotId === requestedLine.lotId && row.locationId === requestedLine.locationId,
         );
-        if (!selected || requestedQty !== requestedLine.qty ||
+        if (!selected || !evaluateExpiry({ ...selected, expiryDate: selected.expiryDate ?? null }).eligible || requestedQty !== requestedLine.qty ||
             selected.qtyRemaining - selected.qtyCommitted < requestedQty || !db.execute) {
           throw new Error("approval_mismatch");
         }
@@ -544,6 +551,7 @@ export async function commitWithdrawal(
           locationId: row.locationId,
           locationLabel: row.locationLabel,
           lotStatus: row.lotStatus,
+          expiryPolicy: row.expiryPolicy,
           qtyRemaining: row.qtyRemaining,
           qtyCommitted: row.qtyCommitted,
           receivedAt: row.receivedAt,
@@ -598,6 +606,16 @@ export async function commitWithdrawal(
       }
     }
 
+    const expiryNow = new Date();
+    const expiryLines = expiryReleaseReview(verifiedLines.map((line) => ({
+      itemId: line.itemId, lotId: line.lotId, locationId: line.locationId, qty: line.qty,
+      expiryDate: line.expiryDate ?? null, expiryPolicy: line.expiryPolicy,
+      expiryPolicyVersion: line.expiryPolicyVersion, lotStatus: line.lotStatus, isPerishable: line.isPerishable,
+    })), expiryNow);
+    if (expiryLines.length && !validateExpiryAcknowledgement(data.expiryAcknowledgement, expiryLines, expiryNow)) {
+      throw new Error("expiry_acknowledgement_required");
+    }
+
     // Step 4: Insert pick_list record (design.md §6 step 6)
     // TODO: consume pricing snapshot from 13/12 before finalizing pick_list_items.
     const pickListNumber = `PL-${Date.now()}`;
@@ -618,6 +636,7 @@ export async function commitWithdrawal(
       .returning();
 
     const pickListId = (insertedPickList as { id: string }).id;
+    await recordExpiryAcknowledgement(db, "generation", pickListId, userId, data.expiryAcknowledgement, expiryLines, expiryNow);
 
     // Commitment TTL — 24 hours from creation, computed server-side (design.md
     // §6; revision-log.md "Pick-list expiry enforcement: Option C"; Product
@@ -698,6 +717,53 @@ export async function commitWithdrawal(
         throw new Error("insufficient_stock");
       }
 
+      const requiredCartons = line.qty / positiveInteger(line.spq);
+      const availableCartons = (await db
+        .select({
+          id: inventoryUnits.id,
+          unitId: inventoryUnits.unitId,
+          cartonId: inventoryUnits.cartonId,
+          unitIndex: inventoryUnits.unitIndex,
+          locationId: inventoryUnits.locationId,
+        })
+        .from(inventoryUnits)
+        .where(and(
+          eq(inventoryUnits.lotId, line.lotId),
+          eq(inventoryUnits.locationId, line.locationId),
+          eq(inventoryUnits.status, "available"),
+          sql`${inventoryUnits.pickListItemId} IS NULL`,
+        ))
+        .orderBy(asc(inventoryUnits.unitIndex), asc(inventoryUnits.id))
+        .limit(requiredCartons)
+        .for("update")) as AnyRecord[];
+
+      if (availableCartons.length !== requiredCartons) {
+        throw new Error("carton_traceability_incomplete");
+      }
+
+      const assignedCartons = (await db
+        .update(inventoryUnits)
+        .set({ status: "reserved", pickListItemId, updatedAt: new Date() })
+        .where(and(
+          inArray(inventoryUnits.id, availableCartons.map((carton) => carton.id as string)),
+          eq(inventoryUnits.status, "available"),
+          sql`${inventoryUnits.pickListItemId} IS NULL`,
+        ))
+        .returning({ id: inventoryUnits.id })) as AnyRecord[];
+      if (assignedCartons.length !== requiredCartons) {
+        throw new Error("carton_traceability_conflict");
+      }
+
+      await db.insert(cartonStatusHistory).values(availableCartons.map((carton) => ({
+        inventoryUnitId: carton.id as string,
+        cartonId: carton.cartonId as string,
+        previousStatus: "available",
+        newStatus: "reserved",
+        locationId: carton.locationId as string,
+        changedByUserId: userId,
+        reason: `Reserved for pick list ${pickListNumber}`,
+      })));
+
       await db
         .insert(inventoryCommitmentLines)
         .values({
@@ -738,7 +804,11 @@ export async function commitWithdrawal(
           templateVersion: "1.0",
           sourceType: "inventory_commitment",
           sourceId: commitmentId,
-          snapshotHash: hashSnapshot({ pickListId, commitmentId, lines: data.lines }),
+          snapshotHash: hashSnapshot({
+            pickListId, commitmentId, lines: data.lines,
+            expiryReview: { businessDate: manilaBusinessDate(expiryNow), lines: expiryLines,
+              reason: expiryLines.length ? data.expiryAcknowledgement?.reason.trim() : null },
+          }),
           status: documentStatus,
           systemExecutor: "commitWithdrawal",
         });
@@ -761,6 +831,8 @@ export async function commitWithdrawal(
     ].find((code) => message.includes(code));
     const pricingError = ["no_rate_configured", "fx_rate_required", "price_invalid"]
       .find((code) => message.includes(code));
+    const cartonError = ["carton_traceability_incomplete", "carton_traceability_conflict"]
+      .find((code) => message.includes(code));
     return {
       ok: false,
       errors: [
@@ -768,7 +840,10 @@ export async function commitWithdrawal(
           ? "provisional_item_code"
           : message === "invalid_end_customer"
             ? "invalid_end_customer"
-          : pricingError ?? approvalError ?? "unable_to_reserve_stock",
+          : message.includes("stock_expiry_blocked") ? "material_expiry_blocked"
+          : message.includes("expiry_generation_acknowledgement_required") || message.includes("expiry_acknowledgement") ? "expiry_acknowledgement_required"
+          : ["material_expiry_blocked", "expiry_acknowledgement_required", "expiry_date_required", "expiry_date_invalid", "expiry_policy_unavailable"].includes(message)
+            ? message : cartonError ?? pricingError ?? approvalError ?? "unable_to_reserve_stock",
       ],
     };
   }
@@ -1094,6 +1169,7 @@ export async function dispatchPickList(
   pickListId: string,
   scannedPickListItemIds: string[],
   rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+  expiryAcknowledgement?: unknown,
 ): Promise<DispatchPickListResult> {
   // Step 1: Authorization — dispatch.execute required (design.md §7).
   // 2026-08-08: was "withdrawal.execute" — see commitWithdrawal's note above.
@@ -1169,7 +1245,7 @@ export async function dispatchPickList(
 
       // Step 4a: Load pick_list_items — one row per requested line, iterated
       // below per design.md §7's per-line "for each affected row" framing.
-      const items = (await db
+      const committedItems = (await db
         .select({
           id: pickListItems.id,
           itemId: pickListItems.itemId,
@@ -1177,9 +1253,25 @@ export async function dispatchPickList(
           locationId: pickListItems.locationId,
           qty: pickListItems.qty,
           numberOfBoxes: pickListItems.numberOfBoxes,
+          expiryDate: lots.expiryDate,
+          lotStatus: lots.status,
+          expiryPolicy: items.expiryPolicy,
+          expiryPolicyVersion: items.expiryPolicyVersion,
+          isPerishable: items.isPerishable,
         })
         .from(pickListItems)
+        .innerJoin(lots, eq(lots.id, pickListItems.lotId))
+        .innerJoin(items, eq(items.id, pickListItems.itemId))
         .where(eq(pickListItems.pickListId, pickListId))) as AnyRecord[];
+      const dispatchExpiryNow = new Date();
+      const dispatchExpiryLines = expiryReleaseReview(committedItems.map((line) => ({
+        itemId: line.itemId, lotId: line.lotId, locationId: line.locationId, qty: line.qty,
+        expiryDate: line.expiryDate ?? null, expiryPolicy: line.expiryPolicy,
+        expiryPolicyVersion: line.expiryPolicyVersion, lotStatus: line.lotStatus, isPerishable: line.isPerishable,
+      })), dispatchExpiryNow);
+      if (dispatchExpiryLines.length && !validateExpiryAcknowledgement(expiryAcknowledgement, dispatchExpiryLines, dispatchExpiryNow)) {
+        return { ok: false as const, errors: ["expiry_acknowledgement_required"] };
+      }
 
       // Step 4b: Load the parent inventory_commitments header for this pick
       // list (exactly one per pick list — see commitments.ts's unique
@@ -1233,7 +1325,7 @@ export async function dispatchPickList(
       ) {
         // Release every reserved balance back to its pre-reservation state —
         // stock never left the shelf, only the reservation is undone.
-        for (const line of items) {
+        for (const line of committedItems) {
           const commitLineRows = (await db
             .select({
               id: inventoryCommitmentLines.id,
@@ -1285,8 +1377,8 @@ export async function dispatchPickList(
       // than dispatching only the confirmed lines.
       const scanned = new Set(scannedPickListItemIds);
       if (
-        items.some((line) => !scanned.has(line.id)) ||
-        scanned.size !== items.length
+        committedItems.some((line) => !scanned.has(line.id)) ||
+        scanned.size !== committedItems.length
       ) {
         return { ok: false as const, errors: ["scan_evidence_incomplete"] };
       }
@@ -1301,7 +1393,7 @@ export async function dispatchPickList(
         .select({ pickListItemId: inventoryUnits.pickListItemId })
         .from(inventoryUnits)
         .where(and(
-          inArray(inventoryUnits.pickListItemId, items.map((line) => line.id)),
+          inArray(inventoryUnits.pickListItemId, committedItems.map((line) => line.id)),
           eq(inventoryUnits.status, "selected"),
         ))) as Array<{ pickListItemId: string | null }>;
       const selectedCounts = new Map<string, number>();
@@ -1314,12 +1406,14 @@ export async function dispatchPickList(
         }
       }
       if (
-        items.some(
+        committedItems.some(
           (line) => (selectedCounts.get(line.id) ?? 0) !== line.numberOfBoxes,
         )
       ) {
         return { ok: false as const, errors: ["scan_evidence_incomplete"] };
       }
+
+      await recordExpiryAcknowledgement(db, "dispatch", pickListId, userId, expiryAcknowledgement, dispatchExpiryLines, dispatchExpiryNow);
 
       const insertedTransactions: AnyRecord[] = [];
 
@@ -1328,8 +1422,8 @@ export async function dispatchPickList(
       // inventory_commitment_line to 'executed', and insert one immutable
       // inventory_transactions 'pick' row carrying that line's own real data
       // (never a placeholder/aggregate row).
-      for (let i = 0; i < items.length; i++) {
-        const line = items[i];
+      for (let i = 0; i < committedItems.length; i++) {
+        const line = committedItems[i];
 
         // Resolve the affected lot_location_balances row for this line.
         const balanceRows = (await db
@@ -1517,6 +1611,8 @@ export async function dispatchPickList(
               transactionIds: insertedTransactions.map(
                 (t) => (t as { id: string }).id,
               ),
+              expiryReview: { businessDate: manilaBusinessDate(dispatchExpiryNow), lines: dispatchExpiryLines,
+                reason: dispatchExpiryLines.length ? (expiryAcknowledgement as ExpiryAcknowledgementInput).reason.trim() : null },
             }),
             status: documentStatus,
             systemExecutor: "dispatchPickList",
@@ -1532,6 +1628,12 @@ export async function dispatchPickList(
       return { ok: false, errors: ["concurrent_modification"] };
     }
     console.error("Pick-list dispatch failed", error);
+    if (error instanceof Error && error.message.includes("expiry")) {
+      if (error.message.includes("review_changed") || error.message.includes("stale")) return { ok: false, errors: ["expiry_review_stale"] };
+      if (error.message.includes("acknowledgement")) return { ok: false, errors: ["expiry_acknowledgement_required"] };
+      if (error.message.includes("stock_expiry_blocked") || error.message.includes("material_expiry_blocked")) return { ok: false, errors: ["material_expiry_blocked"] };
+      if (["expiry_date_required", "expiry_date_invalid", "expiry_policy_unavailable"].includes(error.message)) return { ok: false, errors: [error.message] };
+    }
     return { ok: false, errors: ["dispatch_stock_conflict"] };
   }
 
@@ -1548,6 +1650,26 @@ export async function dispatchPickList(
 // Requires pick_list.read capability.
 // Delegates data fetching to the query layer.
 // ---------------------------------------------------------------------------
+
+/** Expiry-only cancellation; database command serializes the complete reservation release. */
+export async function releaseExpiryBlockedPickList(
+  resolver: RequestAuthorizationResolver, pickListId: string, reason: string, physicallyReturned: boolean,
+  rlsDeps: RlsTransactionDeps = defaultRlsDeps,
+): Promise<DispatchPickListResult> {
+  const permission = await requirePermission(resolver, "pick_list.generate");
+  if (permission.kind !== "authorized") return { ok: false, errors: ["forbidden"] };
+  if (!reason.trim() || reason.trim().length > 1000) return { ok: false, errors: ["expiry_recovery_reason_required"] };
+  try {
+    const result = await withRlsTransaction(rlsDeps, async (tx) => {
+      const db = tx.db as DbLike;
+      await db.execute!(sql`select public.release_expiry_blocked_pick_list(${pickListId}::uuid, ${reason.trim()}, ${physicallyReturned})`);
+      return { ok: true as const };
+    });
+    return result.kind === "unauthenticated" ? { ok: false, errors: ["forbidden"] } : result.value;
+  } catch {
+    return { ok: false, errors: ["expiry_recovery_failed"] };
+  }
+}
 
 export async function listOutgoingLedger(
   resolver: RequestAuthorizationResolver,

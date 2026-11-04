@@ -71,6 +71,8 @@ function parseItemFormData(formData: FormData) {
     weightKg: nullableString(formData.get("weightKg")),
     minReorderLevel: minReorderLevelRaw ?? 0,
     isPerishable: formData.get("isPerishable") === "true",
+    expiryPolicy: formData.get("expiryPolicy") ?? "block_release",
+    expiryPolicyReason: nullableString(formData.get("expiryPolicyReason")) ?? undefined,
     isActive: formData.get("isActive") !== "false",
     buyingPrice: nullableString(formData.get("buyingPrice")),
     sellingPrice: nullableString(formData.get("sellingPrice")),

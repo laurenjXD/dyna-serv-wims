@@ -345,3 +345,13 @@ Customer**. Supplier controls create only `trading_supplier`; End Customer is
 available only for VMI recipient use; Internal Supplies is available only for
 Supplies use. The server rejects every invalid role/Inventory Model combination
 before persisting it without changing the existing role enum.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Expose Block release / Allow with acknowledgement as an explicit item policy independent of perishability, including audited changes and conservative legacy defaults.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

@@ -66,7 +66,9 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { parties } from "@/lib/db/schema/parties";
 import { getPickList, getPickListItems, getPickUnitSelections } from "@/lib/db/queries/withdrawals";
-import { dispatchPickList, selectPickUnit, reportLocationShortage } from "@/lib/actions/withdrawals";
+import { dispatchPickList, selectPickUnit, reportLocationShortage, releaseExpiryBlockedPickList } from "@/lib/actions/withdrawals";
+import { evaluateExpiry, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
+import { ExpiryAcknowledgementFields } from "@/components/inventory/ExpiryAcknowledgementFields";
 import { OfflineDispatchScanForm } from "./_components/OfflineDispatchScanForm";
 import { OnlineOnlySubmitButton } from "@/components/floor/OnlineOnlySubmitButton";
 import { DispatchDiscrepancyClient } from "./_components/DispatchDiscrepancyClient";
@@ -143,6 +145,11 @@ export default async function DispatchConfirmationPage({
   const partyName = partyRows[0]?.name ?? (pickList.flowType === "vmi" ? "Unknown End Customer" : "Unknown Customer");
 
   const alreadyDispatched = pickList.status === "dispatched";
+  const cancelled = pickList.status === "cancelled";
+  const expiryBlocked = items.some((line) => !evaluateExpiry({ ...line, expiryDate: line.expiryDate ?? null, expiryPolicy: line.expiryPolicy }).eligible);
+  const expiryReviewLines = items.filter((line) => evaluateExpiry({ ...line, expiryDate: line.expiryDate ?? null, expiryPolicy: line.expiryPolicy }).requiresAcknowledgement)
+    .map((line) => ({ itemId: line.itemId, lotId: line.lotId, lotNumber: line.lotNumber, locationId: line.locationId, qty: line.qty,
+      expiryDate: line.expiryDate ?? null, expiryPolicy: line.expiryPolicy!, expiryPolicyVersion: line.expiryPolicyVersion! })) satisfies ExpiryReviewLine[];
 
   const totalLines = items.length;
   const totalRequiredBoxes = items.reduce((sum, item) => sum + item.numberOfBoxes, 0);
@@ -194,13 +201,15 @@ export default async function DispatchConfirmationPage({
   // transitions pick_list → dispatched, triggers AR generation.
   // On success: redirects to /outgoing (floor user returns to queue).
   // Non-fatal doc-generation failure does not roll back the stock movement (R8.5).
-  async function handleDispatch(): Promise<void> {
+  async function handleDispatch(formData: FormData): Promise<void> {
     "use server";
     const actionResolver = await createPageResolver();
     const dispatchResult = await dispatchPickList(
       actionResolver,
       pickListId,
       items.map((item) => item.id),
+      undefined,
+      { acknowledged: formData.get("expiryAcknowledged") === "yes", reason: String(formData.get("expiryReason") ?? ""), reviewKey: String(formData.get("expiryReviewKey") ?? "") },
     );
     // A duplicate submit means the first request already completed. Treat it
     // as success for navigation so the operator is never left on a stale
@@ -215,6 +224,16 @@ export default async function DispatchConfirmationPage({
         dispatchResult.errors[0] ?? "dispatch_failed",
       )}`,
     );
+  }
+
+  async function handleExpiryRecovery(formData: FormData): Promise<void> {
+    "use server";
+    const recovery = await releaseExpiryBlockedPickList(await createPageResolver(), pickListId,
+      String(formData.get("recoveryReason") ?? ""), formData.get("physicallyReturned") === "yes");
+    if (!recovery.ok) redirect(`/pick-lists/${pickListId}/dispatch?result=error&reason=${encodeURIComponent(recovery.errors[0])}`);
+    revalidatePath("/inventory");
+    revalidatePath("/outgoing");
+    redirect(`/pick-lists/${pickListId}/dispatch?result=released`);
   }
 
   // Do not show a stale error query alongside the authoritative dispatched
@@ -481,14 +500,26 @@ export default async function DispatchConfirmationPage({
       </div>
 
       {/* One matching QR verifies each committed location line before final dispatch. */}
-      {!alreadyDispatched && (
+      {expiryBlocked && !cancelled && !alreadyDispatched && <section role="alert" className="mx-auto my-4 w-full max-w-5xl rounded-xl border border-status-held/40 bg-status-held/5 p-4 text-base">
+        <h2 className="font-semibold">Stock cannot be released</h2>
+        <p>A lot is past expiry under a blocking policy, held, or unavailable. Review the affected material before continuing. Expiry-blocked reservations can be released below.</p>
+        <form action={handleExpiryRecovery} className="mt-3 space-y-3">
+          <p>Release cancels this entire pick list and frees its reservations. Physical on-hand quantities remain unchanged. Create and review a replacement draft using the original demand.</p>
+          <label className="flex min-h-11 items-center gap-2"><input type="checkbox" name="physicallyReturned" value="yes" required />I have accounted for and returned any physically picked cartons.</label>
+          <label className="block">Reason<textarea name="recoveryReason" required maxLength={1000} className="mt-1 block w-full rounded-lg border p-3" /></label>
+          <OnlineOnlySubmitButton type="submit" className="min-h-16 w-full rounded-xl bg-primary p-3 font-semibold text-white">Release reservations and review replacement stock</OnlineOnlySubmitButton>
+        </form>
+      </section>}
+      {cancelled && <section role="status" className="mx-auto my-4 w-full max-w-5xl rounded-xl border p-4"><h2 className="font-semibold">Reservations released</h2><p>This pick list is cancelled. Review the original quantities below and create a replacement from eligible stock.</p><Link href={`/inventory?tab=pick-lists&replacementFor=${pickListId}`} className="inline-flex min-h-11 items-center underline">Review replacement stock</Link></section>}
+      {!alreadyDispatched && !cancelled && (
         <div className="sticky bottom-0 border-t border-outline-variant/30 bg-surface-white px-4 pb-6 pt-4 shadow-elevation-2">
           <div className="mx-auto w-full max-w-5xl">
             {totalLines > 0 ? (
               <form action={handleDispatch}>
+                <ExpiryAcknowledgementFields lines={expiryReviewLines} />
                 <OnlineOnlySubmitButton
                   type="submit"
-                  disabled={!scanReady || !allLinesVerified}
+                  disabled={!scanReady || !allLinesVerified || expiryBlocked}
                   className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-primary font-label text-body-md uppercase tracking-wide text-surface-white focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100"
                 >
                   <Truck size={24} strokeWidth={2} aria-hidden="true" />

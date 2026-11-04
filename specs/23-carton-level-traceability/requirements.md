@@ -46,6 +46,24 @@ data remain database fields.
     remain compatible during migration. This feature adds carton identity and
     history; it does not create a second inventory ledger.
 
+11. Stage 1 pick-list commitment SHALL assign and reserve exactly one existing
+    Carton ID for each committed box, tied to the exact pick-list line, item,
+    lot, and location. Carton identities are selected by the server from
+    current eligible inventory; client-supplied Carton IDs are never authority.
+12. Dispatch SHALL accept one QR belonging to the assigned carton set for
+    each committed line. That scan confirms the line's full preassigned carton
+    set by operator attestation that the line was gathered and jackwrapped;
+    it is not independent per-carton verification. An unassigned carton QR
+    SHALL NOT confirm a line.
+13. The To Pick review/approval screen SHALL remain non-scanning. Dispatch is
+    the only carton scan phase, and the final dispatch command SHALL reuse the
+    accepted carton scans without requiring an additional line scan.
+14. Carton assignment, line-level scan evidence, status transition, and
+    carton history SHALL stay consistent with aggregate commitment/dispatch
+    quantities. If exact carton identities cannot cover a line, commitment
+    SHALL fail closed instead of inventing identities or falling back to
+    aggregate-only tracking.
+
 ## Out of scope for the first vertical slice
 
 Delivery/POD and contract-specific billing events will consume the carton
@@ -55,3 +73,14 @@ history contract in their owning approved specs. They are not duplicated here.
 
 - Technical Lead: User / System, 2026-08-28
 - Product/Operations Lead: User / System, 2026-08-28
+
+## Approved amendment — exact outbound carton assignment and scan evidence (2026-11-04)
+
+- Product Owner sign-off: Lauren, 2026-11-04 (explicit approval to proceed and selection of the verifiable workflow).
+- Second sign-off: System standing approval convention, 2026-11-04.
+
+### Product Owner refinement (2026-11-04)
+
+- Reserve exact existing carton IDs at commitment, but use one matching assigned-carton QR per line in Dispatch to reduce floor scanning. This is an operator attestation of the preassigned jackwrapped line, not independent verification of each carton.
+- Product Owner sign-off: Lauren, 2026-11-04.
+- Second sign-off: System standing approval convention, 2026-11-04.

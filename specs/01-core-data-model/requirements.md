@@ -1,4 +1,5 @@
 # Core Data Model — Requirements
+
 Status: Approved
 Updated: 2026-10-23 — Zone-only RCV/Hold location amendment approved
 Depends on: specs/00-steering/ (product.md, tech.md, structure.md)
@@ -99,7 +100,7 @@ The `01` canonical `lot_history_export` read-model contract refreshes daily, ret
    - Each balance row MUST store `qty_received`, `qty_remaining`, and `qty_committed`, enforce non-negative quantities, and enforce `qty_committed <= qty_remaining`.
    - `qty_available` MUST be derived as `qty_remaining - qty_committed` and MUST NOT be stored.
    - A batch-received WRR line MAY distribute one lot across multiple locations. `wrr_item_putaway_allocations` is a pre-commit plan, not a second inventory ledger; only its successful receipt commit creates authoritative `lot_location_balances` and immutable receiving transactions.
-   - Every received physical box SHALL have one stable `inventory_units.unit_id`, a 1-based source-line box index, and its exact current `location_id`. Reprinting the same WRR box label MUST retain the same identity. Picking selects these rows while authoritative quantities remain exclusively in `lot_location_balances`.
+   - Every received physical box SHALL have one stable `inventory_units.unit_id`, a 1-based source-line box index, and its exact current `location_id`. Reprinting the same WRR box label MUST retain the same identity. Outbound commitment reserves exact carton rows before physical dispatch scanning; the dispatch scan transitions each assigned carton to selected. Authoritative quantities remain exclusively in `lot_location_balances`.
 
 15. **Durable Outbound Reservation**:
    - Stage 1 commitment MUST create `inventory_commitments` and `inventory_commitment_lines` linked to the committed `pick_list` and exact lot/location balance rows.
@@ -208,3 +209,13 @@ the reapproved `06-party-and-item-enrollment` amendment.
 ## Offline scan receipt repair (2026-11-03)
 
 Approved repair requested by the Product Owner before integrating `bam`. Offline receiving/pick scan replay SHALL store an immutable receipt keyed by authenticated actor plus outbox operation identity. The receipt binds command type, normalized command SHA-256 fingerprint, and successful result. Receipt and owning scan mutation commit atomically; retries return the recorded result, and reusing a key for another command fails closed. Anonymous/browser table writes are forbidden.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Own item expiry policy/version, durable acknowledgement storage, a shared date/policy eligibility contract, read-model quantities, and migration/backfill design.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

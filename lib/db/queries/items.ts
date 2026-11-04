@@ -52,6 +52,8 @@ export type ItemDetail = {
   minReorderLevel: number;
   isPerishable: boolean;
   isActive: boolean;
+  expiryPolicy?: "block_release" | "allow_with_acknowledgement";
+  expiryPolicyVersion?: number;
   vmiMovementCategory: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -279,6 +281,8 @@ export async function getItem(
       minReorderLevel: items.minReorderLevel,
       isPerishable: items.isPerishable,
       isActive: items.isActive,
+      expiryPolicy: items.expiryPolicy,
+      expiryPolicyVersion: items.expiryPolicyVersion,
       createdAt: items.createdAt,
       updatedAt: items.updatedAt,
     })

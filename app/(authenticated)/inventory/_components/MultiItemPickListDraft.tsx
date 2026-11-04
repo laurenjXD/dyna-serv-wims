@@ -1,4 +1,6 @@
 "use client";
+import { evaluateExpiry, type ExpiryPolicy, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
+import { ExpiryAcknowledgementFields } from "@/components/inventory/ExpiryAcknowledgementFields";
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
@@ -32,6 +34,8 @@ type StockSource = {
   availableQty: number;
   receivedAt?: Date;
   expiryDate?: string | null;
+  expiryPolicy?: ExpiryPolicy;
+  expiryPolicyVersion?: number;
   isPerishable?: boolean;
   priority?: number;
   locationPickSequence?: number | null;
@@ -405,6 +409,7 @@ function sourceAsBoxPlanRow(source: StockSource) {
     qtyCommitted: 0,
     receivedAt: source.receivedAt ?? new Date(0),
     expiryDate: source.expiryDate ? new Date(`${source.expiryDate}T00:00:00.000Z`) : null,
+    expiryPolicy: source.expiryPolicy,
     lotNumber: source.lotNumber,
     locationLabel: source.locationLabel,
     locationPickSequence: source.locationPickSequence,
@@ -784,6 +789,18 @@ export function MultiItemPickListDraft({
   );
 
   const overrideDetails = lineDetails.filter(({ requiresOverride }) => requiresOverride);
+  const expiryBySource = new Map<string, ExpiryReviewLine>();
+  for (const detail of lineDetails) {
+    for (const { source, boxes } of detail.fifoAllocations) {
+      if (boxes <= 0 || !evaluateExpiry({ expiryDate: source.expiryDate ?? null, expiryPolicy: source.expiryPolicy ?? "block_release" }).requiresAcknowledgement) continue;
+      const key = `${source.itemId}:${source.lotId}:${source.locationId}`;
+      const previous = expiryBySource.get(key);
+      expiryBySource.set(key, { itemId: source.itemId, lotId: source.lotId, lotNumber: source.lotNumber, locationId: source.locationId,
+        qty: (previous?.qty ?? 0) + boxesToPieces(boxes, source.spq), expiryDate: source.expiryDate ?? null,
+        expiryPolicy: source.expiryPolicy!, expiryPolicyVersion: source.expiryPolicyVersion ?? 1 });
+    }
+  }
+  const expiryReviewLines = [...expiryBySource.values()];
   const overrideDetail = overrideDetails[0] ?? null;
   const overrideRequest = useMemo(
     () => overrideDetails.length === 1 && overrideDetail ? buildRequest([overrideDetail]) : "",
@@ -1577,6 +1594,7 @@ export function MultiItemPickListDraft({
             <div className="flex flex-wrap items-end justify-end gap-3">
               {!request && generationBlocker && <p className="max-w-sm text-right font-body text-xs text-amber-700">{generationBlocker}</p>}
               <form action={createAction}>
+              <ExpiryAcknowledgementFields lines={expiryReviewLines} />
               <input type="hidden" name="request" value={request} />
               <PendingActionButton
                 pendingLabel="Creating…"

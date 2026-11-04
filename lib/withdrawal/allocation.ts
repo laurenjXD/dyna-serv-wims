@@ -16,6 +16,8 @@
 // Types
 // ---------------------------------------------------------------------------
 
+import { evaluateExpiry, type ExpiryPolicy } from "@/lib/inventory/expiry-policy";
+
 export type LotLocationRow = {
   lotId: string;
   locationId: string;
@@ -24,6 +26,7 @@ export type LotLocationRow = {
   qtyCommitted: number;
   receivedAt: Date; // FIFO ordering
   expiryDate: Date | null; // non-null for perishable items → FEFO ordering
+  expiryPolicy?: ExpiryPolicy;
   lotNumber?: string | null;
   locationLabel?: string | null;
   locationPickSequence?: number | null;
@@ -152,7 +155,11 @@ function prepareLotGroups(
   const grouped = new Map<string, PreparedLot>();
 
   for (const row of rows) {
-    if (row.lotStatus !== "available") continue;
+    if (!evaluateExpiry({
+      lotStatus: row.lotStatus,
+      expiryDate: row.expiryDate && Number.isFinite(row.expiryDate.getTime()) ? row.expiryDate.toISOString().slice(0, 10) : row.expiryDate ? "invalid" : null,
+      expiryPolicy: row.expiryPolicy ?? "block_release",
+    }).eligible) continue;
 
     const availableQty = Math.max(0, row.qtyRemaining - row.qtyCommitted);
     // When the authoritative caller supplies an SPQ, only complete boxes may

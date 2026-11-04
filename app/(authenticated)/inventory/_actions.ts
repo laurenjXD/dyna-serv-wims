@@ -52,6 +52,8 @@ export async function generatePickList(
       fx_rate_required: "A current exchange rate is required before this Trading withdrawal can be created.",
       price_invalid: "The configured Trading price is invalid. Contact an administrator before retrying.",
       unable_to_reserve_stock: "Stock changed or is no longer available. Refresh the inventory and try again.",
+      carton_traceability_incomplete: "There are not enough registered carton labels for this allocation.",
+      carton_traceability_conflict: "The carton allocation changed before the pick list was committed.",
     };
     return { ok: false, error: messages[result.errors[0]] ?? "Pick list was not created. Please try again." };
   }

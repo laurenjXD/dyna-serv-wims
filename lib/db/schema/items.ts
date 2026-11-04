@@ -40,6 +40,8 @@ export const items = pgTable("items", {
   weightKg: decimal("weight_kg", { precision: 10, scale: 3 }), // Weight in KG per box/carton
   minReorderLevel: integer("min_reorder_level").default(0).notNull(),
   isPerishable: boolean("is_perishable").default(false).notNull(), // Triggers mandatory expiry check at receiving
+  expiryPolicy: text("expiry_policy").$type<"block_release" | "allow_with_acknowledgement">().default("block_release").notNull(),
+  expiryPolicyVersion: integer("expiry_policy_version").default(1).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   // VMI movement classification (fg/raw_material/for_process/reject/re_inspect).
   // Nullable — not every item is VMI-classified; "Uncategorized" bucket when
@@ -53,4 +55,6 @@ export const items = pgTable("items", {
   // Req 2.2: spq > 0 and volume_cbm > 0
   spqPositive: check("items_spq_positive", sql`${table.spq} > 0`),
   volumeCbmPositive: check("items_volume_cbm_positive", sql`${table.volumeCbm} > 0`),
+  expiryPolicyValid: check("items_expiry_policy_valid", sql`${table.expiryPolicy} IN ('block_release', 'allow_with_acknowledgement')`),
+  expiryPolicyVersionPositive: check("items_expiry_policy_version_positive", sql`${table.expiryPolicyVersion} > 0`),
 }));

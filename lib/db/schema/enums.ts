@@ -43,6 +43,7 @@ export const pickListStatusEnum = pgEnum("pick_list_status", [
   "allocated",
   "picked",
   "dispatched",
+  "cancelled",
 ]);
 
 export const movementTypeEnum = pgEnum("movement_type", [

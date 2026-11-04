@@ -112,3 +112,13 @@ Desktop office views may provide filtering and bulk read/dismiss actions. Mobile
 - Supervisors are always in the default recipient set for inventory alerts within their party/flow scope. Administrators receive critical-severity alerts globally (document generation failure, inspection failure requiring disposition).
 - **Cooldown and deduplication**: a low-stock alert for the same item suppresses duplicate firings for the configured cooldown period (default 24 h). Expiry alerts at 30 days and 7 days are treated as distinct severity tiers and each fires once per lot per tier unless the lot is restocked and falls back into the window. Commitment-overdue alerts follow the same per-commitment cooldown.
 - **Alert resolution**: when the triggering condition clears (e.g. stock is restocked above the item's `reorder_level`, a failed inspection receives a disposition, a depleted lot is closed), the open `inventory_alert_events` record is marked `resolved` and a resolution notice is sent to the original recipients. The resolution notice is informational only — it never confirms an inventory transaction, approves a request, or alter source workflow state.
+
+## Material expiry policy amendment (2026-11-04)
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Deliver scoped, deduplicated expiry attention using the current item policy; notification acknowledgement never authorizes stock release.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

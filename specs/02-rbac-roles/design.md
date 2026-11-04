@@ -854,3 +854,23 @@ Cancellation retains an inactive profile and revoked assignments/scopes with aud
 history; acceptance uses an invited-only compare-and-set and cannot override a
 concurrent suspension/cancellation. Session-only Auth revocation is explicitly
 unavailable; account suspension blocks the next protected request instead.
+
+## Material expiry policy amendment (2026-11-04)
+
+### Approved expiry authority and evidence boundary
+
+No new capability vocabulary is introduced. Policy edits require active `items.manage`; workflow acknowledgements require the owning command authority (`receiving.confirm`, `pick_list.generate`, or `dispatch.execute` respectively), current active actor, and current source Organization/Inventory Model scope. Acknowledgement is an operational recorded decision, not a FIFO approval or external customer consent. Policy management is separate from warehouse execution; floor acknowledgement cannot change policy.
+
+`expiry_acknowledgements` SELECT requires the current source read capability/scope (`receiving.view` for the WRR-line source; `pick_list.read`/`dispatch.read` for the pick-list source); history/audit projections may be read through existing scoped audit/reporting authority. Parent RLS cannot be bypassed by fabricated stage/source IDs. INSERT requires stage-specific capability, a live readable/writable owning source, actor equal to the current authenticated user, server Manila business date, non-empty reason and exact server-validated lines/fingerprint. A guarded trigger/function enforces source identity and actor; no anonymous access, broad SECURITY DEFINER table bypass or service-role authorization substitution. Evidence INSERT is used only inside the owning server transaction; UPDATE/DELETE are denied for all application roles. Every scoped parent relationship is rechecked at insertion, not trusted from JSON.
+
+Policy change revision/audit is enforced in the database trigger with transaction-local `app.expiry_policy_reason`; omitted reason, stale revision, unauthorized direct mutation, actor spoofing and direct evidence tampering are negative integration tests. Actual capability and scope are session-resolved, never client-supplied.
+
+Expiry recovery requires current `pick_list.generate` plus the owning pick-list scope and can cancel/release only a currently active expiry-blocked allocation. It does not grant general cancellation. Normal inspection hold/reject/return/return-to-stock retains `inspection.resolve` and its existing separation-of-duties rules. A physical write-off requires both `inspection.resolve` and Administrator role, a separate explicit confirmation and reason within the same current-state transaction; a prior inspection pass/acknowledgement cannot authorize it. Organization users never receive policy-edit, acknowledgement-write, recovery or disposition authority from read access.
+
+Status: Approved
+
+The [Material expiry policy amendment](../00-steering/material-expiry-policy-amendment.md) R1–R8 and D1–D5 is incorporated into this feature's requirements/design/tasks. Product Owner explicitly approved implementation on 2026-11-04; System supplies the second specification sign-off under the standing convention after design reconciliation. Canonical storage/state/security choices are in `01`/`02`. Runtime implementation and verification remain separately tracked; approval is not a claim that tests or deployment passed.
+
+Bind policy edits to items.manage and acknowledgements to the existing authorized receiving/pick-list/dispatch command; retain Organization/Inventory Model scope and independent inspection/write-off authorization.
+
+The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.

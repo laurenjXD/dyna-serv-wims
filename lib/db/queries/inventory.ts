@@ -44,6 +44,8 @@ export type StockViewRow = {
   spq: number;
   spqMeter?: string | number | null;
   isPerishable: boolean;
+  expiryPolicy?: "block_release" | "allow_with_acknowledgement";
+  expiryPolicyVersion?: number;
   flowType: "vmi" | "trading" | "supplies";
   lotId: string;
   lotNumber: string;
@@ -95,6 +97,8 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       spq: items.spq,
       spqMeter: items.spqMeter,
       isPerishable: items.isPerishable,
+      expiryPolicy: items.expiryPolicy,
+      expiryPolicyVersion: items.expiryPolicyVersion,
       lotId: lots.id,
       flowType: lots.flowType,
       lotNumber: lots.lotNumber,
@@ -102,7 +106,7 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
       // Lots are authoritative after receiving. Fall back to the originating
       // WRR line for older receipts created before lot-date copying was wired.
       manufactureDate: sql<string | null>`COALESCE(${lots.manufactureDate}, ${wrrItems.manufactureDate})`,
-      expiryDate: sql<string | null>`COALESCE(${lots.expiryDate}, ${wrrItems.expiryDate})`,
+      expiryDate: lots.expiryDate,
       receivedAt: lots.createdAt,
       locationId: locations.id,
       locationLabel: locations.label,
@@ -122,8 +126,7 @@ export async function listStockView(db: DbLike): Promise<StockViewRow[]> {
     .leftJoin(parties, eq(lots.ownerPartyId, parties.id))
     .leftJoin(defaultSupplierParties, eq(items.defaultSupplierPartyId, defaultSupplierParties.id))
     .where(and(
-      eq(lots.status, "available"),
-      gt(sql`${lotLocationBalances.qtyRemaining} - ${lotLocationBalances.qtyCommitted}`, 0),
+      gt(lotLocationBalances.qtyRemaining, 0),
     ))
     .orderBy(
       asc(items.code),
@@ -268,6 +271,7 @@ export function buildStockAllocationPreview(
       qtyCommitted: row.qtyCommitted,
       receivedAt: row.receivedAt,
       expiryDate: row.expiryDate ? new Date(`${row.expiryDate}T00:00:00.000Z`) : null,
+      expiryPolicy: row.expiryPolicy,
     })),
     requestedQty,
     isPerishable,
