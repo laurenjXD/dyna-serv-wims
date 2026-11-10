@@ -1167,7 +1167,7 @@ export function MultiItemPickListDraft({
                 >
                   <div className="mt-3 grid min-w-0 gap-3">
                     <label className="grid min-w-0 gap-1 font-label text-xs font-bold text-slate-700">
-                      Item Code
+                      Cust PN
                       <PickListItemSearch
                         catalog={catalog}
                         flowType={flowType}
@@ -1297,7 +1297,7 @@ export function MultiItemPickListDraft({
                     <dl className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 font-body text-sm">
                       <div><dt className="text-slate-500">SPQ</dt><dd className="mt-1 font-mono font-bold text-slate-900">{item?.spq ?? "—"}</dd></div>
                       <div><dt className="text-slate-500">Remaining after allocation</dt><dd className="mt-1 font-mono font-bold text-slate-900">{Math.max(0, totalAvailableBoxes - allocatedBoxes)} boxes</dd></div>
-                      <div><dt className="text-slate-500">Customer PN</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
+                      <div><dt className="text-slate-500">Item Code</dt><dd className="mt-1"><input value={line.customerItemCode} onChange={(event) => updateLine(line.id, { customerItemCode: event.target.value })} placeholder={item?.customerItemCode || "Enter customer PN"} className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 font-mono text-sm text-slate-900 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10" /></dd></div>
                       <div><dt className="text-slate-500">Lot</dt><dd className="mt-1 break-words font-mono text-slate-900">{[...new Set(fifoAllocations.map(({ source }) => source.lotNumber))].join(", ") || "—"}</dd></div>
                       <div><dt className="text-slate-500">Mfg. Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.manufactureDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
                       <div><dt className="text-slate-500">Expiry Date</dt><dd className="mt-1 font-mono text-slate-900">{formatStockDate(fifoAllocations[0]?.source.expiryDate) ?? <span className="text-slate-400">Not recorded</span>}</dd></div>
@@ -1329,12 +1329,12 @@ export function MultiItemPickListDraft({
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                <th scope="col" className="h-14 px-4 text-left">Item Code</th>
+                <th scope="col" className="h-14 px-4 text-left">Cust PN</th>
                 <th scope="col" className="h-14 px-2 text-right">SPQ</th>
                 <th scope="col" className="h-14 px-3 text-right">Qty (Boxes)</th>
                 <th scope="col" className="h-14 px-3 text-right">Qty (Units)</th>
                 <th scope="col" className="h-14 px-4 text-left">Location</th>
-                <th scope="col" className="h-14 px-4 text-left">Cust PN</th>
+                <th scope="col" className="h-14 px-4 text-left">Item Code</th>
                 <th scope="col" className="h-14 px-4 text-left">Item Description</th>
                 <th scope="col" className="h-14 px-4 text-left">Lot Number</th>
                 <th scope="col" className="h-14 px-4 text-left">Mfg Date</th>
