@@ -606,6 +606,8 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
     }
     const text: string = pdfData.text || "";
     const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
+    const packingListIndex = lines.findIndex((line) => /^packing list$/i.test(line));
+    const tableLines = packingListIndex >= 0 ? lines.slice(0, packingListIndex) : lines;
 
     const invMatch = text.match(/Invoice\s*#?\s*[:.-]\s*([A-Z0-9_-]{3,30})/i)
       ?? text.match(/(?:CIPL|Ref)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i);
@@ -618,7 +620,21 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
       result.header.invoiceDate = dateMatch[1];
     }
 
-    const structuredRows = lines.flatMap((line) => {
+    const structuredRows = tableLines.flatMap((line) => {
+      const compactMatch = line.match(/^\d{1,3}\s+([^\s]+)\s+(.+?)\s+([^\s]+)\s+([^\s]+)\s+([\d,.]+)\s+([\d,.]+)\s+(BOX|PCS?|CTN|KG|UNITS?|PK|M|PC|EA|SET|ROLL|PAIR)\s+([\d,.]+)$/i);
+      if (compactMatch) {
+        const quantity = Number(compactMatch[6].replace(/,/g, ""));
+        if (Number.isFinite(quantity) && quantity > 0) {
+          return [{
+            itemCode: compactMatch[1],
+            description: compactMatch[2],
+            customerItemCode: compactMatch[3],
+            expectedQty: quantity,
+            uom: compactMatch[7].toUpperCase(),
+            disposition: "store" as const,
+          }];
+        }
+      }
       const cells = line.split(/\t+/).map((cell) => cell.trim()).filter(Boolean).flatMap((cell) => {
         // Some PDF generators omit the final tab between UOM and amount.
         const mergedUomAmount = cell.match(/^(BOX|PCS?|CTN|KG|UNITS?|PK|M|PC|EA|SET|ROLL|PAIR)\s+([\d,.]+)$/i);
@@ -655,7 +671,7 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
 
     const lineRegex = /([A-Z0-9_-]{3,25})\s+(?:(LOT-[A-Z0-9_-]+|[A-Z0-9_-]{4,15})\s+)?(\d+(?:\.\d+)?)\s*(BOX|PCS|CTN|KG|UNITS|PK)?/gi;
 
-    for (const line of structuredRows.length > 0 ? [] : lines) {
+    for (const line of structuredRows.length > 0 ? [] : tableLines) {
       if (/invoice|packing|commercial|date|page|total|subtotal/i.test(line) && !/\d{2,}/.test(line)) {
         continue;
       }
@@ -687,10 +703,23 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
     if (result.rows.length === 0) {
       result.warnings.push("PDF text extracted successfully, but no table rows matched the line item layout. You can enter expected lines manually or verify the file layout.");
     }
+    const pdfTargets: Array<{ header: string; target: CiplTargetField; values: string[] }> = [
+      { header: "PDF detected item code", target: "itemCode", values: result.rows.map((row) => row.itemCode ?? "").filter(Boolean) },
+      { header: "PDF detected customer part number", target: "customerItemCode", values: result.rows.map((row) => row.customerItemCode ?? "").filter(Boolean) },
+      { header: "PDF detected description", target: "description", values: result.rows.map((row) => row.description ?? "").filter(Boolean) },
+      { header: "PDF detected expected quantity", target: "expectedQty", values: result.rows.map((row) => row.expectedQty == null ? "" : String(row.expectedQty)).filter(Boolean) },
+      { header: "PDF detected UOM", target: "uom", values: result.rows.map((row) => row.uom ?? "").filter(Boolean) },
+    ];
     result.mappingSnapshot = {
       version: 1,
       sourceKind: "pdf",
-      columns: [],
+      columns: pdfTargets.map((field, index) => ({
+        index,
+        header: field.header,
+        suggestedTarget: field.target,
+        status: field.values.length > 0 ? "mapped" : "unmapped",
+        sampleValues: field.values.slice(0, 3),
+      })),
       sourceRows: lines.map((line, index) => ({ rowNumber: index + 1, values: [line] })),
     };
   } catch (err: unknown) {
