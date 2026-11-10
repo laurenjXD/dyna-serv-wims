@@ -29,6 +29,13 @@ No document table, template, PDF generation, Storage object, print action, or do
 
 ## Implementation tasks
 
+### 2026-11-10 amendment — cross-reference snapshots
+
+- [ ] Add/backfill immutable supplier item-code snapshots on pick-list lines.
+- [ ] Project supplier item code as Item Code and customer snapshot as Customer Part Number across screen, print, receipt, and PDF views.
+
+Approval record: Product Owner authorization — requested implementation of the 2026-11-10 revision plan. Technical sign-off: existing approved document contract; implementation pending migration and focused verification.
+
 ### 1. Resolve document contract and ownership
 
 Testing: Documentation/template review; no implementation tests.

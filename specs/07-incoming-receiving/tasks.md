@@ -232,3 +232,13 @@ The [Material expiry policy amendment](../00-steering/material-expiry-policy-ame
 - [x] Product Owner implementation approval — User, explicit instruction to approve and implement, 2026-11-04.
 - [x] Second specification approval — System standing auto-sign-off convention after design reconciliation, 2026-11-04.
 - [ ] Complete applicable runtime migration, real-Postgres/RLS, unit, integration, and E2E verification from the linked plan; record evidence separately from specification approval.
+
+## Approved amendment tasks — CIPL mapping review, unresolved materials, and shipment SPQ (2026-11-10)
+
+- [ ] Return source-column/row metadata and mapping diagnostics from CIPL parse operations; persist the confirmed mapping snapshot with the WRR.
+- [ ] Build source-field visibility and explicit mapping-state UI; do not silently discard unmapped data.
+- [ ] Add unresolved material hold/enrollment return flow with draft preservation and revalidation.
+- [ ] Add explicit shipment-SPQ confirmation, line snapshot persistence, and snapshot-based carton labels/scans/commit.
+- [ ] Test unmapped/ignored/ambiguous/missing-required states, no-match enrollment, two valid SPQs for one item, divisibility, and offline refusal.
+- [x] Product Owner authorization — requested implementation of the revision plan, 2026-11-10.
+- [x] Technical/System sign-off — standing approved-spec convention after design reconciliation, 2026-11-10.

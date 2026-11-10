@@ -9,6 +9,14 @@
 - [ ] Add audit, RLS, unit, integration, and E2E coverage for custom roles.
 
 Status: Approved
+
+### 2026-11-10 amendment — role preview
+
+- [ ] Provide an administrator-only role-preview control with clear active/exit state.
+- [ ] Filter shell presentation using selected-role grants only; preserve server authorization and RLS.
+- [ ] Test that preview never grants access to an otherwise forbidden server resource.
+
+Approval record: Product Owner authorization — requested implementation of the 2026-11-10 revision plan. Technical sign-off: existing RBAC boundary remains authoritative.
 Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 ## Scope and implementation gate

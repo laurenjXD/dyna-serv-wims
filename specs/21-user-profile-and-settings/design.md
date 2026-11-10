@@ -1,6 +1,10 @@
 # User Profile & Settings — Design
 
 Status: Approved
+
+### 2026-11-10 amendment — session and preview controls
+
+The authenticated layout mounts exactly one idle guard. It warns five minutes before the configured timeout (or at half the timeout if shorter), and Continue resets only the local inactivity clock. The Settings Team surface may activate a display-only role preview; it uses no impersonation, no role/session mutation, and no permission override.
 Updated: 2026-08-05
 
 Cites foundational specs:

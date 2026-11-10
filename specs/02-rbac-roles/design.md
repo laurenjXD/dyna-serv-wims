@@ -16,6 +16,10 @@ labels are not authorization identifiers; server actions and RLS remain
 authoritative.
 
 Status: Approved
+
+## 2026-11-10 amendment — non-authoritative role preview
+
+Role preview derives a display-only route set from the selected role's published grants. Every route, query, server action, and API handler continues to authorize from the authenticated server session. Preview state is local to the administrator's browser tab, excludes party-scoped data simulation, and must never be sent as an authorization input.
 Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 Depends on:

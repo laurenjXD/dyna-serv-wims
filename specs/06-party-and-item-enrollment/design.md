@@ -355,3 +355,7 @@ The [Material expiry policy amendment](../00-steering/material-expiry-policy-ame
 Expose Block release / Allow with acknowledgement as an explicit item policy independent of perishability, including audited changes and conservative legacy defaults.
 
 The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.
+
+## Approved amendment — contextual material enrollment from CIPL review (2026-11-10)
+
+The CIPL handoff is a navigation/context convenience, not a second item-create endpoint. It may pass source Supplier Item Code, Customer Part Number, description, UOM, and proposed SPQ as prefill values. The Material form remains the only write surface, validates all mandatory fields, and returns the created item ID through a trusted server response. The CIPL review retains its draft locally or under the WRR draft and re-resolves the item on return.

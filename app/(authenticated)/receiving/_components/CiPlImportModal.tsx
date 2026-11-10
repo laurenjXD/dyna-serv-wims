@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
-import type { CiplParseResult } from "@/lib/parsers/cipl-parser";
+import type { CiplParseResult, CiplMappingSnapshot } from "@/lib/parsers/cipl-parser";
 import { matchItemAgainstCatalog } from "@/lib/parsers/item-matcher";
 import { uploadAndParseCiplDocument } from "@/lib/actions/receiving";
 
 export interface ImportedCiplLine {
   itemId: string;
+  /** Preserve the source code when catalog matching needs operator recovery. */
+  itemCode: string;
   customerItemCode: string;
   description?: string;
   lotNumber: string;
   mfgDate: string;
   expiryDate: string;
   expectedQty: string;
+  spq?: string;
   unitCbm?: string;
   uom: string;
   remarks: string;
@@ -27,7 +31,8 @@ interface CiPlImportModalProps {
   onClose: () => void;
   onApply: (
     header: CiplParseResult["header"],
-    lines: ImportedCiplLine[]
+    lines: ImportedCiplLine[],
+    mappingSnapshot: CiplMappingSnapshot,
   ) => void;
 }
 
@@ -57,6 +62,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
       mfgDate: string;
       expiryDate: string;
       expectedQty: string;
+      spq: string;
       unitCbm: string;
       uom: string;
       remarks: string;
@@ -117,6 +123,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
         mfgDate: row.mfgDate || "",
         expiryDate: row.expiryDate || "",
         expectedQty: row.expectedQty ? String(row.expectedQty) : "",
+        spq: row.spq ? String(row.spq) : "",
         unitCbm: row.cbm ? String(row.cbm) : (matchedItem ? matchedItem.volumeCbm : "0.001"),
         uom: row.uom || (matchedItem ? matchedItem.uom : "BOX"),
         remarks: row.remarks || "",
@@ -173,17 +180,20 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
       },
       editedRows.map((r) => ({
         itemId: r.itemId,
+        itemCode: r.itemCodeDisplay,
         customerItemCode: r.customerItemCode,
         description: r.description,
         lotNumber: r.lotNumber,
         mfgDate: r.mfgDate,
         expiryDate: r.expiryDate,
         expectedQty: r.expectedQty,
+        spq: r.spq,
         unitCbm: r.unitCbm,
         uom: r.uom,
         remarks: r.remarks,
         disposition: r.disposition,
-      }))
+      })),
+      parseResult.mappingSnapshot,
     );
     onClose();
   }
@@ -290,6 +300,37 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                 </div>
               )}
 
+              <section className="rounded-lg border border-outline-variant/40 bg-surface-variant/20 p-4" aria-label="Source field mapping">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <h4 className="font-heading text-title-xs font-semibold text-on-surface">Source fields and mappings</h4>
+                    <p className="mt-1 font-body text-body-xs text-text-grey">Every parsed source field stays visible. Unmapped fields are preserved with the WRR for review.</p>
+                  </div>
+                  <span className="font-mono text-[11px] text-text-grey">
+                    {parseResult.mappingSnapshot.sourceKind === "spreadsheet"
+                      ? `${parseResult.mappingSnapshot.sourceRows.length} source rows`
+                      : "PDF source text"}
+                  </span>
+                </div>
+                {parseResult.mappingSnapshot.columns.length > 0 ? (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[620px] text-left font-body text-body-xs">
+                      <thead className="text-text-grey"><tr><th className="px-2 py-1.5">Source column</th><th className="px-2 py-1.5">Suggested target</th><th className="px-2 py-1.5">Status</th><th className="px-2 py-1.5">Sample values</th></tr></thead>
+                      <tbody className="divide-y divide-outline-variant/30">
+                        {parseResult.mappingSnapshot.columns.map((column) => (
+                          <tr key={column.index}>
+                            <td className="px-2 py-2 font-mono text-on-surface">{column.index + 1}. {column.header}</td>
+                            <td className="px-2 py-2 text-on-surface">{column.suggestedTarget ?? "—"}</td>
+                            <td className="px-2 py-2"><span className={column.status === "mapped" ? "text-status-available" : "text-status-held"}>{column.status === "mapped" ? "Mapped" : column.status === "fallback" ? "Fallback" : "Unmapped"}</span></td>
+                            <td className="px-2 py-2 text-text-grey">{column.sampleValues.join(" · ") || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p className="mt-3 font-body text-body-xs text-text-grey">The PDF text is retained as source rows below. Verify the extracted line values before applying.</p>}
+              </section>
+
               {/* Table preview */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -308,6 +349,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                         <th className="p-2.5 min-w-[100px]">MFD</th>
                         <th className="p-2.5 min-w-[80px]">Unit CBM</th>
                         <th className="p-2.5 min-w-[85px] text-right">Expected Qty</th>
+                        <th className="p-2.5 min-w-[70px]">Shipment SPQ</th>
                         <th className="p-2.5 min-w-[65px]">UOM</th>
                         <th className="p-2.5 min-w-[90px]">Disposition</th>
                       </tr>
@@ -348,6 +390,13 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                                       {row.suggestedItems.length} candidate(s)
                                     </span>
                                   )}
+                                  <Link
+                                    href={`/master-data/items/new?code=${encodeURIComponent(row.itemCodeDisplay)}`}
+                                    target="_blank"
+                                    className="mt-1 text-[10px] font-semibold text-brand-navy underline"
+                                  >
+                                    Enroll Material
+                                  </Link>
                                 </div>
                               )}
                             </td>
@@ -432,6 +481,9 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                                 onChange={(e) => handleRowChange(idx, "expectedQty", e.target.value)}
                                 className="w-20 rounded border border-outline-variant/50 px-2 py-1 font-mono text-body-xs text-right"
                               />
+                            </td>
+                            <td className="p-2.5">
+                              <input type="number" min="1" value={row.spq} onChange={(e) => handleRowChange(idx, "spq", e.target.value)} placeholder="SPQ" className="w-16 rounded border border-outline-variant/50 px-2 py-1 font-mono text-[11px]" />
                             </td>
                             <td className="p-2.5">
                               <input

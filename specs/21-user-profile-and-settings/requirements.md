@@ -1,6 +1,10 @@
 # User Profile & Settings — Requirements
 
 Status: Approved
+
+### 2026-11-10 amendment — administrative preview and session safety
+
+Settings may expose a read-only Administrator role-preview control. Login may communicate that the provider session persists only within its configured policy; a "Stay signed in" preference must not alter token persistence or expiry unless implemented by a server-side/provider-supported contract.
 Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
 ## 1. Purpose and scope

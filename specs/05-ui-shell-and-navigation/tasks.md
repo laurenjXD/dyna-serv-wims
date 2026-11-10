@@ -1,6 +1,13 @@
 # UI Shell & Navigation — Implementation Plan
 
 Status: Approved
+
+### 2026-11-10 amendment — one idle guard
+
+- [x] Remove the duplicate ShellChrome idle timer.
+- [x] Add configured warning and Continue session UX to the authenticated-layout guard.
+
+Approval record: Product Owner authorization — requested implementation of the 2026-11-10 revision plan. Technical sign-off: shell session behavior verified by component tests.
 Updated: 2026-08-14 (Aligned with Unified UI/UX & Visual Design System)
 
 ## Implementation gate

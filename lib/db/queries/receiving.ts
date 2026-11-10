@@ -93,6 +93,7 @@ export type WrrItemRow = {
   uom: string;
   unitCbm: number;
   spq: number;
+  spqSnapshot: number | null;
   putawayLocationId: string | null;
   committedAt: Date | null;
 };
@@ -145,6 +146,7 @@ type RawJoinRow = {
   itemUom: string | null;
   itemUnitCbm: string | number | null;
   itemSpq: number | null;
+  itemSpqSnapshot: number | null;
   itemPutawayLocationId: string | null;
   itemCommittedAt: Date | null;
 };
@@ -319,6 +321,7 @@ export async function getWrrDocument(
       itemUom: wrrItems.uom,
       itemUnitCbm: wrrItems.unitCbm,
       itemSpq: itemsTable.spq,
+      itemSpqSnapshot: wrrItems.spqSnapshot,
       itemPutawayLocationId: wrrItems.putawayLocationId,
       itemCommittedAt: wrrItems.committedAt,
     })
@@ -343,7 +346,7 @@ export async function getWrrDocument(
       wrrId: row.itemWrrId!,
       lotNumber: row.itemLotNumber ?? "",
       expectedQty: Number(row.itemExpectedQty ?? 0),
-      cartonCount: exactCartonCount(Number(row.itemExpectedQty ?? 0), row.itemSpq == null ? undefined : Number(row.itemSpq)) ?? 0,
+      cartonCount: exactCartonCount(Number(row.itemExpectedQty ?? 0), row.itemSpqSnapshot == null ? (row.itemSpq == null ? undefined : Number(row.itemSpq)) : Number(row.itemSpqSnapshot)) ?? 0,
       scannedQty: Number(row.itemScannedQty ?? 0),
       disposition: row.itemDisposition ?? "store",
       itemId: row.itemItemId,
@@ -360,7 +363,8 @@ export async function getWrrDocument(
       remarks: row.itemRemarks,
       uom: row.itemUom ?? "",
       unitCbm: Number(row.itemUnitCbm ?? 0),
-      spq: Number(row.itemSpq ?? 0) > 0 ? Number(row.itemSpq) : 0,
+      spq: Number(row.itemSpqSnapshot ?? row.itemSpq ?? 0) > 0 ? Number(row.itemSpqSnapshot ?? row.itemSpq) : 0,
+      spqSnapshot: row.itemSpqSnapshot == null ? null : Number(row.itemSpqSnapshot),
       putawayLocationId: row.itemPutawayLocationId,
       committedAt: row.itemCommittedAt,
     }));

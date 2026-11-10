@@ -30,6 +30,14 @@ No withdrawal route, allocation engine integration, reservation/commitment mutat
 
 ## Implementation tasks
 
+### 2026-11-10 amendment — carton-level dispatch evidence
+
+- [x] Require carton-identity QR scans and atomically select one unit per scan.
+- [x] Reject item/lot/location QR scan fallbacks and remove dispatch-time carton reconstruction.
+- [x] Update offline observation wording and payload to one carton per observation.
+
+Approval record: Product Owner authorization — requested implementation of the 2026-11-10 revision plan. Technical sign-off: existing approved cross-feature contract; implementation verified by focused tests.
+
 ### 1. Resolve the outbound domain contract
 
 Testing: Documentation/schema review; no implementation tests.

@@ -124,3 +124,7 @@ The [Material expiry policy amendment](../00-steering/material-expiry-policy-ame
 Expose Block release / Allow with acknowledgement as an explicit item policy independent of perishability, including audited changes and conservative legacy defaults.
 
 The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.
+
+## Approved amendment — contextual material enrollment from CIPL review (2026-11-10)
+
+An authorized `items.manage` user SHALL be able to open Material enrollment from an unresolved CIPL/WRR line with non-authoritative source values prefilled. The normal item form, duplicate checks, authorization, audit, and online-only rules remain mandatory. Completion returns the enrolled item identity to the preserved CIPL/WRR review for server-side revalidation; it does not silently create an item or grant floor users enrollment authority.

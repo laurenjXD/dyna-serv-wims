@@ -1,6 +1,10 @@
 # Services & Infrastructure — Requirements
 
 Status: Approved
+
+## 2026-11-10 amendment — bounded session behavior
+
+The provider-managed Supabase session remains the sole authority for session lifetime, refresh, revocation, and sign-out. The application may enforce an earlier local inactivity timeout and may offer a warning/continue interaction, but it shall not store tokens in browser storage or extend provider expiry from client preference.
 Updated: 2026-08-05
 
 Depends on:

@@ -11,6 +11,10 @@ The document service never becomes the source of inventory, reservation, approva
 
 ## 2. Foundational dependencies and source tables
 
+### 2026-11-10 amendment — cross-reference snapshots
+
+At commitment, `pick_list_items` stores the supplier item code and customer part number used for the document. Generated documents and UI projections consume these line snapshots rather than mutable item-master values. Existing records require a one-time backfill from the then-current item master, marked as backfilled provenance where supported.
+
 Depends on:
 
 - `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.

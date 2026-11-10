@@ -15,6 +15,7 @@ import { useConnectivityStatus } from "@/lib/shell/use-connectivity";
 import { useOfflineStatus } from "@/lib/offline/provider";
 import { useShellAuthorizationContext } from "./AuthenticatedShellBoundary";
 import { ShellNavigation } from "./ShellNavigation";
+import { useRolePreview } from "./RolePreviewProvider";
 import { filterVisibleRoutes, selectRoutesForPresentation } from "@/lib/shell/navigation";
 import {
   resolveShellNotifications,
@@ -22,7 +23,6 @@ import {
   resolveShellUserDisplay,
   signOutAction,
 } from "@/app/(authenticated)/actions";
-import { IdleSessionTracker } from "./IdleSessionTracker";
 import type { ShellNotification } from "@/app/(authenticated)/actions";
 import {
   markNotificationReadAction,
@@ -61,6 +61,7 @@ function initials(name: string | null): string {
 
 export function ShellChrome({ children }: { children: ReactNode }) {
   const context = useShellAuthorizationContext();
+  const { preview, clearPreview } = useRolePreview();
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen, toggle, close } = useShellSidebar();
@@ -714,9 +715,13 @@ export function ShellChrome({ children }: { children: ReactNode }) {
         </div>
       )}
 
+      {preview && <div className="fixed inset-x-0 top-0 z-[70] flex min-h-11 items-center justify-center gap-3 bg-amber-100 px-4 text-center font-body text-sm text-amber-950">
+        <span>Previewing navigation as <strong>{preview.roleName}</strong>. Your actual permissions have not changed.</span>
+        <button type="button" onClick={clearPreview} className="rounded-lg border border-amber-700 px-2 py-1 font-label font-bold">Exit preview</button>
+      </div>}
       <ShellNavigation
         tier={tier}
-        context={{ grants: context?.grants ?? [] }}
+        context={{ grants: preview?.grants ?? context?.grants ?? [] }}
         pendingApprovalCount={pendingApprovalCount}
         currentPath={pathname}
         mobileNavOpen={isOpen}
@@ -750,7 +755,6 @@ export function ShellChrome({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
-      <IdleSessionTracker tier={tier} />
     </>
   );
 }

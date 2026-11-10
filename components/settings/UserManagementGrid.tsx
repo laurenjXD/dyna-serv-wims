@@ -31,6 +31,7 @@ import { RoleManagementModal } from "./RoleManagementModal";
 import { UserAccessModal } from "./UserAccessModal";
 import { TablePagination } from "@/components/ui/TablePagination";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useRolePreview } from "@/components/global/RolePreviewProvider";
 import type {
   ActivePartyOption,
   TeamMember,
@@ -63,6 +64,7 @@ export function UserManagementGrid({
   resendInvite?: (userId: string) => Promise<{ ok: boolean; error?: string }>;
   cancelInvite?: (userId: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const { preview, startPreview, clearPreview } = useRolePreview();
   const [members, setMembers] = useState(initialMembers);
   const [roles, setRoles] = useState<DynamicRole[]>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -371,6 +373,17 @@ export function UserManagementGrid({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {canManageAccess && <label className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface px-3 font-label text-label text-text-primary">
+              <span className="sr-only">Preview navigation as role</span>
+              <select value={preview?.roleName ?? ""} onChange={(event) => {
+                const role = roles.find((candidate) => candidate.name === event.target.value);
+                if (role) startPreview(role.name, role.grants);
+                else clearPreview();
+              }} className="bg-transparent outline-none">
+                <option value="">Preview role…</option>
+                {roles.filter((role) => role.isActive).map((role) => <option key={role.id} value={role.name}>{role.name}</option>)}
+              </select>
+            </label>}
             <button
               type="button"
               onClick={() => setRolesModalOpen(true)}

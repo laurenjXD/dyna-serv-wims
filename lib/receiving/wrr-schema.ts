@@ -30,6 +30,10 @@ export type CreateWrrLine = {
   expiryDate?: string | null;
   remarks?: string | null;
   barcode?: string | null;
+  /** Proposed shipment packaging; the server resolves the effective snapshot. */
+  spqSnapshot?: number | null;
+  /** Required when the proposed shipment packaging differs from master data. */
+  spqOverrideConfirmed?: boolean;
 };
 
 export type CreateWrrInput = {
@@ -47,6 +51,8 @@ export type CreateWrrInput = {
   pezaNumber?: string | null;
   ipNumber?: string | null;
   mawbMblNumber?: string | null;
+  /** Versioned CIPL source-to-target evidence; never inventory authority. */
+  ciplMappingSnapshot?: Record<string, unknown> | null;
   lines: CreateWrrLine[];
 };
 
@@ -138,6 +144,16 @@ export function validateCreateWrr(input: unknown): CreateWrrResult {
   if (raw["mawbMblNumber"] !== undefined) {
     data.mawbMblNumber = raw["mawbMblNumber"] as string | null;
   }
+  if (raw["ciplMappingSnapshot"] !== undefined) {
+    const snapshot = raw["ciplMappingSnapshot"];
+    if (snapshot !== null && (typeof snapshot !== "object" || Array.isArray(snapshot))) {
+      errors.push("ciplMappingSnapshot must be an object when provided");
+    } else {
+      data.ciplMappingSnapshot = snapshot as Record<string, unknown> | null;
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
 
   return { ok: true, data };
 }
@@ -228,6 +244,16 @@ function validateLine(
     errors.push(`Line[${index}]: remarks must be text when provided`);
   }
 
+  const spqSnapshot = line["spqSnapshot"];
+  if (spqSnapshot !== undefined && spqSnapshot !== null &&
+    (typeof spqSnapshot !== "number" || !Number.isInteger(spqSnapshot) || spqSnapshot <= 0)) {
+    errors.push(`Line[${index}]: spqSnapshot must be a positive whole number when provided`);
+  }
+  const spqOverrideConfirmed = line["spqOverrideConfirmed"];
+  if (spqOverrideConfirmed !== undefined && typeof spqOverrideConfirmed !== "boolean") {
+    errors.push(`Line[${index}]: spqOverrideConfirmed must be true or false when provided`);
+  }
+
   if (errors.length > 0) {
     return { errors, line: null };
   }
@@ -249,6 +275,8 @@ function validateLine(
       expiryDate: (expiryDate as string | null | undefined) || null,
       remarks: (remarks as string | null | undefined)?.trim() || null,
       barcode: (line["barcode"] as string | null | undefined) ?? null,
+      spqSnapshot: (spqSnapshot as number | null | undefined) ?? null,
+      spqOverrideConfirmed: spqOverrideConfirmed === true,
     },
   };
 }

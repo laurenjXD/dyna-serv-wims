@@ -1,6 +1,10 @@
 # UI Shell & Navigation — Design
 
 Status: Approved
+
+## 2026-11-10 amendment — one idle guard
+
+`SessionIdleGuard` is mounted once by the authenticated layout. It presents an accessible warning dialog before timeout and lets the user continue locally. ShellChrome does not mount another idle timer. This client behavior cannot prolong a provider session.
 Updated: 2026-08-23 (Sidebar interaction and visual-hierarchy amendment)
 
 ## 1. Design intent

@@ -27,7 +27,7 @@
 //     withdrawal.request, withdrawal.execute, withdrawal.view
 //   specs/00-steering/tech.md — RBAC always from session, never client params.
 
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import type { RequestAuthorizationResolver } from "@/lib/rbac/session";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -64,7 +64,7 @@ import { cartonIdFromUnitId } from "@/lib/barcode/carton";
 import { emitLowStockAlerts } from "@/lib/notifications/low-stock";
 import { positiveInteger } from "@/lib/inventory/quantities";
 import { expiryReleaseReview, recordExpiryAcknowledgement } from "@/lib/inventory/expiry-acknowledgement";
-import { evaluateExpiry, validateExpiryAcknowledgement, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
+import { evaluateExpiry, manilaBusinessDate, validateExpiryAcknowledgement, type ExpiryAcknowledgementInput, type ExpiryReviewLine } from "@/lib/inventory/expiry-policy";
 import { freezeTradingPriceInTransaction } from "@/lib/billing/trading-price-freeze";
 import {
   validateOutboundOrganization,
@@ -519,7 +519,7 @@ export async function commitWithdrawal(
         const selected = rows.find((row) =>
           row.lotId === requestedLine.lotId && row.locationId === requestedLine.locationId,
         );
-        if (!selected || !evaluateExpiry({ ...selected, expiryDate: selected.expiryDate ?? null }).eligible || requestedQty !== requestedLine.qty ||
+        if (!selected || !evaluateExpiry({ ...selected, expiryDate: selected.expiryDate ?? null, expiryPolicy: selected.expiryPolicy }).eligible || requestedQty !== requestedLine.qty ||
             selected.qtyRemaining - selected.qtyCommitted < requestedQty || !db.execute) {
           throw new Error("approval_mismatch");
         }
@@ -665,7 +665,10 @@ export async function commitWithdrawal(
         .values({
           pickListId,
           itemId: line.itemId,
-          itemCode: line.itemCode,
+          // `itemCode` is the immutable user-facing Item Code snapshot on a
+          // pick-list line. Supplier item code wins; the internal code remains
+          // available through the item relation for operational matching.
+          itemCode: line.supplierItemCode?.trim() || line.itemCode,
           customerItemCode: line.customerItemCode,
           itemDescription: line.itemDescription,
           lotId: line.lotId,
@@ -807,7 +810,7 @@ export async function commitWithdrawal(
           snapshotHash: hashSnapshot({
             pickListId, commitmentId, lines: data.lines,
             expiryReview: { businessDate: manilaBusinessDate(expiryNow), lines: expiryLines,
-              reason: expiryLines.length ? data.expiryAcknowledgement?.reason.trim() : null },
+              reason: expiryLines.length ? (data.expiryAcknowledgement as ExpiryAcknowledgementInput).reason.trim() : null },
           }),
           status: documentStatus,
           systemExecutor: "commitWithdrawal",
@@ -856,14 +859,12 @@ export async function commitWithdrawal(
 }
 
 // ---------------------------------------------------------------------------
-// WRR-style shared-QR dispatch counting
+// Carton-level dispatch counting
 // ---------------------------------------------------------------------------
 
 /**
- * Accepts one matching carton/item/lot QR for its committed dispatch line.
- * The scan verifies the line's full committed box quantity. Physical unit rows
- * are assigned server-side to retain the commitment/accounting invariant; the
- * scanned carton ID identifies the line but does not choose its quantity.
+ * Accepts exactly one carton QR for a committed dispatch line. A scan never
+ * selects more than the physical carton it identifies.
  */
 export async function selectPickUnit(
   resolver: RequestAuthorizationResolver,
@@ -905,18 +906,16 @@ export async function selectPickUnit(
         return { ok: false as const, errors: ["invalid_status"] };
       }
 
-      // Migration-origin carton labels carry the durable inventory-unit ID.
-      // Resolve and reserve that exact carton instead of falling back to the
-      // shared lot/item QR behavior below.
+      // Carton labels carry the durable inventory-unit ID. Item and lot labels
+      // are deliberately not dispatch evidence: they do not identify one box.
       let inventoryUnitId: string | null = null;
       let inventoryUnitLineId: string | null = null;
       let preferredInventoryUnitRowId: string | null = null;
       try {
         const parsed = JSON.parse(scannedValue) as { type?: string; unit_id?: string };
         if (parsed.type === "inventory_unit" && typeof parsed.unit_id === "string") inventoryUnitId = parsed.unit_id;
-      } catch {
-        // Ordinary item/lot QR values are handled by the shared path.
-      }
+      } catch { /* rejected below */ }
+      if (!inventoryUnitId) return { ok: false as const, errors: ["carton_qr_required"] };
       if (inventoryUnitId) {
         const [unit] = (await db
           .select({ id: inventoryUnits.id, lotId: inventoryUnits.lotId, locationId: inventoryUnits.locationId, status: inventoryUnits.status, pickListItemId: inventoryUnits.pickListItemId })
@@ -931,128 +930,30 @@ export async function selectPickUnit(
         preferredInventoryUnitRowId = unit.id;
       }
 
-      // The scan determines the target line. One matching shared item/lot QR
-      // verifies its full committed quantity. When an item appears on multiple
-      // lines, scan the lot QR to target a specific lot; otherwise the first
-      // incomplete matching line is selected.
-      const matchingLines = lineRows.filter((candidate) => {
-        if (inventoryUnitLineId) return candidate.id === inventoryUnitLineId;
-        return (!expectedPickListItemId || candidate.id === expectedPickListItemId) && [
-          candidate.itemBarcode,
-          candidate.itemCode,
-          candidate.lotId,
-          candidate.lotNumber,
-        ].some((value) => value === scannedValue);
-      });
+      const matchingLines = lineRows.filter((candidate) =>
+        candidate.id === inventoryUnitLineId &&
+        (!expectedPickListItemId || candidate.id === expectedPickListItemId),
+      );
       if (matchingLines.length === 0) {
         return { ok: false as const, errors: ["wrong_item_or_lot_qr"] };
       }
 
-      let line: AnyRecord | undefined;
-      let selectedRows: AnyRecord[] = [];
-      for (const candidate of matchingLines) {
-        const candidateSelections = (await db
-          .select({ id: inventoryUnits.id })
-          .from(inventoryUnits)
-          .where(and(
-            eq(inventoryUnits.pickListItemId, candidate.id),
-            eq(inventoryUnits.status, "selected"),
-          ))) as AnyRecord[];
-        if (candidateSelections.length < Number(candidate.numberOfBoxes)) {
-          line = candidate;
-          selectedRows = candidateSelections;
-          break;
-        }
-      }
+      const line = matchingLines[0];
       if (!line) return { ok: false as const, errors: ["line_complete"] };
       const requiredCount = Number(line.numberOfBoxes);
-
-      const neededCount = requiredCount - selectedRows.length;
-      if (neededCount <= 0) return { ok: false as const, errors: ["line_complete"] };
-
-      // The matching QR verifies the line on the pallet. Assign all remaining
-      // physical units for this line from this committed lot/location.
-      const availableUnitRows = (await db
-        .select({
-          id: inventoryUnits.id,
-          lotId: inventoryUnits.lotId,
-          locationId: inventoryUnits.locationId,
-          status: inventoryUnits.status,
-          pickListItemId: inventoryUnits.pickListItemId,
-        })
-        .from(inventoryUnits)
-        .where(and(
-          eq(inventoryUnits.lotId, line.lotId),
-          eq(inventoryUnits.locationId, line.locationId),
-          eq(inventoryUnits.status, "available"),
-          sql`${inventoryUnits.pickListItemId} IS NULL`,
-        ))
-        .limit(neededCount)) as AnyRecord[];
-
-      // A unique carton QR identifies its committed line too. Include that
-      // scanned unit first, then assign the rest of the line's committed units
-      // server-side so the user confirms a jackwrapped location line once.
-      const unitRows = preferredInventoryUnitRowId
-        ? [
-            { id: preferredInventoryUnitRowId },
-            ...availableUnitRows.filter((unit) => unit.id !== preferredInventoryUnitRowId),
-          ].slice(0, neededCount)
-        : availableUnitRows;
-
-      for (const unit of unitRows) {
-        await db
-          .update(inventoryUnits)
-          .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
-          .where(and(eq(inventoryUnits.id, unit.id), eq(inventoryUnits.status, "available")));
-      }
-
-      const stillMissingCount = neededCount - unitRows.length;
-      if (stillMissingCount > 0) {
-        // Older aggregate receipts can have a confirmed lot balance but fewer
-        // internal unit rows than physical boxes. A shared QR still represents
-        // the committed boxes, so reconstruct any missing internal accounting
-        // rows from the authoritative lot source rather than rejecting a valid scan.
-        const sourceRows = (await db
-          .select({
-            wrrItemId: lots.wrrItemId,
-            migrationBatchId: lots.migrationBatchId,
-            unitIndex: inventoryUnits.unitIndex,
-          })
-          .from(lots)
-          .leftJoin(inventoryUnits, eq(inventoryUnits.lotId, lots.id))
-          .where(eq(lots.id, line.lotId))) as Array<{
-            wrrItemId: string | null;
-            migrationBatchId: string | null;
-            unitIndex: number | null;
-          }>;
-        // Older aggregate and migration lots may not have a WRR source line.
-        // The lot/location commitment is still authoritative, so create
-        // durable box identities with whichever provenance is available.
-        const wrrItemId = sourceRows[0]?.wrrItemId ?? null;
-        const migrationBatchId = sourceRows[0]?.migrationBatchId ?? null;
-        let nextUnitIndex = Math.max(0, ...sourceRows.map((row) => row.unitIndex ?? 0)) + 1;
-
-        for (let i = 0; i < stillMissingCount; i++) {
-          const unitId = randomUUID();
-          await db
-            .insert(inventoryUnits)
-            .values({
-              unitId,
-              cartonId: cartonIdFromUnitId(unitId),
-              unitIndex: nextUnitIndex++,
-              wrrItemId,
-              migrationBatchId,
-              lotId: line.lotId,
-              locationId: line.locationId,
-              status: "selected",
-              pickListItemId: line.id,
-            });
-        }
-      }
+      const selectedRows = (await db.select({ id: inventoryUnits.id }).from(inventoryUnits).where(and(
+        eq(inventoryUnits.pickListItemId, line.id), eq(inventoryUnits.status, "selected"),
+      ))) as AnyRecord[];
+      if (selectedRows.length >= requiredCount) return { ok: false as const, errors: ["line_complete"] };
+      const selected = await db.update(inventoryUnits)
+        .set({ status: "selected", pickListItemId: line.id, updatedAt: new Date() })
+        .where(and(eq(inventoryUnits.id, preferredInventoryUnitRowId!), eq(inventoryUnits.status, "available"), isNull(inventoryUnits.pickListItemId)))
+        .returning({ id: inventoryUnits.id });
+      if (selected.length !== 1) return { ok: false as const, errors: ["box_already_selected"] };
 
       return {
         ok: true as const,
-        selectedCount: requiredCount,
+        selectedCount: selectedRows.length + 1,
         requiredCount,
       };
     });

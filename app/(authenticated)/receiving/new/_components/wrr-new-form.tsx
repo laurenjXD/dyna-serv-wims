@@ -21,6 +21,7 @@ import Link from "next/link";
 import type { SupplierPartyOption, WrrItemOption } from "@/lib/db/queries/items";
 import { WrrLineItems, type ImportedWrrLine } from "./wrr-line-items";
 import { CiPlImportModal } from "../../_components/CiPlImportModal";
+import type { CiplMappingSnapshot } from "@/lib/parsers/cipl-parser";
 import { ChevronDown, ExternalLink, FileSpreadsheet, PlusCircle, Search } from "@/components/ui/icons";
 import { useOfflineStatus } from "@/lib/offline/provider";
 
@@ -72,6 +73,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
   const [wrrId] = useState(() => crypto.randomUUID());
   const [showImportModal, setShowImportModal] = useState(false);
   const [importedLines, setImportedLines] = useState<ImportedWrrLine[]>([]);
+  const [ciplMappingSnapshot, setCiplMappingSnapshot] = useState<CiplMappingSnapshot | null>(null);
   const { connectivity } = useOfflineStatus();
   const offline = connectivity === "offline";
 
@@ -96,6 +98,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
     <form action={action} className="mt-6 space-y-6">
       {/* Client-generated WRR id */}
       <input type="hidden" name="id" value={wrrId} />
+      <input type="hidden" name="ciplMappingSnapshot" value={ciplMappingSnapshot ? JSON.stringify(ciplMappingSnapshot) : ""} />
 
       {/* ── Top Option: Fast Intake via Auto-Parse CIPL (Excel / PDF) ── */}
       <div className="relative overflow-hidden rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-surface-white p-5 shadow-sm">
@@ -140,6 +143,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
               type="button"
               onClick={() => {
                 setImportedLines([]);
+                setCiplMappingSnapshot(null);
               }}
               className="text-emerald-800 underline hover:text-emerald-950 font-bold"
             >
@@ -154,7 +158,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
           wrrId={wrrId}
           itemOptions={itemOptions}
           onClose={() => setShowImportModal(false)}
-          onApply={(header, lines) => {
+          onApply={(header, lines, mappingSnapshot) => {
             if (header.ciplReference) {
               const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
               if (ciplInput) ciplInput.value = header.ciplReference;
@@ -168,6 +172,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
               if (mawbInput) mawbInput.value = header.mawbMbl;
             }
             setImportedLines(lines);
+            setCiplMappingSnapshot(mappingSnapshot);
           }}
         />
       )}
@@ -237,7 +242,10 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
                       key={`${party.id}:${party.relationship ?? "legacy"}`}
                       type="button"
                       onClick={() => {
-                        if (vendorPartyId !== party.id) setImportedLines([]);
+                        if (vendorPartyId !== party.id) {
+                          setImportedLines([]);
+                          setCiplMappingSnapshot(null);
+                        }
                         setVendorPartyId(party.id);
                         setVendorSearch(`${party.code} — ${party.name}`);
                         setIsVendorOpen(false);

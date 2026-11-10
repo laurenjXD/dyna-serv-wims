@@ -42,7 +42,7 @@ export function validateCiplFile(file: {
   size: number;
 }): CiplFileValidation {
   if (!(CIPL_ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)) {
-    return { ok: false, error: "Only PDF, PNG, or JPEG files are accepted." };
+    return { ok: false, error: "Only Excel, CSV, PDF, PNG, or JPEG files are accepted." };
   }
   if (file.size <= 0) {
     return { ok: false, error: "The selected file is empty." };

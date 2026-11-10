@@ -56,37 +56,13 @@ export function OfflineDispatchScanForm({
     if (!currentUserId) { setFeedback("Sign in again before saving a scan."); return; }
     const barcode = inputRef.current?.value.trim() ?? "";
     if (!barcode || savingRef.current) return;
-    if (barcode.startsWith("{")) {
-      setFeedback("Reconnect to verify this carton-specific QR, or use the item or lot QR printed for this pick list.");
+    if (!barcode.startsWith("{")) {
+      setFeedback("A carton-specific QR is required. Item and lot QR codes cannot confirm a box.");
       return;
     }
-    const matches = lines.filter((line) => [line.itemCode, line.itemBarcode, line.lotId, line.lotNumber].includes(barcode));
-    const target = matches.find((line) => line.selectedCount < line.numberOfBoxes && !saved.has(line.id));
-    if (!target) {
-      setFeedback(matches.length ? "This matching line is already verified or saved locally. Scan the next unfinished line." : "This QR does not match a line on this pick list. Check the item and lot before trying again.");
-      return;
-    }
-    savingRef.current = true;
-    try {
-      await queueObservation("pick_list_scan_observation", {
-        operationType: "pick_list_scan_observation",
-        pickListId,
-        pickListItemId: target.id,
-        scannedBarcode: barcode,
-        scannedQty: target.numberOfBoxes,
-        locationId: target.locationId,
-      });
-      setFeedback("Saved locally — this verification will sync before dispatch can be confirmed.");
-      setLocal((previous) => ({ actor: currentUserId, revision, completed: [...new Set([
-        ...(previous.actor === currentUserId && previous.revision === revision ? previous.completed : []), target.id,
-      ])] }));
-      if (inputRef.current) inputRef.current.value = "";
-      inputRef.current?.focus();
-    } catch {
-      setFeedback("This verification could not be saved locally. Keep the box aside and contact a supervisor.");
-    } finally {
-      savingRef.current = false;
-    }
+    // A carton QR cannot be safely assigned to a committed line while offline;
+    // defer it to the online authoritative lookup rather than guessing.
+    setFeedback("Reconnect to verify this carton-specific QR before dispatch. The system must confirm its committed line online.");
   }
 
   function submitCameraScan(barcode: string) {
@@ -98,7 +74,7 @@ export function OfflineDispatchScanForm({
     <>
       {connectivity === "offline" && (
         <p className="mt-3 font-body text-body-md text-on-surface">
-          {nextLine ? `Offline next: ${nextLine.itemCode} - Lot ${nextLine.lotNumber} - ${nextLine.locationLabel}. One item or lot QR confirms this location line.` : "All shown lines are saved locally or already verified. Reconnect and sync before final dispatch."}
+          {nextLine ? `Offline next: ${nextLine.itemCode} - Lot ${nextLine.lotNumber} - ${nextLine.locationLabel}. Reconnect to verify each carton QR.` : "All shown lines are saved locally or already verified. Reconnect and sync before final dispatch."}
         </p>
       )}
       <form ref={formRef} action={action} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -108,12 +84,12 @@ export function OfflineDispatchScanForm({
           required
           autoFocus
           autoComplete="off"
-          placeholder="Scan carton, item, or lot QR..."
+          placeholder="Scan carton QR..."
           className="h-14 min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-white px-4 font-mono text-body-md text-on-surface outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
         />
         <button type="submit" className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-brand-navy px-6 font-label text-body-md font-bold text-surface-white transition-colors hover:bg-brand-navy/90 active:scale-[0.99]">
           <ScanLine size={18} aria-hidden="true" />
-          <span>{connectivity === "offline" ? "Save Scan" : "Verify Line"}</span>
+          <span>{connectivity === "offline" ? "Save Box" : "Verify Box"}</span>
         </button>
       </form>
       {feedback && <p role="status" aria-live="polite" className="mt-3 rounded-xl border border-status-pending/40 bg-status-pending/10 px-4 py-3 font-body text-body-md text-on-surface">{feedback}</p>}

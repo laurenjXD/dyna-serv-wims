@@ -219,3 +219,10 @@ The [Material expiry policy amendment](../00-steering/material-expiry-policy-ame
 Own item expiry policy/version, durable acknowledgement storage, a shared date/policy eligibility contract, read-model quantities, and migration/backfill design.
 
 The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.
+
+## Approved amendment — CIPL mapping evidence and receiving packaging snapshots (2026-11-10)
+
+1. `wrr_documents` SHALL retain an immutable, versioned CIPL mapping snapshot beside its private source-file reference. It records every parsed source field/column, mapping status, confirmed target mapping, and source-row values needed to explain a staged WRR; it is evidence, not inventory authority.
+2. `wrr_items.spq_snapshot` SHALL hold the effective positive SPQ used for a receiving line. It defaults from the enrolled item and differs only through explicit, auditable shipment-packaging confirmation. It is null only while a line is unresolved for enrollment.
+3. `lots.spq_snapshot` SHALL copy the committed WRR-line snapshot. Outbound allocation derives each committed pick-list line's existing `spq` snapshot from the source lot, never from a later edit to `items.spq`.
+4. Labels, scans, inventory-unit creation, and allocation use the effective snapshot. A shipment must never update the master `items.spq` merely because its packaging differs.

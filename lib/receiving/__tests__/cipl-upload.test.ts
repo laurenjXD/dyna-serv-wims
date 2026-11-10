@@ -47,6 +47,12 @@ describe("validateCiplFile", () => {
     expect(validateCiplFile({ type: "image/jpeg", size: 1024 })).toEqual({ ok: true });
   });
 
+  it("accepts the spreadsheet and CSV formats supported by the CIPL importer", () => {
+    expect(validateCiplFile({ type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 1024 })).toEqual({ ok: true });
+    expect(validateCiplFile({ type: "application/vnd.ms-excel", size: 1024 })).toEqual({ ok: true });
+    expect(validateCiplFile({ type: "text/csv", size: 1024 })).toEqual({ ok: true });
+  });
+
   it("rejects an unsupported MIME type", () => {
     const result = validateCiplFile({ type: "application/zip", size: 1024 });
     expect(result.ok).toBe(false);

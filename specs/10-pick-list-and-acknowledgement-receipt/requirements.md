@@ -29,6 +29,10 @@ Across all user-facing document screens, forms, headers, previews, and PDFs:
 
 ## 2. Actors and access surfaces
 
+### 2026-11-10 amendment — pick-list field labels
+
+On pick-list, print, and receipt views, **Item Code** SHALL render the immutable supplier item-code snapshot for that pick-list line. **Customer Part Number** SHALL render the immutable customer-part-number snapshot. Internal item codes remain available only where required for system scanning and audit, not as the user-facing Item Code label.
+
 - **Warehouse staff** — use pick lists on floor handheld devices (`/pick-lists/[id]/pick`).
 - **Office staff/supervisors** — generate, print, reprint, review, and manage documents at `/documents`.
 - **Organization users** — view authorized documents at `/portal/documents`.

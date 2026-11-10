@@ -589,6 +589,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
     }
 
     let committedRows = 0;
+    const spqByItemCode = new Map(draftItems.map((item) => [item.code, Math.max(1, Math.round(item.spq ?? 1))] as const));
     for (const [index, balance] of draftBalances.entries()) {
       const itemId = itemIds.get(balance.itemCode);
       const locationId = locationIds.get(balance.locationLabel);
@@ -596,7 +597,7 @@ export async function commitUbotMigration(batchId: string): Promise<{ ok: true; 
       if (!itemId || !locationId || !ownerPartyId) throw new Error(`Migration mapping disappeared for ${balance.itemCode}/${balance.lotNumber}.`);
       const lotId = randomUUID();
       const cartonCount = Number.isInteger(balance.boxes) && (balance.boxes ?? 0) > 0 ? balance.boxes! : null;
-      await db.insert(lots).values({ id: lotId, lotNumber: balance.lotNumber, itemId, flowType: "vmi", ownerPartyId, migrationBatchId: batchId, status: "available", cartonTraceStatus: cartonCount ? "active" : "pending" });
+      await db.insert(lots).values({ id: lotId, lotNumber: balance.lotNumber, itemId, flowType: "vmi", ownerPartyId, migrationBatchId: batchId, status: "available", cartonTraceStatus: cartonCount ? "active" : "pending", spqSnapshot: spqByItemCode.get(balance.itemCode) ?? 1 });
       await db.insert(lotLocationBalances).values({ lotId, locationId, qtyReceived: balance.quantity, qtyRemaining: balance.quantity, qtyCommitted: 0, version: 1 });
       await db.insert(inventoryTransactions).values({ transactionNumber: `MIG-${batchId.slice(0, 8)}-${String(index + 1).padStart(5, "0")}`, lotId, itemId, movementType: "inventory_reconciliation", toLocationId: locationId, qty: balance.quantity, flowType: "vmi", performedByUserId: session.userId });
       if (cartonCount) {

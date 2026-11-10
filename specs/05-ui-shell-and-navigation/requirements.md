@@ -1,6 +1,10 @@
 # UI Shell & Navigation — Requirements
 
 Status: Approved
+
+## 2026-11-10 amendment — idle warning and role-preview indication
+
+The shell shall have one inactivity guard using configured mobile/desktop policy, warn before local sign-out, and let an active user continue their session. When an Administrator enables role preview, the shell shall show the selected role and an exit-preview control without representing the preview as a changed identity.
 Updated: 2026-08-23 (Sidebar interaction and visual-hierarchy amendment)
 
 ## 1. Purpose and scope

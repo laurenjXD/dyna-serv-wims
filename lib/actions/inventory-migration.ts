@@ -380,6 +380,7 @@ export async function commitOpeningStockMigration(
         itemId: row.itemId,
         lotNumber: row.lotNumber,
         expectedQty: row.totalQty,
+        spqSnapshot: row.spqResolved,
         scannedQty: row.boxes,
         committedQty: row.boxes,
         uom: row.uom || "BOX",
@@ -414,6 +415,7 @@ export async function commitOpeningStockMigration(
           status: "available",
           manufactureDate: row.manufactureDate || null,
           expiryDate: row.expiryDate || null,
+          spqSnapshot: row.spqResolved,
           createdAt: new Date(),
         });
       }

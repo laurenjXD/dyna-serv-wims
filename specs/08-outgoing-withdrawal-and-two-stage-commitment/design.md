@@ -11,6 +11,10 @@ The design follows the settled document model: an operational `pick_list` is gen
 
 ## 2. Foundational dependencies and core tables
 
+### 2026-11-10 amendment — scan contract
+
+`selectPickUnit` parses an `inventory_unit` carton QR, verifies that exact unit belongs to the committed pick-list item and source lot/location, then conditionally transitions that one row from `available` to `selected`. The condition includes an unassigned unit and preserves idempotent duplicate rejection. It never bulk-selects remaining cartons or creates carton identities during dispatch. Offline observations retain the raw carton QR and one-box quantity; replay performs the same online verification.
+
 Depends on:
 
 - `00-steering/product.md`, `tech.md`, `structure.md`, `testing.md`, `ui-ux-design-plan.md`, and `revision-log.md`.

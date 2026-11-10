@@ -181,3 +181,12 @@ Status: Approved
 - [ ] Verify assignment uniqueness and aggregate/carton count invariants with concurrent Stage 1 and Stage 2 commands in real PostgreSQL.
 - [x] Product Owner approval — Lauren, 2026-11-04.
 - [x] Second approver approval — System standing approval convention, 2026-11-04.
+
+## Approved amendment tasks — CIPL mapping evidence and receiving packaging snapshots (2026-11-10)
+
+- [ ] Add the versioned `cipl_mapping_snapshot`, WRR-line `spq_snapshot`, and lot `spq_snapshot` migration with forward-safe backfill and constraints.
+- [ ] Update typed schema/query exports and authoritative carton/quantity derivations to use the effective snapshot.
+- [ ] Real Postgres: prove a source mapping snapshot is durable, master SPQ is not mutated by receiving, and two lots for one item may retain different valid packaging snapshots.
+- [ ] Real Postgres: prove a later `items.spq` edit cannot change committed lot/package or pick-list snapshots.
+- [x] Product Owner authorization — requested implementation of the revision plan, 2026-11-10.
+- [x] Technical/System sign-off — standing approved-spec convention after design reconciliation, 2026-11-10.

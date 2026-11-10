@@ -37,3 +37,33 @@ These are not decisions yet — just what needs to be resolved when 01 is drafte
 4. **Reconciliation logic**: scanning needs to check each carton against expected WRR line items (item + qty), not just resolve a location suggestion — this is a real matching step, with a pass/fail per line, not just "scan, get a location, confirm." This likely needs its own child table (WRR lines) separate from the eventual `lots` it produces.
 
 5. **This mirrors, but is distinct from, the two-stage commitment model** already flagged for revision in `12`/withdrawal-side specs — same "declare intent before it's real" shape, but on the inbound side. Worth checking whether one general "staged → committed" pattern can serve both directions, or whether they're different enough to need separate schema treatment. This is exactly the kind of cross-cutting question 01 exists to resolve before 07 and 08 are drafted.
+
+---
+
+## Product Owner revision notes — 2026-11-10
+
+These notes extend the original raw workflow notes and are not yet approved
+requirements. The complete cross-feature plan is in
+`specs/00-steering/product-owner-revision-implementation-plan-2026-11-10.md`.
+
+### CIPL mapping
+
+- Show all source columns and rows in the mapping review, including fields that
+  were not mapped.
+- Do not silently drop unmapped data. Show clear mapped, unmapped, ignored,
+  ambiguous, missing-required, and invalid states.
+- Make mapping suggestions based on source columns/header aliases, but require
+  operator confirmation.
+- If no existing item code matches, show an explicit unresolved row and offer a
+  direct shortcut into the normal Material/Data Management enrollment flow.
+- Preserve the CIPL/WRR draft while enrollment is completed, then revalidate
+  and return to the mapping review.
+
+### Receiving and SPQ
+
+- Test and support the case where the same part number arrives with different
+  SPQ values.
+- Do not overwrite the enrolled master SPQ from one shipment. The receiving
+  line-level packaging contract must be decided before implementation.
+- Provide the same controlled quick-enrollment shortcut for an unrecognized
+  material; floor staff and offline scans must not gain enrollment authority.

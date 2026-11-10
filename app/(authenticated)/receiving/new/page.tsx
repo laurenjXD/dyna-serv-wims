@@ -36,6 +36,7 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
   for (let i = 0; i < lineCount; i++) {
     const rawExpectedQty = formData.get(`line_${i}_expectedQty`) as string | null;
     const rawUnitCbm = formData.get(`line_${i}_unitCbm`) as string | null;
+    const rawSpqSnapshot = formData.get(`line_${i}_spqSnapshot`) as string | null;
     lines.push({
       itemId: (formData.get(`line_${i}_itemId`) as string | null) || null,
       lotNumber: (formData.get(`line_${i}_lotNumber`) as string | null) ?? "",
@@ -56,7 +57,21 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
         (formData.get(`line_${i}_expiryDate`) as string | null) || null,
       remarks:
         (formData.get(`line_${i}_remarks`) as string | null) || null,
+      spqSnapshot: rawSpqSnapshot ? parseInt(rawSpqSnapshot, 10) : null,
+      spqOverrideConfirmed: formData.get(`line_${i}_spqOverrideConfirmed`) === "true",
     });
+  }
+
+  const rawMappingSnapshot = (formData.get("ciplMappingSnapshot") as string | null)?.trim();
+  let ciplMappingSnapshot: Record<string, unknown> | null = null;
+  if (rawMappingSnapshot) {
+    try {
+      const parsed = JSON.parse(rawMappingSnapshot) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ciplMappingSnapshot = parsed as Record<string, unknown>;
+    } catch {
+      // createWrr receives null and returns a standard validation response if
+      // the uploaded mapping context cannot be trusted.
+    }
   }
 
   const input = {
@@ -75,6 +90,7 @@ async function handleCreateWrr(formData: FormData): Promise<void> {
       (formData.get("ipNumber") as string | null) || null,
     mawbMblNumber:
       (formData.get("mawbMblNumber") as string | null) || null,
+    ciplMappingSnapshot,
     lines,
   };
 

@@ -1,6 +1,14 @@
 # User Profile & Settings — Tasks
 
 Status: Approved
+
+### 2026-11-10 amendment — session and preview controls
+
+- [x] Consolidate the duplicated idle session trackers into one configured guard with warning and Continue session behavior.
+- [ ] Add the administrator-only display role preview and tests proving server authorization remains unchanged.
+- [x] Document provider-bounded "Stay signed in" behavior; no browser token persistence or client expiry extension is added.
+
+Approval record: Product Owner authorization — requested implementation of the 2026-11-10 revision plan. Technical sign-off: provider session authority preserved.
 Updated: 2026-08-05
 
 Sign-off:

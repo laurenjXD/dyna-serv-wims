@@ -17,6 +17,28 @@ export interface ParsedCiplRow {
   disposition?: "store" | "inspect";
 }
 
+export type CiplTargetField = keyof Pick<ParsedCiplRow,
+  "itemCode" | "customerItemCode" | "description" | "lotNumber" | "mfgDate" |
+  "expiryDate" | "expectedQty" | "packageCount" | "spq" | "cbm" | "uom" |
+  "remarks" | "disposition">;
+
+export type CiplSourceColumn = {
+  index: number;
+  header: string;
+  suggestedTarget?: CiplTargetField;
+  status: "mapped" | "unmapped" | "fallback";
+  sampleValues: string[];
+};
+
+export type CiplMappingSnapshot = {
+  version: 1;
+  sourceKind: "spreadsheet" | "pdf";
+  sheetName?: string;
+  headerRow?: number;
+  columns: CiplSourceColumn[];
+  sourceRows: Array<{ rowNumber: number; values: string[] }>;
+};
+
 export interface CiplParseResult {
   ok: boolean;
   fileName: string;
@@ -28,8 +50,15 @@ export interface CiplParseResult {
     vendorOrganization?: string;
   };
   rows: ParsedCiplRow[];
+  mappingSnapshot: CiplMappingSnapshot;
   errors: string[];
   warnings: string[];
+}
+
+function parseNumericCell(value: unknown): number | undefined {
+  if (value === undefined || value === null || String(value).trim() === "") return undefined;
+  const parsed = Number(String(value).replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 /**
@@ -48,6 +77,7 @@ export async function parseCiplDocument(buffer: Buffer, fileName: string): Promi
       fileName,
       header: {},
       rows: [],
+      mappingSnapshot: { version: 1, sourceKind: "spreadsheet", columns: [], sourceRows: [] },
       errors: [`Unsupported file format .${ext}. Please upload an Excel (.xlsx, .xls, .csv) or PDF (.pdf) file.`],
       warnings: [],
     };
@@ -60,6 +90,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
     fileName,
     header: {},
     rows: [],
+    mappingSnapshot: { version: 1, sourceKind: "spreadsheet", columns: [], sourceRows: [] },
     errors: [],
     warnings: [],
   };
@@ -133,11 +164,12 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         }
       }
 
-      // Extract IP Number (Import Permit)
+      // Extract IP Number (Import Permit). Require a label boundary so words
+      // such as "PHILIPPINES" cannot be mistaken for an `IP` label.
       if (!result.header.ipNumber) {
         for (let c = 0; c < row.length; c++) {
           const cellStr = String(row[c] ?? "").trim();
-          const ipMatch = cellStr.match(/(?:IP|IMPORT\s*PERMIT)\s*(?:#|NO|NUM)?\s*[:.-]?\s*([A-Z0-9_-]{3,})/i);
+          const ipMatch = cellStr.match(/(?:^|\b)(?:IP|IMPORT\s*PERMIT)\s*(?:#|NO|NUM|NUMBER)?\s*(?:[:.-]\s*|\s+)([A-Z0-9_-]{3,})\b/i);
           if (ipMatch && ipMatch[1] && !/^(no|num|number|ref|permit)$/i.test(ipMatch[1])) {
             result.header.ipNumber = ipMatch[1];
             break;
@@ -198,7 +230,6 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         } else if (
           val.includes("item code") ||
           val.includes("sku") ||
-          val === "item" ||
           val.includes("ubot") ||
           val.includes("dsgc item") ||
           val.includes("supplier item") ||
@@ -215,6 +246,19 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           (val.includes("pn") && !val.includes("cust") && !val.includes("desc"))
         ) {
           if (candidateColMap["itemCode"] === undefined) candidateColMap["itemCode"] = c;
+        } else if (
+          // Many commercial invoice templates use `Item` or `#` for a
+          // display-only line number and put the actual supplier code in a
+          // separate column (for example, `UBoT P/N`). Keep this candidate
+          // separate so a real code column wins when both are present.
+          val === "item" ||
+          val === "#" ||
+          val === "line" ||
+          val === "line no" ||
+          val === "item no" ||
+          val === "no"
+        ) {
+          if (candidateColMap["lineNumber"] === undefined) candidateColMap["lineNumber"] = c;
         } else if (
           val.includes("shipping lot") ||
           val.includes("lot no") ||
@@ -335,7 +379,8 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       const hasItem =
         candidateColMap["itemCode"] !== undefined ||
         candidateColMap["customerItemCode"] !== undefined ||
-        candidateColMap["description"] !== undefined;
+        candidateColMap["description"] !== undefined ||
+        candidateColMap["lineNumber"] !== undefined;
       const hasQty =
         candidateColMap["expectedQty"] !== undefined ||
         candidateColMap["noOfPackages"] !== undefined;
@@ -348,6 +393,14 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       }
     }
 
+    // If a template has only a generic `Item` column, retain the historical
+    // fallback of treating it as the item code. When a stronger code header
+    // (such as `UBoT P/N`) exists, the line-number column is intentionally
+    // ignored instead.
+    if (bestHeaderRowIndex !== -1 && bestColMap["itemCode"] === undefined && bestColMap["lineNumber"] !== undefined) {
+      bestColMap["itemCode"] = bestColMap["lineNumber"];
+    }
+
     if (bestHeaderRowIndex !== -1) {
       headerRowIndex = bestHeaderRowIndex;
       Object.assign(colMap, bestColMap);
@@ -358,6 +411,39 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       colMap["uom"] = 7;
       result.warnings.push("Could not unambiguously identify table headers; using default column positions.");
     }
+
+    const sourceRows = rawRows.slice(headerRowIndex + 1)
+      .map((row, offset) => ({
+        rowNumber: headerRowIndex + offset + 2,
+        values: row.map((value) => String(value ?? "").trim()),
+      }))
+      .filter((row) => row.values.some(Boolean));
+    const sourceColumnCount = Math.max(
+      rawRows[headerRowIndex]?.length ?? 0,
+      ...sourceRows.map((row) => row.values.length),
+    );
+    const targetByColumn = new Map<number, CiplTargetField>();
+    for (const [target, column] of Object.entries(colMap)) {
+      if (target !== "lineNumber") targetByColumn.set(column, target as CiplTargetField);
+    }
+    result.mappingSnapshot = {
+      version: 1,
+      sourceKind: "spreadsheet",
+      sheetName: targetSheetName,
+      headerRow: headerRowIndex + 1,
+      columns: Array.from({ length: sourceColumnCount }, (_, index) => {
+        const header = String(rawRows[headerRowIndex]?.[index] ?? "").trim() || `Column ${index + 1}`;
+        const suggestedTarget = targetByColumn.get(index);
+        return {
+          index,
+          header,
+          ...(suggestedTarget ? { suggestedTarget } : {}),
+          status: suggestedTarget ? "mapped" : (bestHeaderRowIndex === -1 ? "fallback" : "unmapped"),
+          sampleValues: sourceRows.map((row) => row.values[index]).filter(Boolean).slice(0, 3),
+        };
+      }),
+      sourceRows,
+    };
 
     // Process data rows
     const startRow = headerRowIndex + 1;
@@ -390,18 +476,18 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
 
       const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
       // If itemCode is just a header word like "Item Code" from a multi-row header or line number, skip
-      if (/^(p\/n|pn|item|item code|item no|part no|part number|sku|cust p\/n|customer part|descriptions?|qty|quantity|uom|#)$/i.test(itemCode)) continue;
+      if (/^(p\/n|pn|item|item code|item no|part no|part number|sku|cust p\/n|customer part|descriptions?|ubot|u?bot p\/n|qty|quantity|uom|#)$/i.test(itemCode)) continue;
 
-      let expectedQty = qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== "" ? Number(qtyRaw) : undefined;
-      const packageCount = packageCountRaw !== undefined && packageCountRaw !== null && packageCountRaw !== "" ? Number(packageCountRaw) : undefined;
-      const spq = spqRaw !== undefined && spqRaw !== null && spqRaw !== "" ? Number(spqRaw) : undefined;
-      const cbm = cbmRaw !== undefined && cbmRaw !== null && cbmRaw !== "" ? Number(cbmRaw) : undefined;
+      let expectedQty = parseNumericCell(qtyRaw);
+      const packageCount = parseNumericCell(packageCountRaw);
+      const spq = parseNumericCell(spqRaw);
+      const cbm = parseNumericCell(cbmRaw);
 
       // Compute total units when both the source package count and SPQ are known.
       // A package count without SPQ is not a reliable unit quantity, so leave the
       // field unresolved for operator review instead of silently treating cartons
       // as units.
-      if ((!expectedQty || isNaN(expectedQty)) && packageCount && spq && !isNaN(packageCount) && !isNaN(spq)) {
+      if (expectedQty === undefined && packageCount !== undefined && spq !== undefined) {
         expectedQty = packageCount * spq;
       }
 
@@ -447,10 +533,10 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           lotNumber,
           mfgDate,
           expiryDate,
-          expectedQty: expectedQty && !isNaN(expectedQty) ? expectedQty : undefined,
-          packageCount: packageCount && !isNaN(packageCount) ? packageCount : undefined,
-          spq: spq && !isNaN(spq) ? spq : undefined,
-          cbm: cbm && !isNaN(cbm) ? cbm : undefined,
+          expectedQty,
+          packageCount,
+          spq,
+          cbm,
           uom,
           remarks,
           disposition,
@@ -476,6 +562,7 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
     fileName,
     header: {},
     rows: [],
+    mappingSnapshot: { version: 1, sourceKind: "pdf", columns: [], sourceRows: [] },
     errors: [],
     warnings: [],
   };
@@ -531,6 +618,12 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
     if (result.rows.length === 0) {
       result.warnings.push("PDF text extracted successfully, but no table rows matched the line item layout. You can enter expected lines manually or verify the file layout.");
     }
+    result.mappingSnapshot = {
+      version: 1,
+      sourceKind: "pdf",
+      columns: [],
+      sourceRows: lines.map((line, index) => ({ rowNumber: index + 1, values: [line] })),
+    };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     result.ok = false;

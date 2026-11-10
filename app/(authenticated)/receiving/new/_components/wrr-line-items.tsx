@@ -22,6 +22,7 @@ import { ItemSearchCombobox } from "./ItemSearchCombobox";
 
 export interface ImportedWrrLine {
   itemId: string;
+  itemCode: string;
   customerItemCode: string;
   description?: string;
   lotNumber: string;
@@ -29,6 +30,7 @@ export interface ImportedWrrLine {
   expiryDate: string;
   expectedQty: string;
   packageCount?: string;
+  spq?: string;
   unitCbm?: string;
   uom: string;
   remarks: string;
@@ -49,6 +51,8 @@ interface LineState {
   remarks: string;
   itemId: string;
   disposition: "store" | "inspect";
+  spqSnapshot: string;
+  spqOverrideConfirmed: boolean;
 }
 
 const EMPTY_LINE: LineState = {
@@ -65,6 +69,8 @@ const EMPTY_LINE: LineState = {
   remarks: "",
   itemId: "",
   disposition: "store",
+  spqSnapshot: "",
+  spqOverrideConfirmed: false,
 };
 
 const STANDARD_UOM_OPTIONS = [
@@ -108,9 +114,10 @@ export function WrrLineItems({
     if (importedLines && importedLines.length > 0) {
       const mapped: LineState[] = importedLines.map((imp) => {
         const item = itemOptions.find((candidate) => candidate.id === imp.itemId);
+        const effectiveSpq = imp.spq || (item ? String(item.spq) : "");
         return {
           lotNumber: imp.lotNumber || "",
-          cartonQty: imp.packageCount || (item ? String(exactCartonCount(Number(imp.expectedQty), item.spq) ?? "") : ""),
+          cartonQty: imp.packageCount || (effectiveSpq ? String(exactCartonCount(Number(imp.expectedQty), Number(effectiveSpq)) ?? "") : ""),
           expectedQty: imp.expectedQty || "",
           unitCbm: imp.unitCbm || (item ? item.volumeCbm : "0.001"),
           // Once an enrolled item is known, its UOM is authoritative. The
@@ -120,7 +127,7 @@ export function WrrLineItems({
             ? flowType === "trading"
               ? (item.dsgcItemNumber ?? item.code)
               : (item.supplierItemCode ?? item.code)
-            : "",
+            : imp.itemCode || "",
           itemDescription: item ? (item.description?.trim() || item.name) : (imp.description || ""),
           customerItemCode: imp.customerItemCode || (item ? (item.customerItemCode ?? "") : ""),
           manufactureDate: imp.mfgDate || "",
@@ -128,6 +135,8 @@ export function WrrLineItems({
           remarks: imp.remarks || "",
           itemId: imp.itemId || "",
           disposition: imp.disposition || "store",
+          spqSnapshot: effectiveSpq,
+          spqOverrideConfirmed: Boolean(item && imp.spq && Number(imp.spq) !== item.spq),
         };
       });
       setLines(mapped);
@@ -162,6 +171,7 @@ export function WrrLineItems({
       return {
         ...line,
         cartonQty: line.cartonQty || String(exactCartonCount(Number(line.expectedQty), item.spq) ?? ""),
+        spqSnapshot: line.spqSnapshot || String(item.spq),
         itemCode: codeFor(item),
         itemDescription: item.description?.trim() || item.name,
         customerItemCode: item.customerItemCode ?? "",
@@ -180,6 +190,7 @@ export function WrrLineItems({
     setLines((prev) => prev.map((line, i) => i === index ? {
       ...line,
       cartonQty: line.cartonQty || String(exactCartonCount(Number(line.expectedQty), item.spq) ?? ""),
+      spqSnapshot: line.spqSnapshot || String(item.spq),
       itemId: item.id,
       itemCode: codeFor(item),
       itemDescription: item.description?.trim() || item.name,
@@ -196,6 +207,8 @@ export function WrrLineItems({
       ...line,
       itemId: "",
       itemCode: value,
+      spqSnapshot: "",
+      spqOverrideConfirmed: false,
       cartonQty: "",
       itemDescription: "",
       customerItemCode: "",
@@ -221,16 +234,21 @@ export function WrrLineItems({
     );
   }
 
+  function updateSpqOverrideConfirmation(index: number, confirmed: boolean) {
+    setLines((prev) => prev.map((line, i) => i === index ? { ...line, spqOverrideConfirmed: confirmed } : line));
+  }
+
   function updateCartonQty(index: number, value: string) {
     setLines((prev) => prev.map((line, i) => {
       if (i !== index) return line;
       const item = itemOptions.find((candidate) => candidate.id === line.itemId);
       const cartons = Number(value);
+      const effectiveSpq = Number(line.spqSnapshot) || item?.spq || 0;
       return {
         ...line,
         cartonQty: value,
         expectedQty: item && Number.isInteger(cartons) && cartons > 0
-          ? String(cartons * item.spq)
+          ? String(cartons * effectiveSpq)
           : "",
       };
     }));
@@ -244,6 +262,7 @@ export function WrrLineItems({
       {lines.map((line, index) => {
         const isImported = Boolean(importedLines && importedLines.length > 0 && line.lotNumber);
         const selectedItem = itemOptions.find((item) => item.id === line.itemId);
+        const effectiveSpq = Number(line.spqSnapshot) || selectedItem?.spq || 0;
         const isPerishable = Boolean(selectedItem?.isPerishable);
         return (
           <div
@@ -279,6 +298,8 @@ export function WrrLineItems({
             <input type="hidden" name={`line_${index}_itemId`} value={line.itemId} />
             <input type="hidden" name={`line_${index}_itemCode`} value={line.itemCode} />
             <input type="hidden" name={`line_${index}_disposition`} value="store" />
+            <input type="hidden" name={`line_${index}_spqSnapshot`} value={line.spqSnapshot} />
+            <input type="hidden" name={`line_${index}_spqOverrideConfirmed`} value={line.spqOverrideConfirmed ? "true" : "false"} />
 
             {/* Row 1: Item Identification (3 balanced columns) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
@@ -425,9 +446,25 @@ export function WrrLineItems({
                     <input type="hidden" name={`line_${index}_expectedQty`} value={line.expectedQty} />
                     <p className="mt-1 font-body text-[11px] text-text-grey">
                       {line.cartonQty
-                        ? `${line.expectedQty} total units (${line.cartonQty} cartons × SPQ ${selectedItem.spq}).`
-                        : `Total units are calculated from cartons × SPQ ${selectedItem.spq}.`}
+                        ? `${line.expectedQty} total units (${line.cartonQty} cartons × SPQ ${effectiveSpq}).`
+                        : `Total units are calculated from cartons × SPQ ${effectiveSpq}.`}
                     </p>
+                    <label className="mt-2 block font-label text-[11px] text-text-grey">
+                      Shipment SPQ (units/carton)
+                      <input
+                        type="number"
+                        min="1"
+                        value={line.spqSnapshot}
+                        onChange={(e) => updateLine(index, "spqSnapshot", e.target.value)}
+                        className="mt-1 h-9 w-full rounded border border-slate-200 bg-surface-white px-2 font-mono text-body-xs text-on-surface"
+                      />
+                    </label>
+                    {effectiveSpq !== selectedItem.spq && (
+                      <label className="mt-2 flex items-start gap-2 font-body text-[11px] text-status-held">
+                        <input type="checkbox" checked={line.spqOverrideConfirmed} onChange={(e) => updateSpqOverrideConfirmation(index, e.target.checked)} className="mt-0.5" />
+                        Confirm this shipment uses SPQ {effectiveSpq}; it will not change the enrolled Material SPQ ({selectedItem.spq}).
+                      </label>
+                    )}
                   </>
                 ) : (
                   <>
@@ -458,7 +495,7 @@ export function WrrLineItems({
                   Carton QR Labels
                 </label>
                 {(() => {
-                  const spq = selectedItem?.spq ?? 0;
+                  const spq = effectiveSpq;
                   const total = Number(line.expectedQty);
                   const valid = Number.isInteger(total) && total > 0 && spq > 0 && total % spq === 0;
                   const cartons = Number.isInteger(total) && total > 0 && spq > 0 ? total / spq : 0;
@@ -477,11 +514,11 @@ export function WrrLineItems({
                   {selectedItem && (
                     <>
                       <span className="font-mono font-semibold text-brand-navy">
-                        SPQ detected: {selectedItem.spq} units/carton
+                        Effective SPQ: {effectiveSpq} units/carton
                       </span>{" "}
                     </>
                   )}
-                  {selectedItem ? "Derived from carton quantity × enrolled SPQ." : "Derived from total units ÷ enrolled SPQ."}
+                  {selectedItem ? "Derived from carton quantity × the effective shipment SPQ." : "Derived from total units ÷ enrolled SPQ."}
                 </p>
               </div>
 

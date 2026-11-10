@@ -20,6 +20,7 @@ import { getEffectiveSecuritySettings } from "@/app/(authenticated)/settings/sec
 import { PageRoot } from "@/components/ui/Page";
 import { MobileTableEnhancer } from "@/components/ui/MobileTableEnhancer";
 import { OfflineRuntime } from "@/lib/offline/provider";
+import { RolePreviewProvider } from "@/components/global/RolePreviewProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function AuthenticatedLayout({
   const initialResolution = await resolver.getContext();
 
   return (
+    <RolePreviewProvider>
     <UserPreferencesProvider>
       <ScannerSettingsProvider settings={generalSettings.scanner}>
         <MobileTableEnhancer />
@@ -57,5 +59,6 @@ export default async function AuthenticatedLayout({
         </SessionIdleGuard>
       </ScannerSettingsProvider>
     </UserPreferencesProvider>
+    </RolePreviewProvider>
   );
 }

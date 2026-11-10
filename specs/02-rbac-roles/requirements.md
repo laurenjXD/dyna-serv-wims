@@ -1,6 +1,10 @@
 # RBAC & Roles — Requirements
 
 Status: Approved
+
+## 2026-11-10 amendment — administrator role preview
+
+An Administrator may select an active role to preview the routes and navigation that role can access. Preview is read-only and client-side presentation only: it neither changes the authenticated identity, effective server permissions, party scope, RLS claims, nor authorization decisions. The UI must visibly identify preview mode and provide an immediate exit action.
 Updated: 2026-10-22 — Organization / Inventory Model authorization amendment approved
 
 Depends on:

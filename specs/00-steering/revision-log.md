@@ -2162,3 +2162,32 @@ now display the immutable expiry acknowledgement for each matching lot,
 location and quantity. Verification, inspection disposition integration,
 generated-PDF snapshot integration, hosted migration application, and UAT remain
 open; no verification or deployment claim is made here.
+
+## Product Owner revision register — CIPL mapping, receiving packaging, workflow UX, and Settings customization (2026-11-10)
+
+The Product Owner supplied a new revision list covering: a dashboard
+requirement, complete CIPL field mapping with visible unmapped data, missing
+item-code handling and quick enrollment, receiving cases where one part number
+has different SPQ values, Administrator visibility of other role experiences,
+pick-list terminology (Item Code = Supplier Item Code; Cust. Part Number =
+Customer Item Code), bounded session persistence/“Stay signed in,” approval
+behavior when no reviewer is available plus supervisor email notice, per-box
+dispatch scanning, and Administrator-configurable page titles/labels in
+Settings.
+
+The notes are normalized in
+`specs/00-steering/product-owner-revision-implementation-plan-2026-11-10.md`.
+The CIPL/receiving portion is also appended to
+`specs/07-incoming-receiving/input-notes.md`. No application code or migration
+is authorized by this entry. The plan records two existing contracts that must
+be preserved: Administrator operational visibility is already granted by the
+approved `02` capability catalog but v1 does not support impersonation, and
+`08`'s 2026-11-04 approved dispatch amendment already requires one scan for
+each assigned carton/box rather than one scan for an entire line.
+
+The genuine scope amendments remain pending formal updates and sign-off in the
+owning feature specifications, especially `07` CIPL mapping, the cross-feature
+SPQ packaging contract, `04`/`21` session persistence, `09`/`14` approval email
+delivery, and `21` Workspace Customization. The shorthand “Req dashboard” is
+recorded as an explicit discovery gate because it does not yet define a
+testable dashboard behavior.

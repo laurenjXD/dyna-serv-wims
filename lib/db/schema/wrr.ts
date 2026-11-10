@@ -4,7 +4,7 @@
 // independently `db-migration-verifier`-verified schema amendment and is
 // intentionally NOT scaffolded here — it is added once its own
 // verification pass is complete.
-import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, index, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, jsonb, index, unique, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { flowTypeEnum, wrrStatusEnum, conformanceStatusEnum, nonConformanceReasonEnum } from "./enums";
 import { parties } from "./parties";
@@ -16,6 +16,9 @@ export const wrrDocuments = pgTable("wrr_documents", {
   wrrNumber: varchar("wrr_number", { length: 50 }).notNull().unique(), // e.g. 'WRR-2026-00001'
   commercialInvoiceNo: varchar("commercial_invoice_no", { length: 100 }), // Commercial Invoice / CIPL reference
   ciplFileUrl: text("cipl_file_url"), // Attached PDF/Image CIPL document in Supabase Storage
+  // Versioned source-to-canonical mapping evidence. This remains separate from
+  // authoritative WRR line fields and lets operators review unmapped inputs.
+  ciplMappingSnapshot: jsonb("cipl_mapping_snapshot"),
   pezaNumber: varchar("peza_number", { length: 100 }), // PEZA Permit Number (manual)
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   mawbMblNumber: varchar("mawb_mbl_number", { length: 100 }), // MAWB / MBL (Master Air Waybill / Bill of Lading) — added 2026-08-07
@@ -40,6 +43,9 @@ export const wrrItems = pgTable("wrr_items", {
   expiryDate: date("expiry_date"), // Required for perishable items; copied to lots on receipt
   remarks: text("remarks"), // CIPL/receiving note; never an inventory adjustment
   expectedQty: integer("expected_qty").notNull(), // Total base units; carton QR count is derived from item.spq
+  // Shipment packaging snapshot. Nullable only while an unknown source item is
+  // held for enrollment; once resolved it is the authoritative carton grain.
+  spqSnapshot: integer("spq_snapshot"),
   scannedQty: integer("scanned_qty").default(0).notNull(), // Accepted physical carton scans
   unitCbm: decimal("unit_cbm", { precision: 10, scale: 4 }).notNull(),
   uom: varchar("uom", { length: 50 }).notNull(),

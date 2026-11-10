@@ -1,6 +1,10 @@
 # Services & Infrastructure — Design
 
 Status: Approved
+
+## 2026-11-10 amendment — provider-bounded idle policy
+
+The browser inactivity guard is a usability/security layer, not an Auth provider. It resets an in-memory activity timestamp on user interaction, asks the provider to sign out only when that local deadline expires, and redirects to login. Continue session only resets that timestamp; middleware refresh, session maximum, revocation, and cookie lifetime remain Supabase-controlled.
 Updated: 2026-08-05
 
 Depends on:

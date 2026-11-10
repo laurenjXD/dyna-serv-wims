@@ -103,6 +103,10 @@ function createWrrDatabaseErrorMessage(error: unknown): string {
     typeof databaseError.table_name === "string" ? databaseError.table_name : "",
   ].join(" ").toLowerCase();
 
+  if (normalized.includes("shipment_spq_confirmation_required")) {
+    return "The shipment SPQ differs from the enrolled Material SPQ. Confirm the shipment SPQ on the line before creating the WRR.";
+  }
+
   if (normalized.includes("row-level security") || normalized.includes("permission denied")) {
     return "The WRR could not be created because your receiving permission or database access is not active. Sign in again or ask an administrator to verify receiving.confirm.";
   }
@@ -221,8 +225,13 @@ async function fetchWrrForAction(
       itemCustomerCode: (enrolledItem?.customerItemCode ?? null) as string | null,
       itemDsgcNumber: (enrolledItem?.dsgcItemNumber ?? null) as string | null,
       lotNumber: line.lotNumber as string,
-      spq: enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq),
-      cartonCount: exactCartonCount(Number(line.expectedQty ?? 0), enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq)) ?? 0,
+      spq: line.spqSnapshot == null
+        ? (enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq))
+        : Number(line.spqSnapshot),
+      cartonCount: exactCartonCount(
+        Number(line.expectedQty ?? 0),
+        line.spqSnapshot == null ? (enrolledItem?.spq == null ? undefined : Number(enrolledItem.spq)) : Number(line.spqSnapshot),
+      ) ?? 0,
       manufactureDate: (line.manufactureDate ?? null) as string | null,
       expiryDate: (line.expiryDate ?? null) as string | null,
       isPerishable: Boolean(enrolledItem?.isPerishable),
@@ -419,15 +428,20 @@ export async function createWrr(
         }
         persistedLines = resolvedLines.map((line) => {
           const catalogItem = line.itemId ? catalogById.get(line.itemId) : undefined;
-          return catalogItem ? { ...line, uom: canonicalItemUom(catalogItem.uom) } : line;
+          if (!catalogItem) return line;
+          const masterSpq = positiveInteger(catalogItem.spq);
+          const proposedSpq = line.spqSnapshot ?? masterSpq;
+          if (proposedSpq !== masterSpq && !line.spqOverrideConfirmed) {
+            throw new Error("shipment_spq_confirmation_required");
+          }
+          return { ...line, uom: canonicalItemUom(catalogItem.uom), spqSnapshot: proposedSpq };
         });
         const perishableById = new Map(catalogRows.map((row: { id: string; isPerishable: boolean }) => [row.id, Boolean(row.isPerishable)]));
         if (persistedLines.some((line) => Boolean(line.itemId && perishableById.get(line.itemId) && !line.expiryDate))) {
           return { ok: false, errors: ["Expiry date is required for every perishable item."] } satisfies CreateWrrActionResult;
         }
-        const spqById = new Map<string, number>(catalogRows.map((row: { id: string; spq: number }) => [row.id, positiveInteger(row.spq)] as [string, number]));
         const quantityMismatch = persistedLines.find((line) => {
-          const spq = line.itemId ? spqById.get(line.itemId) : undefined;
+          const spq = line.itemId ? line.spqSnapshot : undefined;
           return spq !== undefined && exactCartonCount(line.expectedQty, spq) === null;
         });
         if (quantityMismatch) {
@@ -454,6 +468,7 @@ export async function createWrr(
           pezaNumber: data.pezaNumber ?? null,
           ipNumber: data.ipNumber ?? null,
           mawbMblNumber: data.mawbMblNumber ?? null,
+          ciplMappingSnapshot: data.ciplMappingSnapshot ?? null,
         })
         // The form generates a stable client-side WRR id so an uploaded CIPL
         // can be associated with the eventual document. Treat a repeated
@@ -499,6 +514,7 @@ export async function createWrr(
           expiryDate: line.expiryDate ?? null,
           remarks: line.remarks ?? null,
           expectedQty: line.expectedQty,
+          spqSnapshot: line.spqSnapshot ?? null,
           unitCbm: String(line.unitCbm),
           uom: line.uom,
           disposition: line.disposition,
@@ -1140,10 +1156,10 @@ export async function commitWrrLine(
         .from(itemCatalog)
         .where(eq(itemCatalog.id, line.itemId))
         .limit(1);
-      if (!catalogItem || !Number.isInteger(catalogItem.spq) || catalogItem.spq <= 0) {
+      const spq = typeof line.spq === "number" ? line.spq : NaN;
+      if (!catalogItem || !Number.isInteger(spq) || spq <= 0) {
         return { ok: false, errors: ["The enrolled item's SPQ is missing or invalid; update Material Enrollment before receiving."] } satisfies CommitWrrLineResult;
       }
-      const spq = catalogItem.spq;
       const cartonCount = exactCartonCount(line.expectedQty, spq);
       if (cartonCount === null) {
         return { ok: false, errors: ["Expected total quantity must be divisible by the enrolled item's SPQ before receiving."] } satisfies CommitWrrLineResult;
@@ -1328,6 +1344,7 @@ export async function commitWrrLine(
           ipNumber: doc.ipNumber,
           manufactureDate: line.manufactureDate,
           expiryDate: line.expiryDate,
+          spqSnapshot: spq,
         };
         async function createLot(status: "available" | "quarantined"): Promise<string> {
           const [createdLot] = await tx.insert(lots).values({ ...lotDefaults, status }).returning({ id: lots.id });

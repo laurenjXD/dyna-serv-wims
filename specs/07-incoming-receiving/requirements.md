@@ -266,3 +266,10 @@ The [Material expiry policy amendment](../00-steering/material-expiry-policy-ame
 Evaluate expiry at receipt commit; block-policy expired cartons go to Inspection, while permissive-policy Storage acceptance requires recorded acknowledgement and reason.
 
 The linked approved amendment governs this feature's expiry behavior. Its specification sign-offs authorize implementation; applicable unit, real-Postgres, security, integration and E2E checks remain mandatory before implementation completion is claimed.
+
+## Approved amendment — CIPL mapping review, unresolved materials, and shipment SPQ (2026-11-10)
+
+1. CIPL review SHALL make every parsed source column/field and source row visible with `mapped`, `unmapped`, `ignored`, `missing_required`, `ambiguous`, or `invalid` status. Data may not disappear merely because no target mapping is inferred.
+2. Suggestions may use header aliases and source values, but an operator confirms mappings. Required identity, quantity, UOM, and packaging errors block staging/commit with What / Why / Next Action feedback.
+3. An unmatched code creates a held unresolved line and offers the controlled `06` enrollment handoff. The line is never received or committed until the authoritative item has been revalidated.
+4. Receiving uses the item master SPQ by default. A source-declared, positive different SPQ may be accepted only by explicit operator confirmation and becomes the immutable WRR-line packaging snapshot; it does not edit the item master.

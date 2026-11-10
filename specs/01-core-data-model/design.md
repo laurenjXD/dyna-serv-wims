@@ -912,3 +912,7 @@ carton reservation migration is migration `0075`.
 
 - Technical Lead: User / System, 2026-11-04.
 - Product/Operations Lead: User / System, 2026-11-04.
+
+## Approved amendment — CIPL mapping evidence and receiving packaging snapshots (2026-11-10)
+
+Add nullable `jsonb cipl_mapping_snapshot` to `wrr_documents`, positive nullable `integer spq_snapshot` to `wrr_items`, and positive nullable `integer spq_snapshot` to `lots`. The migration backfills existing snapshots from `items.spq`, then makes snapshots non-null for resolved/new records at their lifecycle boundaries. The mapping snapshot is a versioned, redacted source-to-target audit record; raw CIPL files remain private Storage artifacts. Receiving commit copies the line snapshot to the lot and Stage 1 writes `pick_list_items.spq` from the source lot snapshot. The server validates all proposed SPQ values, exact quantity division, item identity, and line state.

@@ -35,6 +35,16 @@ describe("cipl-parser", () => {
     expect(result.errors[0]).toContain("Unsupported file format");
   });
 
+  it("normalizes thousands separators in CSV quantities", async () => {
+    const csv = Buffer.from('Item Code,Quantity,UOM\nITEM-101,"13,500",PCS\n');
+    const result = await parseCiplDocument(csv, "sample-cipl.csv");
+
+    expect(result.ok).toBe(true);
+    expect(result.rows).toEqual([
+      expect.objectContaining({ itemCode: "ITEM-101", expectedQty: 13500, uom: "PCS" }),
+    ]);
+  });
+
   it("parses the supplied production CIPL sample (.xls)", async () => {
     const fixture = resolve(process.cwd(), "test-samples", "CIPL PR260030P_Phil whse (08-05).xls");
     const result = await parseCiplDocument(readFileSync(fixture), "CIPL PR260030P_Phil whse (08-05).xls");
@@ -44,6 +54,10 @@ describe("cipl-parser", () => {
       expect(result.rows.length).toBeGreaterThan(0);
       expect(result.header.ciplReference).toBeTruthy();
       expect(result.rows.some((row) => Number(row.expectedQty) > 0)).toBe(true);
+      expect(result.rows[0].itemCode).toBe("AP01000102");
+      expect(result.rows[0].customerItemCode).toBe("82012CP100");
+      expect(result.rows[0].expectedQty).toBe(13500);
+      expect(result.header.ipNumber).toBeUndefined();
     }
   });
 });

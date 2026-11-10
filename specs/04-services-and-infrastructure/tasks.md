@@ -1,6 +1,13 @@
 # Services & Infrastructure — Implementation Plan
 
 Status: Approved
+
+### 2026-11-10 amendment — provider-bounded idle policy
+
+- [x] Maintain one client inactivity guard with configured timeout, warning, and explicit Continue action.
+- [x] Keep Supabase cookie refresh/revocation as the authoritative provider contract; do not persist tokens in local storage.
+
+Approval record: Product Owner authorization — requested implementation of the 2026-11-10 revision plan. Technical sign-off: provider authority preserved.
 Updated: 2026-08-05
 
 ## Implementation gate

@@ -24,6 +24,10 @@ Across all user-facing outgoing screens, forms, headers, and document references
 
 ## 2. Actors and workflow surfaces
 
+### 2026-11-10 amendment — carton-level dispatch evidence
+
+Each dispatch scan SHALL identify exactly one durable inventory carton. Item, lot, and location QR values are lookup aids only and SHALL be rejected as dispatch evidence. A successful scan selects one carton atomically; the line remains incomplete until its required carton count is selected. Aggregate lots without durable carton identities must be reconciled before dispatch, not silently expanded at scan time.
+
 - **Inventory operator** — selects item, destination Organization, Inventory Model, quantity, and allocation action directly from **Stock View** (`/inventory`).
 - **Warehouse staff** — executes committed pick/dispatch flows at `/pick-lists/[id]/pick` and `/pick-lists/[id]/dispatch` using portrait handheld screens.
 - **Supervisor** — approves FIFO overrides through `09-approval-queue`.

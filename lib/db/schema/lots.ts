@@ -1,5 +1,5 @@
 // `lots` — specs/01-core-data-model/design.md §1.2
-import { pgTable, uuid, varchar, decimal, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, decimal, date, timestamp, integer } from "drizzle-orm/pg-core";
 import { flowTypeEnum, lotStatusEnum } from "./enums";
 import { items } from "./items";
 import { parties } from "./parties";
@@ -21,6 +21,8 @@ export const lots = pgTable("lots", {
   ipNumber: varchar("ip_number", { length: 100 }), // Import Permit (IP) Number
   manufactureDate: date("manufacture_date"),
   expiryDate: date("expiry_date"),
+  // Immutable receiving packaging snapshot copied from the committed WRR line.
+  spqSnapshot: integer("spq_snapshot").notNull(),
   unitCost: decimal("unit_cost", { precision: 12, scale: 4 }), // Unit Cost in USD (Final for Trading, reference-only for VMI)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
