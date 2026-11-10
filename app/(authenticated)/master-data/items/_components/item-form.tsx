@@ -51,6 +51,7 @@ interface ItemFormProps {
   initialSpq?: string;
   initialVolumeCbm?: string;
   initialDefaultSupplierPartyId?: string;
+  enrollmentChannel?: string;
   suggestedDsgcCode?: string;
   suggestedGenericCode?: string;
 }
@@ -87,6 +88,7 @@ export function ItemForm({
   initialSpq = "",
   initialVolumeCbm = "",
   initialDefaultSupplierPartyId = "",
+  enrollmentChannel = "",
   suggestedDsgcCode = "DSGC-TRD-0001",
   suggestedGenericCode = "ITM-00001",
 }: ItemFormProps) {
@@ -278,6 +280,7 @@ export function ItemForm({
 
   return (
     <form action={formAction} noValidate>
+      {enrollmentChannel && <input type="hidden" name="ciplEnrollmentChannel" value={enrollmentChannel} />}
       {isEdit && (
         <>
           <input type="hidden" name="id" value={item.id} />

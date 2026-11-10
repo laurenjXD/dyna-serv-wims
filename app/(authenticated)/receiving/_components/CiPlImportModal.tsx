@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
 import type { CiplParseResult, CiplMappingSnapshot } from "@/lib/parsers/cipl-parser";
@@ -39,11 +40,13 @@ interface CiPlImportModalProps {
 }
 
 export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose, onApply }: CiPlImportModalProps) {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<CiplParseResult | null>(null);
+  const [enrollmentMessage, setEnrollmentMessage] = useState<string | null>(null);
   const [editedHeader, setEditedHeader] = useState<{
     vendorOrganization: string;
     ciplReference: string;
@@ -80,6 +83,90 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
     }[]
   >([]);
 
+  const enrollmentChannelName = `dyna-serv-wims:cipl:${wrrId}`;
+
+  // The enrollment shortcut opens in another tab. Listen for its confirmed
+  // save so the current CIPL draft can refresh its catalog without requiring
+  // the operator to upload the document again.
+  useEffect(() => {
+    const handleEnrollmentMessage = (payload: { channel?: string; itemId?: string }) => {
+      if (payload.channel !== enrollmentChannelName || !payload.itemId) return;
+      setEnrollmentMessage("Material enrolled. Refreshing the CIPL mapping…");
+      router.refresh();
+    };
+
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "wims:item-enrolled") return;
+      handleEnrollmentMessage(event.data);
+    };
+
+    window.addEventListener("message", handleWindowMessage);
+    const channel = typeof BroadcastChannel === "undefined"
+      ? null
+      : new BroadcastChannel(enrollmentChannelName);
+    const handleChannelMessage = (event: MessageEvent) => {
+      if (event.data?.type === "wims:item-enrolled") {
+        handleEnrollmentMessage(event.data);
+      }
+    };
+    channel?.addEventListener("message", handleChannelMessage);
+
+    return () => {
+      window.removeEventListener("message", handleWindowMessage);
+      channel?.removeEventListener("message", handleChannelMessage);
+      channel?.close();
+    };
+  }, [enrollmentChannelName, router]);
+
+  // Once the server refresh returns the newly enrolled item, re-run matching
+  // only for unresolved rows. Existing operator choices and source values are
+  // preserved while the new catalog item becomes selectable automatically.
+  useEffect(() => {
+    if (!parseResult || itemOptions.length === 0) return;
+
+    setEditedRows((previous) => {
+      let changed = false;
+      const next = previous.map((row) => {
+        if (row.itemId) return row;
+
+        const matchRes = matchItemAgainstCatalog(
+          {
+            itemCode: row.itemCodeDisplay,
+            customerItemCode: row.customerItemCode,
+            description: row.description,
+          },
+          itemOptions,
+        );
+        const best = matchRes.bestMatch;
+        const autoPopulate = Boolean(
+          best && (matchRes.confidenceLevel === "high" || matchRes.confidenceLevel === "medium"),
+        );
+        if (!autoPopulate || !best) return row;
+
+        changed = true;
+        return {
+          ...row,
+          itemId: best.item.id,
+          unitCbm: row.unitCbm || best.item.volumeCbm,
+          uom: row.uom || best.item.uom,
+          matchScore: best.score,
+          matchReason: best.matchReason,
+          matchConfidence: matchRes.confidenceLevel,
+          suggestedItems: matchRes.candidates.map((candidate) => ({
+            id: candidate.item.id,
+            code: candidate.item.code,
+            name: candidate.item.name ?? "",
+            score: candidate.score,
+            reason: candidate.matchReason,
+          })),
+        };
+      });
+
+      return changed ? next : previous;
+    });
+  }, [itemOptions, parseResult]);
+
   async function handleFileSelect(selectedFile: File) {
     setFile(selectedFile);
     setLoading(true);
@@ -96,6 +183,7 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
       return;
     }
 
+    setEnrollmentMessage(null);
     setParseResult(res.parseResult);
     setEditedHeader({
       vendorOrganization: res.parseResult.header.vendorOrganization || "",
@@ -462,7 +550,7 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
                                   )}
                                   {canEnrollMaterial ? (
                                     <Link
-                                      href={buildItemEnrollmentHref(row, parseResult.header.vendorOrganization)}
+                                      href={buildItemEnrollmentHref(row, parseResult.header.vendorOrganization, enrollmentChannelName)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="mt-1 text-[10px] font-semibold text-brand-navy underline"
@@ -597,6 +685,11 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
                   </table>
                 </div>
               </div>
+              {enrollmentMessage && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-body text-body-xs text-emerald-900" role="status">
+                  {enrollmentMessage}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -640,6 +733,7 @@ function buildItemEnrollmentHref(
     uom: string;
   },
   vendorOrganization?: string,
+  enrollmentChannel?: string,
 ): string {
   const params = new URLSearchParams();
   if (row.itemCodeDisplay) params.set("code", row.itemCodeDisplay);
@@ -653,5 +747,6 @@ function buildItemEnrollmentHref(
   if (row.spq) params.set("spq", row.spq);
   if (row.unitCbm) params.set("volumeCbm", row.unitCbm);
   if (vendorOrganization) params.set("organization", vendorOrganization);
+  if (enrollmentChannel) params.set("ciplEnrollmentChannel", enrollmentChannel);
   return `/master-data/items/new?${params.toString()}`;
 }

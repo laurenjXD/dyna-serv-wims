@@ -18,6 +18,7 @@ interface PageProps {
     spq?: string;
     volumeCbm?: string;
     organization?: string;
+    ciplEnrollmentChannel?: string;
   }>;
 }
 
@@ -73,6 +74,7 @@ export default async function NewItemPage({ searchParams }: PageProps) {
     spq,
     volumeCbm,
     organization,
+    ciplEnrollmentChannel,
   } = await searchParams;
 
   const [categories, supplierParties, suggestedCodes] = await Promise.all([
@@ -107,6 +109,7 @@ export default async function NewItemPage({ searchParams }: PageProps) {
           initialSpq={spq}
           initialVolumeCbm={volumeCbm}
           initialDefaultSupplierPartyId={findOrganizationId(organization, supplierParties)}
+          enrollmentChannel={ciplEnrollmentChannel}
           suggestedDsgcCode={suggestedCodes.nextDsgcCode}
           suggestedGenericCode={suggestedCodes.nextGenericCode}
         />

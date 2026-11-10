@@ -9,14 +9,17 @@ import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
 import { getItem } from "@/lib/db/queries/items";
 import { DeactivateItemSection } from "../_components/item-deactivate";
+import { ItemEnrollmentCompletionBridge } from "../_components/item-enrollment-completion-bridge";
 import { PageBreadcrumb } from "@/components/global/PageBreadcrumb";
 
 interface PageProps {
   params: Promise<{ itemId: string }>;
+  searchParams: Promise<{ ciplEnrollmentChannel?: string }>;
 }
 
-export default async function ItemDetailPage({ params }: PageProps) {
+export default async function ItemDetailPage({ params, searchParams }: PageProps) {
   const { itemId } = await params;
+  const { ciplEnrollmentChannel } = await searchParams;
   const resolver = await createPageResolver();
 
   const readPerm = await requirePermission(resolver, "items.read");
@@ -35,6 +38,9 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-container">
+      {ciplEnrollmentChannel && (
+        <ItemEnrollmentCompletionBridge channelName={ciplEnrollmentChannel} itemId={item.id} />
+      )}
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>

@@ -110,7 +110,12 @@ export async function createItemAction(
 
   revalidatePath("/master-data/items");
   revalidatePath("/enrollment");
-  redirect(`/master-data/items/${result.data.id}`);
+  revalidatePath("/receiving/new");
+  const enrollmentChannel = nullableString(formData.get("ciplEnrollmentChannel"));
+  const query = enrollmentChannel
+    ? `?ciplEnrollmentChannel=${encodeURIComponent(enrollmentChannel)}`
+    : "";
+  redirect(`/master-data/items/${result.data.id}${query}`);
 }
 
 // ---------------------------------------------------------------------------
