@@ -164,12 +164,34 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         }
       }
 
-      // Extract IP Number (Import Permit). Require a label boundary so words
-      // such as "PHILIPPINES" cannot be mistaken for an `IP` label.
+      // Extract the source organization from an explicit metadata label. Do
+      // not use `SHIP TO` because that is the warehouse destination, not the
+      // supplier/organization whose goods are being received.
+      if (!result.header.vendorOrganization) {
+        for (let c = 0; c < row.length; c++) {
+          const cellStr = String(row[c] ?? "").trim();
+          const inlineOrganization = cellStr.match(/^(?:VENDOR|SUPPLIER|SHIPPER|EXPORTER|ORGANIZATION)(?:\s+NAME)?\s*[:.-]\s*(.+)$/i);
+          if (inlineOrganization?.[1]?.trim()) {
+            result.header.vendorOrganization = inlineOrganization[1].trim();
+            break;
+          }
+          if (/^(?:VENDOR|SUPPLIER|SHIPPER|EXPORTER|ORGANIZATION)(?:\s+NAME)?$/i.test(cellStr)) {
+            const nextCell = String(row[c + 1] ?? "").trim();
+            if (nextCell) {
+              result.header.vendorOrganization = nextCell;
+              break;
+            }
+          }
+        }
+      }
+
+      // Extract IP Number (Import Permit) only from a complete label at the
+      // beginning of a cell. Matching arbitrary `IP` substrings caused the
+      // old parser to read the tail of `PHILIPPINES` as an IP value.
       if (!result.header.ipNumber) {
         for (let c = 0; c < row.length; c++) {
           const cellStr = String(row[c] ?? "").trim();
-          const ipMatch = cellStr.match(/(?:^|\b)(?:IP|IMPORT\s*PERMIT)\s*(?:#|NO|NUM|NUMBER)?\s*(?:[:.-]\s*|\s+)([A-Z0-9_-]{3,})\b/i);
+          const ipMatch = cellStr.match(/^(?:IP|IMPORT\s*PERMIT)(?:\s*(?:#|NO|NUM|NUMBER))?\s*(?:[:.-]\s*|\s+)([A-Z0-9_-]{3,})$/i);
           if (ipMatch && ipMatch[1] && !/^(no|num|number|ref|permit)$/i.test(ipMatch[1])) {
             result.header.ipNumber = ipMatch[1];
             break;
@@ -423,6 +445,17 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       result.warnings.push("Could not unambiguously identify table headers; using default column positions.");
     }
 
+    // UBoT CIPL templates identify the supplier through the `UBoT P/N`
+    // column rather than a separate vendor cell. Preserve that document-level
+    // organization hint so the WRR form can resolve it to the enrolled UBoT
+    // organization. The item code itself remains the row-level `itemCode`.
+    if (!result.header.vendorOrganization) {
+      const headerValues = (rawRows[headerRowIndex] ?? []).map((cell) => String(cell ?? "").trim());
+      if (headerValues.some((value) => /^ubot(?:\s+p\/?n)?$/i.test(value))) {
+        result.header.vendorOrganization = "UBoT";
+      }
+    }
+
     const sourceRows = rawRows.slice(headerRowIndex + 1)
       .map((row, offset) => ({
         rowNumber: headerRowIndex + offset + 2,
@@ -478,7 +511,11 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         rowStr.includes("page ") ||
         rowStr.includes("hs code") ||
         rowStr.includes("incoterms") ||
-        rowStr.includes("computer-generated")
+        rowStr.includes("computer-generated") ||
+        rowStr.includes("ship to") ||
+        rowStr.includes("shipper:") ||
+        rowStr.includes("supplier:") ||
+        rowStr.includes("vendor:")
       ) {
         continue;
       }
@@ -618,6 +655,27 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
     const dateMatch = text.match(/(?:Date)\s*[:.-]?\s*(\d{4}[-/.]\d{2}[-/.]\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}-[A-Z]{3}-\d{4})/i);
     if (dateMatch) {
       result.header.invoiceDate = dateMatch[1];
+    }
+
+    // PDF text extraction often breaks words across lines. Only accept
+    // organization/IP/waybill values when the extracted text contains an
+    // explicit label; never infer an IP number from destination text such as
+    // `PHILIPPINES`.
+    const headerText = lines.slice(0, packingListIndex >= 0 ? packingListIndex : Math.min(lines.length, 80)).join(" ");
+    const organizationMatch = headerText.match(/(?:^|\s)(?:VENDOR|SUPPLIER|SHIPPER|EXPORTER|ORGANIZATION)(?:\s+NAME)?\s*[:.-]\s*([A-Z0-9][A-Z0-9 .,&'()/-]{2,80}?)(?=\s{2,}|\s(?:INVOICE|DATE|IP|MAWB|MBL)\b|$)/i);
+    if (organizationMatch?.[1]) {
+      result.header.vendorOrganization = organizationMatch[1].trim();
+    }
+    const ipMatch = headerText.match(/(?:^|\s)(?:IP|IMPORT\s*PERMIT)(?:\s*(?:#|NO|NUM|NUMBER))?\s*(?:[:.-]\s*|\s+)([A-Z0-9_-]{3,})\b/i);
+    if (ipMatch?.[1] && !/^(?:NO|NUM|NUMBER|REF|PERMIT)$/i.test(ipMatch[1])) {
+      result.header.ipNumber = ipMatch[1];
+    }
+    const mawbMatch = headerText.match(/(?:^|\s)(?:MAWB|MBL|WAYBILL|BILL\s+OF\s+LADING)(?:\s*(?:#|NO|NUM|NUMBER))?\s*(?:[:.-]\s*|\s+)([A-Z0-9_-]{3,})\b/i);
+    if (mawbMatch?.[1] && !/^(?:NO|NUM|NUMBER|REF|LADING)$/i.test(mawbMatch[1])) {
+      result.header.mawbMbl = mawbMatch[1];
+    }
+    if (!result.header.vendorOrganization && /\bUBOT\s+P\/?N\b/i.test(text)) {
+      result.header.vendorOrganization = "UBoT";
     }
 
     const structuredRows = tableLines.flatMap((line) => {

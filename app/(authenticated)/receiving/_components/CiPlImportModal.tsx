@@ -43,11 +43,13 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
   const [error, setError] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<CiplParseResult | null>(null);
   const [editedHeader, setEditedHeader] = useState<{
+    vendorOrganization: string;
     ciplReference: string;
     invoiceDate: string;
     ipNumber: string;
     mawbMbl: string;
   }>({
+    vendorOrganization: "",
     ciplReference: "",
     invoiceDate: "",
     ipNumber: "",
@@ -93,6 +95,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
 
     setParseResult(res.parseResult);
     setEditedHeader({
+      vendorOrganization: res.parseResult.header.vendorOrganization || "",
       ciplReference: res.parseResult.header.ciplReference || "",
       invoiceDate: res.parseResult.header.invoiceDate || "",
       ipNumber: res.parseResult.header.ipNumber || "",
@@ -202,6 +205,7 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
     onApply(
       {
         ...parseResult.header,
+        vendorOrganization: editedHeader.vendorOrganization || parseResult.header.vendorOrganization,
         ciplReference: editedHeader.ciplReference || parseResult.header.ciplReference,
         invoiceDate: editedHeader.invoiceDate || parseResult.header.invoiceDate,
         ipNumber: editedHeader.ipNumber || parseResult.header.ipNumber,
@@ -299,7 +303,17 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
           ) : (
             <div className="space-y-6">
               {/* Header metadata summary & edit cards */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-xl border border-brand-navy/10 bg-brand-navy/5 p-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 rounded-xl border border-brand-navy/10 bg-brand-navy/5 p-4">
+                <div>
+                  <label className="block font-label text-[10px] uppercase font-bold text-text-grey">Source Organization:</label>
+                  <input
+                    type="text"
+                    value={editedHeader.vendorOrganization}
+                    onChange={(e) => setEditedHeader((prev) => ({ ...prev, vendorOrganization: e.target.value }))}
+                    placeholder="Organization / supplier"
+                    className="mt-1 w-full rounded border border-outline-variant/40 bg-surface-white px-2.5 py-1 font-mono text-body-xs font-bold text-brand-navy"
+                  />
+                </div>
                 <div>
                   <label className="block font-label text-[10px] uppercase font-bold text-text-grey">Detected CIPL Ref:</label>
                   <input

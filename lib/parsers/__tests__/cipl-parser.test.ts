@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ExcelJS from "exceljs";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import { parseCiplDocument } from "../cipl-parser";
 
 describe("cipl-parser", () => {
@@ -53,6 +54,7 @@ describe("cipl-parser", () => {
     if (result.ok) {
       expect(result.rows.length).toBeGreaterThan(0);
       expect(result.header.ciplReference).toBeTruthy();
+      expect(result.header.vendorOrganization).toBe("UBoT");
       expect(result.rows.some((row) => Number(row.expectedQty) > 0)).toBe(true);
       expect(result.rows[0].itemCode).toBe("AP01000102");
       expect(result.rows[0].customerItemCode).toBe("82012CP100");
@@ -83,5 +85,46 @@ describe("cipl-parser", () => {
     expect(result.rows[0]).toMatchObject({ itemCode: "AP01000102", expectedQty: 13500, uom: "M" });
     expect(result.mappingSnapshot.headerRow).toBe(4);
     expect(result.mappingSnapshot.columns.find((column) => column.suggestedTarget === "itemCode")?.header).toBe("UBoT P/N");
+  });
+
+  it("maps explicit organization and IP metadata without treating destination text as an IP", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Invoice");
+    worksheet.addRow(["SUPPLIER: UBoT Incorporated Limited"]);
+    worksheet.addRow(["IP Number: PINES-001"]);
+    worksheet.addRow(["Invoice No: INV-001", "", "", "", "Date: 05-AUG-2026"]);
+    worksheet.addRow([]);
+    worksheet.addRow(["Item Code", "Description", "Quantity", "UOM"]);
+    worksheet.addRow(["ITEM-101", "CARRIER TAPE", 10, "BOX"]);
+    worksheet.addRow(["SHIP TO: CITY LAGUNA 4024 PHILIPPINES"]);
+
+    const result = await parseCiplDocument(
+      Buffer.from((await workbook.xlsx.writeBuffer()) as unknown as Buffer),
+      "metadata-cipl.xlsx",
+    );
+
+    expect(result.header.vendorOrganization).toBe("UBoT Incorporated Limited");
+    expect(result.header.ipNumber).toBe("PINES-001");
+    expect(result.rows).toHaveLength(1);
+  });
+
+  it("infers UBoT from the PDF table header and leaves an absent IP number empty", async () => {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([792, 612]);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    [
+      "COMMERCIAL INVOICE",
+      "INVOICE #: PR260030P",
+      "DATE: 05-AUG-2026",
+      "SHIP TO: DYNA-SERV GLOBAL CORPORATION, CITY LAGUNA 4024 PHILIPPINES",
+      "Item UBoT P/N Descriptions Cust P/N Cust PO# Quantity UOM Amount",
+      "1 AP01000102 CARRIER TAPE 82012CP100 47361784 0.01 13,500 M 135.00",
+    ].forEach((line, index) => page.drawText(line, { x: 36, y: 560 - index * 18, size: 9, font }));
+
+    const result = await parseCiplDocument(Buffer.from(await pdf.save()), "sample-cipl.pdf");
+
+    expect(result.header.vendorOrganization).toBe("UBoT");
+    expect(result.header.ipNumber).toBeUndefined();
+    expect(result.rows).toHaveLength(1);
   });
 });

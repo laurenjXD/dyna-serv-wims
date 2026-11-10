@@ -40,6 +40,30 @@ function getBusinessRoleLabel(party: SupplierPartyOption): string {
     .join(" / ") || "Organization";
 }
 
+function normalizeOrganizationValue(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findImportedOrganization(value: string | undefined, parties: SupplierPartyOption[]): SupplierPartyOption | undefined {
+  const normalizedValue = value ? normalizeOrganizationValue(value) : "";
+  if (!normalizedValue) return undefined;
+
+  const exactMatch = parties.find((party) => {
+    const candidates = [party.code, party.name].map(normalizeOrganizationValue).filter(Boolean);
+    return candidates.some((candidate) => candidate === normalizedValue);
+  });
+  if (exactMatch) return exactMatch;
+
+  // A short hint such as `UBoT` may match more than one enrolled legal
+  // organization. Only auto-select a partial match when it is unambiguous;
+  // otherwise keep the hint visible and require the operator to choose.
+  const partialMatches = parties.filter((party) => {
+    const candidates = [party.code, party.name].map(normalizeOrganizationValue).filter(Boolean);
+    return candidates.some((candidate) => candidate.includes(normalizedValue) || normalizedValue.includes(candidate));
+  });
+  return partialMatches.length === 1 ? partialMatches[0] : undefined;
+}
+
 function CreateWrrSubmitButton({ offline, disabled }: { offline: boolean; disabled: boolean }) {
   const { pending } = useFormStatus();
 
@@ -159,6 +183,20 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
           itemOptions={itemOptions}
           onClose={() => setShowImportModal(false)}
           onApply={(header, lines, mappingSnapshot) => {
+            const importedOrganization = findImportedOrganization(header.vendorOrganization, vendorParties);
+            if (importedOrganization) {
+              setVendorPartyId(importedOrganization.id);
+              setVendorSearch(`${importedOrganization.code} — ${importedOrganization.name}`);
+              setFlowType(importedOrganization.defaultInventoryModel ?? "");
+            } else if (header.vendorOrganization) {
+              // Keep an unresolved source hint visible so the operator can
+              // choose the enrolled organization without silently selecting a
+              // different party.
+              setVendorSearch(header.vendorOrganization);
+              setVendorPartyId("");
+              setFlowType("");
+              setIsVendorOpen(true);
+            }
             if (header.ciplReference) {
               const ciplInput = document.getElementById("commercialInvoiceNo") as HTMLInputElement | null;
               if (ciplInput) ciplInput.value = header.ciplReference;
