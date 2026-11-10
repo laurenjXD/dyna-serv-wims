@@ -8,7 +8,42 @@ import { ItemForm } from "../_components/item-form";
 import { createItemAction } from "../_actions";
 
 interface PageProps {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{
+    code?: string;
+    supplierItemCode?: string;
+    customerItemCode?: string;
+    name?: string;
+    description?: string;
+    uom?: string;
+    spq?: string;
+    volumeCbm?: string;
+    organization?: string;
+  }>;
+}
+
+function normalizeOrganizationValue(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findOrganizationId(
+  organization: string | undefined,
+  parties: Array<{ id: string; code: string; name: string }>,
+): string | undefined {
+  const normalized = organization ? normalizeOrganizationValue(organization) : "";
+  if (!normalized) return undefined;
+
+  const exact = parties.find((party) =>
+    [party.code, party.name].some((value) => normalizeOrganizationValue(value) === normalized),
+  );
+  if (exact) return exact.id;
+
+  const partialMatches = parties.filter((party) =>
+    [party.code, party.name].some((value) => {
+      const candidate = normalizeOrganizationValue(value);
+      return candidate.includes(normalized) || normalized.includes(candidate);
+    }),
+  );
+  return partialMatches.length === 1 ? partialMatches[0]?.id : undefined;
 }
 
 export default async function NewItemPage({ searchParams }: PageProps) {
@@ -28,7 +63,17 @@ export default async function NewItemPage({ searchParams }: PageProps) {
     );
   }
 
-  const { code } = await searchParams;
+  const {
+    code,
+    supplierItemCode,
+    customerItemCode,
+    name,
+    description,
+    uom,
+    spq,
+    volumeCbm,
+    organization,
+  } = await searchParams;
 
   const [categories, supplierParties, suggestedCodes] = await Promise.all([
     getItemCategories(db),
@@ -54,6 +99,14 @@ export default async function NewItemPage({ searchParams }: PageProps) {
           supplierParties={supplierParties}
           cancelHref="/enrollment?tab=items"
           initialCode={code}
+          initialSupplierItemCode={supplierItemCode}
+          initialCustomerItemCode={customerItemCode}
+          initialName={name}
+          initialDescription={description}
+          initialUom={uom}
+          initialSpq={spq}
+          initialVolumeCbm={volumeCbm}
+          initialDefaultSupplierPartyId={findOrganizationId(organization, supplierParties)}
           suggestedDsgcCode={suggestedCodes.nextDsgcCode}
           suggestedGenericCode={suggestedCodes.nextGenericCode}
         />

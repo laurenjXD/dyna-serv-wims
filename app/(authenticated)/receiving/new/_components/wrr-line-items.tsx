@@ -422,7 +422,11 @@ export function WrrLineItems({
                 {isPerishable && <p className="mt-1 text-xs text-status-warning">Required for perishable inventory.</p>}
               </div>
 
-              {/* Col 3: Remarks */}
+            </div>
+
+            {/* Row 3: Remarks, total quantity, and carton quantity */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              {/* Col 1: Remarks */}
               <div>
                 <label htmlFor={`line-${index}-remarks`} className="block font-label text-label text-text-grey">
                   Remarks
@@ -437,11 +441,8 @@ export function WrrLineItems({
                   className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-body text-body-md text-on-surface placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               </div>
-            </div>
 
-            {/* Row 3: CIPL total quantity, cartons, CBM & UOM */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-              {/* Col 1: CIPL total quantity */}
+              {/* Col 2: CIPL total quantity */}
               <div>
                 <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
                   Total Quantity (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
@@ -463,7 +464,7 @@ export function WrrLineItems({
                 </p>
               </div>
 
-              {/* Col 2: CIPL carton quantity */}
+              {/* Col 3: CIPL carton quantity */}
               <div>
                 <label htmlFor={`line-${index}-cartonQty`} className="block font-label text-label text-text-grey">
                   Carton Qty (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
@@ -485,29 +486,35 @@ export function WrrLineItems({
                     ? `${line.cartonQty} cartons × SPQ ${effectiveSpq}.`
                     : "Calculated from total quantity ÷ shipment SPQ."}
                 </p>
-                {selectedItem && (
-                  <>
-                    <label className="mt-2 block font-label text-[11px] text-text-grey">
-                      Shipment SPQ (units/carton)
-                      <input
-                        type="number"
-                        min="1"
-                        value={line.spqSnapshot}
-                        onChange={(e) => updateLine(index, "spqSnapshot", e.target.value)}
-                        className="mt-1 h-9 w-full rounded border border-slate-200 bg-surface-white px-2 font-mono text-body-xs text-on-surface"
-                      />
-                    </label>
-                    {effectiveSpq !== selectedItem.spq && (
-                      <label className="mt-2 flex items-start gap-2 font-body text-[11px] text-status-held">
-                        <input type="checkbox" checked={line.spqOverrideConfirmed} onChange={(e) => updateSpqOverrideConfirmation(index, e.target.checked)} className="mt-0.5" />
-                        Confirm this shipment uses SPQ {effectiveSpq}; it will not change the enrolled Material SPQ ({selectedItem.spq}).
-                      </label>
-                    )}
-                  </>
+              </div>
+            </div>
+
+            {/* Row 4: Shipment SPQ, CBM, and UOM */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              {/* Col 1: Shipment SPQ */}
+              <div>
+                <label htmlFor={`line-${index}-spq`} className="block font-label text-label text-text-grey">
+                  Shipment SPQ (units/carton)
+                </label>
+                <input
+                  id={`line-${index}-spq`}
+                  type="number"
+                  min="1"
+                  value={line.spqSnapshot}
+                  disabled={!selectedItem}
+                  onChange={(e) => updateLine(index, "spqSnapshot", e.target.value)}
+                  placeholder={selectedItem ? "SPQ" : "Select an item first"}
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${selectedItem ? "bg-surface-white" : "cursor-not-allowed bg-slate-100"}`}
+                />
+                {selectedItem && effectiveSpq !== selectedItem.spq && (
+                  <label className="mt-2 flex items-start gap-2 font-body text-[11px] text-status-held">
+                    <input type="checkbox" checked={line.spqOverrideConfirmed} onChange={(e) => updateSpqOverrideConfirmation(index, e.target.checked)} className="mt-0.5" />
+                    Confirm this shipment uses SPQ {effectiveSpq}; it will not change the enrolled Material SPQ ({selectedItem.spq}).
+                  </label>
                 )}
               </div>
 
-              {/* Col 3: Unit CBM */}
+              {/* Col 2: Unit CBM */}
               <div>
                 <label htmlFor={`line-${index}-unitCbm`} className="block font-label text-label text-text-grey">
                   Unit CBM (Per Carton) <span aria-hidden="true" className="text-brand-red">*</span>
@@ -532,7 +539,7 @@ export function WrrLineItems({
                 </p>
               </div>
 
-              {/* Col 4: UOM */}
+              {/* Col 3: UOM */}
               <div>
                 <label htmlFor={`line-${index}-uom`} className="block font-label text-label text-text-grey">
                   UOM <span aria-hidden="true" className="text-brand-red">*</span>

@@ -462,7 +462,7 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
                                   )}
                                   {canEnrollMaterial ? (
                                     <Link
-                                      href={`/master-data/items/new?code=${encodeURIComponent(row.itemCodeDisplay)}`}
+                                      href={buildItemEnrollmentHref(row, parseResult.header.vendorOrganization)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="mt-1 text-[10px] font-semibold text-brand-navy underline"
@@ -628,4 +628,30 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
       </div>
     </div>
   );
+}
+
+function buildItemEnrollmentHref(
+  row: {
+    itemCodeDisplay: string;
+    customerItemCode: string;
+    description: string;
+    spq: string;
+    unitCbm: string;
+    uom: string;
+  },
+  vendorOrganization?: string,
+): string {
+  const params = new URLSearchParams();
+  if (row.itemCodeDisplay) params.set("code", row.itemCodeDisplay);
+  if (row.itemCodeDisplay) params.set("supplierItemCode", row.itemCodeDisplay);
+  if (row.customerItemCode) params.set("customerItemCode", row.customerItemCode);
+  if (row.description) {
+    params.set("name", row.description);
+    params.set("description", row.description);
+  }
+  if (row.uom) params.set("uom", row.uom);
+  if (row.spq) params.set("spq", row.spq);
+  if (row.unitCbm) params.set("volumeCbm", row.unitCbm);
+  if (vendorOrganization) params.set("organization", vendorOrganization);
+  return `/master-data/items/new?${params.toString()}`;
 }

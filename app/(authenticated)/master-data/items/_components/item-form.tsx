@@ -43,6 +43,14 @@ interface ItemFormProps {
   supplierParties: SupplierPartyOption[];
   cancelHref: string;
   initialCode?: string;
+  initialSupplierItemCode?: string;
+  initialCustomerItemCode?: string;
+  initialName?: string;
+  initialDescription?: string;
+  initialUom?: string;
+  initialSpq?: string;
+  initialVolumeCbm?: string;
+  initialDefaultSupplierPartyId?: string;
   suggestedDsgcCode?: string;
   suggestedGenericCode?: string;
 }
@@ -71,6 +79,14 @@ export function ItemForm({
   supplierParties,
   cancelHref,
   initialCode = "",
+  initialSupplierItemCode = "",
+  initialCustomerItemCode = "",
+  initialName = "",
+  initialDescription = "",
+  initialUom = "",
+  initialSpq = "",
+  initialVolumeCbm = "",
+  initialDefaultSupplierPartyId = "",
   suggestedDsgcCode = "DSGC-TRD-0001",
   suggestedGenericCode = "ITM-00001",
 }: ItemFormProps) {
@@ -82,13 +98,12 @@ export function ItemForm({
   const [localCategories, setLocalCategories] = useState<CategoryOption[]>(categories);
 
   // Organization selection & auto-assigned inventory model state
-  const [selectedPartyId, setSelectedPartyId] = useState(item?.defaultSupplierPartyId ?? "");
+  const initialPartyId = item?.defaultSupplierPartyId ?? initialDefaultSupplierPartyId;
+  const initialParty = supplierParties.find((party) => party.id === initialPartyId);
+  const [selectedPartyId, setSelectedPartyId] = useState(initialPartyId);
   const [autoAssignedInfo, setAutoAssignedInfo] = useState<string | null>(() => {
-    if (item?.defaultSupplierPartyId) {
-      const p = supplierParties.find((party) => party.id === item.defaultSupplierPartyId);
-      if (p?.defaultInventoryModel) {
-        return `Auto-assigned from ${p.code} (${p.roles?.join(", ") || "Party Role"}): ${INVENTORY_MODEL_LABELS[p.defaultInventoryModel]}`;
-      }
+    if (initialParty?.defaultInventoryModel) {
+      return `Auto-assigned from ${initialParty.code} (${initialParty.roles?.join(", ") || "Party Role"}): ${INVENTORY_MODEL_LABELS[initialParty.defaultInventoryModel]}`;
     }
     return null;
   });
@@ -126,9 +141,7 @@ export function ItemForm({
   const initialSubcategoryId = initialCategory?.parentId
     ? initialCategory.id
     : "";
-  const organizationInventoryModel = supplierParties.find(
-    (party) => party.id === item?.defaultSupplierPartyId,
-  )?.defaultInventoryModel;
+  const organizationInventoryModel = initialParty?.defaultInventoryModel;
   const initialInventoryModel =
     organizationInventoryModel ?? "";
 
@@ -142,7 +155,7 @@ export function ItemForm({
   // Primary identifier — conditional on Inventory Model
   const [codeValue, setCodeValue] = useState(item?.code ?? initialCode);
   const [supplierItemCodeValue, setSupplierItemCodeValue] = useState(
-    item?.supplierItemCode ?? initialCode,
+    item?.supplierItemCode ?? initialSupplierItemCode ?? initialCode,
   );
   const [dsgcItemNumberValue, setDsgcItemNumberValue] = useState(
     item?.dsgcItemNumber ?? initialCode,
@@ -176,11 +189,11 @@ export function ItemForm({
     : [];
 
   const suggestedDsgcPartNumber = suggestedDsgcCode;
-  const initialUom = item?.uom ?? "piece";
-  const isCustomInitialUom = !STANDARD_UOM_OPTIONS.includes(initialUom as (typeof STANDARD_UOM_OPTIONS)[number]) && !!initialUom;
+  const initialUomValue = (item?.uom ?? initialUom ?? "piece").trim().toLowerCase();
+  const isCustomInitialUom = !STANDARD_UOM_OPTIONS.includes(initialUomValue as (typeof STANDARD_UOM_OPTIONS)[number]) && !!initialUomValue;
   const [customUomMode, setCustomUomMode] = useState(isCustomInitialUom);
-  const [customUomText, setCustomUomText] = useState(isCustomInitialUom ? initialUom : "");
-  const [uom, setUom] = useState<string>(initialUom);
+  const [customUomText, setCustomUomText] = useState(isCustomInitialUom ? initialUomValue : "");
+  const [uom, setUom] = useState<string>(initialUomValue);
   const [lengthCm, setLengthCm] = useState(item?.lengthCm ?? "");
   const [widthCm, setWidthCm] = useState(item?.widthCm ?? "");
   const [heightCm, setHeightCm] = useState(item?.heightCm ?? "");
@@ -679,7 +692,7 @@ export function ItemForm({
               type="text"
               required
               maxLength={255}
-              defaultValue={item?.name ?? ""}
+              defaultValue={item?.name ?? initialName}
               placeholder="e.g. Hex Bolt M8x25"
               className={inputClass("name")}
               {...ariaProps("name")}
@@ -714,7 +727,7 @@ export function ItemForm({
               name="customerItemCode"
               type="text"
               maxLength={100}
-              defaultValue={item?.customerItemCode ?? ""}
+              defaultValue={item?.customerItemCode ?? initialCustomerItemCode}
               placeholder="e.g. CUST-PART-001"
               className={inputClass("customerItemCode")}
             />
@@ -746,7 +759,7 @@ export function ItemForm({
               id="description"
               name="description"
               rows={2}
-              defaultValue={item?.description ?? ""}
+              defaultValue={item?.description ?? initialDescription}
               placeholder="Brief description or item specifications..."
               className={inputClass("description")}
             />
@@ -835,7 +848,7 @@ export function ItemForm({
               min="1"
               step="1"
               required
-              defaultValue={item?.spq ?? 1}
+              defaultValue={item?.spq ?? (initialSpq || 1)}
               placeholder="e.g. 100"
               className={inputClass("spq")}
               {...ariaProps("spq")}
@@ -1079,7 +1092,7 @@ export function ItemForm({
               type="number"
               min="0.0001"
               step="0.0001"
-              defaultValue={item?.volumeCbm ?? ""}
+              defaultValue={item?.volumeCbm ?? initialVolumeCbm}
               className={inputClass("volumeCbm")}
               {...ariaProps("volumeCbm")}
             />
