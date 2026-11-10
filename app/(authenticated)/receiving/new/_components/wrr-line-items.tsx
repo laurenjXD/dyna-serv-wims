@@ -296,11 +296,11 @@ export function WrrLineItems({
                 </span>
                 {isImported && (
                   <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-label text-label-xs font-semibold text-brand-navy border border-blue-200">
-                    Auto-populated from CIPL (Locked)
+                    Auto-populated from CIPL · Editable
                   </span>
                 )}
               </div>
-              {lines.length > 1 && !isImported && (
+              {lines.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeLine(index)}
@@ -337,7 +337,6 @@ export function WrrLineItems({
                     onInputValueChange={(value) => editItemCode(index, value)}
                     onUseTypedCode={(value) => editItemCode(index, value)}
                     onRefresh={onRefresh}
-                    disabled={isImported}
                   />
                 </div>
               </div>
@@ -384,13 +383,10 @@ export function WrrLineItems({
                   name={`line_${index}_lotNumber`}
                   type="text"
                   required
-                  readOnly={isImported}
                   value={line.lotNumber}
                   onChange={(e) => updateLine(index, "lotNumber", e.target.value)}
                   placeholder="e.g. LOT-2026-001"
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-                    isImported ? "bg-slate-100 cursor-not-allowed text-slate-600" : "bg-surface-white"
-                  }`}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               </div>
 
@@ -455,9 +451,8 @@ export function WrrLineItems({
                   min="1"
                   step="1"
                   value={line.expectedQty}
-                  readOnly={isImported}
                   onChange={(e) => updateExpectedQty(index, e.target.value)}
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface"
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
                   Total base quantity from the CIPL/WRR.
@@ -476,10 +471,9 @@ export function WrrLineItems({
                   min="1"
                   step="1"
                   value={line.cartonQty}
-                  readOnly={isImported}
                   disabled={!isImported && !selectedItem}
                   onChange={(e) => updateCartonQty(index, e.target.value)}
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${isImported || !selectedItem ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${!isImported && !selectedItem ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
                   {line.cartonQty && effectiveSpq
@@ -526,13 +520,10 @@ export function WrrLineItems({
                   required
                   min="0.0001"
                   step="0.0001"
-                  readOnly={Boolean(importedLines && importedLines.length > 0 && line.lotNumber)}
                   value={line.unitCbm}
                   onChange={(e) => updateLine(index, "unitCbm", e.target.value)}
                   placeholder="0.0000"
-                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy ${
-                    Boolean(importedLines && importedLines.length > 0 && line.lotNumber) ? "bg-slate-100 cursor-not-allowed" : "bg-surface-white"
-                  }`}
+                  className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface placeholder:font-body placeholder:text-status-neutral focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
                 <p className="mt-1 font-body text-[11px] text-text-grey">
                   Cubic meter volume per carton
@@ -549,11 +540,11 @@ export function WrrLineItems({
                     id={`line-${index}-uom`}
                     name={`line_${index}_uom`}
                     required
-                    disabled={Boolean(line.itemId) || isImported}
+                    disabled={Boolean(line.itemId)}
                     value={line.uom}
                     onChange={(e) => updateLine(index, "uom", e.target.value)}
                     className={`h-11 w-full appearance-none rounded-lg border border-slate-200 px-3 pr-10 font-body text-body-md text-on-surface focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20 ${
-                      line.itemId || isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"
+                      line.itemId ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"
                     }`}
                   >
                     {!line.uom && <option value="">Select UOM…</option>}
@@ -564,7 +555,7 @@ export function WrrLineItems({
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
-                  {(line.itemId || isImported) && <input type="hidden" name={`line_${index}_uom`} value={line.uom} />}
+                  {line.itemId && <input type="hidden" name={`line_${index}_uom`} value={line.uom} />}
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-grey" aria-hidden="true" />
                 </div>
                 <p className="mt-1 font-body text-[11px] text-text-grey">
