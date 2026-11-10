@@ -76,6 +76,7 @@ import {
   getApprovalRequest,
   listApprovalQueueRequests,
   listPendingApprovalRequests,
+  listRequesterFifoOverrides,
 } from "../approvals";
 
 // ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ function makeSelectChain(rows: unknown[]) {
   const resolved = Promise.resolve(rows);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: Record<string, any> = {};
-  for (const method of ["from", "where", "leftJoin", "orderBy"]) {
+  for (const method of ["from", "where", "leftJoin", "orderBy", "limit"]) {
     chain[method] = vi.fn(() => chain);
   }
   chain["then"] = resolved.then.bind(resolved) as AnyFn;
@@ -140,6 +141,27 @@ function makeSelectChain(rows: unknown[]) {
   chain["finally"] = resolved.finally.bind(resolved) as AnyFn;
   return chain;
 }
+
+describe("listRequesterFifoOverrides — pick-list approval visibility", () => {
+  it("returns the request status needed to show Pending Approval and Approved in Pick Lists", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue(
+        makeSelectChain([
+          rawRequestRow({ id: "req-pending", status: "pending" }),
+          rawRequestRow({ id: "req-approved", status: "approved" }),
+        ]),
+      ),
+    };
+
+    const result = await listRequesterFifoOverrides(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      "user-uuid-requester",
+    );
+
+    expect(result.map((row) => row.status)).toEqual(["pending", "approved"]);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Fixture builders

@@ -27,6 +27,7 @@ import { requirePermission } from "@/lib/rbac/guard";
 import { db } from "@/lib/db/client";
 import { listStockView, type StockViewRow } from "@/lib/db/queries/inventory";
 import { listPickLists } from "@/lib/db/queries/withdrawals";
+import { listRequesterFifoOverrides } from "@/lib/db/queries/approvals";
 import { listActiveEndCustomers, listActiveCustomerFlowParties } from "@/lib/db/queries/parties";
 import { listInspectionAndTransferQueue } from "@/lib/db/queries/transfers";
 import { WorkflowState } from "@/components/ui/WorkflowState";
@@ -34,6 +35,7 @@ import { resolveInventoryTab, type TabKey } from "./_lib/resolveInventoryTab";
 import { InspectionTab } from "./_components/InspectionTab";
 import { MultiItemPickListDraft } from "./_components/MultiItemPickListDraft";
 import { ToPickQueue } from "./_components/ToPickQueue";
+import { ApprovalPickQueue } from "./_components/ApprovalPickQueue";
 import { StockViewFilterableRegister, type GroupedItem } from "./_components/StockViewFilterableRegister";
 import { approveCycleCountAction, createCycleCountAction, postCycleCountAction, recordCycleCountAction, rejectCycleCountAction, requestCycleCountRecountAction, submitCycleCountAction, createPickList, requestPickListOverride } from "./actions";
 import { piecesToBoxes } from "@/lib/inventory/quantities";
@@ -206,6 +208,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         <PickListsTab
           createdPickListId={pickListCreated}
           view={pickListView === "deleted" ? "deleted" : "open"}
+          currentUserId={permResult.kind === "authorized" ? permResult.context.userId : ""}
         />
       ) : activeTab === "stock-count" ? (
         <StockCountTabSection countId={countId} error={countError} />
@@ -408,13 +411,16 @@ function groupStockByItem(rows: StockViewRow[]): GroupedItem[] {
 
 // ─── Pick Lists tab ───────────────────────────────────────────────────────────
 
-async function PickListsTab({ createdPickListId, view }: { createdPickListId?: string; view: "open" | "deleted" }) {
+async function PickListsTab({ createdPickListId, view, currentUserId }: { createdPickListId?: string; view: "open" | "deleted"; currentUserId: string }) {
   const isDeleted = view === "deleted";
   // Only allocated lists belong in this To Pick view. Picked lists move to the
   // Dispatch queue and dispatched records remain in the Outgoing Ledger.
-  const [{ rows }, stockRows] = await Promise.all([
+  const [{ rows }, stockRows, approvalRequests] = await Promise.all([
     listPickLists(db, { limit: 50, offset: 0, ...(isDeleted ? { deleted: true } : { status: "allocated" }) }),
     listStockView(db),
+    isDeleted
+      ? Promise.resolve([])
+      : listRequesterFifoOverrides(db, currentUserId, 50).catch(() => []),
   ]);
   const [endCustomers, customers] = await Promise.all([
     listActiveEndCustomers(db),
@@ -456,6 +462,13 @@ async function PickListsTab({ createdPickListId, view }: { createdPickListId?: s
         <ToPickQueue rows={rows} isDeleted={true} />
       ) : (
         <>
+          <ApprovalPickQueue
+            rows={approvalRequests.filter(
+              (request) =>
+                (request.status === "pending" || request.status === "approved") &&
+                request.consumedAt === null,
+            )}
+          />
           {createdPickListId && (
             <AutoDismissNotice>
               <section

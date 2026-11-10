@@ -240,6 +240,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     const result = await approveRequest(actionResolver, requestId, reason);
     if (result.ok) {
       revalidatePath("/approvals");
+      revalidatePath("/inventory");
       redirect("/approvals?success=request_approved");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
@@ -255,6 +256,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
     const result = await rejectRequest(actionResolver, requestId, reason);
     if (result.ok) {
       revalidatePath("/approvals");
+      revalidatePath("/inventory");
       redirect("/approvals?success=request_rejected");
     }
     redirect(`/approvals?error=${encodeURIComponent(result.error)}`);
