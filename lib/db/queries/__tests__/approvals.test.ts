@@ -74,6 +74,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getApprovalRequest,
+  listApprovalQueueRequests,
   listPendingApprovalRequests,
 } from "../approvals";
 
@@ -213,6 +214,37 @@ describe("listPendingApprovalRequests — empty state (R3.1, design.md §3)", ()
     expect(result).toHaveProperty("total");
     expect(result.rows).toHaveLength(0);
     expect(result.total).toBe(0);
+  });
+});
+
+describe("listApprovalQueueRequests — durable open history", () => {
+  it("returns approved and rejected rows from the open view so status filters can monitor decisions", async () => {
+    const approvedRow = rawRequestRow({ id: "req-approved", status: "approved" });
+    const rejectedRow = rawRequestRow({ id: "req-rejected", status: "rejected" });
+    const db = makeDb([approvedRow, rejectedRow], 2);
+
+    const result = await listApprovalQueueRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 50, offset: 0, deleted: false },
+    );
+
+    expect(result.rows.map((row) => row.status)).toEqual(["approved", "rejected"]);
+    expect(result.total).toBe(2);
+  });
+
+  it("keeps the archived view separate from the open decision history", async () => {
+    const archivedRow = rawRequestRow({ id: "req-archived", status: "expired" });
+    const db = makeDb([archivedRow], 1);
+
+    const result = await listApprovalQueueRequests(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      db as any,
+      { limit: 50, offset: 0, deleted: true },
+    );
+
+    expect(result.rows[0].status).toBe("expired");
+    expect(result.total).toBe(1);
   });
 });
 

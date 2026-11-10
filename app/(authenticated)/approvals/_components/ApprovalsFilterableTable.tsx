@@ -276,6 +276,7 @@ export function ApprovalsFilterableTable({
         {/* Pending Card */}
         <button
           type="button"
+          aria-pressed={statusFilter === "pending"}
           onClick={() => {
             setStatusFilter(statusFilter === "pending" ? "all" : "pending");
           }}
@@ -302,6 +303,7 @@ export function ApprovalsFilterableTable({
         {/* Approved Card */}
         <button
           type="button"
+          aria-pressed={statusFilter === "approved"}
           onClick={() => {
             setStatusFilter(statusFilter === "approved" ? "all" : "approved");
           }}
@@ -328,6 +330,7 @@ export function ApprovalsFilterableTable({
         {/* Expired / Stale Card */}
         <button
           type="button"
+          aria-pressed={statusFilter === "expired"}
           onClick={() => {
             setStatusFilter(statusFilter === "expired" ? "all" : "expired");
           }}
@@ -354,6 +357,7 @@ export function ApprovalsFilterableTable({
         {/* Archived Audit Card */}
         <Link
           href="/approvals?tab=deleted"
+          aria-current={showDeleted ? "page" : undefined}
           className={`flex min-h-[124px] flex-col rounded-2xl border p-4 transition-all shadow-2xs hover:shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/50 ${
             showDeleted
               ? "border-brand-navy bg-brand-navy/5 ring-2 ring-brand-navy/30"

@@ -178,7 +178,14 @@ export async function listPendingApprovalRequests(
   return { rows, total: Number(countRow.count) };
 }
 
-/** Open or soft-archived approval queue rows for the reviewer UI. */
+/**
+ * Returns the durable approval history for the reviewer UI.
+ *
+ * The open queue is not limited to `pending`: approved and rejected requests
+ * remain visible so reviewers can monitor the decision history through the
+ * status filters. Only explicitly soft-archived rows are excluded from the
+ * open view. The archive action never deletes a request or its decisions.
+ */
 export async function listApprovalQueueRequests(
   db: DbLike,
   opts: { limit: number; offset: number; approvalType?: string; deleted?: boolean },
@@ -186,12 +193,9 @@ export async function listApprovalQueueRequests(
   const deletedClause = opts.deleted
     ? isNotNull(approvalRequests.deletedAt)
     : isNull(approvalRequests.deletedAt);
-  const statusClause = opts.deleted
-    ? isNotNull(approvalRequests.deletedAt)
-    : eq(approvalRequests.status, "pending");
   const whereClause = opts.approvalType
-    ? and(deletedClause, statusClause, eq(approvalRequests.approvalType, opts.approvalType))
-    : and(deletedClause, statusClause);
+    ? and(deletedClause, eq(approvalRequests.approvalType, opts.approvalType))
+    : deletedClause;
   const rows = (await db
     .select({
       id: approvalRequests.id,

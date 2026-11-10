@@ -128,13 +128,21 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
   // missing the soft-archive column, keep visible requests represented in the
   // cards instead of silently replacing every metric with false zeroes.
   const now = new Date();
-  const visiblePending = rows.filter(
-    (row) => row.status === "pending" && row.expiryAt.getTime() > now.getTime(),
-  ).length;
-  const visibleExpired = rows.filter(
-    (row) => row.status === "expired" || (row.status === "pending" && row.expiryAt.getTime() <= now.getTime()),
-  ).length;
-  const visibleApproved = rows.filter((row) => row.status === "approved").length;
+  const visiblePending = showDeleted
+    ? 0
+    : rows.filter(
+        (row) => row.status === "pending" && row.expiryAt.getTime() > now.getTime(),
+      ).length;
+  const visibleExpired = showDeleted
+    ? 0
+    : rows.filter(
+        (row) =>
+          row.status === "expired" ||
+          (row.status === "pending" && row.expiryAt.getTime() <= now.getTime()),
+      ).length;
+  const visibleApproved = showDeleted
+    ? 0
+    : rows.filter((row) => row.status === "approved").length;
 
   let metricCounts = {
     pending: visiblePending,
