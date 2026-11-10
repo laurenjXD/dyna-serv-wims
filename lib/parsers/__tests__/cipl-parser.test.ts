@@ -46,6 +46,22 @@ describe("cipl-parser", () => {
     ]);
   });
 
+  it("preserves source carton quantity separately from total quantity", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("CIPL");
+    worksheet.addRow(["Item Code", "Quantity", "No. of Packages", "SPQ", "UOM"]);
+    worksheet.addRow(["ITEM-101", 13500, 9, 1500, "PCS"]);
+
+    const result = await parseCiplDocument(
+      Buffer.from((await workbook.xlsx.writeBuffer()) as unknown as Buffer),
+      "carton-quantity-cipl.xlsx",
+    );
+
+    expect(result.rows[0]).toMatchObject({ expectedQty: 13500, packageCount: 9, spq: 1500 });
+    expect(result.mappingSnapshot.columns.find((column) => column.suggestedTarget === "packageCount")?.header)
+      .toBe("No. of Packages");
+  });
+
   it("parses the supplied production CIPL sample (.xls)", async () => {
     const fixture = resolve(process.cwd(), "test-samples", "CIPL PR260030P_Phil whse (08-05).xls");
     const result = await parseCiplDocument(readFileSync(fixture), "CIPL PR260030P_Phil whse (08-05).xls");

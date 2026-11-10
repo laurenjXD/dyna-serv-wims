@@ -38,10 +38,10 @@ describe("WrrLineItems mobile item selection", () => {
     expect(input).toHaveValue("DSGC-ITEM-1");
     expect(screen.getByDisplayValue("Test material description")).toBeInTheDocument();
     expect(screen.getByDisplayValue("piece")).toBeInTheDocument();
-    expect(screen.getByText("SPQ detected: 100 units/carton")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Shipment SPQ \(units\/carton\)/i)).toHaveValue(100);
   });
 
-  it("derives total units and QR labels from the CIPL carton quantity", () => {
+  it("derives total quantity from the CIPL carton quantity", () => {
     render(
       <WrrLineItems
         flowType="trading"
@@ -59,7 +59,38 @@ describe("WrrLineItems mobile item selection", () => {
     });
 
     expect(screen.getByDisplayValue("500")).toBeInTheDocument();
-    expect(screen.getByText("5 labels")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Total Quantity \(CIPL\)/i)).toHaveValue(500);
+    expect(screen.queryByText(/Carton QR Labels/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps imported total and carton quantities from the CIPL", () => {
+    render(
+      <WrrLineItems
+        flowType="trading"
+        vendorPartyId="vendor-1"
+        itemOptions={[assignedItem]}
+        importedLines={[{
+          itemId: assignedItem.id,
+          itemCode: assignedItem.dsgcItemNumber,
+          customerItemCode: assignedItem.customerItemCode,
+          description: assignedItem.description,
+          lotNumber: "LOT-A1",
+          mfgDate: "",
+          expiryDate: "",
+          expectedQty: "13500",
+          packageCount: "9",
+          spq: "1500",
+          unitCbm: assignedItem.volumeCbm,
+          uom: assignedItem.uom,
+          remarks: "",
+          disposition: "store",
+        }]}
+      />,
+    );
+
+    expect(screen.getByLabelText(/Total Quantity \(CIPL\)/i)).toHaveValue(13500);
+    expect(screen.getByLabelText(/Carton Qty \(CIPL\)/i)).toHaveValue(9);
+    expect(screen.queryByText(/Carton QR Labels/i)).not.toBeInTheDocument();
   });
 
   it("shows a legacy catalog material with no organization assignment", () => {

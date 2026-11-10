@@ -335,7 +335,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
           val.includes("package") ||
           val.includes("pkg")
         ) {
-          if (candidateColMap["noOfPackages"] === undefined) candidateColMap["noOfPackages"] = c;
+          if (candidateColMap["packageCount"] === undefined) candidateColMap["packageCount"] = c;
         } else if (
           val.includes("spq") ||
           val.includes("pcs/ctn") ||
@@ -405,7 +405,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         candidateColMap["lineNumber"] !== undefined;
       const hasQty =
         candidateColMap["expectedQty"] !== undefined ||
-        candidateColMap["noOfPackages"] !== undefined;
+        candidateColMap["packageCount"] !== undefined;
 
       const recognizedCount = Object.keys(candidateColMap).length;
       if (hasItem && hasQty && recognizedCount > bestScore) {
@@ -499,7 +499,7 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       const custItemCodeRaw = colMap["customerItemCode"] !== undefined ? row[colMap["customerItemCode"]] : undefined;
       const descRaw = colMap["description"] !== undefined ? row[colMap["description"]] : undefined;
       const qtyRaw = colMap["expectedQty"] !== undefined ? row[colMap["expectedQty"]] : undefined;
-      const packageCountRaw = colMap["noOfPackages"] !== undefined ? row[colMap["noOfPackages"]] : undefined;
+      const packageCountRaw = colMap["packageCount"] !== undefined ? row[colMap["packageCount"]] : undefined;
       const spqRaw = colMap["spq"] !== undefined ? row[colMap["spq"]] : undefined;
       const cbmRaw = colMap["cbm"] !== undefined ? row[colMap["cbm"]] : undefined;
 

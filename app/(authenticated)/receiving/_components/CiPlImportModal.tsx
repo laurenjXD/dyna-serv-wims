@@ -18,6 +18,7 @@ export interface ImportedCiplLine {
   mfgDate: string;
   expiryDate: string;
   expectedQty: string;
+  packageCount?: string;
   spq?: string;
   unitCbm?: string;
   uom: string;
@@ -66,6 +67,7 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
       mfgDate: string;
       expiryDate: string;
       expectedQty: string;
+      packageCount: string;
       spq: string;
       unitCbm: string;
       uom: string;
@@ -128,6 +130,7 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
         mfgDate: row.mfgDate || "",
         expiryDate: row.expiryDate || "",
         expectedQty: row.expectedQty ? String(row.expectedQty) : "",
+        packageCount: row.packageCount ? String(row.packageCount) : "",
         spq: row.spq ? String(row.spq) : "",
         unitCbm: row.cbm ? String(row.cbm) : (matchedItem ? matchedItem.volumeCbm : "0.001"),
         uom: row.uom || (matchedItem ? matchedItem.uom : "BOX"),
@@ -221,6 +224,7 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
         mfgDate: r.mfgDate,
         expiryDate: r.expiryDate,
         expectedQty: r.expectedQty,
+        packageCount: r.packageCount,
         spq: r.spq,
         unitCbm: r.unitCbm,
         uom: r.uom,
@@ -413,7 +417,8 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
                         <th className="p-2.5 min-w-[110px]">Shipping Lot</th>
                         <th className="p-2.5 min-w-[100px]">MFD</th>
                         <th className="p-2.5 min-w-[80px]">Unit CBM</th>
-                        <th className="p-2.5 min-w-[85px] text-right">Expected Qty</th>
+                        <th className="p-2.5 min-w-[85px] text-right">Total Quantity</th>
+                        <th className="p-2.5 min-w-[75px] text-right">Carton Qty</th>
                         <th className="p-2.5 min-w-[70px]">Shipment SPQ</th>
                         <th className="p-2.5 min-w-[65px]">UOM</th>
                         <th className="p-2.5 min-w-[90px]">Disposition</th>
@@ -551,6 +556,16 @@ export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose
                                 type="number"
                                 value={row.expectedQty}
                                 onChange={(e) => handleRowChange(idx, "expectedQty", e.target.value)}
+                                className="w-20 rounded border border-outline-variant/50 px-2 py-1 font-mono text-body-xs text-right"
+                              />
+                            </td>
+                            <td className="p-2.5 text-right">
+                              <input
+                                type="number"
+                                min="1"
+                                value={row.packageCount}
+                                onChange={(e) => handleRowChange(idx, "packageCount", e.target.value)}
+                                placeholder="Cartons"
                                 className="w-20 rounded border border-outline-variant/50 px-2 py-1 font-mono text-body-xs text-right"
                               />
                             </td>

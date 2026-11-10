@@ -254,6 +254,22 @@ export function WrrLineItems({
     }));
   }
 
+  function updateExpectedQty(index: number, value: string) {
+    setLines((prev) => prev.map((line, i) => {
+      if (i !== index) return line;
+      const item = itemOptions.find((candidate) => candidate.id === line.itemId);
+      const totalQuantity = Number(value);
+      const effectiveSpq = Number(line.spqSnapshot) || item?.spq || 0;
+      const cartonCount = exactCartonCount(totalQuantity, effectiveSpq);
+
+      return {
+        ...line,
+        expectedQty: value,
+        cartonQty: cartonCount === null ? "" : String(cartonCount),
+      };
+    }));
+  }
+
   return (
     <div className="space-y-4">
       {/* Hidden lineCount — consumed by the server action to know how many lines to parse */}
@@ -423,32 +439,54 @@ export function WrrLineItems({
               </div>
             </div>
 
-            {/* Row 3: CIPL cartons, derived total units/labels, CBM & UOM */}
+            {/* Row 3: CIPL total quantity, cartons, CBM & UOM */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-              {/* Col 1: CIPL carton quantity, with total units derived from SPQ */}
+              {/* Col 1: CIPL total quantity */}
               <div>
-                {selectedItem ? (
+                <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
+                  Total Quantity (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
+                <input
+                  id={`line-${index}-expectedQty`}
+                  name={`line_${index}_expectedQty`}
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  value={line.expectedQty}
+                  readOnly={isImported}
+                  onChange={(e) => updateExpectedQty(index, e.target.value)}
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
+                />
+                <p className="mt-1 font-body text-[11px] text-text-grey">
+                  Total base quantity from the CIPL/WRR.
+                </p>
+              </div>
+
+              {/* Col 2: CIPL carton quantity */}
+              <div>
+                <label htmlFor={`line-${index}-cartonQty`} className="block font-label text-label text-text-grey">
+                  Carton Qty (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
+                </label>
+                <input
+                  id={`line-${index}-cartonQty`}
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  value={line.cartonQty}
+                  readOnly={isImported}
+                  disabled={!isImported && !selectedItem}
+                  onChange={(e) => updateCartonQty(index, e.target.value)}
+                  className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${isImported || !selectedItem ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
+                />
+                <p className="mt-1 font-body text-[11px] text-text-grey">
+                  {line.cartonQty && effectiveSpq
+                    ? `${line.cartonQty} cartons × SPQ ${effectiveSpq}.`
+                    : "Calculated from total quantity ÷ shipment SPQ."}
+                </p>
+                {selectedItem && (
                   <>
-                    <label htmlFor={`line-${index}-cartonQty`} className="block font-label text-label text-text-grey">
-                      Carton Qty (CIPL) <span aria-hidden="true" className="text-brand-red">*</span>
-                    </label>
-                    <input
-                      id={`line-${index}-cartonQty`}
-                      type="number"
-                      required
-                      min="1"
-                      step="1"
-                      value={line.cartonQty}
-                      readOnly={isImported}
-                      onChange={(e) => updateCartonQty(index, e.target.value)}
-                      className={`mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-mono text-mono-md text-on-surface ${isImported ? "cursor-not-allowed bg-slate-100" : "bg-surface-white"}`}
-                    />
-                    <input type="hidden" name={`line_${index}_expectedQty`} value={line.expectedQty} />
-                    <p className="mt-1 font-body text-[11px] text-text-grey">
-                      {line.cartonQty
-                        ? `${line.expectedQty} total quantity (${line.cartonQty} cartons × SPQ ${effectiveSpq}).`
-                        : `Total quantity is calculated from cartons × SPQ ${effectiveSpq}.`}
-                    </p>
                     <label className="mt-2 block font-label text-[11px] text-text-grey">
                       Shipment SPQ (units/carton)
                       <input
@@ -466,60 +504,7 @@ export function WrrLineItems({
                       </label>
                     )}
                   </>
-                ) : (
-                  <>
-                    <label htmlFor={`line-${index}-expectedQty`} className="block font-label text-label text-text-grey">
-                      Expected Qty (Total Units) <span aria-hidden="true" className="text-brand-red">*</span>
-                    </label>
-                    <input
-                      id={`line-${index}-expectedQty`}
-                      name={`line_${index}_expectedQty`}
-                      type="number"
-                      required
-                      min="1"
-                      step="1"
-                      value={line.expectedQty}
-                      onChange={(e) => updateLine(index, "expectedQty", e.target.value)}
-                      className="mt-1 h-11 w-full rounded-lg border border-slate-200 bg-surface-white px-3 font-mono text-mono-md text-on-surface"
-                    />
-                    <p className="mt-1 font-body text-[11px] text-text-grey">
-                      Total base units from the CIPL/WRR.
-                    </p>
-                  </>
                 )}
-              </div>
-
-              {/* Col 2: Derived carton QR labels */}
-              <div>
-                <label className="block font-label text-label text-text-grey">
-                  Carton QR Labels
-                </label>
-                {(() => {
-                  const spq = effectiveSpq;
-                  const total = Number(line.expectedQty);
-                  const valid = Number.isInteger(total) && total > 0 && spq > 0 && total % spq === 0;
-                  const cartons = Number.isInteger(total) && total > 0 && spq > 0 ? total / spq : 0;
-                  return (
-                    <>
-                      <div
-                        aria-live="polite"
-                        className={`mt-1 flex h-11 items-center rounded-lg border px-3 font-mono text-mono-md ${valid ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-                      >
-                        {valid ? `${cartons} labels` : selectedItem ? "Enter carton quantity" : "Select an enrolled item"}
-                      </div>
-                    </>
-                  );
-                })()}
-                <p className="mt-1 font-body text-[11px] text-text-grey">
-                  {selectedItem && (
-                    <>
-                      <span className="font-mono font-semibold text-brand-navy">
-                        Effective SPQ: {effectiveSpq} units/carton
-                      </span>{" "}
-                    </>
-                  )}
-                  {selectedItem ? "Derived from carton quantity × the effective shipment SPQ." : "Derived from total units ÷ enrolled SPQ."}
-                </p>
               </div>
 
               {/* Col 3: Unit CBM */}
