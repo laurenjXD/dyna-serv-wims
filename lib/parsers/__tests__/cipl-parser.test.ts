@@ -60,4 +60,28 @@ describe("cipl-parser", () => {
       expect(result.header.ipNumber).toBeUndefined();
     }
   });
+
+  it("handles a spacer row before invoice headers and ignores footer summaries", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Invoice");
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    worksheet.addRow(["COMMERCIAL INVOICE"]);
+    worksheet.addRow(["INVOICE# : PR260030P"]);
+    worksheet.addRow([]);
+    worksheet.addRow(["Item", "UBoT P/N", "Descriptions", "Cust P/N", "Cust PO#", "Unit Price", "Quantity", "UOM", "Amount"]);
+    worksheet.addRow(["(line items)"]);
+    worksheet.addRow(["1", "AP01000102", "CARRIER TAPE", "82012CP100", "47361784", 0.01, "13,500", "M", 135]);
+    worksheet.addRow(["", "", "Item 01 - 03 : ADGT", "39239090000", "PLASTIC TRAY", 35420, 13084, "", ""]);
+
+    const result = await parseCiplDocument(
+      Buffer.from((await workbook.xlsx.writeBuffer()) as unknown as Buffer),
+      "spacer-row-cipl.xlsx",
+    );
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({ itemCode: "AP01000102", expectedQty: 13500, uom: "M" });
+    expect(result.mappingSnapshot.headerRow).toBe(4);
+    expect(result.mappingSnapshot.columns.find((column) => column.suggestedTarget === "itemCode")?.header).toBe("UBoT P/N");
+  });
 });

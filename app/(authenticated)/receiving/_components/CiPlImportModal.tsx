@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type DragEvent } from "react";
 import Link from "next/link";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X, Check, Sparkles } from "@/components/ui/icons";
 import type { WrrItemOption } from "@/lib/db/queries/items";
@@ -39,6 +39,7 @@ interface CiPlImportModalProps {
 export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<CiplParseResult | null>(null);
   const [editedHeader, setEditedHeader] = useState<{
@@ -144,6 +145,34 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
     setEditedRows(mapped);
   }
 
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!loading) {
+      event.dataTransfer.dropEffect = "copy";
+      setIsDragging(true);
+    }
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    // Ignore transitions between children inside the drop zone.
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setIsDragging(false);
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+    if (loading) return;
+
+    const droppedFile = event.dataTransfer.files?.[0];
+    if (droppedFile) void handleFileSelect(droppedFile);
+  }
+
   function handleRowChange(index: number, field: string, value: string) {
     setEditedRows((prev) => {
       const copy = [...prev];
@@ -220,9 +249,30 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
         {/* Modal Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {!parseResult ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-outline-variant p-8 text-center bg-surface-variant/20">
+            <div
+              role="button"
+              tabIndex={loading ? -1 : 0}
+              aria-label="Drop a CIPL file here or select a file"
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onKeyDown={(event) => {
+                if (!loading && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  event.currentTarget.querySelector<HTMLInputElement>("input[type=file]")?.click();
+                }
+              }}
+              className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+                isDragging
+                  ? "border-brand-navy bg-brand-navy/10"
+                  : "border-outline-variant bg-surface-variant/20"
+              }`}
+            >
               <Upload className="mb-4 h-12 w-12 text-brand-navy/60" />
-              <h3 className="font-heading text-title-sm font-semibold text-on-surface">Choose CIPL File to Upload</h3>
+              <h3 className="font-heading text-title-sm font-semibold text-on-surface">
+                {isDragging ? "Drop CIPL File Here" : "Choose CIPL File to Upload"}
+              </h3>
               <p className="mt-1 font-body text-body-xs text-text-grey">Supports Excel (.xlsx, .xls, .csv) and PDF documents up to 10MB</p>
               
               <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-navy px-5 py-2.5 font-label text-label-md text-surface-white hover:opacity-90 transition-opacity">

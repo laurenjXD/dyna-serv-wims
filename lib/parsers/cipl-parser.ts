@@ -401,6 +401,17 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
       bestColMap["itemCode"] = bestColMap["lineNumber"];
     }
 
+    // Some exported workbooks place a blank spacer row immediately before the
+    // actual column headers. The combined-row scan above can recognize that
+    // pair, but the visible mapping header should be the populated row.
+    if (
+      bestHeaderRowIndex >= 0 &&
+      (rawRows[bestHeaderRowIndex] ?? []).every((cell) => String(cell ?? "").trim() === "") &&
+      (rawRows[bestHeaderRowIndex + 1] ?? []).some((cell) => String(cell ?? "").trim() !== "")
+    ) {
+      bestHeaderRowIndex += 1;
+    }
+
     if (bestHeaderRowIndex !== -1) {
       headerRowIndex = bestHeaderRowIndex;
       Object.assign(colMap, bestColMap);
@@ -472,6 +483,11 @@ async function parseCiplExcel(buffer: Buffer, fileName: string): Promise<CiplPar
         continue;
       }
 
+      // When the selected template exposes a real supplier/item-code column,
+      // require that column to be populated. This prevents footer summaries
+      // such as HS-code totals from becoming fake line items merely because a
+      // number appears in the customer-code column.
+      if (colMap["itemCode"] !== undefined && !itemCodeRaw) continue;
       if (!itemCodeRaw && !custItemCodeRaw) continue;
 
       const itemCode = itemCodeRaw ? String(itemCodeRaw).trim() : "";
@@ -568,25 +584,78 @@ async function parseCiplPdf(buffer: Buffer, fileName: string): Promise<CiplParse
   };
 
   try {
-    const pdfParseMod = await import("pdf-parse");
-    const pdfParse = (pdfParseMod as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default || (pdfParseMod as unknown as (b: Buffer) => Promise<{ text: string }>);
-    const pdfData = await pdfParse(buffer);
+    const pdfParseMod = await import("pdf-parse") as unknown as {
+      default?: (data: Buffer) => Promise<{ text: string }>;
+      PDFParse?: new (options: { data: Buffer }) => {
+        getText: () => Promise<{ text: string }>;
+        destroy?: () => Promise<void>;
+      };
+    };
+    let pdfData: { text: string };
+    if (typeof pdfParseMod.default === "function") {
+      pdfData = await pdfParseMod.default(buffer);
+    } else if (pdfParseMod.PDFParse) {
+      const parser = new pdfParseMod.PDFParse({ data: buffer });
+      try {
+        pdfData = await parser.getText();
+      } finally {
+        await parser.destroy?.();
+      }
+    } else {
+      throw new Error("The PDF text parser is unavailable.");
+    }
     const text: string = pdfData.text || "";
     const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
 
-    const invMatch = text.match(/(?:Invoice|CIPL|Ref)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i);
+    const invMatch = text.match(/Invoice\s*#?\s*[:.-]\s*([A-Z0-9_-]{3,30})/i)
+      ?? text.match(/(?:CIPL|Ref)\s*(?:No|#|Num|Reference)?\s*[:.-]?\s*([A-Z0-9_-]{3,30})/i);
     if (invMatch) {
       result.header.ciplReference = invMatch[1];
     }
 
-    const dateMatch = text.match(/(?:Date)\s*[:.-]?\s*(\d{4}[-/.]\d{2}[-/.]\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})/i);
+    const dateMatch = text.match(/(?:Date)\s*[:.-]?\s*(\d{4}[-/.]\d{2}[-/.]\d{2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}-[A-Z]{3}-\d{4})/i);
     if (dateMatch) {
       result.header.invoiceDate = dateMatch[1];
     }
 
+    const structuredRows = lines.flatMap((line) => {
+      const cells = line.split(/\t+/).map((cell) => cell.trim()).filter(Boolean).flatMap((cell) => {
+        // Some PDF generators omit the final tab between UOM and amount.
+        const mergedUomAmount = cell.match(/^(BOX|PCS?|CTN|KG|UNITS?|PK|M|PC|EA|SET|ROLL|PAIR)\s+([\d,.]+)$/i);
+        return mergedUomAmount ? [mergedUomAmount[1], mergedUomAmount[2]] : [cell];
+      });
+      if (cells.length < 7 || !/^\d{1,3}$/.test(cells[0] ?? "") || !/^[A-Z0-9][A-Z0-9_-]{2,30}$/i.test(cells[1] ?? "")) {
+        return [];
+      }
+
+      const uomIndex = cells.findIndex((cell, index) => index >= 4 && /^(BOX|PCS?|CTN|KG|UNITS?|PK|M|PC|EA|SET|ROLL|PAIR)$/i.test(cell));
+      if (uomIndex < 2) return [];
+      const quantity = Number((cells[uomIndex - 1] ?? "").replace(/,/g, ""));
+      if (!Number.isFinite(quantity) || quantity <= 0) return [];
+
+      return [{
+        itemCode: cells[1],
+        description: cells[2],
+        // Some PDF generators merge the customer P/N and PO columns. The
+        // first token is still the customer part number; PO is not required
+        // for WRR line creation.
+        customerItemCode: cells[3]?.split(/\s+/)[0],
+        expectedQty: quantity,
+        uom: cells[uomIndex].toUpperCase(),
+        disposition: "store" as const,
+      }];
+    });
+
+    // Text-based invoices commonly expose their table as tab-separated cells.
+    // Parse that stable structure first; only use the loose fallback for PDFs
+    // whose text extractor does not preserve table columns.
+    if (structuredRows.length > 0) {
+      result.rows.push(...structuredRows);
+    }
+
     const lineRegex = /([A-Z0-9_-]{3,25})\s+(?:(LOT-[A-Z0-9_-]+|[A-Z0-9_-]{4,15})\s+)?(\d+(?:\.\d+)?)\s*(BOX|PCS|CTN|KG|UNITS|PK)?/gi;
 
-    for (const line of lines) {
+    for (const line of structuredRows.length > 0 ? [] : lines) {
       if (/invoice|packing|commercial|date|page|total|subtotal/i.test(line) && !/\d{2,}/.test(line)) {
         continue;
       }
