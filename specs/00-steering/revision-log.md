@@ -2191,3 +2191,20 @@ SPQ packaging contract, `04`/`21` session persistence, `09`/`14` approval email
 delivery, and `21` Workspace Customization. The shorthand “Req dashboard” is
 recorded as an explicit discovery gate because it does not yet define a
 testable dashboard behavior.
+
+## 2026-11-10 — Hosted inventory schema drift repaired
+
+The connected Supabase database was missing the approved `0076`–`0078` release
+migrations even though the application already queried their columns and
+contracts. The first Master Inventory stock query therefore failed with
+`column "expiry_policy" does not exist`, which surfaced to users as a page
+loading/client exception. Migrations `0076_material_expiry_policy.sql`,
+`0077_cipl_mapping_and_packaging_snapshots.sql`, and
+`0078_pick_list_supplier_item_code_snapshot.sql` were applied transactionally
+against the connected database and recorded in `supabase_migrations`.
+
+The managed-Postgres owner privilege required by `0076` was added to the
+migration source so a clean future environment can transfer the security
+definer functions to `expiry_policy_writer` without failing. Verification
+confirmed the expiry acknowledgement table, inventory views/functions, CIPL
+snapshot columns, supplier-code snapshot contract, and a live stock join query.

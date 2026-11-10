@@ -848,6 +848,24 @@ export function MultiItemPickListDraft({
     setOpenAllocationLineIds(new Set());
   };
   const toggleAllocationDetails = (lineId: string) => {
+    const isOpen = openAllocationLineIds.has(lineId);
+    if (!isOpen) {
+      const detail = lineDetails.find(({ line }) => line.id === lineId);
+      // Opening the allocation editor is an explicit request to edit the
+      // server-previewed FIFO/FEFO split. Seed the editable controls with the
+      // current preview so the operator can adjust it without first toggling
+      // a second "manual split" control.
+      if (detail?.item && !detail.line.manualSplit) {
+        updateLine(lineId, {
+          manualSplit: true,
+          sourceBalanceId: "",
+          manualAllocations: detail.fifoAllocations.map(({ source, boxes }) => ({
+            balanceId: source.balanceId,
+            boxes: String(boxes),
+          })),
+        });
+      }
+    }
     setOpenAllocationLineIds((current) => {
       const next = new Set(current);
       if (next.has(lineId)) next.delete(lineId);

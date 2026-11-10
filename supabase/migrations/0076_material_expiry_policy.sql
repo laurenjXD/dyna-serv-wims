@@ -17,6 +17,9 @@ DO $$ BEGIN
   END IF;
 END $$;
 GRANT USAGE ON SCHEMA public, auth, rbac_internal TO expiry_policy_writer;
+-- Managed Postgres requires the target owner to have CREATE on the schema
+-- before a function can be transferred to that role.
+GRANT CREATE ON SCHEMA public TO expiry_policy_writer;
 GRANT EXECUTE ON FUNCTION auth.uid() TO expiry_policy_writer;
 GRANT EXECUTE ON FUNCTION rbac_internal.has_permission(text, text, public.scope_kind) TO expiry_policy_writer;
 GRANT EXECUTE ON FUNCTION rbac_internal.current_user_is_active() TO expiry_policy_writer;

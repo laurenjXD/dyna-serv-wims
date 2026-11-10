@@ -221,9 +221,11 @@ describe("MultiItemPickListDraft organization selection", () => {
 
   it("allocates FEFO lot-first across locations and only uses the later lot for the remainder", () => {
     const perishableStock = [
-      { ...stock[0], isPerishable: true, expiryDate: "2026-05-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 2, balanceId: "early-1", lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-z", locationLabel: "Z1-01" },
-      { ...stock[0], isPerishable: true, expiryDate: "2026-05-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 3, balanceId: "early-2", lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-a", locationLabel: "A1-01" },
-      { ...stock[0], isPerishable: true, expiryDate: "2026-06-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 10, balanceId: "late-1", lotId: "lot-late", lotNumber: "LOT-LATE", locationId: "loc-b", locationLabel: "B1-01" },
+      // Keep the FEFO fixtures eligible relative to the current business date;
+      // expired perishable stock is correctly excluded by the allocator.
+      { ...stock[0], isPerishable: true, expiryDate: "2027-05-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 2, balanceId: "early-1", lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-z", locationLabel: "Z1-01" },
+      { ...stock[0], isPerishable: true, expiryDate: "2027-05-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 3, balanceId: "early-2", lotId: "lot-early", lotNumber: "LOT-EARLY", locationId: "loc-a", locationLabel: "A1-01" },
+      { ...stock[0], isPerishable: true, expiryDate: "2027-06-01", receivedAt: new Date("2026-10-20T09:30:00Z"), availableQty: 10, balanceId: "late-1", lotId: "lot-late", lotNumber: "LOT-LATE", locationId: "loc-b", locationLabel: "B1-01" },
     ];
 
     render(
