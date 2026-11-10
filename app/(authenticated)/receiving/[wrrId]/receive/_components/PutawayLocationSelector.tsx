@@ -188,9 +188,9 @@ export function PutawayLocationSelector({
       <section className="rounded-2xl border border-outline-variant/40 bg-surface-white p-4 shadow-elevation-1 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Primary location</p>
+            <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 1 · Location assignment</p>
             <label htmlFor="all-boxes-location" className="mt-1 block font-heading text-title-md font-bold text-on-surface">
-              Put all {safeQuantity} declared boxes in
+              Assign all {safeQuantity} declared boxes to
             </label>
             <p className="mt-0.5 font-body text-body-sm text-text-grey">
               One valid QR scan identified this line. Assign each declared carton to Storage, Inspection, or Missing{safeSpq > 1 ? ` (${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}. Scan confirmations: <strong>{safeScannedQuantity}</strong>.
@@ -365,7 +365,7 @@ export function PutawayLocationSelector({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-label text-label font-bold uppercase tracking-[0.1em] text-primary">Step 3 · Review</p>
-            <p className="mt-1 font-heading text-title-md font-bold text-on-surface">Placement summary</p>
+          <p className="mt-1 font-heading text-title-md font-bold text-on-surface">Location assignment summary</p>
           </div>
           <span className="font-mono text-mono-sm font-bold text-brand-navy">
             {assignedBoxesCount}/{safeQuantity} Boxes Assigned{safeSpq > 1 ? ` (${(assignedBoxesCount * safeSpq).toLocaleString()}/${(safeQuantity * safeSpq).toLocaleString()} ${safeUom})` : ""}
@@ -461,7 +461,7 @@ export function PutawayLocationSelector({
         />
         <span>
           <span className="block font-label text-label font-bold uppercase tracking-[0.1em] text-status-available">
-            Step 4 · Confirm
+            Step 4 · Confirm location assignment
           </span>
           <span className="mt-1 block">
             {assignedBoxesCount > 0 || missingBoxesCount === safeQuantity ? (

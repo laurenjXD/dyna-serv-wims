@@ -139,7 +139,7 @@ describe(
         const source = pageSource();
         // Per-line carton placement action per §6.2d.
         expect(source).toContain("commitWrrLine");
-        expect(source).toContain("Confirm carton placement");
+        expect(source).toContain("Confirm location assignment");
         expect(source).toContain("assign each carton to Storage, Inspection, or Missing");
         expect(source).not.toContain("Hold for Inspection");
         // The superseded whole-WRR gate must not reappear.
@@ -252,7 +252,7 @@ describe(
     // OTHER ready line gets a compact secondary indicator instead of a second
     // equal-weight primary button rendered inline in the card list.
     it(
-      "AC brand §3: only the first ready line gets the primary Store/Hold commit form (in the bottom sticky area); other ready lines get a secondary indicator, not a second primary CTA",
+      "AC brand §3: only the first ready line gets the location assignment form directly below its lot card",
       () => {
         const source = pageSource();
 
@@ -261,25 +261,21 @@ describe(
         expect(source).toContain("primaryReadyLine");
         expect(source).toContain("isPrimaryReady");
 
-        // The Store/Hold commit <form> must NOT be rendered inline per-card
-        // any more (that was the multi-CTA violation) — it must live in the
-        // sticky bottom primary-action area instead. Isolate the card-list
-        // section (between the "Item progress list" and "Primary action"
-        // comments) and assert it contains no <form> tag at all.
+        // The active line's single location-assignment form is rendered
+        // directly after its lot card, while other ready lines stay secondary.
         const cardListStart = source.indexOf("Item progress list");
         const cardListEnd = source.indexOf("Primary action — bottom third");
         expect(cardListStart).toBeGreaterThan(-1);
         expect(cardListEnd).toBeGreaterThan(cardListStart);
         const cardListSection = source.slice(cardListStart, cardListEnd);
-        expect(cardListSection).not.toContain("<form");
+        expect(cardListSection).toContain("LocationAssignmentCard");
 
         // Non-primary ready lines get a secondary, non-brand-red indicator.
         expect(source).toContain("complete the current line first");
 
-        // The bottom sticky primary-action area renders the commit form when
-        // (and only when) a primary ready line exists, ahead of the scan input.
-        expect(source).toContain("isReceivable && primaryReadyLine");
-        expect(source).toContain("isReceivable && !primaryReadyLine && !allLinesScanned");
+        // The scan action remains available only when no line is waiting for
+        // location assignment.
+        expect(source).toContain("isReceivable && activeStage === \"scan\" && !allLinesScanned");
       },
     );
 

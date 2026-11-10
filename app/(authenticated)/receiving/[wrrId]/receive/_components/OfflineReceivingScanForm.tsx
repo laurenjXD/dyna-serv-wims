@@ -95,7 +95,7 @@ export function OfflineReceivingScanForm({
         </label>
         <p className="font-body text-body-md text-text-grey">
           {connectivity === "offline"
-            ? "Offline capture is enabled for this scan only. Putaway and receipt confirmation still require connection."
+            ? "Offline capture is enabled for this scan only. Location assignment and receipt confirmation still require connection."
             : "Scan one barcode from the incoming shipment first. We will confirm the item before asking where its declared boxes should be stored."}
         </p>
         <div className="flex gap-2">

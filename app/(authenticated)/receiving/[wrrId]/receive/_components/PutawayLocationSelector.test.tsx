@@ -30,7 +30,7 @@ describe("PutawayLocationSelector whole-line receiving", () => {
     );
 
     expect(screen.getByText(/One valid QR scan identified this line/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Put all 3 declared boxes in")).toBeInTheDocument();
+    expect(screen.getByLabelText("Assign all 3 declared boxes to")).toBeInTheDocument();
     expect(screen.queryByText(/How many boxes are physically present/)).not.toBeInTheDocument();
 
     const unitLocationIds = container.querySelector<HTMLInputElement>(
@@ -43,7 +43,7 @@ describe("PutawayLocationSelector whole-line receiving", () => {
     expect(JSON.parse(unitLocationIds?.value ?? "null")).toEqual(["", "", ""]);
     expect(JSON.parse(allocations?.value ?? "null")).toEqual([]);
 
-    fireEvent.focus(screen.getByLabelText("Put all 3 declared boxes in"));
+    fireEvent.focus(screen.getByLabelText("Assign all 3 declared boxes to"));
     fireEvent.click(screen.getByRole("button", { name: /B2-05 \(Storage\)/ }));
 
     expect(screen.getByText(/3\/3 Boxes Assigned/)).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("PutawayLocationSelector whole-line receiving", () => {
       />,
     );
 
-    fireEvent.focus(screen.getByLabelText("Put all 800 declared boxes in"));
+    fireEvent.focus(screen.getByLabelText("Assign all 800 declared boxes to"));
     fireEvent.click(screen.getByRole("button", { name: /B2-06 \(Storage\)/ }));
 
     const unitLocationIds = container.querySelector<HTMLInputElement>(

@@ -122,6 +122,85 @@ function getCommitErrorMessage(reason: string): string {
   }
 }
 
+interface LocationAssignmentCardProps {
+  line: WrrItemRow;
+  storeCandidates: PutawayCandidate[];
+  storeContents: Record<string, Awaited<ReturnType<typeof getPutawayLocationContents>>[string]>;
+  inspectionLocations: Array<{ id: string; label: string }>;
+  onCommit: (formData: FormData) => Promise<void>;
+}
+
+function LocationAssignmentCard({
+  line,
+  storeCandidates,
+  storeContents,
+  inspectionLocations,
+  onCommit,
+}: LocationAssignmentCardProps) {
+  const lineSpq = Number(line.spq) || 1;
+  const lineUom = (!line.uom || line.uom.toLowerCase() === "pallet" || line.uom.toLowerCase() === "plt")
+    ? "PCS"
+    : line.uom.toUpperCase();
+
+  return (
+    <div id="active-line-location-assignment" className="scroll-mt-4 rounded-2xl border border-primary/30 bg-surface-white p-4 shadow-elevation-2 ring-2 ring-primary/10 sm:p-6">
+      <form action={onCommit} className="flex flex-col gap-4">
+        <input type="hidden" name="wrrItemId" value={line.id} />
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/30 pb-3">
+          <div>
+            <p className="font-label text-label-xs font-bold uppercase tracking-wider text-primary">Active line · Location assignment</p>
+            <p className="font-mono text-headline-sm font-bold text-on-surface">{line.lotNumber}</p>
+          </div>
+          <span className="rounded-md bg-brand-navy/10 px-3 py-1 font-label text-label-sm font-bold text-brand-navy">
+            SPQ: {lineSpq} {lineUom}/Box
+          </span>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">
+            <Check size={18} strokeWidth={3} />
+          </span>
+          <div>
+            <p className="font-label text-body-md font-bold text-on-surface">Item verified</p>
+            <p className="mt-1 font-body text-body-md text-text-grey">
+              Assign the declared cartons to Storage, Inspection, or Missing. One confirmation saves this line.
+              {` Expected: ${line.cartonCount} cartons / ${Number(line.expectedQty).toLocaleString()} ${lineUom}.`}
+            </p>
+          </div>
+        </div>
+
+        <PutawayLocationSelector
+          candidates={storeCandidates}
+          inspectionCandidates={inspectionLocations}
+          contents={storeContents}
+          quantity={line.cartonCount}
+          scannedQuantity={line.scannedQty}
+          unitCbm={Number(line.unitCbm) || 0}
+          spq={lineSpq}
+          uom={lineUom}
+          lotNumber={line.lotNumber}
+          expiryReview={line.itemId ? {
+            itemId: line.itemId,
+            wrrItemId: line.id,
+            expiryDate: line.expiryDate ?? null,
+            expiryPolicy: line.expiryPolicy,
+            expiryPolicyVersion: line.expiryPolicyVersion ?? 1,
+            isPerishable: line.isPerishable,
+          } : undefined}
+        />
+
+        <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 border-t border-outline-variant/30 bg-surface-white p-4 sm:static sm:mx-0 sm:mb-0 sm:border-0 sm:bg-transparent sm:p-0">
+          <OnlineOnlySubmitButton
+            type="submit"
+            className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 shadow-md cursor-pointer hover:bg-primary/90"
+          >
+            Confirm location assignment
+          </OnlineOnlySubmitButton>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface PageProps {
@@ -256,7 +335,7 @@ export default async function ReceiveFloorPage({
     const scanResult = await recordScan(actionResolver, wrrId, barcode);
     if (scanResult.ok) {
       redirect(
-        `/receiving/${wrrId}/receive?stage=assign&result=scanned&remaining=${scanResult.remainingQty}`
+        `/receiving/${wrrId}/receive?stage=assign&result=scanned&remaining=${scanResult.remainingQty}#active-line-location-assignment`
       );
     } else {
       redirect(
@@ -572,7 +651,9 @@ export default async function ReceiveFloorPage({
             return (
               <div
                 key={item.id}
-                className={`rounded-2xl border bg-surface-white p-4 shadow-elevation-1 sm:p-5 ${isPrimaryReady ? "border-primary/50 ring-2 ring-primary/10" : "border-outline-variant/40"}`}
+              >
+                <div
+                  className={`rounded-2xl border bg-surface-white p-4 shadow-elevation-1 sm:p-5 ${isPrimaryReady ? "border-primary/50 ring-2 ring-primary/10" : "border-outline-variant/40"}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -647,6 +728,18 @@ export default async function ReceiveFloorPage({
                     </p>
                   </div>
                 )}
+              {readyToCommit && isPrimaryReady && (
+                <div className="mt-3">
+                  <LocationAssignmentCard
+                    line={item}
+                    storeCandidates={primaryStoreCandidates}
+                    storeContents={primaryStoreContents}
+                    inspectionLocations={inspectionLocations}
+                    onCommit={handleCommitLine}
+                  />
+                </div>
+              )}
+                </div>
               </div>
             );
           })}
@@ -669,73 +762,6 @@ export default async function ReceiveFloorPage({
           </form>
         </div>
       )}
-      {isReceivable && primaryReadyLine && activeStage !== "scan" && (() => {
-        const primaryLineSpq = Number(primaryReadyLine.spq) || 1;
-        const primaryLineUom = (!primaryReadyLine.uom || primaryReadyLine.uom.toLowerCase() === "pallet" || primaryReadyLine.uom.toLowerCase() === "plt") ? "PCS" : primaryReadyLine.uom.toUpperCase();
-        return (
-          <div className="mx-auto mt-6 w-full max-w-5xl px-4 pb-8">
-            <div className="rounded-2xl border border-primary/30 bg-surface-white p-4 shadow-elevation-2 sm:p-6 ring-2 ring-primary/10">
-              <form action={handleCommitLine} className="flex flex-col gap-4">
-                <input type="hidden" name="wrrItemId" value={primaryReadyLine.id} />
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/30 pb-3">
-                  <div>
-                    <p className="font-label text-label-xs font-bold uppercase tracking-wider text-primary">Active Line For Putaway</p>
-                    <p className="font-mono text-headline-sm font-bold text-on-surface">
-                      {primaryReadyLine.lotNumber}
-                    </p>
-                  </div>
-                  <span className="rounded-md bg-brand-navy/10 px-3 py-1 font-label text-label-sm font-bold text-brand-navy">
-                    SPQ: {primaryLineSpq} {primaryLineUom}/Box
-                  </span>
-                </div>
-                <div className="flex items-start gap-3 rounded-xl border border-status-available/30 bg-[#F0FDF8] px-4 py-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-status-available font-heading font-bold text-surface-white" aria-hidden="true">
-                    <Check size={18} strokeWidth={3} />
-                  </span>
-                  <div>
-                    <p className="font-label text-body-md font-bold text-on-surface">
-                      Item verified
-                    </p>
-                    <p className="mt-1 font-body text-body-md text-text-grey">
-                      Assign locations for derived carton labels (Expected: {primaryReadyLine.cartonCount} cartons / {Number(primaryReadyLine.expectedQty).toLocaleString()} {primaryLineUom}). Mark cartons that did not arrive as Missing.
-                    </p>
-                  </div>
-                </div>
-
-                <PutawayLocationSelector
-                  candidates={primaryStoreCandidates}
-                  inspectionCandidates={inspectionLocations}
-                  contents={primaryStoreContents}
-                  quantity={primaryReadyLine.cartonCount}
-                  scannedQuantity={primaryReadyLine.scannedQty}
-                  unitCbm={Number(primaryReadyLine.unitCbm) || 0}
-                  spq={primaryLineSpq}
-                  uom={primaryLineUom}
-                  lotNumber={primaryReadyLine.lotNumber}
-                  expiryReview={primaryReadyLine.itemId ? {
-                    itemId: primaryReadyLine.itemId,
-                    wrrItemId: primaryReadyLine.id,
-                    expiryDate: primaryReadyLine.expiryDate ?? null,
-                    expiryPolicy: primaryReadyLine.expiryPolicy,
-                    expiryPolicyVersion: primaryReadyLine.expiryPolicyVersion ?? 1,
-                    isPerishable: primaryReadyLine.isPerishable,
-                  } : undefined}
-                />
-
-                <div className="sticky bottom-0 z-20 -mx-4 -mb-4 mt-2 bg-surface-white/95 p-4 backdrop-blur border-t border-outline-variant/30 sm:static sm:mx-0 sm:mb-0 sm:p-0 sm:border-0 sm:bg-transparent">
-                  <OnlineOnlySubmitButton
-                    type="submit"
-                    className="flex h-16 w-full items-center justify-center rounded-xl bg-primary font-heading font-bold text-data-display text-surface-white motion-safe:active:scale-[0.97] motion-safe:transition-transform motion-safe:duration-100 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 shadow-md cursor-pointer hover:bg-primary/90"
-                  >
-                    Confirm carton placement
-                  </OnlineOnlySubmitButton>
-                </div>
-              </form>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Compatibility contract: isReceivable && !primaryReadyLine && !allLinesScanned
           remains the original scan-stage rule; activeStage now makes the loop explicit. */}
       {isReceivable && activeStage === "scan" && !allLinesScanned && (
