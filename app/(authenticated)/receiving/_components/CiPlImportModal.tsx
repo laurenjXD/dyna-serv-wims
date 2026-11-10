@@ -28,6 +28,7 @@ export interface ImportedCiplLine {
 interface CiPlImportModalProps {
   wrrId: string;
   itemOptions: WrrItemOption[];
+  canEnrollMaterial: boolean;
   onClose: () => void;
   onApply: (
     header: CiplParseResult["header"],
@@ -36,7 +37,7 @@ interface CiPlImportModalProps {
   ) => void;
 }
 
-export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlImportModalProps) {
+export function CiPlImportModal({ wrrId, itemOptions, canEnrollMaterial, onClose, onApply }: CiPlImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -454,13 +455,20 @@ export function CiPlImportModal({ wrrId, itemOptions, onClose, onApply }: CiPlIm
                                       {row.suggestedItems.length} candidate(s)
                                     </span>
                                   )}
-                                  <Link
-                                    href={`/master-data/items/new?code=${encodeURIComponent(row.itemCodeDisplay)}`}
-                                    target="_blank"
-                                    className="mt-1 text-[10px] font-semibold text-brand-navy underline"
-                                  >
-                                    Enroll Material
-                                  </Link>
+                                  {canEnrollMaterial ? (
+                                    <Link
+                                      href={`/master-data/items/new?code=${encodeURIComponent(row.itemCodeDisplay)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-1 text-[10px] font-semibold text-brand-navy underline"
+                                    >
+                                      Enroll Material
+                                    </Link>
+                                  ) : (
+                                    <span className="mt-1 block max-w-[180px] text-[10px] leading-4 text-amber-800">
+                                      Material enrollment requires Administrator access. Ask an administrator to enroll this item.
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </td>

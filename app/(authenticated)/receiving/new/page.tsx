@@ -129,9 +129,10 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
   // A WRR header holds a foreign key to parties.id. Showing the available
   // source organizations prevents operators from having to discover
   // and paste an internal UUID (and avoids a database exception on submit).
-  const [vendorParties, wrrItemOptions] = await Promise.all([
+  const [vendorParties, wrrItemOptions, itemManagePermission] = await Promise.all([
     getActiveWrrOrganizations(db),
     listActiveWrrItemOptions(db),
+    requirePermission(resolver, "items.manage"),
   ]);
 
   const errors = encodedErrors
@@ -178,6 +179,7 @@ export default async function NewWrrPage({ searchParams }: PageProps) {
         action={handleCreateWrr}
         vendorParties={vendorParties}
         itemOptions={wrrItemOptions}
+        canManageItems={itemManagePermission.kind === "authorized"}
       />
     </div>
   );

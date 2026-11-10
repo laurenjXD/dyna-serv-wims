@@ -82,9 +82,10 @@ interface WrrNewFormProps {
   action: (formData: FormData) => void;
   vendorParties: SupplierPartyOption[];
   itemOptions: WrrItemOption[];
+  canManageItems: boolean;
 }
 
-export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormProps) {
+export function WrrNewForm({ action, vendorParties, itemOptions, canManageItems }: WrrNewFormProps) {
   const router = useRouter();
   const [flowType, setFlowType] = useState("");
   const [vendorPartyId, setVendorPartyId] = useState("");
@@ -181,6 +182,7 @@ export function WrrNewForm({ action, vendorParties, itemOptions }: WrrNewFormPro
         <CiPlImportModal
           wrrId={wrrId}
           itemOptions={itemOptions}
+          canEnrollMaterial={canManageItems}
           onClose={() => setShowImportModal(false)}
           onApply={(header, lines, mappingSnapshot) => {
             const importedOrganization = findImportedOrganization(header.vendorOrganization, vendorParties);

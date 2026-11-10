@@ -446,8 +446,8 @@ export function WrrLineItems({
                     <input type="hidden" name={`line_${index}_expectedQty`} value={line.expectedQty} />
                     <p className="mt-1 font-body text-[11px] text-text-grey">
                       {line.cartonQty
-                        ? `${line.expectedQty} total units (${line.cartonQty} cartons × SPQ ${effectiveSpq}).`
-                        : `Total units are calculated from cartons × SPQ ${effectiveSpq}.`}
+                        ? `${line.expectedQty} total quantity (${line.cartonQty} cartons × SPQ ${effectiveSpq}).`
+                        : `Total quantity is calculated from cartons × SPQ ${effectiveSpq}.`}
                     </p>
                     <label className="mt-2 block font-label text-[11px] text-text-grey">
                       Shipment SPQ (units/carton)

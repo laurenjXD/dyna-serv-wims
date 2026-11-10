@@ -1,6 +1,5 @@
 // Item create page — requires items.manage.
 
-import { notFound } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { createPageResolver } from "@/lib/auth/page-resolver";
 import { requirePermission } from "@/lib/rbac/guard";
@@ -17,7 +16,16 @@ export default async function NewItemPage({ searchParams }: PageProps) {
   const perm = await requirePermission(resolver, "items.manage");
 
   if (perm.kind !== "authorized") {
-    notFound();
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6" role="alert">
+          <h1 className="font-heading text-title-md font-bold text-amber-950">Material enrollment is unavailable</h1>
+          <p className="mt-2 font-body text-body-md text-amber-900">
+            Your account cannot enroll new materials. Ask an administrator with material-management access to complete this item enrollment.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const { code } = await searchParams;
